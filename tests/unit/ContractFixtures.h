@@ -32,6 +32,14 @@ inline std::vector<std::filesystem::path> list(const std::string& subdir)
     return files;
 }
 
+// The error code an invalid fixture expects: its file name up to the first '.', so one code can have
+// several fixtures (E_EMITTER_ID.json, E_EMITTER_ID.not_l_or_r.json).
+inline std::string expectedCodeName(const std::filesystem::path& path)
+{
+    const std::string name = path.filename().string();
+    return name.substr(0, name.find('.'));
+}
+
 inline std::string read(const std::filesystem::path& path)
 {
     std::ifstream in(path, std::ios::binary);

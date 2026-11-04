@@ -46,7 +46,7 @@ TEST_CASE("every invalid fixture yields exactly its expected code", "[contract][
 {
     for (const auto& path : contract_fixtures::list("invalid"))
     {
-        const std::string name = path.stem().string();
+        const std::string name = contract_fixtures::expectedCodeName(path);
         INFO("fixture: " << path.filename().string());
         const auto expected = contract::codeFromName(name);
         REQUIRE(expected.has_value()); // the file name must be an error code
@@ -66,7 +66,7 @@ TEST_CASE("every error code that a document can trigger has an invalid fixture",
 {
     std::set<std::string> fixtures;
     for (const auto& path : contract_fixtures::list("invalid"))
-        fixtures.insert(path.stem().string());
+        fixtures.insert(contract_fixtures::expectedCodeName(path));
     for (const auto code : contract::allIssueCodes())
     {
         // Not reachable from a JSON document: a warning, an internal failure, and a check that only
@@ -194,7 +194,82 @@ TEST_CASE("NaN values are rejected", "[contract][validation]")
     scene.emitters[0].gainDb = std::numeric_limits<double>::quiet_NaN();
     scene.room.surface(contract::SurfaceId::floor).scattering = std::numeric_limits<double>::quiet_NaN();
     scene.listener.position.x = std::numeric_limits<double>::quiet_NaN();
-    CHECK(errorsOf(scene).size() == 3);
+    const auto issues = errorsOf(scene);
+    INFO(issuesText(issues));
+    REQUIRE(issues.size() == 3);
+    // Document order: room (scattering), listener, emitters (gain).
+    CHECK(issues[0].code == contract::IssueCode::E_SCATTERING_RANGE);
+    CHECK(issues[0].path == "room.surfaces.floor.scattering");
+    CHECK(issues[1].code == contract::IssueCode::E_LISTENER_SURFACE_CLEARANCE);
+    CHECK(issues[1].path == "listener.position[0]");
+    CHECK(issues[2].code == contract::IssueCode::E_GAIN_RANGE);
+    CHECK(issues[2].path == "emitters[0].gainDb");
+}
+
+TEST_CASE("AX7 emitter set rules report the offending emitter", "[contract][validation]")
+{
+    using contract::IssueCode;
+    const auto onlyIssue = [](const contract::SceneDescription& scene) {
+        const auto issues = errorsOf(scene);
+        INFO(issuesText(issues));
+        REQUIRE(issues.size() == 1);
+        return issues[0];
+    };
+    SECTION("two emitters on the same channel")
+    {
+        auto scene = mediumRoom();
+        scene.emitters[1].channel = 0;
+        const auto issue = onlyIssue(scene);
+        CHECK(issue.code == IssueCode::E_EMITTER_CHANNEL);
+        CHECK(issue.path == "emitters[1].channel");
+    }
+    SECTION("an id other than L or R")
+    {
+        auto scene = mediumRoom();
+        scene.emitters[1].id = "C";
+        const auto issue = onlyIssue(scene);
+        CHECK(issue.code == IssueCode::E_EMITTER_ID);
+        CHECK(issue.path == "emitters[1].id");
+    }
+    SECTION("ids are case-sensitive")
+    {
+        auto scene = mediumRoom();
+        scene.emitters[1].id = "r";
+        CHECK(onlyIssue(scene).code == IssueCode::E_EMITTER_ID);
+    }
+    SECTION("two emitters with the same id")
+    {
+        auto scene = mediumRoom();
+        scene.emitters[1].id = "L";
+        const auto issue = onlyIssue(scene);
+        CHECK(issue.code == IssueCode::E_EMITTER_ID);
+        CHECK(issue.path == "emitters[1].id");
+    }
+}
+
+TEST_CASE("integers too large for int report the contract range", "[contract][validation]")
+{
+    std::string json = contract_fixtures::read(contract_fixtures::scenesDir() / "valid/medium_room.json");
+    const std::string from = "\"maxReflectionOrder\": 20";
+    json.replace(json.find(from), from.size(), "\"maxReflectionOrder\": 10000000000");
+    const auto result = contract::parseScene(json);
+    REQUIRE(result.issues.size() == 1);
+    CHECK(result.issues[0].code == contract::IssueCode::E_REFLECTION_ORDER_RANGE);
+    CHECK(result.issues[0].message == "maxReflectionOrder must be an integer in [0, 60], got 10000000000");
+}
+
+TEST_CASE("a UTF-8 byte-order mark is ignored and duplicate keys keep the last value",
+          "[contract][validation]")
+{
+    // Documented in docs/contract/README.md "Reading". Pinned here so a change is deliberate.
+    const std::string json = contract_fixtures::read(contract_fixtures::scenesDir()
+                                                     / "valid/medium_room.json");
+    CHECK(contract::parseScene("\xEF\xBB\xBF" + json).ok());
+
+    std::string duplicated = json;
+    const std::string units = "\"units\": \"meters\"";
+    duplicated.replace(duplicated.find(units), units.size(), "\"units\": \"feet\", " + units);
+    CHECK(contract::parseScene(duplicated).ok());
 }
 
 TEST_CASE("in-memory extensions text must be a JSON object", "[contract][validation]")
@@ -239,5 +314,21 @@ TEST_CASE("parseScene never throws on hostile input", "[contract][validation]")
         const auto result = contract::parseScene(text);
         CHECK_FALSE(result.ok());
         CHECK_FALSE(result.issues.empty());
+    }
+}
+
+TEST_CASE("NaN and Infinity literals are not JSON", "[contract][validation]")
+{
+    const std::string json = contract_fixtures::read(contract_fixtures::scenesDir()
+                                                     / "valid/medium_room.json");
+    for (const char* literal : {"NaN", "Infinity", "-Infinity"})
+    {
+        INFO("literal: " << literal);
+        std::string text = json;
+        const std::string from = "\"gainDb\": 0.0";
+        text.replace(text.find(from), from.size(), std::string{"\"gainDb\": "} + literal);
+        const auto result = contract::parseScene(text);
+        REQUIRE(result.issues.size() == 1);
+        CHECK(result.issues[0].code == contract::IssueCode::E_JSON_SYNTAX);
     }
 }

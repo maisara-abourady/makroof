@@ -6,6 +6,7 @@
 #include "contract/Parse.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include <string>
 
@@ -61,6 +62,35 @@ TEST_CASE("unknown extensions content is preserved", "[contract][roundtrip]")
     const auto again = contract::parseScene(contract::toJson(*parsed.scene));
     REQUIRE(again.ok());
     CHECK(again.scene->extensionsJson == expected);
+}
+
+TEST_CASE("each surface key reads into the SurfaceId of its plane", "[contract][roundtrip]")
+{
+    // The reader and the writer share surfaceName(), so a swapped entry would round-trip perfectly.
+    // Pin each key to its plane with the distinct literals of asymmetric_materials.json.
+    using contract::SurfaceId;
+    // WithinULP(x, 0): exactly the double the fixture text denotes (-Wfloat-equal forbids ==).
+    const auto parsed = contract::parseScene(
+        contract_fixtures::read(contract_fixtures::scenesDir() / "valid/asymmetric_materials.json"));
+    REQUIRE(parsed.ok());
+    const auto& room = parsed.scene->room;
+    CHECK_THAT(room.surface(SurfaceId::xMin).scattering,
+               Catch::Matchers::WithinULP(0.02, 0)); // "xMin": glass, x = 0
+    CHECK_THAT(room.surface(SurfaceId::xMax).scattering,
+               Catch::Matchers::WithinULP(0.5, 0)); // "xMax": curtain, x = W
+    CHECK_THAT(room.surface(SurfaceId::yMin).scattering,
+               Catch::Matchers::WithinULP(0.25, 0)); // "yMin": brick, y = 0
+    CHECK_THAT(room.surface(SurfaceId::yMax).scattering,
+               Catch::Matchers::WithinULP(0.05, 0)); // "yMax": plaster, y = D
+    CHECK_THAT(room.surface(SurfaceId::floor).scattering,
+               Catch::Matchers::WithinULP(0.1, 0)); // "floor": wood, z = 0
+    CHECK_THAT(room.surface(SurfaceId::ceiling).scattering,
+               Catch::Matchers::WithinULP(0.3, 0)); // "ceiling": tile, z = H
+    CHECK_THAT(room.surface(SurfaceId::floor).bandsAbsorption[0], Catch::Matchers::WithinULP(0.15, 0));
+    CHECK_THAT(room.surface(SurfaceId::ceiling).bandsAbsorption[0], Catch::Matchers::WithinULP(0.2, 0));
+    CHECK_THAT(room.surface(SurfaceId::xMin).bandsAbsorption[0], Catch::Matchers::WithinULP(0.35, 0));
+    // Dimensions keep [W, D, H] order in x, y, z.
+    CHECK(room.geometry.dimensions == contract::Vec3{6.0, 9.0, 3.2});
 }
 
 TEST_CASE("doubles survive a round trip exactly", "[contract][roundtrip]")

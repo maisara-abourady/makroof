@@ -103,8 +103,9 @@ Details:
   4000 and 8000 Hz, in that order (`contract::kOctaveBandsHz`). Reflectivity is 1 − α and isn't
   stored (PRD flag F5). An open side (sky, open field) is α = 1.0 in every band.
 - **Emitters:** `id` names the emitter; `channel` says which input channel feeds it. The usual pairing
-  is L = 0, R = 1. The contract also allows L = 1, R = 0 (a channel swap), because AX7 only asks for
-  each id and each channel to be used once. Emitters are omnidirectional point sources (AQ8).
+  is L = 0, R = 1. The contract also allows L = 1, R = 0 (a channel swap): each id and each channel
+  must be used exactly once, and the pairing is free (BUILD_PLAN AX10). Ids are case-sensitive
+  (`"l"` is an error). Emitters are omnidirectional point sources (AQ8).
 - **Integers:** a number with no fractional part such as `20.0` counts as an integer (as in JSON
   Schema). The writer always writes `20`.
 - **Limits are inclusive.** α = 0.01 and α = 1.0, a clearance of exactly 0.1 m and a distance of
@@ -113,6 +114,15 @@ Details:
   floating-point subtraction lands a hair below it (e.g. 3.3 − 3.0 = 0.2999999999999998).
 - **extensions** is reserved for the 3D Module's editor-only data. The Simulator must never read
   it, so nothing in it can change the sound. It round-trips with its key order.
+
+### Reading
+
+- The text must be UTF-8 JSON (RFC 8259). A leading UTF-8 byte-order mark is skipped. `NaN`,
+  `Infinity` and `-Infinity` aren't JSON and give `E_JSON_SYNTAX`, as does a number too large
+  for a double (e.g. `1e999`).
+- If an object repeats a key, the **last** value counts and no issue is reported (the behaviour
+  of the JSON library). An `E_DUPLICATE_FIELD` error may come in a later minor version; editors
+  and presets shouldn't rely on duplicates either way.
 
 ### Writing
 
@@ -187,7 +197,12 @@ The **geometric rules** (inside the room with 0.1 m clearance, 0.3 m from the li
 the C++ validator. The schema describes 1.0 documents strictly and doesn't model the
 "newer minor loads with a warning" rule. `tools/ci/test_schema_agreement.py` checks in CI that
 schema and C++ agree on every fixture; `tests/scenes/invalid/_cppOnly.json` lists the fixtures
-whose rule only C++ can check.
+whose rule only C++ can check. The test reads documents the way the C++ reader does (byte-order
+mark skipped, `NaN`/`Infinity` rejected), because Python's `json` module accepts those literals.
+
+Each invalid fixture breaks exactly one rule and is named after the code it must produce, up to
+the first `.`: `E_EMITTER_ID.json` (a duplicate `L`) and `E_EMITTER_ID.not_l_or_r.json` (id `"C"`)
+both expect `E_EMITTER_ID`.
 
 ## Using it from code
 

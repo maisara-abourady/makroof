@@ -99,6 +99,7 @@ replace these with other answers. A change goes through an edit to this table pl
 | **AX7** | **Source setup in v1 = PRD setup 1:** one stereo track drives two point emitters, L and R. | The user specified a single stereo source for v1. | 01, 07, 11 |
 | **AX8** | **Placeholder plugin identity:** company `Makroof`, manufacturer code `Mkrf`, plugin code `Spsc`, bundle ID `com.makroof.spatialscene`, product name `SpatialScene`. | Needed to build at all. **Must be confirmed before the first beta** (Phase 13); changing it after users save projects breaks those projects. | 00, 13 |
 | **AX9** | **Geometric limits** (AX6 clearance 0.1 m, emitter–listener distance 0.3 m) are compared with a **1 nm tolerance** (`contract::limits::kGeometryToleranceM`). Ranges of scalar values (α, scattering, gain, dimensions) are compared exactly. | A position typed at the limit (e.g. 0.3 m away) would otherwise be rejected because 3.3 − 3.0 = 0.2999999999999998 in floating point. 1 nm is inaudible and doesn't weaken AX6. | 01 |
+| **AX10** | **Emitter ↔ channel pairing** (AX7): ids `L`, `R` and channels 0, 1 must each be used exactly once, but the pairing is free, so L = 1, R = 0 (a channel swap) is valid. Ids are case-sensitive. **Pending a decision by Maisara/the Expert** (raised in the PR #3 reviews); the alternative is to require L = 0, R = 1. | It is what AX7 and the phase-01 spec literally require. Requiring the usual pairing would be one more rule in `Validate.cpp`, the schema and a fixture. | 01, 07, 11 |
 
 ---
 
@@ -273,3 +274,4 @@ Phase files for these get written once v1 is done and the Expert has answered th
 |---|---|---|
 | 2026-11-04 | Initial plan (phases 00–13, assumptions AQ1–AQ10, AX1–AX8, flags F1–F9). | Lead engineer (Claude) |
 | 2026-11-04 | Phase 01: added AX9 (1 nm tolerance on the geometric limits of AX6). | Phase 01 session (Claude) |
+| 2026-11-04 | Phase 01 review: added AX10 (emitter ↔ channel pairing is free; each id and channel used once). Records existing behaviour; pending Maisara/Expert. | Phase 01 session (Claude) |

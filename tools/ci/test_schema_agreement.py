@@ -37,12 +37,23 @@ def validator() -> jsonschema.Draft202012Validator:
     return jsonschema.Draft202012Validator(schema)
 
 
+def _reject_constant(name: str):
+    raise ValueError(f"{name} is not JSON")
+
+
+def parse(text: str):
+    """Parses like the C++ reader (nlohmann/json): a UTF-8 byte-order mark is skipped, and NaN,
+    Infinity and -Infinity, which Python's json module accepts by default, are not JSON. Returns
+    None when the text is not valid JSON."""
+    try:
+        return json.loads(text.removeprefix("\ufeff"), parse_constant=_reject_constant)
+    except ValueError:  # json.JSONDecodeError is a ValueError
+        return None
+
+
 def load(path: pathlib.Path):
     """Returns the parsed document, or None when the file is not valid JSON."""
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
+    return parse(path.read_text(encoding="utf-8"))
 
 
 def test_schema_is_draft_2020_12():
@@ -59,6 +70,18 @@ def test_cpp_only_list_names_existing_fixtures():
     names = {p.name for p in fixtures("invalid")}
     missing = cpp_only() - names
     assert not missing, f"_cppOnly.json lists fixtures that do not exist: {sorted(missing)}"
+
+
+@pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity"])
+def test_non_standard_number_literals_are_not_json(literal):
+    # The C++ reader rejects these as E_JSON_SYNTAX; the schema test must not see them as numbers.
+    text = (SCENES / "valid" / "medium_room.json").read_text(encoding="utf-8")
+    assert parse(text.replace('"gainDb": 0.0', f'"gainDb": {literal}', 1)) is None
+
+
+def test_byte_order_mark_is_skipped():
+    text = (SCENES / "valid" / "medium_room.json").read_text(encoding="utf-8")
+    assert parse("\ufeff" + text) == parse(text) is not None
 
 
 @pytest.mark.parametrize("path", fixtures("valid"), ids=lambda p: p.name)

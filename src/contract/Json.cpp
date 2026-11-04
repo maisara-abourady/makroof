@@ -189,14 +189,14 @@ private:
     }
 
     // An integer in [lo, hi]. A float with no fractional part (e.g. 20.0) counts as an integer, as in
-    // JSON Schema. Values outside [lo, hi] are reported with rangeCode.
+    // JSON Schema. Values outside [lo, hi] are reported with rangeCode and rangeRule, the rule as the
+    // user knows it (e.g. "must be an integer in [0, 60]"): [lo, hi] can be wider than the rule when
+    // it only guards the conversion to int and validate() checks the rule itself.
     std::optional<std::int64_t> integer(const Json& value, const std::string& path, std::int64_t lo,
-                                        std::int64_t hi, IssueCode rangeCode)
+                                        std::int64_t hi, IssueCode rangeCode, std::string_view rangeRule)
     {
         const auto outOfRange = [&](const std::string& got) {
-            error(rangeCode, path,
-                  "expected an integer in [" + std::to_string(lo) + ", " + std::to_string(hi) + "], got "
-                      + got);
+            error(rangeCode, path, std::string{rangeRule} + ", got " + got);
             return std::nullopt;
         };
         if (value.is_number_unsigned())
@@ -356,7 +356,8 @@ private:
                     // Range here is only "fits in int"; validate() checks 0/1 and uniqueness.
                     if (const auto v = integer(*channel, child(epath, "channel"),
                                                std::numeric_limits<int>::min(),
-                                               std::numeric_limits<int>::max(), IssueCode::E_EMITTER_CHANNEL))
+                                               std::numeric_limits<int>::max(), IssueCode::E_EMITTER_CHANNEL,
+                                               "channel must be 0 or 1"))
                         emitter.channel = static_cast<int>(*v);
                 }
                 if (const Json* position = field(item, epath, "position"))
@@ -401,14 +402,16 @@ private:
             // Range here is only "fits in int"; validate() checks [0, 60].
             if (const auto v = integer(*order, child(path, "maxReflectionOrder"),
                                        std::numeric_limits<int>::min(), std::numeric_limits<int>::max(),
-                                       IssueCode::E_REFLECTION_ORDER_RANGE))
+                                       IssueCode::E_REFLECTION_ORDER_RANGE,
+                                       "maxReflectionOrder must be an integer in [0, 60]"))
                 render.maxReflectionOrder = static_cast<int>(*v);
         }
         if (const Json* seed = field(value, path, "tailSeed"))
         {
             if (const auto v = integer(*seed, child(path, "tailSeed"), 0,
                                        std::numeric_limits<std::uint32_t>::max(),
-                                       IssueCode::E_TAIL_SEED_RANGE))
+                                       IssueCode::E_TAIL_SEED_RANGE,
+                                       "tailSeed must be an unsigned 32-bit integer in [0, 4294967295]"))
                 render.tailSeed = static_cast<std::uint32_t>(*v);
         }
     }
