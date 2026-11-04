@@ -61,7 +61,8 @@ runs clang-format).
   `list_pull_requests` (open and closed, title or commits carrying `phase-04:`) or a branch whose
   commits carry that prefix. If neither exists, there is nothing to review: say so, quote the
   phase's `BUILD_PLAN.md` §0 status row and whether its dependency phases are `done`, ask for a
-  PR number or branch, and stop. Never review the phase file itself as if it were code.
+  PR number or branch, and stop without writing a review file. Never review the phase file itself
+  as if it were code.
 - Resolve refs without touching the working tree:
   `bash ${CLAUDE_SKILL_DIR}/scripts/fetch_pr.sh <head-branch> <base-branch>` prints `BASE=` and
   `HEAD=` (it fetches from origin, and falls back to a local branch of that name when origin has
