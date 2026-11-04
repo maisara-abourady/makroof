@@ -87,8 +87,12 @@ Verify (each is an automated criterion; demand the CI evidence):
   Classic bug: `(1−α)` on pressure instead of `√(1−α)`; scattering applied as pressure instead of
   energy; air absorption applied per hit instead of per path length; `c` not 343.0 named constant.
 - Cross-check vs pyroomacoustics: first 50 reflections ±0.5 dB and ±1 sample for 10 random rooms
-  with frequency-independent α, s = 0, no air absorption. Trap: pyroomacoustics' RIR has a
-  fractional-delay global offset; the comparison must remove it or compare relative times.
+  with frequency-independent α, s = 0, no air absorption. Traps (details in `room-acoustics.md`
+  §3): the returned RIR carries a global delay of `frac_delay_length // 2` = 40 samples that must be
+  subtracted or aligned away; pure ISM in pyroomacoustics ignores scattering entirely (it applies
+  √(1−s) only in hybrid mode), so the test must keep s = 0; its defaults are fs = 8000,
+  max_order = 1, air_absorption = False, and a 10 Hz zero-phase high-pass (`rir_hpf_enable`) that
+  must be disabled; indexing is `rir[mic][src]`; spreading is 1/r with no 4π.
 - Reciprocity ≤ −120 dB residual; symmetry gives mirror-identical image sets; α = 1 and order 0
   give direct path only.
 - Filterbank: linear-phase, flat bands sum to a delta within −100 dB; single-band isolation
@@ -109,14 +113,24 @@ Must contain: `sim/tail/Decay`, `MixingTime`, `NoiseTail`, `sim/Rng.h` (PCG32 or
 `std::mt19937` distributions), updated `buildRoomIR`, 6 new test rooms, goldens updated via
 `update_goldens.py --reason`, CHANGELOG and §6 rows.
 Verify:
-- Eyring per band: `T60_b = 0.161·V / (−S·ln(1−ᾱ_b) + 4·m_b·V)`, ᾱ area-weighted, `m_b` in
-  nepers/m (converted from dB/m by 1/8.686), ᾱ clamped ≤ 0.999.
+- Eyring per band: `T60_b = 0.161·V / (−S·ln(1−ᾱ_b) + 4·m_b·V)`, ᾱ area-weighted, ᾱ clamped
+  ≤ 0.999. **Units trap written into the phase file itself:** the `4mV` term needs the *energy*
+  attenuation coefficient `m = a_dB/m / 4.343` (= 2 × the amplitude value in nepers/m). The phase
+  text says "nepers/m", and converting with 1/8.686 halves the air term and lengthens HF T60.
+  Check which one the code uses and that the T30-vs-Eyring test would see the difference (it only
+  does at 4–8 kHz in large rooms, so make sure `concert_hall_box`/`stone_box` are in the test set).
+  See `room-acoustics.md` §4.
 - Envelope: amplitude envelope `exp(−6.91·t/T60)` (energy then decays 60 dB in T60). Classic bug:
   using 6.91 on energy or 13.8 on amplitude, which halves or doubles the measured T30.
-- Mixing time `max(20 ms, √V ms)` clamped to the ISM's covered time; cite the source.
+- Mixing time `max(20 ms, √V ms)` clamped to the ISM's covered time; cite the source (Lindau,
+  Kosanke, Weinzierl 2012 gives the regressions; √V ms is the Cremer/Müller echo-density rule).
 - Energy matching at `t_mix` in a 10 ms window using the ISM band energy over
-  `[t_mix − 10 ms, t_mix]` plus scattered energy; 5 ms cos² crossfade; IR length to −90 dB in the
-  slowest band, cap 12 s.
+  `[t_mix − 10 ms, t_mix]` plus scattered energy; IR length to −90 dB in the slowest band, cap 12 s.
+- Crossfade ISM → tail over 5 ms: the two signals are **uncorrelated**, so the amplitude gains
+  must be power-complementary (cos θ / sin θ, i.e. cos² and sin² as *power* weights). Amplitude
+  gains of cos²/sin² (a literal reading of the phase text) give a −3 dB energy dip at mid-fade, which
+  the seam test (no EDC step > 1 dB) should catch only if its window is centred on `t_mix`.
+  See `room-acoustics.md` §7.
 - Determinism: same seed bit-identical twice in one test; different seed changes noise not T30
   (±2%); seed per emitter and per-output hook `seed ^ (outputIndex · 0x9E3779B9)`.
 - Metrics: T30 within ±5% of Eyring (250 Hz–4 kHz), ±10% at 125 Hz and 8 kHz, 6 rooms; EDC
@@ -204,10 +218,16 @@ order 3 only; two seeded tails mixed to target coherence), `buildRoomIR(Kind::Bi
 `render_cli --mode binaural`, goldens, listening pack.
 Verify:
 - Licence verdict is explicit in the PR, quoting the dataset's terms; if unclear, the phase is
-  `blocked`, not shipped.
-- Coordinate mapping SOFA (x front, y left, z up; azimuth counter-clockwise) ↔ project (x right,
-  y forward, z up) stated once in code and docs; the azimuth sign convention is defined and tested
-  with +90° giving left-ear lead.
+  `blocked`, not shipped. Verified 2026-11-04 (`binaural-and-stereo.md` §2): SADIE II is Apache
+  2.0 with a citation requirement, so commercial redistribution of the converted binary is allowed
+  with attribution; MIT KEMAR is "without any usage restrictions", citation requested; TH Köln
+  KU100 is share-alike (avoid). The PR must still quote the licence text it read.
+- Coordinate mapping SOFA (x front, y left, z up; azimuth counter-clockwise, 0° front, 90° left)
+  ↔ project (x right, y forward, z up): `sofa = (y_p, −x_p, z_p)`, head-relative azimuth
+  `atan2(−x_rel, y_rel)`, yaw applied as `R_z(−ψ)`. Stated once in code and docs; the azimuth sign
+  convention is tested with +90° giving left-ear lead. Receiver 0 is left only if its
+  `ReceiverPosition` y is positive: read it, do not assume the index. MIT KEMAR's raw azimuth is
+  clockwise (90° = right), the opposite of SOFA.
 - ITD 0.6–0.75 ms and ILD > 6 dB (2–8 kHz) at ±90°, mirrored; |ITD| < 20 µs and |ILD| < 1 dB ahead.
 - Interpolation continuity: ≤ 1 dB level and ≤ 30 µs ITD per 1° step.
 - Coherence within ±0.1 of the target per band; mixing `a = √((1+IC)/2)`, `b = √((1−IC)/2)`.
@@ -227,8 +247,11 @@ ORTF diffuse coherence (formula documented), fixed loudness constant from the pa
 gain (not per-scene), `output_mode` parameter switching `Kind` through the crossfade, `render_cli
 --mode stereoSpeakers`, goldens, listening pack, `pyloudnorm` pinned.
 Verify: +55° gives max L−R with correct sign and mirror; centre emitter |L−R| < 0.1 dB and 0-sample
-delay; 90° inter-channel delay = 17 cm / c ±1 sample at 48 kHz; coherence ±0.1 of the analytic
-target; LUFS difference ≤ 1 dB for 4 fixtures; mono sum notch ≤ 6 dB below 2 kHz; 10 mode
+delay; 90° inter-channel delay = 17 cm / c = 0.496 ms ≈ 23.8 samples at 48 kHz (±1 sample);
+coherence ±0.1 of the analytic target (closed form in `binaural-and-stereo.md` §8: the ORTF
+diffuse-field coherence tends to 0.664 at low frequency, not 1.0, so a test expecting 1.0 at
+63 Hz is wrong); LUFS difference ≤ 1 dB for 4 fixtures with the level constant derived from the
+cardioid random-energy efficiency of 1/3 (−4.77 dB); mono sum notch ≤ 6 dB below 2 kHz; 10 mode
 switches with 0 clicks.
 Traps: capsule delay sign reversed (left capsule should lead for a left source); cardioid evaluated
 with azimuth only (phase file says full 3D direction); per-scene auto-gain sneaking in as "level
