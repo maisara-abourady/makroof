@@ -15,6 +15,14 @@
 #include <string_view>
 #include <vector>
 
+// operator== on these value types compares doubles exactly, on purpose: a scene that round-trips
+// through JSON must be bit-identical (AX5). Silence -Wfloat-equal (part of JUCE's recommended
+// warnings, which plugin code and the tests compile with) for these declarations only.
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#endif
+
 namespace contract {
 
 // The one place the octave band set is defined (CLAUDE.md "Code conventions"). Every per-band
@@ -178,3 +186,7 @@ struct SceneDescription
 };
 
 } // namespace contract
+
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
