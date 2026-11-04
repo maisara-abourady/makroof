@@ -14,7 +14,7 @@ Linux, macOS and Windows, and Maisara has gone through its listening checklist.
 
 | Phase | Title | Size | Status | PR | Date | Notes |
 |---|---|---|---|---|---|---|
-| 00 | Scaffolding, CI, pluginval, empty plugin | M | not started | | | |
+| 00 | Scaffolding, CI, pluginval, empty plugin | M | in progress | | 2026-11-04 | |
 | 01 | Scene contract v1 (3D Module → Simulator) | S | not started | | | |
 | 02 | Offline render CLI + acoustic analysis harness | M | not started | | | |
 | 03 | Early reflections: shoebox image-source model | M | not started | | | |
