@@ -1,0 +1,273 @@
+# Spatial Scene VST — Build Plan (v1 vertical slice)
+
+Owner: Maisara · Lead engineer plan · Created 2026-11-04
+Source of truth for requirements: [`docs/PRD.md`](PRD.md). Working rules for sessions: [`CLAUDE.md`](../CLAUDE.md).
+
+Each phase below is executed in **one Claude Code session** (two at most) using only its
+`docs/phases/phase-XX.md` file, the PRD and `CLAUDE.md`. Every phase ends in a PR that the
+contracted DSP/3D engineer reviews. A phase counts as done only when its automated checks pass in CI on
+Linux, macOS and Windows, and Maisara has gone through its listening checklist.
+
+---
+
+## 0. Status
+
+| Phase | Title | Size | Status | PR | Date | Notes |
+|---|---|---|---|---|---|---|
+| 00 | Scaffolding, CI, pluginval, empty plugin | M | not started | | | |
+| 01 | Scene contract v1 (3D Module → Simulator) | S | not started | | | |
+| 02 | Offline render CLI + acoustic analysis harness | M | not started | | | |
+| 03 | Early reflections: shoebox image-source model | M | not started | | | |
+| 04 | Late reverberant tail + hybrid room IR | M | not started | | | |
+| 05 | Validation against measured IRs + accuracy report | M | not started | | | |
+| 06 | Real-time partitioned convolution + latency | M | not started | | | |
+| 07 | Plugin integration: parameters, state, IR pipeline | M | not started | | | |
+| 08 | Binaural output with a generic HRTF | L | not started | | | |
+| 09 | Stereo-speaker output mode | S | not started | | | |
+| 10 | Artifact-free movement under automation | M | not started | | | |
+| 11 | Minimal placement UI | M | not started | | | |
+| 12 | Material library + starter presets | S | not started | | | |
+| 13 | v1 hardening: performance, DAW matrix, signing | M | not started | | | |
+
+Status values: `not started` · `in progress` · `blocked (reason)` · `done`.
+Size: **S** ≈ one short session, **M** ≈ one full session, **L** ≈ two sessions.
+
+---
+
+## 1. Tech stack
+
+| Area | Choice | Rationale |
+|---|---|---|
+| Language | C++20 | JUCE 8 baseline; `std::span`, concepts and designated initializers keep DSP code readable for the reviewer. |
+| Plugin framework | **JUCE 8** (pinned tag via CMake `FetchContent`) | One codebase for VST3, AU and Standalone; best-supported path for pluginval and auval. You chose it. **Check the current JUCE licence tiers and revenue caps before the first paid release** (Phase 13 checklist). |
+| Build | CMake ≥ 3.25 + Ninja, `CMakePresets.json` | Same commands on all three OSes and in CI. |
+| Simulator FFT | **PFFFT** (BSD-style licence, pinned) | Fast SIMD FFT on x86 and ARM. Keeps the Simulator library free of JUCE, so it can be tested headless and moved out later. |
+| JSON | nlohmann/json (MIT) | Contract serialization in a JUCE-free library. |
+| Unit tests | Catch2 v3 | Standard, CTest integration, benchmarks built in. |
+| Analysis / reference tooling | Python 3.12 + numpy, scipy, soundfile, **pyroomacoustics** (independent ISM reference), pytest; versions pinned in `tools/acoustics/requirements.txt` | Acoustic metrics (ISO 3382) and independent cross-checks are best done in a second implementation that doesn't share our bugs. |
+| Plugin validation | **pluginval** (pinned release, strictness 10) on all OSes; **auval** on macOS | Automated load/state/threading/automation stress tests. |
+| CI | GitHub Actions matrix: `ubuntu-24.04`, `macos-14` (arm64), `windows-2022` | Your choice: full matrix on every PR. |
+| Sanitizers | ASan + UBSan on Linux every PR; TSan on Linux for threading phases (06, 07, 10) | Catches memory and threading bugs that neither you nor a listening test can see. |
+| Generic HRTF | SADIE II (Univ. of York) KU100 or KEMAR, converted offline from SOFA into an embedded binary | Measured dummy-head data with a permissive licence (**verify licence in Phase 8 before committing data**). Fallback: MIT KEMAR. |
+| Measured reference IRs | BRAS benchmark (TU Berlin, CC BY-SA 4.0), downloaded in CI by checksum, not committed | Ships geometry, materials and measured IRs together, which is exactly what NFR-1 needs. |
+
+### Architecture in code (the contract boundary)
+
+```
+src/contract/   SceneDescription v1 types, JSON I/O, validation, versioning   (no JUCE)
+src/sim/        Simulator: ISM, tail, HRTF, IR builder, convolver            (depends on contract only)
+src/module3d/   3D Module: editable scene model, params <-> scene, presets   (depends on contract only)
+src/plugin/     JUCE AudioProcessor + editor, state, threading glue          (depends on all)
+src/cli/        render_cli: scene.json + input.wav -> output.wav / IR        (contract + sim)
+```
+
+`sim` and `module3d` must never include each other. A CI script (`tools/ci/check_boundaries.py`,
+added in Phase 01) fails the build if they do. The only thing that crosses between them is a
+`contract::SceneDescription` value, which carries `contractVersion`.
+
+---
+
+## 2. Assumptions (unresolved Expert questions Q1–Q10)
+
+None of these are settled. Each is a **default chosen so work can proceed**. If the Spatial Audio
+Expert answers differently, the phases listed under "Breaks" need rework. Sessions must not quietly
+replace these with other answers. A change goes through an edit to this table plus a note in the change log (§6).
+
+| ID | PRD Q | ASSUMPTION (default) | One-line rationale | Breaks if changed |
+|---|---|---|---|---|
+| **AQ1** | Q1 contract | **SceneDescription v1** (JSON, semver `contractVersion: "1.0"`): metric units, right-handed axes (x right, y forward, z up); **shoebox room** `[W,D,H]` with its origin at a floor corner; 6 surfaces, each with **8 octave-band absorption coefficients (63 Hz–8 kHz)** and 1 broadband **scattering** coefficient; listener position; emitters (v1: exactly 2, `L` and `R`, each with position and gain); render settings (`outputMode`: `binaural` or `stereoSpeakers`, `hrtfId`, `tailSeed`, `maxReflectionOrder`). Full spec in `phase-01.md`. | It's the smallest description that can drive ISM plus a statistical tail, and it can grow by adding fields (minor version) or adding a `mesh` geometry kind (major version). | 01, 02, 03, 04, 07, 11, 12 |
+| **AQ2** | Q2 method | **Hybrid geometric method.** Early part: exact **image-source method** for shoeboxes, per octave band. Late part: **stochastic noise tail** with per-band decay from **Eyring + air absorption**, energy-matched to the ISM at a mixing time. The result is a full IR, which is applied by convolution. | ISM is exact for specular shoebox reflections. A statistical tail is the standard companion, and rendering a full IR means we can compare it directly with measured IRs (NFR-1). | 03, 04, 05, 08 |
+| **AQ3** | Q3 materials | User-facing material properties are **absorption α per octave band, range [0.01, 1.0]**, and **scattering s, range [0, 1]**. "Reflectivity" is derived (1−α) and not stored. Transmission/permeability is **not in v1**. | These are the quantities in published material tables and the ones ISM plus tail actually use. Other parameters would be inputs the engine ignores. | 01, 03, 04, 11, 12 |
+| **AQ4** | Q4 smooth movement | Rebuild the IR **on a background thread** when the scene changes, with updates capped at **one per 20 ms**. Switch IRs by **crossfading two convolver outputs over 30 ms (equal-gain)**. The late tail is cached when only positions change. **Offline bounce (non-realtime) rebuilds synchronously**, so bounces are deterministic. | Crossfading convolvers is the standard way to vary an IR in time without clicks. Running synchronously offline means a bounce never depends on thread timing. | 06, 07, 10 |
+| **AQ5** | Q5 compute location | **Fully local.** No network at render time. | Offline bounce, determinism, NFR-6/7 and DAW sandboxing all argue against cloud rendering in v1. | 07, 13 |
+| **AQ6** | Q6 ear profile | **Deferred.** v1 ships one generic HRTF (see stack). The contract field `hrtfId` exists so a personalized profile can be added later. | User decision: no personalization in v1. | 08 (only `hrtfId` handling) |
+| **AQ7** | Q7 stereo speakers | **Virtual near-coincident microphone pair (ORTF: two cardioids ±55°, 17 cm apart) at the listener position**, with no crosstalk cancellation. | Robust on any neutral speaker pair and familiar to producers. XTC needs a fixed sweet spot, which contradicts "no calibration". | 09 |
+| **AQ8** | Q8 dispersion | **Deferred.** All emitters are omnidirectional ideal point sources in v1. | User decision. | 03 (source directivity hook), 08 |
+| **AQ9** | Q9 accuracy thresholds | **Against independent models** (CI gate): ISM arrival times within ±1 sample and amplitudes within ±0.5 dB of pyroomacoustics; generated T30 within ±5% of the Eyring prediction (250 Hz–4 kHz). **Against measured IRs (BRAS)**, reported per scene: T30 and EDT within ±10% (≈2 JND), C80 within ±2 dB (≈2 JND), averaged over 500 Hz–2 kHz. **Listening:** the phase checklists until the Expert defines a formal MUSHRA/ABX protocol. | Thresholds of about 2 JND on ISO 3382 parameters are a common bar in room-acoustics simulation round robins. | 02, 05 |
+| **AQ10** | Q10 budget | Reported latency **≤ 512 samples at 48 kHz** (convolution partition size). CPU **≤ 15% of one core** per instance at 48 kHz/512-sample buffer for a 3 s tail on an Apple M1 / recent x86. IR rebuild **≤ 50 ms** for order ≤ 30 in a 20×30×10 m room. | These keep the plugin usable in a session (PRD NFR-2) while leaving room to raise accuracy. | 06, 10, 13 |
+
+### Additional working assumptions (not in Q1–Q10, but the plan depends on them)
+
+| ID | ASSUMPTION | Rationale | Breaks if changed |
+|---|---|---|---|
+| **AX1** | **Time alignment:** the IR is shifted so the earliest direct arrival (nearest emitter) lands at t=0, plus the reported latency. Relative delays between paths are kept. No Doppler (IR switches crossfade; delay lines aren't interpolated). | A source 30 m away would otherwise put the track 87 ms late, and moving it would shift the groove. Producers expect the track to stay on the grid. | 03, 06, 10 |
+| **AX2** | **Level:** a direct path at 1 m equals 0 dB. Physical distance attenuation is kept, plus a user output-trim parameter. No hidden auto-gain. | Physically honest, so moving away sounds quieter, which the brief asks for. Auto-gain would hide the space. | 03, 07 |
+| **AX3** | **Listener orientation (A1/FR-3D-9):** yaw-only. The head faces the horizontal centroid of the emitters, stays upright, and has no pitch or roll. If the centroid is within 0.1 m horizontally, the last yaw is held. | Simplest interpretation of PRD A1 that avoids an undefined direction. | 08, 09 |
+| **AX4** | **Air absorption** uses a fixed standard atmosphere (20 °C, 50% RH, ISO 9613-1). Users can't change it. | The PRD excludes *user-controlled* atmosphere, but large halls and outdoor scenes are badly wrong without HF air loss. See flag F6. | 03, 04 |
+| **AX5** | **"Exactly as saved" (NFR-6)** means bit-identical on the same OS/CPU architecture and within −100 dBFS of the residual across architectures. The tail noise seed is stored in the scene. | IEEE-754 float results can differ across compilers and SIMD paths, so bit-identity across machines isn't achievable for a reasonable cost. | 04, 07, 13 |
+| **AX6** | **Validation limits:** an emitter must be ≥ 0.1 m from any surface and ≥ 0.3 m from the listener. The room must be 1.5–100 m per side. Supported sample rates are 44.1, 48, 88.2 and 96 kHz. | Avoids 1/r blow-up and unbounded IR lengths. | 01, 03 |
+| **AX7** | **Source setup in v1 = PRD setup 1:** one stereo track drives two point emitters, L and R. | The user specified a single stereo source for v1. | 01, 07, 11 |
+| **AX8** | **Placeholder plugin identity:** company `Makroof`, manufacturer code `Mkrf`, plugin code `Spsc`, bundle ID `com.makroof.spatialscene`, product name `SpatialScene`. | Needed to build at all. **Must be confirmed before the first beta** (Phase 13); changing it after users save projects breaks those projects. | 00, 13 |
+
+---
+
+## 3. PRD flags (requirements I think are unrealistic or contradictory as written)
+
+These are raised here and not quietly planned around. Each one needs a product or Expert decision.
+
+- **F1. FR-SIM-7 / A5: sharing one scene across several plugin instances.** No DAW API exists for this. It would need IPC or shared memory between instances. That breaks under out-of-process hosting (Logic's AU hosting, Bitwig's sandboxing) and offline bounce, where instances render in arbitrary order and at arbitrary speed. *Recommendation:* for multi-stem, use **one instance with several stereo sidechain inputs**, where each input is a stem with its own emitters. This changes the PRD's A5. Deferred in any case.
+- **F2. NFR-1: "match real impulse responses" for any scene.** This can only be measured for benchmark scenes where we have both geometry and a measured IR. For user scenes we can only claim that the method is validated. Phase 05 makes this concrete, and the result may show that ISM plus a statistical tail falls short for some rooms. That's an input for the Expert, not something to tune away (NFR-8 forbids per-scene fudge factors).
+- **F3. "Any environment" with one generic engine (PRD scene detail, NFR-8).** Chapels, mountainsides and cars aren't shoeboxes. They need mesh geometry and, for outdoor terrain, diffraction, which means a different simulation core (ray or beam tracing). v1 covers only shoeboxes, so v1 presets are shoebox approximations. "Outdoor field" works as a ground plane only (5 surfaces with α = 1.0). Mountains and real outdoor terrain come after v1.
+- **F4. FR-LIC-2/3 and NFR-7: "no editing without a licence" vs. DAW automation.** Position parameters are exposed to the host (FR-3D-8). After a licence lapses, the user can still draw new automation in the DAW, and the plugin can't tell new automation from saved automation. Either automation keeps working, so "editing" is only blocked in the plugin UI, or parameters freeze, which breaks automated scenes the user saved. *Recommendation:* block UI edits only and accept automation. Decision needed before the licensing phase.
+- **F5. FR-3D-4: "absorption, reflectivity".** These are the same physical quantity (reflectivity = 1 − α). The plan exposes absorption only (AQ3).
+- **F6. "Atmosphere not modeled" vs. accuracy.** Air absorption matters above about 2 kHz in large spaces. The plan models it with a fixed standard atmosphere that users can't change (AX4). This keeps the PRD's intent of no user controls without losing accuracy.
+- **F7. FR-SIM-4: ear photos for a personalized HRTF.** Photo-based HRTF estimation is still a research problem, and accuracy depends heavily on the method. A realistic first step is *importing a measured SOFA file*. Photo-based personalization should be treated as R&D or a third-party integration.
+- **F8. FR-3D-9: "always facing the sources".** When sources move around the listener, the head turns with them, so sources can never be heard behind or beside the listener. Automating a source to circle the listener will sound like nothing moves. This is a product consequence to confirm.
+- **F9. Licensing deferred means v1 can't be sold.** The v1 in this plan is a technical slice or private beta. Commercial release needs the licensing phase (post-v1 backlog item B1).
+
+---
+
+## 4. Phases (v1)
+
+Detailed, self-contained instructions live in `docs/phases/phase-XX.md`. Summary:
+
+### Phase 00 — Scaffolding, CI, pluginval, empty plugin · M
+- **Goal:** a pass-through stereo plugin that builds as VST3, AU and Standalone on all three OSes, passes pluginval in CI, and loads in a DAW.
+- **Scope:** CMake + presets, pinned JUCE/Catch2 via FetchContent, library skeletons (`contract`, `sim`, `module3d`, `plugin`, `cli`), a Catch2 smoke test, GitHub Actions matrix (build, ctest, pluginval strictness 10, auval on macOS, ASan/UBSan on Linux), clang-format, build artifacts uploaded.
+- **Out of scope:** any DSP, contract types, UI beyond the empty editor.
+- **Dependencies:** none.
+- **Deliverables:** building repo; `.github/workflows/ci.yml`; plugin binaries as CI artifacts; build instructions in `CLAUDE.md` confirmed.
+- **Acceptance (automated):** CI green on 3 OSes; pluginval exits 0 at strictness 10 on each; `auval -v aufx Spsc Mkrf` passes; a null test (output − input = 0 exactly) runs in ctest.
+- **Acceptance (listening):** the plugin loads in Logic (AU), Ableton/Reaper (VST3, macOS) and a Windows DAW; audio passes through unchanged; saving and reopening the project works.
+- **Risks:** AU registration on CI runners; JUCE/CMake version drift; Windows MSVC + Ninja environment setup.
+
+### Phase 01 — Scene contract v1 · S
+- **Goal:** the versioned 3D Module → Simulator contract, implemented and tested.
+- **Scope:** `contract::SceneDescription` types per AQ1/AQ3/AX6/AX7; JSON round-trip; a validator that returns typed, human-readable errors; `contractVersion` parsing with major/minor rules; JSON Schema file `docs/contract/scene-v1.schema.json`; written spec `docs/contract/README.md`; example scenes in `tests/scenes/`; the boundary-check CI script.
+- **Out of scope:** any rendering; mesh geometry; UI.
+- **Dependencies:** 00.
+- **Deliverables:** `src/contract/*`, schema, spec, ≥ 5 valid and ≥ 15 invalid fixtures.
+- **Acceptance (automated):** round-trip is identical for all fixtures; each invalid fixture fails with its expected error code; the C++ validator and the JSON Schema agree on every fixture (checked by a Python test); an unknown major version is rejected and an unknown minor version is accepted with a warning; boundary check passes.
+- **Acceptance (listening):** none. Instead, Maisara reads `docs/contract/README.md` and confirms it matches the product intent.
+- **Risks:** over-designing for the future. Keep v1 minimal and rely on versioning.
+
+### Phase 02 — Offline render CLI + acoustic analysis harness · M
+- **Goal:** the measuring instruments, built *before* any DSP so every later phase can be checked automatically.
+- **Scope:** `render_cli` (scene + input WAV → output WAV; `--ir` mode writes the IR), running a stub engine (dry pass-through) for now; Python package `tools/acoustics` with ISO 3382-1 metrics (Schroeder integration, T20/T30/EDT/C50/C80/D50/DRR per octave band), an IR comparison tool (arrival times, per-band level error), a click/discontinuity detector, a golden-file comparison with tolerances, a "listening pack" generator (renders test signals through test scenes into WAVs uploaded as CI artifacts), and test-signal generation (pink-noise bursts, clicks, sine sweeps, sustained low-frequency tones).
+- **Out of scope:** real room simulation.
+- **Dependencies:** 01.
+- **Deliverables:** `src/cli/`, `tools/acoustics/`, pytest suite, CI job running it.
+- **Acceptance (automated):** metric tools recover the known T60 of synthetic exponential-decay noise within ±2%; the click detector flags 100% of injected single-sample discontinuities ≥ −60 dBFS and gives no false positives on 60 s of clean, slowly modulated test tones; render_cli in stub mode produces a bit-exact copy of the input.
+- **Acceptance (listening):** download the listening-pack artifact and confirm the test signals play and sound as described.
+- **Risks:** metric implementation mistakes. Mitigate by validating against synthetic signals with known answers, and against `pyroomacoustics.experimental.measure_rt60` as a second opinion.
+
+### Phase 03 — Early reflections: shoebox ISM · M
+- **Goal:** a correct per-octave-band image-source IR for an omni receiver.
+- **Scope:** ISM to `maxReflectionOrder`; per-band reflection coefficients √(1−α) with scattering removing (1−s) of specular energy; 1/r spreading; air absorption (AX4); band reconstruction into a broadband IR via a linear-phase or zero-phase-sum filterbank with perfect-reconstruction check; AX1 time alignment; plugged into render_cli.
+- **Out of scope:** late tail; binaural; real-time.
+- **Dependencies:** 01, 02.
+- **Acceptance (automated):** arrival times match analytic image positions to ±1 sample; amplitudes match pyroomacoustics ISM (same geometry and absorption) within ±0.5 dB for the first 50 reflections; source↔receiver reciprocity holds (IR identical within −120 dB); symmetric rooms give symmetric IRs; α=1 on all walls gives the direct path only; filterbank sum of flat bands is a delta within −100 dB.
+- **Acceptance (listening):** listening pack with clicks/speech-like bursts in 3 rooms (small, medium, large, all bands at α=0.3). The early echo pattern should get sparser and later as the room gets bigger, and at high order there should be no tonal "ringing" artifact apart from the expected flutter between parallel walls.
+- **Risks:** the reconstruction filterbank smearing reflections; reflection explosion at high order (cap and benchmark).
+
+### Phase 04 — Late tail + hybrid room IR · M
+- **Goal:** a full-length room IR combining ISM early reflections with a statistical tail.
+- **Scope:** per-band Eyring T60 with air absorption; seeded noise tail (deterministic from `tailSeed`) shaped per band; mixing time estimate; energy-matched crossfade from ISM to tail; scattered energy feeding the tail onset; IR length = time until −90 dB in the slowest band (capped at 12 s).
+- **Out of scope:** binaural tail decorrelation (Phase 08).
+- **Dependencies:** 03.
+- **Acceptance (automated):** T30 of the generated IR within ±5% of the Eyring prediction (250 Hz–4 kHz) across 6 test rooms; EDC is monotonic with no step larger than 1 dB at the ISM→tail transition; the same seed gives a bit-identical IR on the same platform; golden metrics stay within tolerance; 96 kHz and 44.1 kHz renders give the same metrics within ±2%.
+- **Acceptance (listening):** decays sound smooth (no "grainy" or "metallic" tail); bright vs. dark material sets sound clearly different; no audible seam between early reflections and tail.
+- **Risks:** an audible seam at the mixing time; Eyring being inaccurate for uneven absorption (known limitation, to note for the Expert).
+
+### Phase 05 — Validation against measured IRs · M
+- **Goal:** the first real-world evidence for NFR-1 and AQ2, while changing the method is still cheap.
+- **Scope:** script that downloads BRAS scenes by checksum; shoebox approximations of the most rectangular BRAS rooms, with geometry and materials taken from the dataset documentation (no hand tuning); comparison report `docs/validation/report-phase05.md` (generated) with T30/EDT/C80/D50 per band vs. measured; nightly CI job; a regression baseline.
+- **Out of scope:** fixing shortfalls by per-scene tuning (forbidden by NFR-8).
+- **Dependencies:** 04.
+- **Acceptance (automated):** report generates reproducibly in CI; metrics don't regress more than 2% from the committed baseline; each scene's pass/fail against AQ9 thresholds is printed. Failing AQ9 doesn't fail CI. It fails the *phase review*, which escalates to the Expert.
+- **Acceptance (listening):** an A/B of measured vs. simulated IR convolved with the same dry material, done with headphones (omni, so mono). Note where they differ, e.g. "simulated tail is brighter".
+- **Risks:** BRAS documentation is too ambiguous to map to shoeboxes; real rooms don't fit the model. Both are useful findings.
+
+### Phase 06 — Real-time partitioned convolution + latency · M
+- **Goal:** a real-time-safe convolution engine for multi-second IRs.
+- **Scope:** uniformly partitioned overlap-save convolver (PFFFT, block = 256 or 512); N-input × M-output matrix (2×2 for v1); IR swap API with a two-slot crossfade (AQ4); no allocation or locks on the audio thread; latency query; benchmark.
+- **Out of scope:** plugin parameters (07); position smoothing policy (10).
+- **Dependencies:** 02 (harness), 04 (IR generator for test IRs).
+- **Acceptance (automated):** output matches direct (time-domain) convolution within −120 dB for random IRs/inputs at all supported block sizes, including host buffer sizes that aren't a multiple of the partition (1, 37, 64, 512, 2048); a crossfade between two IRs equals the analytic crossfade within −100 dB; allocation-tracking test shows zero heap allocations in `process()`; TSan clean; benchmark within the AQ10 CPU budget recorded in CI.
+- **Acceptance (listening):** render_cli realtime-emulation of a drum loop through the medium room sounds identical to Phase 04's offline render (null test in CI already confirms this; just listen once).
+- **Risks:** CPU cost for 12 s tails (consider non-uniform partitioning later; note it); denormals.
+
+### Phase 07 — Plugin integration: parameters, state, scene → IR pipeline · M
+- **Goal:** the plugin renders the room. Its positions and room settings are automatable parameters, and its state is saved in the project.
+- **Scope:** `module3d::SceneModel` (owner of the editable scene) ↔ `contract::SceneDescription`; host parameters (listener x/y/z, L x/y/z, R x/y/z, room W/D/H, output trim, output mode placeholder) with stable IDs; scene → IR on a background builder thread (AQ4), synchronous in non-realtime mode; latency reported to the host; state = versioned plugin state wrapping scene JSON; state-migration test fixtures; generic JUCE editor for now (no custom UI).
+- **Out of scope:** binaural (08); smoothing of fast automation beyond basic rebuild (10); custom UI (11).
+- **Dependencies:** 01, 04, 06.
+- **Acceptance (automated):** pluginval strictness 10 on 3 OSes, including its state and automation tests; save/restore gives a bit-identical render on the same platform (offline render of a fixed project before and after a state round trip); reported latency equals the measured onset offset to ±0 samples; an offline bounce rendered twice is bit-identical; parameter IDs are frozen by a test (renaming one fails CI); TSan clean.
+- **Acceptance (listening):** in Logic and one VST3 host, moving the listener between near and far gives obviously more room and less direct sound when far; reopening the project restores the same sound; enable DAW delay compensation and confirm the track stays on the grid.
+- **Risks:** host-specific state quirks (Logic AU vs. VST3); parameter ranges depending on room size (use normalized 0–1 within the room and document it).
+
+### Phase 08 — Binaural output with a generic HRTF · L
+- **Goal:** headphone rendering: each reflection arrives from its true direction relative to the listener's head.
+- **Scope:** SOFA → embedded binary converter (`tools/hrtf/`); licence check and attribution file; HRIR lookup with interpolation (nearest-neighbour baseline, then bilinear/spherical); listener orientation per AX3; per-image-source BRIR accumulation; binaural late tail with frequency-dependent diffuse-field interaural coherence; 2 emitters × 2 ears output; `outputMode=binaural`.
+- **Out of scope:** personalized HRTF; head tracking (PRD out of scope).
+- **Dependencies:** 04, 07.
+- **Acceptance (automated):** a source at +90° azimuth gives ITD 0.6–0.75 ms and a positive ILD above 2 kHz, mirrored at −90°; frontal median-plane sources give |ITD| < 20 µs; interaural coherence of the tail matches the diffuse-field model within ±0.1 per band; diffuse-field energy of the binaural IR matches the omni IR per band within ±1 dB; HRIR interpolation is continuous (no step > 1 dB in level as azimuth changes by 1°).
+- **Acceptance (listening, headphones):** L/R emitters at ±30° in front sound in front and out of the head, not inside it; moving the listener close to the L emitter pulls the image left; the room sounds enveloping, not like stereo reverb; compare the generic HRTF's colouration and note it (expected).
+- **Risks:** front/back confusion and in-head localization with a generic HRTF (known limitation, which motivates the deferred personalization); HRTF licence.
+
+### Phase 09 — Stereo-speaker output mode · S
+- **Goal:** `outputMode=stereoSpeakers` renders through the virtual ORTF pair (AQ7).
+- **Scope:** per-image-source cardioid gains plus inter-capsule delay; tail decorrelated to the ORTF pair's diffuse coherence; mode switch is a host parameter (crossfaded, uses Phase 06 swap); loudness matched to binaural mode.
+- **Dependencies:** 07, 08 (shared accumulation path).
+- **Acceptance (automated):** an emitter at +55° gives max L/R level difference with the correct sign; a centre emitter gives equal L/R; integrated loudness (ITU-R BS.1770) of modes within ±1 dB for the reference scene; mono sum shows no comb-filter notch deeper than 6 dB below 2 kHz for a centre source.
+- **Acceptance (listening, Adam monitors):** stable phantom centre; the room is audible on speakers; the mode switch during playback is smooth.
+- **Risks:** users expecting the binaural sense of height or depth on speakers (set expectations in UI text).
+
+### Phase 10 — Artifact-free movement under automation · M
+- **Goal:** FR-SIM-6 / NFR-3. Automating positions never clicks, zips or glitches.
+- **Scope:** parameter smoothing; update scheduling (≤ 1 rebuild per 20 ms, coalescing); tail cache when only positions change; crossfade policy; behaviour when rebuilding takes longer than the update interval (keep the last IR, never block); offline/realtime equivalence for static scenes; a **negative-control test**: a deliberately naive hard-switch build must be flagged by the click detector, which proves the detector can actually see the problem.
+- **Dependencies:** 06, 07, 08, 09.
+- **Acceptance (automated):** across 20 automation scenarios (linear sweeps, jumps, oscillations at 0.1–5 Hz, full-room traversals), the click detector reports 0 events on sustained low-frequency test tones, in both output modes; the negative control is flagged; offline bounce of an automated scene is bit-identical across two runs; no IR update starves (≤ 100 ms worst-case staleness logged in the CI benchmark).
+- **Acceptance (listening):** automate the source moving from 1 m to 15 m and back over 8 bars; also jump the listener between two corners every beat. Listen for clicks, zipper noise or level pumping. A slight smearing during fast moves is acceptable.
+- **Risks:** IR rebuild cost at high reflection orders (dynamic order reduction while moving would need an ASSUMPTION entry if introduced).
+
+### Phase 11 — Minimal placement UI · M
+- **Goal:** a usable editor for room size, materials and positions. This is not the full 3D editor.
+- **Scope:** top-down 2D room view plus a side elevation view; draggable listener, L and R emitters (drags write host automation gestures); room W/D/H fields; per-surface material dropdown (from Phase 12's library once present; placeholder list until then) plus an advanced per-band α/s table; output mode switch; latency and CPU display.
+- **Out of scope:** 3D viewport, import, objects inside the room.
+- **Dependencies:** 07, 09.
+- **Acceptance (automated):** UI → scene binding tests run headless (simulated drag changes the right parameter by the expected amount); editor snapshot test renders without crash at 3 sizes; pluginval with editor open passes; the UI never writes to the scene off the message thread (asserted).
+- **Acceptance (listening/use):** in each DAW, drag the source while playing (smooth); record a drag as automation and play it back (same movement); resize the editor; reopen the project.
+- **Risks:** scope creep toward the full editor; dependence on host UI scaling (Windows DPI).
+
+### Phase 12 — Material library + starter presets · S
+- **Goal:** FR-3D-3 within v1 limits. Editable starting scenes in the four categories, as data only.
+- **Scope:** `resources/materials.json` (per-band α and s from published tables, with sources cited); 2 presets per category, all shoebox (see F3): club, warehouse; small chapel, concert hall (shoebox); open field (ground only), courtyard; living room, car-cabin-sized room. Presets are scene JSON loaded through the same path as user scenes.
+- **Dependencies:** 01, 11.
+- **Acceptance (automated):** every preset validates and renders; a grep-based test confirms no preset name or ID appears in `src/sim/` (NFR-8); each preset's T30 falls in a plausible band documented per preset (e.g. living room 0.3–0.6 s).
+- **Acceptance (listening):** go through all 8 presets with one track on headphones and speakers. Each should be recognisably different and plausible for its category, with open field sounding nearly dry with a ground reflection.
+- **Risks:** material data licence/citation; shoebox chapels sounding unconvincing (expected, see F3).
+
+### Phase 13 — v1 hardening: performance, DAW matrix, signing · M
+- **Goal:** a v1 build fit for a private beta.
+- **Scope:** profiling and optimization to AQ10; universal macOS binary (arm64 + x86_64); multi-instance stress (10 instances); sample-rate and buffer-size changes at runtime; denormal handling; state compatibility fixtures from every earlier state version; macOS code signing and notarization, Windows installer (signing optional); DAW compatibility matrix document; licences and attribution bundle (JUCE tier, PFFFT, HRTF, BRAS, materials).
+- **Dependencies:** all previous.
+- **Acceptance (automated):** full CI plus nightly validation green; benchmark meets AQ10 or the miss is recorded in the status table; notarization succeeds (`spctl -a -vv`); pluginval strictness 10 for the release build on 3 OSes.
+- **Acceptance (listening/use):** fill in the DAW matrix (Logic, Ableton, Reaper on macOS; one or two DAWs on Windows): load, play, automate, bounce, reopen, change sample rate.
+- **Risks:** notarization and Apple developer account logistics; Windows Defender/SmartScreen without signing.
+
+---
+
+## 5. Deferred items (post-v1 backlog)
+
+Phase files for these get written once v1 is done and the Expert has answered the relevant questions.
+
+| # | Item | PRD refs | Most likely phase | Notes / prerequisites |
+|---|---|---|---|---|
+| B1 | Licensing: subscription, trial, lapse = render-only | FR-LIC-2..4, NFR-7 | 14 | Needs decision on F4 and Q15. Required before any sale (F9). |
+| B2 | Non-shoebox geometry (polygon mesh rooms) + new simulation core (ray/beam tracing, diffraction for outdoor) | FR-3D-1, NFR-8, PRD "any environment" | 15–16 (L, multi-session) | Contract **major** bump to v2 (`geometry.kind = mesh`). Expert Q2 must be answered first. |
+| B3 | 3D scene import | FR-3D-2, Q11 | 17 | Needs B2. Suggested first format: glTF 2.0 (or OBJ) + material mapping step. |
+| B4 | Personalized HRTF: first measured SOFA import, then photo-based | FR-SIM-4, Q6 | 18 (SOFA), R&D track (photos) | See F7. `hrtfId` already in contract v1. |
+| B5 | Multi-speaker venue layout (one stereo track through N speakers) | FR-3D-6 setup 2 | 19 | Contract minor bump (emitter list with channel assignment). |
+| B6 | Multi-stem scenes | FR-3D-6 setup 3, FR-SIM-7, A5, Q13 | 20 | Recommend sidechain-input design (F1), not cross-instance sharing. |
+| B7 | Speaker types with dispersion | FR-3D-7, Q8 | 21 | Needs B5. Source directivity hook exists from Phase 03. |
+| B8 | Full 3D editor (objects, free geometry, 3D viewport) | FR-3D-1, NFR-5, Q12 | 22+ | Needs B2. Pick 3D stack then (JUCE OpenGL vs. embedded web view + three.js). |
+| B9 | Formal listening-test protocol (MUSHRA/ABX vs. measured BRIRs) | NFR-1, Q9 | alongside 15 | Expert defines the protocol and thresholds. |
+
+---
+
+## 6. Change log
+
+| Date | Change | By |
+|---|---|---|
+| 2026-11-04 | Initial plan (phases 00–13, assumptions AQ1–AQ10, AX1–AX8, flags F1–F9). | Lead engineer (Claude) |
