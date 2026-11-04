@@ -17,6 +17,12 @@ Reference: `tooling-testing-licences.md`, `realtime-audio-juce.md`.
   44.1/48/96 kHz and blocks 1/64/512/2048. Trap: a test that calls a private helper instead of
   `processBlock`, or that only checks one channel.
 - JUCE pinned at a tag, `SYSTEM` FetchContent, THIRD_PARTY rows. pluginval pinned by checksum.
+- Known limit of the pinned pluginval v1.0.4 (verified from its sources on 2026-11-04,
+  `realtime-audio-juce.md` §6): its CMake source list omits `ExtremeTests.cpp` and
+  `EditorTests.cpp`, so "strictness 10" with this build does **not** run the level-9 "allocations
+  during process" test or the level-8 oversized-block test. Until the pin moves to 2.x, the
+  project's own `AllocationTracker` (Phase 06) is the only allocation guard; a PR claiming
+  "pluginval proves no allocation" is wrong.
 - CI: 3 OSes, release build for pluginval, debug for tests, ASan job, clang-format job.
 - Follow-up PRs touching CI: pins only move together with `docs/THIRD_PARTY.md`.
 
@@ -207,8 +213,16 @@ Must contain: `module3d/SceneModel` (clamping setters, `toContract`), `module3d/
 `pluginStateVersion`, state fixtures `tests/state/v1_*.bin`, parameter freeze file
 `tests/state/parameter_ids_v1.json`, default scene embedded.
 Verify:
-- Parameter IDs exactly the documented list; no `dry_wet`; `ParameterID` carries a version hint;
-  ranges and skews documented; freeze test fails on any change.
+- Parameter IDs exactly the documented list; no `dry_wet`; `ParameterID` carries a version hint
+  (the AU wrapper orders parameters by hashed ID and then by version hint, so every parameter added
+  in a later phase needs a strictly higher hint or Logic automation lands on the wrong parameter);
+  ranges and skews documented; freeze test fails on any change. AU/VST3 numeric IDs are the hash
+  of the ID string, which is why renaming orphans automation.
+- `setLatencySamples` only from `prepareToPlay`/initialisation and only when the value changes: in
+  JUCE 8/9 it triggers `restartComponent(kLatencyChanged)` through the message thread, which must
+  never happen per block. State loading must handle an *invalid* `ValueTree` (JUCE 8.0.17/9.0.5
+  return invalid for > 256 nesting levels) and `setStateInformation` arriving before
+  `prepareToPlay`, twice, or from a non-message thread.
 - State: round trip gives bit-identical render; corrupt-state fuzz (1000 blobs) never crashes and
   ends in a valid scene with a warning flag; `setStateInformation` before `prepareToPlay` handled
   (Logic); sample-rate change without re-instantiation handled.
