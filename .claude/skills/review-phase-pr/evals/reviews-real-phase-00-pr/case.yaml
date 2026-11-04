@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: reviews-real-phase-00-pr
+expected_outcome: |
+  A structured review of PR #2 that identifies the phase as 00, confirms the dependency state
+  (none), checks the CI jobs on the head commit f54c27a, audits each automated acceptance
+  criterion of phase-00.md against a concrete test or CI step (null test through processBlock at
+  the listed rates and block sizes, pluginval strictness 10, auval, ASan, clang-format, artifacts),
+  notes the documented deviation (pluginval 1.0.4 has no --validate-in-process flag) as acceptable
+  and recorded, confirms the JUCE/Catch2/pluginval pins have THIRD_PARTY rows, leaves the listening
+  checklist to Maisara, and reaches a verdict with evidence. It should not invent findings about
+  DSP that does not exist in this phase.
