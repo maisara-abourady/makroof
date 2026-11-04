@@ -2,7 +2,11 @@
 # only. Never include anything from src/module3d or JUCE here (CLAUDE.md "contract boundary").
 add_library(spatial_sim STATIC
             Simulator.h
-            Simulator.cpp)
+            Simulator.cpp
+            Engine.h
+            Engine.cpp
+            OfflineRender.h
+            OfflineRender.cpp)
 add_library(spatial::sim ALIAS spatial_sim)
 
 target_include_directories(spatial_sim PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")

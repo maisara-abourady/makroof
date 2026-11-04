@@ -6,7 +6,10 @@ add_executable(spatial_tests
                ContractFixtures.h
                test_contract_roundtrip.cpp
                test_contract_validation.cpp
-               test_contract_version.cpp)
+               test_contract_version.cpp
+               test_engine.cpp
+               test_offline_render.cpp
+               test_cli.cpp)
 
 # The contract tests read the fixtures in tests/scenes/ (valid/ and invalid/).
 target_compile_definitions(spatial_tests PRIVATE SPATIAL_SCENES_DIR="${PROJECT_SOURCE_DIR}/tests/scenes")
@@ -15,6 +18,7 @@ target_link_libraries(spatial_tests
                       PRIVATE Catch2::Catch2WithMain
                               spatial::contract
                               spatial::sim
+                              spatial::cli
                               spatial::module3d
                               spatial::warnings)
 

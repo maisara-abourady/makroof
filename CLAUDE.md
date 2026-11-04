@@ -67,7 +67,8 @@ docs/           PRD, BUILD_PLAN, phases/, contract/, validation/
 (Set up in Phase 00. Keep this section accurate if you change the commands.)
 
 ```bash
-# configure + build (Debug); presets: debug, release, asan (Linux), tsan (Linux)
+# configure + build (Debug); presets: debug, release, asan (Linux), tsan (Linux),
+# cli (render_cli only: Release, no JUCE, no tests -> build/cli/render_cli; what the python CI job uses)
 cmake --preset debug
 cmake --build --preset debug
 
@@ -87,10 +88,19 @@ pip install -r tools/ci/requirements.txt
 python tools/ci/check_boundaries.py
 pytest tools/ci
 
-# Python analysis tooling (Phase 02+)
+# Python analysis tooling (Phase 02+). The render_cli end-to-end tests find the binary through
+# RENDER_CLI or build/{cli,release,debug}/; they skip when it is missing unless
+# SPATIAL_REQUIRE_RENDER_CLI=1 (set in CI)
 python3 -m venv .venv && . .venv/bin/activate
-pip install -r tools/acoustics/requirements.txt
-pytest tools/acoustics
+pip install -r tools/ci/requirements.txt -r tools/acoustics/requirements.txt
+pytest tools                         # tools/ci + tools/acoustics, as the python CI job runs it
+python -m tools.acoustics metrics ir.wav          # ISO 3382 metrics as JSON (also: compare a.wav b.wav, clicks out.wav)
+
+# listening pack (CI artifact `listening-pack`): build/listening-pack/<phase>/
+python tools/ci/listening_pack.py --phase phase-02
+
+# golden files: the ONLY way to update them (appends the reason to tests/golden/CHANGELOG.md)
+python tools/ci/update_goldens.py --reason "<why>" -- <pytest args selecting the tests>
 
 # pluginval strictness 10 (downloads the pinned release by checksum on first run; xvfb on Linux)
 tools/ci/run_pluginval.sh build/release/SpatialScene_artefacts/Release/VST3/SpatialScene.vst3
@@ -98,7 +108,7 @@ tools/ci/run_pluginval.sh build/release/SpatialScene_artefacts/Release/VST3/Spat
 # macOS only: AU validation (component must be copied to ~/Library/Audio/Plug-Ins/Components)
 auval -v aufx Spsc Mkrf
 
-# offline render (Phase 02+)
+# offline render (Phase 02+); exit codes 0 ok, 1 usage, 2 invalid scene, 3 I/O; --help for all options
 build/debug/render_cli --scene tests/scenes/valid/medium_room.json --in in.wav --out out.wav
 build/debug/render_cli --scene tests/scenes/valid/medium_room.json --ir ir.wav
 ```

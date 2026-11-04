@@ -33,6 +33,16 @@
       }
     },
     {
+      "name": "cli",
+      "displayName": "render_cli only (Release, no plugin, no tests)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "SPATIAL_BUILD_PLUGIN": "OFF",
+        "SPATIAL_BUILD_TESTS": "OFF"
+      }
+    },
+    {
       "name": "asan",
       "displayName": "ASan + UBSan (Linux)",
       "inherits": "base",
@@ -69,6 +79,13 @@
     {
       "name": "release",
       "configurePreset": "release"
+    },
+    {
+      "name": "cli",
+      "configurePreset": "cli",
+      "targets": [
+        "render_cli"
+      ]
     },
     {
       "name": "asan",

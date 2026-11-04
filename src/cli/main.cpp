@@ -1,13 +1,22 @@
-// render_cli — offline renderer. Phase 00: prints the version and exits 0.
-// Phase 02 adds: --scene <json> --in <wav> --out <wav>, and --ir <wav>.
-#include "contract/Version.h"
-#include "sim/Simulator.h"
+// render_cli: offline renders for tests and listening packs. All logic is in Cli.cpp (runCli());
+// run `render_cli --help` for usage and exit codes.
+#include "cli/Cli.h"
 
-#include <cstdio>
+#include <exception>
+#include <iostream>
+#include <string>
+#include <vector>
 
-int main()
+int main(int argc, char** argv)
 {
-    std::printf("render_cli (SpatialScene) contract %s, simulator supports contract %s\n",
-                contract::contractVersion(), sim::supportedContractVersion());
-    return 0;
+    try
+    {
+        const std::vector<std::string> args(argv + 1, argv + argc);
+        return cli::runCli(args, std::cout, std::cerr);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "render_cli: internal error: " << e.what() << "\n";
+        return 1;
+    }
 }

@@ -1,0 +1,16 @@
+# Python analysis tooling (tools/acoustics): ISO 3382 metrics, IR comparison, click detector,
+# golden files, listening pack. Pinned, including transitive dependencies, so CI runs are
+# reproducible. Python 3.12 (CI). See docs/THIRD_PARTY.md.
+numpy==2.5.4
+scipy==1.18.1
+soundfile==0.14.0
+cffi==2.1.1
+pycparser==3.12
+typing_extensions==4.16.0
+pyroomacoustics==0.10.1
+Cython==3.3.1
+pytest==9.2.0
+iniconfig==2.3.1
+packaging==26.3
+pluggy==1.7.0
+Pygments==2.21.0
