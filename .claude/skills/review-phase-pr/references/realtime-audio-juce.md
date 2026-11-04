@@ -689,8 +689,12 @@ tests and multiple state restoration." (verified README)
   `--sample-rates`, `--block-sizes`, `--vst3validator [pathToValidator]` ("If specified, this will run
   the VST3 validator as part of the test process"), `--run-tests`, `--help`, `--version`. There is
   **no** `--validate-in-process`, `--junit-xml`, `--json-results`, `--config` or `--rtcheck` in
-  1.0.4; in-process validation is GUI-only. The repo's `run_pluginval.sh` must therefore not pass 2.0
-  flags until it bumps the pin, and 1.0.4 ignores unknown options silently (2.0 errors on them).
+  1.0.4. Whether the 1.0.4 **CLI** then validates in the calling process (as the repo's
+  `docs/THIRD_PARTY.md` and `run_pluginval.sh` claim) or in a child process (as the README's
+  "performed in a separate process" wording suggests) was **not verified** (only the absence of the
+  flag was): check `Source/Validator.cpp` at tag v1.0.4 for a `ChildProcess` path before citing
+  either claim in a review. The repo's `run_pluginval.sh` must not pass 2.0 flags until it bumps
+  the pin, and 1.0.4 ignores unknown options silently (2.0 errors on them).
 - `--rtcheck` is implemented with the `rtcheck` library (`PLUGINVAL_ENABLE_RTCHECK`,
   `rtc::realtime_context`), wrapped around `processBlock` in the audio-processing, fuzz, thread-safety
   and allocation tests; mutex lock/unlock checks are disabled for the thread, so it flags

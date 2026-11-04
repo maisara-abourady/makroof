@@ -229,7 +229,9 @@ def main():
         warnings.append("Dependency pins or CI actions changed without docs/THIRD_PARTY.md.")
     if (s["contract_sources_touched"] or s["contract_schema_or_readme_touched"]) and not s["contract_version_touched"]:
         warnings.append("Contract sources/schema touched; check whether contractVersion needed a bump (src/contract/Version.h unchanged).")
-    if s["contract_sources_touched"] and not s["contract_fixtures_touched"]:
+    tree = git(repo, "ls-tree", "-r", "--name-only", args.head).splitlines()
+    fixtures_exist = any(p.startswith("tests/scenes/") for p in tree)
+    if s["contract_sources_touched"] and fixtures_exist and not s["contract_fixtures_touched"]:
         warnings.append("Contract sources touched without fixture changes in tests/scenes/.")
     if s["parameter_freeze_touched"]:
         warnings.append("Parameter freeze file touched: IDs are frozen once released; only additions are allowed.")
@@ -334,7 +336,7 @@ def main():
 
     # 4. Boundary check on the head tree (not only the diff): includes crossing the contract boundary.
     boundary = []
-    tree = git(repo, "ls-tree", "-r", "--name-only", args.head).splitlines()
+    boundary_files_scanned = 0
     for p in tree:
         if not p.endswith(CPP_EXT):
             continue
@@ -349,12 +351,14 @@ def main():
             rules = [(r'#\s*include\s*[<"](plugin/|juce_|juce/|JuceHeader)', "src/cli includes plugin/JUCE (CLI must stay JUCE-free)")]
         if not rules:
             continue
+        boundary_files_scanned += 1
         content = run(["git", "show", f"{args.head}:{p}"], repo).stdout
         for i, line in enumerate(content.splitlines(), 1):
             for pat, why in rules:
                 if re.search(pat, line):
                     boundary.append({"path": p, "line": i, "why": why, "text": line.strip()})
     report["boundary_violations"] = boundary
+    report["boundary_files_scanned"] = boundary_files_scanned
 
     # 5. NFR-8 scan: scene/preset/material identifiers inside src/sim at head.
     names = set(PRESET_WORDS)
@@ -374,11 +378,13 @@ def main():
         except Exception:  # noqa: BLE001 - best effort
             pass
     nfr8 = []
+    nfr8_files_scanned = 0
     name_re = re.compile(r"(" + "|".join(re.escape(n) for n in sorted(names, key=len, reverse=True)) + r")", re.IGNORECASE)
     string_logic_re = re.compile(SIM_STRING_LOGIC)
     for p in tree:
         if not p.startswith("src/sim/") or not p.endswith(CPP_EXT):
             continue
+        nfr8_files_scanned += 1
         content = run(["git", "show", f"{args.head}:{p}"], repo).stdout
         for i, line in enumerate(content.splitlines(), 1):
             if name_re.search(line):
@@ -386,6 +392,8 @@ def main():
             elif string_logic_re.search(line):
                 nfr8.append({"path": p, "line": i, "why": "string-keyed logic in sim (what is it keyed on?)", "text": line.strip()[:160]})
     report["nfr8_hits_in_sim"] = nfr8
+    report["nfr8_files_scanned"] = nfr8_files_scanned
+    report["nfr8_names_scanned"] = sorted(names)
 
     # 6. Audio-thread scan (added lines in audio-thread-adjacent files).
     report["audio_thread_scan"] = scan(
@@ -464,12 +472,27 @@ def main():
             print(f"  ! {w}")
 
     h("4. Boundary check (head tree)")
-    for b in boundary or [{"path": "(clean)", "line": "", "why": "", "text": ""}]:
+    print(f"  scanned {boundary_files_scanned} C++ files under src/contract, src/sim, src/module3d, src/cli")
+    for b in boundary or [{"path": "(no violations)", "line": "", "why": "", "text": ""}]:
         print(f"  {b['path']}:{b['line']} {b['why']} {b['text']}")
 
-    h("5. NFR-8: preset/scene/material names inside src/sim (head tree)")
-    for x in nfr8 or [{"path": "(none)", "line": "", "why": "", "text": ""}]:
+    h("5. NFR-8: preset/scene/material names or string-keyed logic inside src/sim (head tree)")
+    print(f"  scanned {nfr8_files_scanned} C++ files for {len(names)} names (fixtures, presets, materials, 'preset')")
+    for x in nfr8 or [{"path": "(no hits)", "line": "", "why": "", "text": ""}]:
         print(f"  {x['path']}:{x['line']} [{x.get('why','')}] {x['text']}")
+
+    h("6. Audio-thread red flags on added lines (inspect, not verdicts)")
+    hot_hits = [x for x in report["audio_thread_scan"] if x.get("likely_audio_thread")]
+    ctx_hits = [x for x in report["audio_thread_scan"] if not x.get("likely_audio_thread")]
+    if not hot_hits:
+        print("  (none in functions that look like audio callbacks)")
+    for x in hot_hits:
+        print(f"  {x['path']}:{x['line']} in {x['function']}() [{x['why']}] {x['text']}  <-- likely audio-thread function")
+    if ctx_hits:
+        print(f"  context only ({len(ctx_hits)} hits in prepareToPlay/constructors/editor/accessors or unknown functions; allocation is normal there):")
+        for x in ctx_hits:
+            where = f" in {x['function']}()" if x.get("function") else ""
+            print(f"    {x['path']}:{x['line']}{where} [{x['why']}] {x['text']}")
 
     if disabled:
         h("8b. Tests under a preprocessor guard (head tree)")
@@ -477,10 +500,9 @@ def main():
             print(f"  {x['path']}:{x['line']} {x['text']}")
 
     for title, key in [
-        ("6. Audio-thread red flags (added lines; inspect, not verdicts)", "audio_thread_scan"),
         ("7. Determinism red flags (added lines)", "determinism_scan"),
         ("8. Test hygiene (added lines)", "test_hygiene_scan"),
-        ("9. Dependency pins (added lines)", "pin_scan"),
+        ("9. Dependency pin red flags (added lines; floating refs and unpinned requirements only)", "pin_scan"),
     ]:
         h(title)
         hits = report[key]

@@ -54,9 +54,10 @@ runs clang-format).
 
 ### 1. Identify the target and the phase
 
-- Resolve the PR: with the GitHub MCP tools (`pull_request_read` methods `get`, `get_files`,
-  `get_check_runs`, `get_reviews`, `get_comments`) or `gh pr view` when available. Record head
-  SHA, base branch, title, body, author, state, and whether it is a draft.
+- Resolve the PR: with the GitHub MCP tools (`pull_request_read` methods `get`, `get_check_runs`,
+  `get_reviews`, `get_comments`) or `gh pr view` when available. Record head SHA, base branch
+  and base SHA, title, body, author, state, and whether it is a draft. Skip `get_files`: it embeds
+  patches and overflows; the diff is read locally.
 - If the user named a **phase** rather than a PR or branch ("is phase 04 ready"), find its PR with
   `list_pull_requests` (open and closed, title or commits carrying `phase-04:`) or a branch whose
   commits carry that prefix. If neither exists, there is nothing to review: say so, quote the
@@ -64,9 +65,12 @@ runs clang-format).
   PR number or branch, and stop without writing a review file. Never review the phase file itself
   as if it were code.
 - Resolve refs without touching the working tree:
-  `bash ${CLAUDE_SKILL_DIR}/scripts/fetch_pr.sh <head-branch> <base-branch>` prints `BASE=` and
-  `HEAD=` (it fetches from origin, and falls back to a local branch of that name when origin has
-  none). Pass exactly those two values on. Never check the branch out for review; use
+  `bash ${CLAUDE_SKILL_DIR}/scripts/fetch_pr.sh <pr-number | head-branch | sha> [base]` prints
+  `BASE=` and `HEAD=`. A PR number is fetched as `refs/pull/<n>/head`, so it works for merged PRs
+  whose branch was deleted; a branch is fetched from origin with a fallback to a local branch of
+  that name. For an already **merged** PR pass the PR's base SHA (from `pull_request_read get`,
+  `base.sha`) as the second argument, otherwise the diff against the updated base branch is empty.
+  Pass exactly the two printed values on. Never check the branch out for review; use
   `git diff BASE...HEAD` and `git show HEAD:path`.
 - Determine the phase from the commit subjects (`phase-XX:`), the title and the BUILD_PLAN status
   row diff. Open `docs/phases/phase-XX.md`, `CLAUDE.md`, and `docs/BUILD_PLAN.md` §0, §2 and §6 at
@@ -106,9 +110,14 @@ Decide each of these and keep the evidence for the review:
 6. PR description contract: the six sections, with each automated criterion linked to CI evidence.
 7. CI evidence: with `get_check_runs` on the head SHA, confirm every job is green (format, build on
    linux/macos/windows, ASan, and any phase-specific jobs such as python, automation, nightly).
-   Confirm the linked run is for the head SHA, not an earlier commit. Confirm artifacts the
-   description promises exist (plugin bundles, pluginval logs, listening pack). A red or missing
-   job makes the PR "not ready", whatever the code looks like.
+   Confirm the linked run is for the head SHA, not an earlier commit (`actions_get` on the run id
+   when available; otherwise compare the run id in the check-run URLs). Confirm artifacts the
+   description promises exist (plugin bundles, pluginval logs, listening pack): `actions_list`/
+   `actions_get` when available, otherwise the `upload-artifact` lines in the job logs; say which
+   you used. A green job whose failing step would have failed the job counts as proof of that
+   step; name the logs you actually read. Reading logs: `get_job_logs` only tails, so ask for a
+   large `tail_lines`, expect the result to be persisted to a file, and grep that file rather than
+   reading it whole. A red or missing job makes the PR "not ready", whatever the code looks like.
 
 ### 4. Read the whole diff, tests first
 
@@ -191,7 +200,9 @@ changes, and say in one sentence what would flip it.
 ### 7. Deliver
 
 - Save the review to `review-PR<n>-phase-XX.md` (branch review: `review-<branch-slug>-phase-XX.md`)
-  in the working directory (or the scratchpad in a cloud session) and print it in chat.
+  in the working directory (or the scratchpad in a cloud session) and print it in chat. When
+  another agent invoked you, hand back the file path, the verdict and the findings list instead of
+  pasting the whole review.
 - Post to GitHub only when `--post` was given or the user asked for it: create a pending review
   with `pull_request_review_write` (`create`), add line comments for blockers and majors with
   `add_comment_to_pending_review`, and submit with `submit_pending` as **COMMENT** (never

@@ -113,7 +113,11 @@ and the contractor verify the phase without reading all the code.
 ## 8. Definition of done, and what the reviewer cannot sign off
 
 - Automated criteria green in CI on Linux, macOS and Windows; status row updated; description
-  complete. The reviewer can confirm these.
+  complete. The reviewer can confirm these. Note a wording conflict in the repo: `CLAUDE.md`
+  step 5 sets `done` when the automated criteria pass, while the `BUILD_PLAN.md` preamble says a
+  phase counts as done only after Maisara's listening checklist. Follow `CLAUDE.md` (the session
+  rule) and expect the status notes to say "listening checklist pending Maisara", as Phase 00 did;
+  mention the conflict in the review's "For Maisara" section until the plan text is reconciled.
 - The **listening checklist** is Maisara's. The reviewer never ticks it and says so explicitly; a PR
   with the listening checklist pre-ticked by the author is a finding.
 - Where a phase file says a failure "does not fail CI but fails the phase review" (Phase 05 AQ9),
