@@ -81,6 +81,12 @@ SPATIAL_WERROR=ON cmake --preset debug
 tools/ci/check_format.sh          # check
 tools/ci/check_format.sh --fix    # reformat src/ and tests/
 
+# contract boundary check and the tools/ci Python tests (schema agreement, boundary self-test)
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r tools/ci/requirements.txt
+python tools/ci/check_boundaries.py
+pytest tools/ci
+
 # Python analysis tooling (Phase 02+)
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r tools/acoustics/requirements.txt

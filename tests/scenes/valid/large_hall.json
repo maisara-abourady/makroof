@@ -1,0 +1,60 @@
+{
+  "contractVersion": "1.0",
+  "units": "meters",
+  "room": {
+    "geometry": {
+      "kind": "shoebox",
+      "dimensions": [30.0, 45.0, 18.0]
+    },
+    "surfaces": {
+      "floor": {
+        "absorption": [0.4, 0.52, 0.68, 0.8, 0.88, 0.92, 0.94, 0.94],
+        "scattering": 0.7
+      },
+      "ceiling": {
+        "absorption": [0.01, 0.01, 0.02, 0.02, 0.03, 0.04, 0.05, 0.05],
+        "scattering": 0.05
+      },
+      "xMin": {
+        "absorption": [0.02, 0.03, 0.03, 0.04, 0.05, 0.07, 0.07, 0.07],
+        "scattering": 0.25
+      },
+      "xMax": {
+        "absorption": [0.02, 0.03, 0.03, 0.04, 0.05, 0.07, 0.07, 0.07],
+        "scattering": 0.25
+      },
+      "yMin": {
+        "absorption": [0.02, 0.03, 0.03, 0.04, 0.05, 0.07, 0.07, 0.07],
+        "scattering": 0.25
+      },
+      "yMax": {
+        "absorption": [0.02, 0.03, 0.03, 0.04, 0.05, 0.07, 0.07, 0.07],
+        "scattering": 0.25
+      }
+    }
+  },
+  "listener": {
+    "position": [15.0, 15.0, 1.7]
+  },
+  "emitters": [
+    {
+      "id": "L",
+      "channel": 0,
+      "position": [12.0, 38.0, 3.0],
+      "gainDb": 0.0
+    },
+    {
+      "id": "R",
+      "channel": 1,
+      "position": [18.0, 38.0, 3.0],
+      "gainDb": 0.0
+    }
+  ],
+  "render": {
+    "outputMode": "binaural",
+    "hrtfId": "generic-v1",
+    "maxReflectionOrder": 30,
+    "tailSeed": 987654321
+  },
+  "extensions": {}
+}

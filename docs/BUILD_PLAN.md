@@ -98,6 +98,7 @@ replace these with other answers. A change goes through an edit to this table pl
 | **AX6** | **Validation limits:** an emitter must be ≥ 0.1 m from any surface and ≥ 0.3 m from the listener. The room must be 1.5–100 m per side. Supported sample rates are 44.1, 48, 88.2 and 96 kHz. | Avoids 1/r blow-up and unbounded IR lengths. | 01, 03 |
 | **AX7** | **Source setup in v1 = PRD setup 1:** one stereo track drives two point emitters, L and R. | The user specified a single stereo source for v1. | 01, 07, 11 |
 | **AX8** | **Placeholder plugin identity:** company `Makroof`, manufacturer code `Mkrf`, plugin code `Spsc`, bundle ID `com.makroof.spatialscene`, product name `SpatialScene`. | Needed to build at all. **Must be confirmed before the first beta** (Phase 13); changing it after users save projects breaks those projects. | 00, 13 |
+| **AX9** | **Geometric limits** (AX6 clearance 0.1 m, emitter–listener distance 0.3 m) are compared with a **1 nm tolerance** (`contract::limits::kGeometryToleranceM`). Ranges of scalar values (α, scattering, gain, dimensions) are compared exactly. | A position typed at the limit (e.g. 0.3 m away) would otherwise be rejected because 3.3 − 3.0 = 0.2999999999999998 in floating point. 1 nm is inaudible and doesn't weaken AX6. | 01 |
 
 ---
 
@@ -271,3 +272,4 @@ Phase files for these get written once v1 is done and the Expert has answered th
 | Date | Change | By |
 |---|---|---|
 | 2026-11-04 | Initial plan (phases 00–13, assumptions AQ1–AQ10, AX1–AX8, flags F1–F9). | Lead engineer (Claude) |
+| 2026-11-04 | Phase 01: added AX9 (1 nm tolerance on the geometric limits of AX6). | Phase 01 session (Claude) |
