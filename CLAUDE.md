@@ -64,23 +64,30 @@ docs/           PRD, BUILD_PLAN, phases/, contract/, validation/
 
 ## Build and test
 
-(Commands are set up in Phase 00. Keep this section accurate if you change them.)
+(Set up in Phase 00. Keep this section accurate if you change the commands.)
 
 ```bash
 # configure + build (Debug); presets: debug, release, asan (Linux), tsan (Linux)
 cmake --preset debug
 cmake --build --preset debug
 
-# C++ unit tests
-ctest --preset debug --output-on-failure
+# C++ unit tests (the test presets already enable --output-on-failure)
+ctest --preset debug
 
-# Python analysis tooling
+# warnings as errors, as CI builds: set SPATIAL_WERROR=ON in the environment before configuring
+SPATIAL_WERROR=ON cmake --preset debug
+
+# formatting (CI runs the check with clang-format 18)
+tools/ci/check_format.sh          # check
+tools/ci/check_format.sh --fix    # reformat src/ and tests/
+
+# Python analysis tooling (Phase 02+)
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r tools/acoustics/requirements.txt
 pytest tools/acoustics
 
-# pluginval (after downloading the pinned release, see tools/ci/run_pluginval.*)
-tools/ci/run_pluginval.sh build/debug/SpatialScene_artefacts/Debug/VST3/SpatialScene.vst3
+# pluginval strictness 10 (downloads the pinned release by checksum on first run; xvfb on Linux)
+tools/ci/run_pluginval.sh build/release/SpatialScene_artefacts/Release/VST3/SpatialScene.vst3
 
 # macOS only: AU validation (component must be copied to ~/Library/Audio/Plug-Ins/Components)
 auval -v aufx Spsc Mkrf
@@ -90,9 +97,17 @@ build/debug/render_cli --scene tests/scenes/valid/medium_room.json --in in.wav -
 build/debug/render_cli --scene tests/scenes/valid/medium_room.json --ir ir.wav
 ```
 
+Binary dirs are `build/<preset>/`. Plugin bundles land in
+`build/<preset>/SpatialScene_artefacts/<Config>/{VST3,AU,Standalone}/`.
+
 Linux build deps (Ubuntu 24.04): `build-essential cmake ninja-build pkg-config libasound2-dev
 libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libfreetype-dev
-libfontconfig1-dev libgl1-mesa-dev xvfb`. pluginval with an editor on Linux needs `xvfb-run`.
+libfontconfig1-dev libgl1-mesa-dev xvfb`. pluginval with an editor on Linux needs `xvfb-run`
+(`run_pluginval.sh` adds it when there is no display); run `ctest` under `xvfb-run -a` on a
+headless Linux box too, because the pass-through test initialises the JUCE GUI runtime.
+
+Windows: run the CMake commands from an "x64 Native Tools Command Prompt for VS 2022" (CI uses
+`ilammy/msvc-dev-cmd`) so that the Ninja presets find MSVC. The scripts in `tools/ci/` run under Git Bash.
 
 ## Code conventions
 
