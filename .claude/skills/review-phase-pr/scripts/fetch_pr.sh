@@ -5,7 +5,9 @@
 #   scripts/fetch_pr.sh <head-branch> [base]   # plain git, base defaults to main
 #
 # Prints two lines: BASE=<ref> and HEAD=<ref>, which the skill passes on to review_context.py.
-# It never checks anything out: reviewing happens against refs, so the working tree stays untouched.
+# Refs that exist on origin come back as origin/<name>; a branch that only exists locally (never
+# pushed, or a scratch branch) is used as is. It never checks anything out: reviewing happens
+# against refs, so the working tree stays untouched.
 set -euo pipefail
 
 arg="${1:-}"
@@ -26,15 +28,26 @@ else
     base_ref="$base_in"
 fi
 
-fetch() {
-    local ref="$1" n=0
-    until git fetch --quiet origin "$ref"; do
-        n=$((n + 1)); [[ $n -lt 5 ]] || { echo "fetch $ref failed" >&2; exit 1; }
+# Fetch a ref from origin; on network errors retry with backoff; if origin has no such ref, fall
+# back to a local branch/commit of that name (a branch that was never pushed, a scratch branch).
+resolve() {
+    local ref="$1" n=0 err
+    while :; do
+        if err="$(git fetch --quiet origin "$ref" 2>&1)"; then
+            echo "origin/${ref}"; return 0
+        fi
+        if grep -qi "couldn't find remote ref\|not found\|invalid refspec" <<<"$err"; then
+            if git rev-parse --verify --quiet "${ref}^{commit}" >/dev/null; then
+                echo "$ref"; return 0
+            fi
+            echo "ref $ref exists neither on origin nor locally" >&2; return 1
+        fi
+        n=$((n + 1)); [[ $n -lt 5 ]] || { echo "fetch $ref failed: $err" >&2; return 1; }
         sleep $((2 ** n))
     done
 }
-fetch "$base_ref"
-fetch "$head_ref"
+base_out="$(resolve "$base_ref")" || exit 1
+head_out="$(resolve "$head_ref")" || exit 1
 
-echo "BASE=origin/${base_ref}"
-echo "HEAD=origin/${head_ref}"
+echo "BASE=${base_out}"
+echo "HEAD=${head_out}"

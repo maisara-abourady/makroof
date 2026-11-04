@@ -95,13 +95,14 @@ DETERMINISM_RED_FLAGS = [
     (r"\bstd::unordered_(map|set)\b", "unordered container (iteration order not stable across platforms)"),
     (r"\bnp\.random\.(rand|randn|random|normal|uniform)\b", "numpy global RNG (use np.random.default_rng(seed))"),
     (r"\bthread_local\b", "thread-local state (check it cannot change results)"),
+    (r"\bstd::mt19937(_64)?\b", "std::mt19937 (engine is portable; seed source and any distribution are not)"),
 ]
 
 TEST_HYGIENE_FLAGS = [
     (r"\.margin\s*\(|\.epsilon\s*\(|WithinAbs\s*\(|WithinRel\s*\(|WithinULP\s*\(|Approx\s*\(", "C++ tolerance"),
     (r"\bpytest\.approx\b|\batol\s*=|\brtol\s*=|\bnp\.allclose\b|\bassert_allclose\b", "Python tolerance"),
     (r"\bSKIP\s*\(|\bSUCCEED\s*\(|\bpytest\.mark\.skip|\bpytest\.skip\b|\bxfail\b", "skipped / vacuous test"),
-    (r"#\s*if(n?def)?\s*.*(_WIN32|__APPLE__|__linux__|JUCE_WINDOWS|JUCE_MAC|JUCE_LINUX)", "per-OS test branch"),
+    (r"#\s*if(n?def)?\s*.*(_WIN32|__APPLE__|__linux__|JUCE_WINDOWS|JUCE_MAC|JUCE_LINUX)", "per-OS test branch (if it wraps a TEST_CASE, a whole test vanishes on one OS)"),
     (r"^\+.*\[\s*[xX]\s*\].*", "pre-ticked checkbox in a document (listening checklist is Maisara's)"),
     (r"63\s*,\s*125\s*,\s*250\s*,\s*500", "octave band table literal (should come from contract::kOctaveBandsHz)"),
     (r"\b(TODO|FIXME|XXX|HACK)\b", "TODO/FIXME left in diff"),
@@ -236,6 +237,27 @@ def main():
         warnings.append("WAV files added outside tests/golden/: CLAUDE.md forbids committing renders/datasets.")
     if s["large_binaries"]:
         warnings.append("Large binaries in diff: check they are not downloaded datasets (BRAS, SOFA originals).")
+    for row in status_rows:
+        if not row.startswith("+|"):
+            continue
+        cells = [c.strip() for c in row[1:].strip("|").split("|")]
+        # | Phase | Title | Size | Status | PR | Date | Notes |
+        if len(cells) >= 5 and cells[3].startswith("done") and not cells[4]:
+            warnings.append(f"BUILD_PLAN row {cells[0]} set to `done` with an empty PR column.")
+        if len(cells) >= 4 and cells[3].startswith("done"):
+            plan_log = run(["git", "log", "-p", "--format=%H", rng, "--", "docs/BUILD_PLAN.md"], repo).stdout
+            if not re.search(r"^\+\|\s*" + re.escape(cells[0]) + r"\s*\|.*\|\s*in progress\s*\|", plan_log, re.M):
+                warnings.append(f"BUILD_PLAN row {cells[0]} reaches `done` without an `in progress` commit first (CLAUDE.md step 3).")
+    if s["contract_sources_touched"]:
+        def version_at(ref):
+            txt = run(["git", "show", f"{ref}:src/contract/Version.h"], repo).stdout
+            return re.findall(r"(kContractVersion\w*\s*=\s*[^;]+;)", txt)
+        non_build = [f for f in s["contract_sources_touched"] if not f.endswith("CMakeLists.txt")]
+        if version_at(merge_base) == version_at(args.head) and non_build:
+            warnings.append("src/contract changed but the contract version constants in Version.h are unchanged: additive change needs a minor bump, breaking change a major bump.")
+    bodies = git(repo, "log", "--format=%b%x00", rng).split("\x00")
+    if subjects and all(not b.strip() for b in bodies):
+        warnings.append("No commit in the range has a body; the PR description must carry the rationale instead.")
     if len(phases) > 1:
         warnings.append(f"Commits mention more than one phase: {phases}. One phase = one PR.")
     if not phases:
@@ -383,6 +405,21 @@ def main():
         lambda p: p.startswith(("tests/", "tools/", "docs/", "src/")) and not p.endswith((".wav", ".bin", ".json")),
     )
 
+    # 8b. Whole tests disabled per OS at head: a preprocessor guard immediately before TEST_CASE/SECTION.
+    disabled = []
+    for p in tree:
+        if not (p.startswith("tests/") and p.endswith(CPP_EXT)):
+            continue
+        lines = head_lines(p)
+        for i, line in enumerate(lines):
+            if re.match(r"\s*#\s*if", line):
+                look = " ".join(l.strip() for l in lines[i + 1:i + 4])
+                if re.search(r"\bTEST_CASE\b|\bTEMPLATE_TEST_CASE\b|\bSCENARIO\b", look):
+                    disabled.append({"path": p, "line": i + 1, "text": line.strip()})
+    report["tests_guarded_by_preprocessor"] = disabled
+    if disabled:
+        warnings.append("A TEST_CASE sits directly under a preprocessor guard; phase criteria say tests run on 3 OSes.")
+
     # 9. Dependency pins (added lines in cmake, workflows, requirements).
     report["pin_scan"] = scan(
         PIN_FLAGS,
@@ -433,6 +470,11 @@ def main():
     h("5. NFR-8: preset/scene/material names inside src/sim (head tree)")
     for x in nfr8 or [{"path": "(none)", "line": "", "why": "", "text": ""}]:
         print(f"  {x['path']}:{x['line']} [{x.get('why','')}] {x['text']}")
+
+    if disabled:
+        h("8b. Tests under a preprocessor guard (head tree)")
+        for x in disabled:
+            print(f"  {x['path']}:{x['line']} {x['text']}")
 
     for title, key in [
         ("6. Audio-thread red flags (added lines; inspect, not verdicts)", "audio_thread_scan"),

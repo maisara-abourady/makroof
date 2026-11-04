@@ -141,6 +141,9 @@ Windows: run the CMake commands from an "x64 Native Tools Command Prompt for VS 
 ## Git and PRs
 
 - Work on the branch the session specifies. One phase = one PR, reviewed by the contracted engineer.
+- Reviews use the project skill `/review-phase-pr <pr-number | branch>` (`.claude/skills/review-phase-pr/`):
+  it checks the PR against the phase file, the assumptions and the sourced domain references, and
+  writes a severity-ranked review. Run it before asking Maisara to go through a listening checklist.
 - Commit messages: `phase-XX: <imperative summary>`.
 - The PR description contains: what was done, acceptance-criteria checklist with CI evidence,
   listening checklist for Maisara, contractor review focus, follow-ups, assumption/golden changes.

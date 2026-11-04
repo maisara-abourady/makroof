@@ -17,12 +17,19 @@ Arguments: `$ARGUMENTS`. The first token is a PR number or a head branch. `--pos
 the review on GitHub (otherwise output it in chat and save it to a file). `--local` means also
 build and run the tests locally when the environment allows it.
 
+Two modes: a **PR review** (the first token is a number, or the branch has an open PR) and a
+**branch review** (a branch with no PR: nothing pushed yet, a scratch branch, a dry run). A branch
+review follows the same procedure; wherever a step needs the PR body or CI, write "no PR: not
+available" and treat every CI-dependent criterion as unproven. A branch review can never end in
+Approve, only in "Request changes" or "Not ready (no CI)", and it says so up front.
+
 ## Knowledge you have, and where it lives
 
-Read `references/knowledge-inventory.md` once per review: it maps the nine knowledge domains to
-the reference files, says which phases need which, and lists facts that go stale. Always read
-`references/process-rules.md` and the phase's section of `references/phase-checklists.md`. Open
-the domain files the diff touches:
+Always read `references/process-rules.md` and the phase's section of
+`references/phase-checklists.md`. Then open the domain files the diff touches (table below).
+`references/knowledge-inventory.md` is the map behind this table: read it when you are unsure which
+file applies, or when a fact may have gone stale (it lists what to re-verify and how). Never open
+`evals/`; it holds test fixtures for the skill itself, not knowledge.
 
 | Diff touches | Read |
 |---|---|
@@ -35,25 +42,31 @@ the domain files the diff touches:
 
 Each reference file ends with a checklist of questions, each naming the bug it catches. Apply the
 ones the diff makes relevant; skip the rest. Facts are dated and sourced; if one is marked
-"(unverified)" or looks stale, verify it live before you cite it.
+"(unverified)" or looks stale, verify it live before you cite it, and say in the review's "What I
+verified myself" section that the reference needs correcting (a review never edits the skill). If
+a reference file is missing, say so in the review and continue with the others.
 
 ## Procedure
 
-Work through the steps in order. Do not write findings before step 6; early impressions are
-usually about style, and style is not what this review is for (CI runs clang-format).
+Work through the steps in order, collecting notes as you go; write the review itself only at
+step 6. Early impressions are usually about style, and style is not what this review is for (CI
+runs clang-format).
 
 ### 1. Identify the target and the phase
 
 - Resolve the PR: with the GitHub MCP tools (`pull_request_read` methods `get`, `get_files`,
   `get_check_runs`, `get_reviews`, `get_comments`) or `gh pr view` when available. Record head
   SHA, base branch, title, body, author, state, and whether it is a draft.
-- Fetch refs without touching the working tree:
-  `bash ${CLAUDE_SKILL_DIR}/scripts/fetch_pr.sh <head-branch> <base-branch>` (prints `BASE=` and
-  `HEAD=`). Never check the branch out for review; use `git diff BASE...HEAD` and `git show HEAD:path`.
+- Resolve refs without touching the working tree:
+  `bash ${CLAUDE_SKILL_DIR}/scripts/fetch_pr.sh <head-branch> <base-branch>` prints `BASE=` and
+  `HEAD=` (it fetches from origin, and falls back to a local branch of that name when origin has
+  none). Pass exactly those two values on. Never check the branch out for review; use
+  `git diff BASE...HEAD` and `git show HEAD:path`.
 - Determine the phase from the commit subjects (`phase-XX:`), the title and the BUILD_PLAN status
-  row diff. Open `docs/phases/phase-XX.md`, `CLAUDE.md`, `docs/BUILD_PLAN.md` §0, §2, §3, §6 at
-  the **head** revision, and the PRD sections the phase file cites. Note every assumption ID the
-  phase lists as "in force".
+  row diff. Open `docs/phases/phase-XX.md`, `CLAUDE.md`, and `docs/BUILD_PLAN.md` §0, §2 and §6 at
+  the **head** revision, plus the PRD sections the phase file cites. Read §3 (PRD flags F1–F9) only
+  when the diff touches one of the flagged requirements (scan the flag titles). Note every
+  assumption ID the phase lists as "in force".
 - Check the dependency phases are `done` in §0 at the merge base. If not, that is the first blocker.
 
 ### 2. Gather the mechanical context
@@ -101,7 +114,8 @@ Read every changed file at HEAD, not only the hunks. Order:
    equals the phase file's number; the inputs (random seeded? how many cases? edge values?). Then
    ask the mutation question: *name one plausible bug in the implementation that this test would
    not catch.* If the answer is a bug the phase file specifically warns about, the test is
-   inadequate and that is a finding on its own.
+   inadequate and that is a finding on its own. A criterion with no test at all gets the row
+   "Test: none; Bug it would miss: any; Verdict: not proven".
 2. **Implementation.** Read with the domain reference open. Re-derive formulas on paper or with a
    short Python check (allowed: compute Eyring T60 for a fixture, count image sources for an
    order, compute an ITD from geometry) and compare with what the code and the tests expect.
@@ -112,12 +126,15 @@ Read every changed file at HEAD, not only the hunks. Order:
 
 ### 5. Verify what you can
 
-- If `--local` was given, or the environment already has the toolchain: configure and build the
-  `debug` preset, run `ctest --preset debug` (under `xvfb-run -a` on headless Linux) and `pytest
-  tools/acoustics` when it exists. Report exactly what you ran and the result. Never skip or weaken
-  a test to get a pass.
-- Without a build: run quick independent calculations in Python for numeric claims, and read CI
-  logs through `get_job_logs` for benchmark numbers, pluginval output and pytest summaries.
+- Build and run the tests when `--local` was given, or when `build/debug/_deps` already exists
+  (a cold JUCE fetch and build takes 10–20 minutes and is not worth it for a review; CI already
+  did it). In that case configure and build the `debug` preset, run `ctest --preset debug` (under
+  `xvfb-run -a` on headless Linux) and `pytest tools/acoustics` when it exists. Report exactly what
+  you ran and the result. Never skip or weaken a test to get a pass.
+- Otherwise do partial verification and say so: compile a single changed translation unit with
+  the project's warning flags when a build break is suspected, run quick independent calculations
+  in Python for numeric claims, and read CI logs through `get_job_logs` for benchmark numbers,
+  pluginval output and pytest summaries.
 - Anything you could not verify is reported as a **Question** with what evidence would settle it,
   never as a pass.
 
@@ -128,6 +145,7 @@ here (cite the phase file, the assumption ID, or the reference file), and what r
 
 ```
 # Review: PR #<n> — phase-XX <title>   (head <sha7>, base <branch>)
+  (branch review: "Review: branch <name> — phase-XX <title>")
 
 ## Verdict
 <Approve | Request changes | Not ready (CI)> — one paragraph: what the PR does, the state of the
@@ -157,6 +175,7 @@ Listening checklist: untouched; it is yours. Where the listening-pack / plugin a
 Anything the Expert should see (accuracy shortfalls reported, not tuned).
 
 ## Contractor review focus (from the phase file), with pointers into the diff
+(if a focus item has no counterpart in the diff, say so and name the file where it will live)
 ```
 
 Severity definitions are in `process-rules.md` §9. A review with no blocker and no major finding
@@ -165,8 +184,8 @@ changes, and say in one sentence what would flip it.
 
 ### 7. Deliver
 
-- Save the review to `review-PR<n>-phase-XX.md` in the working directory (or the scratchpad in a
-  cloud session) and print it in chat.
+- Save the review to `review-PR<n>-phase-XX.md` (branch review: `review-<branch-slug>-phase-XX.md`)
+  in the working directory (or the scratchpad in a cloud session) and print it in chat.
 - Post to GitHub only when `--post` was given or the user asked for it: create a pending review
   with `pull_request_review_write` (`create`), add line comments for blockers and majors with
   `add_comment_to_pending_review`, and submit with `submit_pending` as **COMMENT** (never

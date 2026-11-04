@@ -41,7 +41,7 @@ Re-run the live checks below when a PR touches the item, or at least every phase
 
 | Item | Where used | How to re-verify |
 |---|---|---|
-| Latest JUCE 8.0.x tag; JUCE licence tiers and revenue caps | `cmake/SpatialDependencies.cmake`, `docs/THIRD_PARTY.md`, Phase 13 | github.com/juce-framework/JUCE/releases, juce.com/legal |
+| Latest JUCE tag; JUCE licence tiers and revenue caps. State on 2026-11-04: JUCE 9 (9.0.5) is the mainline, JUCE 8 is a security-patch branch whose newest tag is the pinned `8.0.17-security`; tiers Starter ≤ $20k / Indie ≤ $300k / Pro; JUCE 8 removed the splash-screen rule, so the "splash screen" note in `docs/THIRD_PARTY.md` is stale | `cmake/SpatialDependencies.cmake`, `docs/THIRD_PARTY.md`, Phase 13 | github.com/juce-framework/JUCE/releases, juce.com/legal/juce-9-licence (see `tooling-testing-licences.md` §0–§1) |
 | pluginval latest release and CLI flags | `tools/ci/run_pluginval.sh` | github.com/Tracktion/pluginval/releases |
 | Catch2, nlohmann/json, PFFFT, dr_wav latest tags | `cmake/SpatialDependencies.cmake` | GitHub releases/tags of each |
 | GitHub Actions major versions | `.github/workflows/*.yml` | each action's releases page |
