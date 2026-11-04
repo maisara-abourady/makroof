@@ -74,12 +74,14 @@ if [[ ! -x "${BIN}" ]]; then
     fi
 fi
 
+# Empty unless xvfb is needed. Expanded as ${RUNNER[@]+"${RUNNER[@]}"} because bash 3.2 (macOS) treats
+# an empty array as unbound under set -u.
 RUNNER=()
 if [[ "$(uname -s)" == Linux* && -z "${DISPLAY:-}" ]] && command -v xvfb-run >/dev/null 2>&1; then
     RUNNER=(xvfb-run -a --server-args="-screen 0 1280x1024x24")
 fi
 
-"${RUNNER[@]}" "${BIN}" --version
+${RUNNER[@]+"${RUNNER[@]}"} "${BIN}" --version
 
 STATUS=0
 for PLUGIN in "$@"; do
@@ -92,7 +94,7 @@ for PLUGIN in "$@"; do
     fi
     echo "::group::pluginval ${PLUGIN}"
     echo "pluginval --strictness-level ${STRICTNESS} --timeout-ms ${TIMEOUT_MS} --output-dir ${OUT_PATH} ${PLUGIN_PATH}"
-    if "${RUNNER[@]}" "${BIN}" --strictness-level "${STRICTNESS}" --timeout-ms "${TIMEOUT_MS}" \
+    if ${RUNNER[@]+"${RUNNER[@]}"} "${BIN}" --strictness-level "${STRICTNESS}" --timeout-ms "${TIMEOUT_MS}" \
             --output-dir "${OUT_PATH}" --validate "${PLUGIN_PATH}"; then
         echo "PASS: ${PLUGIN}"
     else
