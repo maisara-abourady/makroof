@@ -26,6 +26,32 @@ jobs:
       - name: Check formatting
         run: CLANG_FORMAT=clang-format-18 tools/ci/check_format.sh
 
+  # Contract boundary check and the Python tests in tools/ci (schema agreement, boundary-check
+  # self-test). Cheap, so it runs on all three OSes.
+  contract-tools:
+    name: contract tools (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, name: linux }
+          - { os: macos-14, name: macos }
+          - { os: windows-2022, name: windows }
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/ci/requirements.txt
+      - name: Install Python dependencies
+        run: python -m pip install -r tools/ci/requirements.txt
+      - name: Boundary check
+        run: python tools/ci/check_boundaries.py
+      - name: pytest tools/ci
+        run: python -m pytest tools/ci -v
+
   build:
     name: build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}

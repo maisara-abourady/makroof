@@ -1,0 +1,60 @@
+{
+  "contractVersion": "1.0",
+  "units": "meters",
+  "room": {
+    "geometry": {
+      "kind": "shoebox",
+      "dimensions": [100.0, 100.0, 30.0]
+    },
+    "surfaces": {
+      "floor": {
+        "absorption": [0.05, 0.11, 0.26, 0.6, 0.69, 0.92, 0.99, 0.99],
+        "scattering": 0.4
+      },
+      "ceiling": {
+        "absorption": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        "scattering": 0.0
+      },
+      "xMin": {
+        "absorption": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        "scattering": 0.0
+      },
+      "xMax": {
+        "absorption": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        "scattering": 0.0
+      },
+      "yMin": {
+        "absorption": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        "scattering": 0.0
+      },
+      "yMax": {
+        "absorption": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        "scattering": 0.0
+      }
+    }
+  },
+  "listener": {
+    "position": [50.0, 40.0, 1.7]
+  },
+  "emitters": [
+    {
+      "id": "L",
+      "channel": 0,
+      "position": [45.0, 60.0, 3.0],
+      "gainDb": 0.0
+    },
+    {
+      "id": "R",
+      "channel": 1,
+      "position": [55.0, 60.0, 3.0],
+      "gainDb": 0.0
+    }
+  ],
+  "render": {
+    "outputMode": "stereoSpeakers",
+    "hrtfId": "generic-v1",
+    "maxReflectionOrder": 2,
+    "tailSeed": 42
+  },
+  "extensions": {}
+}

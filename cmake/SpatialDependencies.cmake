@@ -7,6 +7,17 @@ set(FETCHCONTENT_QUIET OFF)
 set(SPATIAL_JUCE_TAG "8.0.17-security")
 # Catch2 v3 — pinned release tag.
 set(SPATIAL_CATCH2_TAG "v3.16.1")
+# nlohmann/json — pinned release tag. Header-only; used by spatial_contract (always built).
+set(SPATIAL_NLOHMANN_JSON_TAG "v3.12.0")
+
+FetchContent_Declare(nlohmann_json
+                     GIT_REPOSITORY https://github.com/nlohmann/json.git
+                     GIT_TAG ${SPATIAL_NLOHMANN_JSON_TAG}
+                     GIT_SHALLOW TRUE
+                     SYSTEM)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+set(JSON_Install OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(nlohmann_json)
 
 if(SPATIAL_BUILD_PLUGIN)
     FetchContent_Declare(JUCE

@@ -15,7 +15,7 @@ Linux, macOS and Windows, and Maisara has gone through its listening checklist.
 | Phase | Title | Size | Status | PR | Date | Notes |
 |---|---|---|---|---|---|---|
 | 00 | Scaffolding, CI, pluginval, empty plugin | M | done | [#2](https://github.com/maisara-abourady/makroof/pull/2) | 2026-11-04 | JUCE 8.0.17-security, Catch2 v3.16.1, pluginval v1.0.4 (no `--validate-in-process` flag in 1.0.x). CI green on all 3 OSes. Listening checklist pending Maisara. |
-| 01 | Scene contract v1 (3D Module → Simulator) | S | not started | | | |
+| 01 | Scene contract v1 (3D Module → Simulator) | S | done | [#3](https://github.com/maisara-abourady/makroof/pull/3) | 2026-11-04 | nlohmann/json v3.12.0 (private to `spatial_contract`). 6 valid + 25 invalid fixtures, 26 stable issue codes, schema agreement + boundary check in a new `contract-tools` CI job on 3 OSes. Added AX9 (1 nm geometric tolerance) and AX10 (free L/R ↔ channel pairing, pending decision). Two review rounds applied. README review pending Maisara. |
 | 02 | Offline render CLI + acoustic analysis harness | M | not started | | | |
 | 03 | Early reflections: shoebox image-source model | M | not started | | | |
 | 04 | Late reverberant tail + hybrid room IR | M | not started | | | |
@@ -98,6 +98,8 @@ replace these with other answers. A change goes through an edit to this table pl
 | **AX6** | **Validation limits:** an emitter must be ≥ 0.1 m from any surface and ≥ 0.3 m from the listener. The room must be 1.5–100 m per side. Supported sample rates are 44.1, 48, 88.2 and 96 kHz. | Avoids 1/r blow-up and unbounded IR lengths. | 01, 03 |
 | **AX7** | **Source setup in v1 = PRD setup 1:** one stereo track drives two point emitters, L and R. | The user specified a single stereo source for v1. | 01, 07, 11 |
 | **AX8** | **Placeholder plugin identity:** company `Makroof`, manufacturer code `Mkrf`, plugin code `Spsc`, bundle ID `com.makroof.spatialscene`, product name `SpatialScene`. | Needed to build at all. **Must be confirmed before the first beta** (Phase 13); changing it after users save projects breaks those projects. | 00, 13 |
+| **AX9** | **Geometric limits** (AX6 clearance 0.1 m, emitter–listener distance 0.3 m) are compared with a **1 nm tolerance** (`contract::limits::kGeometryToleranceM`). Ranges of scalar values (α, scattering, gain, dimensions) are compared exactly. | A position typed at the limit (e.g. 0.3 m away) would otherwise be rejected because 3.3 − 3.0 = 0.2999999999999998 in floating point. 1 nm is inaudible and doesn't weaken AX6. | 01 |
+| **AX10** | **Emitter ↔ channel pairing** (AX7): ids `L`, `R` and channels 0, 1 must each be used exactly once, but the pairing is free, so L = 1, R = 0 (a channel swap) is valid. Ids are case-sensitive. **Pending a decision by Maisara/the Expert** (raised in the PR #3 reviews); the alternative is to require L = 0, R = 1. | It is what AX7 and the phase-01 spec literally require. Requiring the usual pairing would be one more rule in `Validate.cpp`, the schema and a fixture. | 01, 07, 11 |
 
 ---
 
@@ -271,3 +273,5 @@ Phase files for these get written once v1 is done and the Expert has answered th
 | Date | Change | By |
 |---|---|---|
 | 2026-11-04 | Initial plan (phases 00–13, assumptions AQ1–AQ10, AX1–AX8, flags F1–F9). | Lead engineer (Claude) |
+| 2026-11-04 | Phase 01: added AX9 (1 nm tolerance on the geometric limits of AX6). | Phase 01 session (Claude) |
+| 2026-11-04 | Phase 01 review: added AX10 (emitter ↔ channel pairing is free; each id and channel used once). Records existing behaviour; pending Maisara/Expert. | Phase 01 session (Claude) |

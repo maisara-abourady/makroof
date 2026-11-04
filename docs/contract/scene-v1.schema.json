@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/maisara-abourady/makroof/blob/main/docs/contract/scene-v1.schema.json",
+  "title": "SpatialScene SceneDescription, contract v1.0",
+  "description": "The 3D Module -> Simulator scene contract, version 1.0 (spec: docs/contract/README.md). This schema expresses everything JSON Schema can express: types, required and unknown fields, ranges, array lengths, enums and emitter counts. The geometric rules are enforced only by the C++ validator (src/contract/Validate.cpp): the listener and every emitter must lie inside the room at least 0.1 m from every surface (E_LISTENER_SURFACE_CLEARANCE, E_EMITTER_SURFACE_CLEARANCE), and every emitter must be at least 0.3 m from the listener (E_EMITTER_TOO_CLOSE_TO_LISTENER). The schema validates documents at minor version 0 strictly; a reader of version 1.0 also loads newer 1.x documents and ignores their unknown fields, which this schema does not model. tools/ci/test_schema_agreement.py checks that the schema and the C++ reader agree on every fixture in tests/scenes/.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "units", "room", "listener", "emitters", "render", "extensions"],
+  "properties": {
+    "contractVersion": {
+      "description": "MAJOR.MINOR. Same major as the reader is required; see README 'Versioning'.",
+      "type": "string",
+      "pattern": "^1\\.(0|[1-9][0-9]{0,8})$"
+    },
+    "units": {
+      "description": "Length unit of every position and dimension. Only metres in v1.",
+      "const": "meters"
+    },
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["geometry", "surfaces"],
+      "properties": {
+        "geometry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "dimensions"],
+          "properties": {
+            "kind": { "const": "shoebox" },
+            "dimensions": {
+              "description": "[W, D, H] in metres. The room occupies [0,W] x [0,D] x [0,H] (AX6: each 1.5-100 m).",
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": { "type": "number", "minimum": 1.5, "maximum": 100 }
+            }
+          }
+        },
+        "surfaces": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["xMin", "xMax", "yMin", "yMax", "floor", "ceiling"],
+          "properties": {
+            "xMin": { "$ref": "#/$defs/surface" },
+            "xMax": { "$ref": "#/$defs/surface" },
+            "yMin": { "$ref": "#/$defs/surface" },
+            "yMax": { "$ref": "#/$defs/surface" },
+            "floor": { "$ref": "#/$defs/surface" },
+            "ceiling": { "$ref": "#/$defs/surface" }
+          }
+        }
+      }
+    },
+    "listener": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position"],
+      "properties": {
+        "position": { "$ref": "#/$defs/vec3" }
+      }
+    },
+    "emitters": {
+      "description": "AX7: exactly two emitters, ids L and R, channels 0 and 1, each used once.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/emitter" },
+      "allOf": [
+        { "contains": { "properties": { "id": { "const": "L" } } }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "id": { "const": "R" } } }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "channel": { "const": 0 } } }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "channel": { "const": 1 } } }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+    "render": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outputMode", "hrtfId", "maxReflectionOrder", "tailSeed"],
+      "properties": {
+        "outputMode": { "enum": ["binaural", "stereoSpeakers"] },
+        "hrtfId": { "const": "generic-v1" },
+        "maxReflectionOrder": { "type": "integer", "minimum": 0, "maximum": 60 },
+        "tailSeed": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "extensions": {
+      "description": "Free object for editor-only data, preserved in round trips. The Simulator never reads it.",
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "vec3": {
+      "description": "[x, y, z] in metres; x right, y forward, z up (AQ1).",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" }
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["absorption", "scattering"],
+      "properties": {
+        "absorption": {
+          "description": "Absorption per octave band at 63, 125, 250, 500, 1000, 2000, 4000, 8000 Hz (AQ3: each 0.01-1.0).",
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": { "type": "number", "minimum": 0.01, "maximum": 1.0 }
+        },
+        "scattering": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "emitter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "channel", "position", "gainDb"],
+      "properties": {
+        "id": { "enum": ["L", "R"] },
+        "channel": { "type": "integer", "enum": [0, 1] },
+        "position": { "$ref": "#/$defs/vec3" },
+        "gainDb": { "type": "number", "minimum": -60, "maximum": 12 }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "description": "Invalid fixtures whose rule JSON Schema cannot express (geometry). tools/ci/test_schema_agreement.py requires the schema to ACCEPT these and to reject every other invalid fixture.",
+  "fixtures": [
+    "E_EMITTER_SURFACE_CLEARANCE.json",
+    "E_EMITTER_TOO_CLOSE_TO_LISTENER.json",
+    "E_LISTENER_SURFACE_CLEARANCE.json"
+  ]
+}

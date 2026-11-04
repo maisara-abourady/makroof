@@ -30,5 +30,6 @@ MSVC. Linux build dependencies are listed in [CLAUDE.md](CLAUDE.md).
 
 ## Status
 
-Phase 00 (scaffolding, CI, pluginval, pass-through plugin). See the status table in
+Phases 00 (scaffolding, CI, pluginval, pass-through plugin) and 01 (scene contract v1, spec in
+[docs/contract/README.md](docs/contract/README.md)). See the status table in
 [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md) §0.
