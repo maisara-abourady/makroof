@@ -15,7 +15,7 @@ Linux, macOS and Windows, and Maisara has gone through its listening checklist.
 | Phase | Title | Size | Status | PR | Date | Notes |
 |---|---|---|---|---|---|---|
 | 00 | Scaffolding, CI, pluginval, empty plugin | M | done | [#2](https://github.com/maisara-abourady/makroof/pull/2) | 2026-11-04 | JUCE 8.0.17-security, Catch2 v3.16.1, pluginval v1.0.4 (no `--validate-in-process` flag in 1.0.x). CI green on all 3 OSes. Listening checklist pending Maisara. |
-| 01 | Scene contract v1 (3D Module → Simulator) | S | in progress | | | |
+| 01 | Scene contract v1 (3D Module → Simulator) | S | done | [#3](https://github.com/maisara-abourady/makroof/pull/3) | 2026-11-04 | nlohmann/json v3.12.0 (private to `spatial_contract`). 6 valid + 23 invalid fixtures, 26 stable issue codes, schema agreement + boundary check in a new `contract-tools` CI job on 3 OSes. Added AX9 (1 nm geometric tolerance). README review pending Maisara. |
 | 02 | Offline render CLI + acoustic analysis harness | M | not started | | | |
 | 03 | Early reflections: shoebox image-source model | M | not started | | | |
 | 04 | Late reverberant tail + hybrid room IR | M | not started | | | |
