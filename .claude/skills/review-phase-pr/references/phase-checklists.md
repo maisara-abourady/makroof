@@ -175,11 +175,27 @@ Verify:
   boundary where the swap is picked up; latest-wins mailbox under 100 requests/s; no leak (ASan).
 - Zero heap allocations in `process` for all block sizes including during crossfades; TSan clean
   with two threads hammering `requestIr`.
-- PFFFT contract respected: sizes multiple of 32 for real transforms, aligned buffers, unordered
-  layout only with `pffft_zconvolve_accumulate`, backward scaling 1/N.
+- PFFFT contract respected: N = 2^a·3^b·5^c with a ≥ 5 for real transforms, 16-byte aligned
+  buffers from `pffft_aligned_malloc`, unordered layout only with `pffft_zconvolve_accumulate`,
+  no built-in scaling (backward(forward(x)) = N·x). The marton78 fork has no release tags, so the
+  pin must be a commit hash (and `GIT_SHALLOW` must then be dropped). Details and the fork's
+  licence text requirement in `convolution-and-movement.md` §3 and `tooling-testing-licences.md`.
+- The −120 dB residual criterion is only achievable if the reference (`OfflineRender`) and the
+  convolver's MAC accumulate in double or pairwise: a 144 000-tap float32 direct convolution is
+  itself only about −95 dB accurate, and float32 accumulation over ~280 partitions lands near
+  −120 dB (`convolution-and-movement.md` §7). If the test passes with float32 everywhere, ask
+  how, and check the residual measure (energy ratio over the whole signal vs. peak error).
+- Both convolver states (A and B) must share the input FDL; otherwise the analytic crossfade null
+  fails with a tail dropout. The ramp is time-domain, sample-accurate across host callbacks, and
+  starts at the internal P-block boundary. With a 20 ms cadence and a 30 ms fade the engine is
+  fading almost continuously under automation, so the benchmark must include the fading state
+  (2× steady-state cost).
 Traps: freeing an `IrSet` on the audio thread when the mailbox is overwritten; crossfade state
 shared input history not reset; block accumulation adding latency that `latencySamples()` omits;
-denormal guard restoring the wrong MXCSR; benchmark run only in Debug.
+denormal guard restoring the wrong MXCSR / FPCR (x86 FTZ|DAZ = 0x8040; AArch64 FPCR bit 24);
+one NaN in an input block poisons the output for the whole IR length (the NaN spectrum stays in
+the FDL); allocation tracker counting Catch2's own allocations or not skipping under ASan/TSan;
+benchmark run only in Debug or only with host block = P.
 
 ## Phase 07 — Plugin integration: parameters, state, scene → IR
 
@@ -268,10 +284,16 @@ Verify: 0 click events over 20 scenarios × 2 modes × 2 timing modes; negative 
 ≥ 18/20; offline bit-identical across runs; static scene offline vs realtime-sim ≤ −120 dB; tail
 cache equals full rebuild ≤ −120 dB; worst staleness ≤ 100 ms at order 20 and the job fails
 otherwise; no allocation in `processBlock` during scenarios; pluginval passes.
-Traps: cache key missing an input that affects the tail (air absorption constant, pre-roll, IR cap,
-output mode, sample rate, per-output seed offset); negative control bypassing the same code path
-(it must replace only the fade); realtime-sim clock derived from wall time (non-reproducible);
-40 Hz tone scenario and low-band detector variant noted if added.
+Traps: cache key missing an input that affects the tail (sample rate, per-band materials and
+scattering, air-absorption constant, reflection order / crossover time, tail length cap, seed and
+per-output offset, output mode and HRTF set, contract version; compared bit-exactly, and energy
+matching never cached with the tail); negative control bypassing the same code path (it must
+replace only the fade); realtime-sim clock derived from wall time (non-reproducible); staleness
+budget arithmetic (cadence wait ≤ 20 + build + pickup ≤ P/fs + fade queue ≤ 30 ms leaves ~40 ms
+for the build against the 100 ms criterion, see `convolution-and-movement.md` §5); comb-filter
+colouration during fades grows with the change in relative path length, so a scenario with a
+large corner-to-corner jump is the one most likely to show artefacts the click detector cannot
+see; 40 Hz tone scenario and low-band detector variant noted if added.
 
 ## Phase 11 — Minimal placement UI
 
