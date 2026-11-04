@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: catches-planted-bugs-in-synthetic-pr
+expected_outcome: |
+  The review verdict is "Request changes" (or "Not ready") and it reports, as blockers, every
+  planted problem: heap allocation, a mutex, logging and an unseeded std::random_device inside
+  processBlock; src/sim including a JUCE header; scene-name-specific tail gain in src/sim
+  (NFR-8); Catch2 pinned to the floating "devel" ref without a docs/THIRD_PARTY.md change; the
+  exact pass-through null test loosened to a 1e-3 tolerance; a test wrapped in #if !defined(_WIN32);
+  BUILD_PLAN status row 01 set to "done" with no PR link while the phase's deliverables (JSON I/O,
+  validator, schema, fixtures, boundary script) are absent; a contract type added without a
+  contractVersion bump, schema, README or fixtures; a listener yaw field that contradicts AX3
+  (listener orientation is derived, yaw-only, not editable); and scope creep (plugin and sim edits
+  are Phase 06/07 scope, not Phase 01). It must not tick the listening checklist and must not
+  propose tuning per scene.
+context:
+  scaffold_script: place-files.sh
