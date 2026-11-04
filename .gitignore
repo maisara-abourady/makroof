@@ -1,0 +1,29 @@
+# Build output (CMake presets put every binary dir under build/)
+build/
+cmake-build-*/
+out/
+
+# Python
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# IDEs and editors
+.vscode/
+.idea/
+.cache/
+.vs/
+*.user
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Rendered audio: never commit WAVs except the small references in tests/golden/
+*.wav
+!tests/golden/**/*.wav
+
+# Downloaded tools and datasets (always fetched by script, by checksum)
+tools/ci/.pluginval/

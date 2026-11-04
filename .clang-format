@@ -1,0 +1,49 @@
+# Spatial Scene VST — clang-format 18 configuration (CI pins clang-format-18).
+# LLVM base, 4-space indent, 110 columns, braces on their own line as in JUCE code (not for namespaces).
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++20
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 110
+AccessModifierOffset: -4
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: false
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Empty
+AlwaysBreakTemplateDeclarations: Yes
+BreakConstructorInitializers: BeforeComma
+BreakBeforeBinaryOperators: NonAssignment
+PointerAlignment: Left
+DerivePointerAlignment: false
+NamespaceIndentation: None
+FixNamespaceComments: true
+IndentPPDirectives: None
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+SpaceAfterTemplateKeyword: true
+SpacesBeforeTrailingComments: 1
+Cpp11BracedListStyle: true
+BinPackArguments: true
+BinPackParameters: true
+PenaltyBreakAssignment: 40
+PenaltyReturnTypeOnItsOwnLine: 200

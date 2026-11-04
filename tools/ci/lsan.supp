@@ -1,0 +1,6 @@
+# LeakSanitizer suppressions for the asan test preset.
+# Leaks reported inside system libraries loaded by JUCE on Linux (fontconfig, X11, GL) are not ours.
+leak:libfontconfig
+leak:libX11
+leak:libGLX
+leak:libdbus
