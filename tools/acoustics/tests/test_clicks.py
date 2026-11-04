@@ -16,6 +16,14 @@ def _as_float32(x):
     return np.asarray(x, dtype=np.float32).astype(np.float64)
 
 
+def _assert_quiet_margin(result):
+    # Margin (review minor 6): a clean or slowly modulated tone stays ~72 dB below the effective
+    # threshold (its HF residue is the float32 quantisation floor). Require 40 dB.
+    margin = result["effective_threshold_dbfs"] - result["max_frame_dbfs"]
+    print(f"loudest frame {result['max_frame_dbfs']:.1f} dBFS, threshold {result['effective_threshold_dbfs']:.1f} dBFS, margin {margin:.1f} dB")
+    assert margin >= 40.0, margin
+
+
 def _event_positions(seed: int) -> np.ndarray:
     # 200 random positions at least 100 ms apart, away from the 0.5 s fades.
     rng = np.random.default_rng(seed)
@@ -55,18 +63,26 @@ def test_flags_every_injected_discontinuity(kind, seed):
     extra = [int(f) for f in found if np.min(np.abs(positions - f)) > tolerance]
     assert not extra, f"{len(extra)} detections at no injected event: {extra[:10]}"
     assert found.size == N_EVENTS
+    # Margin (review minor 6): the weakest event (a -60 dBFS discontinuity) clears the effective
+    # threshold by ~9.8 dB at 48 kHz. Require 6 dB so a loss of sensitivity shows before it flips.
+    weakest = min(e["level_dbfs"] for e in result["events"])
+    margin = weakest - result["effective_threshold_dbfs"]
+    print(f"{kind}/{seed}: weakest event {weakest:.1f} dBFS, threshold {result['effective_threshold_dbfs']:.1f} dBFS, margin {margin:.1f} dB")
+    assert margin >= 6.0, margin
 
 
 def test_no_false_positives_on_clean_tone():
     x = _as_float32(signals.sustained_tone(FS, DURATION_S))
     result = clicks.detect_clicks(x, FS)
     assert result["events"] == []
+    _assert_quiet_margin(result)
 
 
 def test_no_false_positives_on_slowly_modulated_tone():
     x = _as_float32(signals.sustained_tone(FS, DURATION_S, am_rate_hz=0.5, am_depth_db=6.0))
     result = clicks.detect_clicks(x, FS)
     assert result["events"] == []
+    _assert_quiet_margin(result)
 
 
 def test_abrupt_file_edges_are_reported():

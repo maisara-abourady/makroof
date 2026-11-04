@@ -59,13 +59,15 @@ def _pad_samples(nominal_hz: float, fs: float) -> int:
     return int(np.ceil(40.0 * fs / lo))
 
 
-def filter_band(x: np.ndarray, fs: float, nominal_hz: float) -> np.ndarray:
-    """Zero-phase octave-band filtering of a 1-D signal; output has the same length.
+def filter_band_with_lead(x: np.ndarray, fs: float, nominal_hz: float) -> tuple[np.ndarray, int]:
+    """Zero-phase octave-band filtering that keeps the anti-causal part of the response.
 
-    The signal is zero-padded on both sides before filtering (instead of scipy's odd extension),
-    so a signal that starts or stops abruptly is treated as silence outside its extent. Energy that
-    the backward pass spreads before t = 0 is cut off with the padding; it is far below the
-    signal (> 60 dB down after one period of the lower band edge).
+    Returns ``(y, lead)``: ``y`` has ``lead + len(x)`` samples and ``y[lead + n]`` lines up with
+    ``x[n]``. The first ``lead`` samples hold the energy the zero-phase filter spreads *before*
+    sample 0 (its impulse response is symmetric). For an impulse at sample 0 that is about half of
+    its band energy (50% at 63 Hz up to 36% lost at 8 kHz), so any energy measure of a band near the
+    start of a signal (C50, C80, D50, DRR, band energies) must use this, not ``filter_band``.
+    The padding after the signal is cut off, so the end of ``y`` lines up with the end of ``x``.
     """
     x = np.asarray(x, dtype=np.float64)
     if x.ndim != 1:
@@ -73,7 +75,32 @@ def filter_band(x: np.ndarray, fs: float, nominal_hz: float) -> np.ndarray:
     pad = _pad_samples(nominal_hz, fs)
     padded = np.concatenate([np.zeros(pad), x, np.zeros(pad)])
     y = signal.sosfiltfilt(octave_sos(nominal_hz, fs), padded, padtype=None)
-    return y[pad : pad + x.size]
+    return y[: pad + x.size], pad
+
+
+def filter_band(x: np.ndarray, fs: float, nominal_hz: float) -> np.ndarray:
+    """Zero-phase octave-band filtering of a 1-D signal; output has the same length as ``x``.
+
+    The signal is zero-padded on both sides before filtering (instead of scipy's odd extension),
+    so a signal that starts or stops abruptly is treated as silence outside its extent. The part of
+    the response that falls before sample 0 is **dropped**: for energy that starts near sample 0
+    that can be half of the band energy. Use ``filter_band_with_lead`` for energy measures; this
+    function is for decay-rate analysis and signals that start well after sample 0.
+    """
+    y, lead = filter_band_with_lead(x, fs, nominal_hz)
+    return y[lead:]
+
+
+@functools.lru_cache(maxsize=256)
+def impulse_energy_within(fs: float, nominal_hz: float, half_window_s: float) -> float:
+    """Fraction of the band filter's (zero-phase) impulse-response energy within ±half_window_s of
+    the impulse. A property of the filterbank: it says how well a band can resolve a short window."""
+    pad = _pad_samples(nominal_hz, fs)
+    x = np.zeros(2 * pad + 1)
+    x[pad] = 1.0
+    e = filter_band(x, fs, nominal_hz) ** 2
+    w = int(round(half_window_s * fs))
+    return float(np.sum(e[pad - w : pad + w + 1]) / np.sum(e))
 
 
 def filter_bands(x: np.ndarray, fs: float, bands: tuple[float, ...] = OCTAVE_BANDS_HZ) -> np.ndarray:

@@ -148,6 +148,19 @@ TEST_CASE("render_cli returns exit code 2 with readable errors for every invalid
     }
 }
 
+TEST_CASE("render_cli exit codes are distinct (AX12)", "[cli]")
+{
+    const std::vector<int> codes{cli::kExitOk, cli::kExitUsage, cli::kExitInvalidScene, cli::kExitIo,
+                                 cli::kExitInternal};
+    for (std::size_t i = 0; i < codes.size(); ++i)
+    {
+        CHECK(codes[i] == static_cast<int>(i)); // 0 ok, 1 usage, 2 invalid scene, 3 I/O, 4 internal
+        for (std::size_t j = i + 1; j < codes.size(); ++j)
+            CHECK(codes[i] != codes[j]);
+    }
+    CHECK(cli::usage().find("4 internal error") != std::string::npos);
+}
+
 TEST_CASE("render_cli usage and I/O errors", "[cli]")
 {
     TempDir dir;

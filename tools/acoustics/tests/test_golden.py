@@ -133,3 +133,23 @@ def test_update_script_fails_when_no_golden_is_checked(tmp_path):
     result = _run_update(tmp_path, "a reason that is long enough", test_file)
     assert result.returncode == 1
     assert not (tmp_path / "golden" / "CHANGELOG.md").exists()
+
+
+def test_update_refuses_to_drop_a_pinned_value(tmp_path):
+    golden_dir = tmp_path / "golden"
+    golden_dir.mkdir()
+    (golden_dir / "example.json").write_text(json.dumps(GOLDEN), encoding="utf-8")
+    test_file = tmp_path / "test_drops_a_value.py"
+    test_file.write_text(
+        "import sys\n"
+        f"sys.path.insert(0, {str(REPO)!r})\n"
+        "from tools.acoustics import golden\n"
+        "def test_it():\n"
+        "    golden.assert_golden('example', {'bands': {'63': {'T30': 1.5}, '1000': {'T30': 1.0, 'label': 'x', 'none': None}}})\n",
+        encoding="utf-8",
+    )
+    result = _run_update(tmp_path, "Phase 99: this update would drop C80", test_file)
+    assert result.returncode != 0
+    assert "bands.63.C80" in result.stdout + result.stderr
+    assert json.loads((golden_dir / "example.json").read_text(encoding="utf-8")) == GOLDEN  # untouched
+    assert not (golden_dir / "CHANGELOG.md").exists()

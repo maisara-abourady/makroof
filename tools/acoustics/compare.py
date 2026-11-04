@@ -117,8 +117,9 @@ def compare_irs(
 
     band_energy = {}
     for fc in _bands.OCTAVE_BANDS_HZ:
-        e_ref = float(np.sum(_bands.filter_band(reference, fs, fc) ** 2))
-        e_test = float(np.sum(_bands.filter_band(test, fs, fc) ** 2))
+        # With the lead, so energy near t = 0 is not cut in half by the zero-phase filter.
+        e_ref = float(np.sum(_bands.filter_band_with_lead(reference, fs, fc)[0] ** 2))
+        e_test = float(np.sum(_bands.filter_band_with_lead(test, fs, fc)[0] ** 2))
         band_energy[_bands.band_key(fc)] = _db_ratio(e_test, e_ref)
 
     result: dict = {"fs": float(fs), "peaks": peak_rows, "band_energy_db": band_energy}

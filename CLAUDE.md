@@ -92,7 +92,8 @@ pytest tools/ci
 # RENDER_CLI or build/{cli,release,debug}/; they skip when it is missing unless
 # SPATIAL_REQUIRE_RENDER_CLI=1 (set in CI)
 python3 -m venv .venv && . .venv/bin/activate
-pip install -r tools/ci/requirements.txt -r tools/acoustics/requirements.txt
+pip install -r tools/ci/requirements.txt -r tools/acoustics/requirements.txt   # hash-pinned; after changing a pin:
+                                     # python tools/ci/pin_hashes.py tools/ci/requirements.txt tools/acoustics/requirements.txt
 pytest tools                         # tools/ci + tools/acoustics, as the python CI job runs it
 python -m tools.acoustics metrics ir.wav          # ISO 3382 metrics as JSON (also: compare a.wav b.wav, clicks out.wav)
 
@@ -108,7 +109,7 @@ tools/ci/run_pluginval.sh build/release/SpatialScene_artefacts/Release/VST3/Spat
 # macOS only: AU validation (component must be copied to ~/Library/Audio/Plug-Ins/Components)
 auval -v aufx Spsc Mkrf
 
-# offline render (Phase 02+); exit codes 0 ok, 1 usage, 2 invalid scene, 3 I/O; --help for all options
+# offline render (Phase 02+); exit codes 0 ok, 1 usage, 2 invalid scene, 3 I/O, 4 internal (AX12)
 build/debug/render_cli --scene tests/scenes/valid/medium_room.json --in in.wav --out out.wav
 build/debug/render_cli --scene tests/scenes/valid/medium_room.json --ir ir.wav
 ```

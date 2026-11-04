@@ -77,6 +77,7 @@ def test_agrees_with_pyroomacoustics_on_the_ensemble(ensemble):
 def test_agrees_with_pyroomacoustics_on_single_realisations(t60):
     # Second opinion on exactly the signal we analyse: same band signal, independent Schroeder
     # integration and regression (pyroomacoustics: -5 to -35 dB, no noise compensation).
+    worst = (0.0, "")
     for seed in (0, 1):
         h = signals.synthetic_decay(FS, t60, seed=seed, noise_floor_db=NOISE_FLOOR_DB)
         result = metrics.room_metrics(h, FS)
@@ -84,6 +85,12 @@ def test_agrees_with_pyroomacoustics_on_single_realisations(t60):
             theirs = pra_exp.measure_rt60(bands.filter_band(h, FS, fc), fs=FS, decay_db=30)
             ours = result["bands"][bands.band_key(fc)]["T30"]
             assert ours == pytest.approx(theirs, rel=0.05), f"T60={t60} seed={seed} {fc} Hz"
+            worst = max(worst, (abs(ours / theirs - 1.0), f"seed {seed}, {fc} Hz"))
+    print(f"T60={t60}: worst |ours/pyroomacoustics - 1| = {100 * worst[0]:.4f}% ({worst[1]})")
+    # Margin guard (review question 2): with an 80 dB noise floor both see the same EDC, and the
+    # worst case measured over all T60s, seeds and bands is 0.0085%. A drift towards the ±5% bound
+    # shows here long before the criterion flips.
+    assert worst[0] < 0.001, worst
 
 
 def _random_sign_exponential(t60: float, duration_s: float, seed: int = 0) -> np.ndarray:
@@ -196,3 +203,140 @@ def test_result_is_json_serialisable():
     assert set(result["bands"]) == {bands.band_key(fc) for fc in bands.OCTAVE_BANDS_HZ}
     for band in result["bands"].values():
         assert {"EDT", "T20", "T30", "C50", "C80", "D50", "DRR"} <= set(band)
+
+
+# --------------------------------------------------------------------------------------------
+# Per-band energy ratios (review blocker 1): the band clarity must not depend on how close the
+# direct sound is to the start of the file, and must match the analytic value per band.
+# --------------------------------------------------------------------------------------------
+
+
+def _delta_plus_decay(t60, direct_to_decay_db, lead_s, seed, b2=1e-4):
+    decay_total = _energy_decay_analytic(t60, 0.0, math.inf, b2)
+    a2 = decay_total * 10.0 ** (direct_to_decay_db / 10.0)
+    h = np.concatenate([[math.sqrt(a2)], _random_sign_exponential(t60, 2.0 * t60, seed=seed)[1:] * math.sqrt(b2)])
+    return np.concatenate([np.zeros(int(round(lead_s * FS))), h]), a2, b2
+
+
+def test_band_energy_ratios_do_not_depend_on_the_lead_in():
+    # The same IR with the direct sound at sample 0, 1 ms and 10 ms into the file. Before the fix
+    # the band C80 at lead 0 read 1.4-5.2 dB low (half the direct sound's band energy was dropped).
+    results = [metrics.room_metrics(_delta_plus_decay(1.0, 10.0, lead, seed=3)[0], FS) for lead in (0.0, 0.001, 0.010)]
+    for fc in bands.OCTAVE_BANDS_HZ:
+        key = bands.band_key(fc)
+        for name in ("C50", "C80", "D50", "DRR", "T30"):
+            values = [r["bands"][key][name] for r in results]
+            if values[0] is None:
+                assert all(v is None for v in values), (key, name, values)
+                continue
+            for v in values[1:]:
+                assert v == pytest.approx(values[0], rel=1e-9, abs=1e-9), (key, name, values)
+
+
+# Ensemble size and per-band tolerance for the analytic per-band test. The ensemble removes the
+# random band energy of the noise decay (at R = 300 the remaining scatter, measured over 5 seed
+# sets, has zero mean and reaches 0.12 dB from 250 Hz up and 0.36 dB at 63-125 Hz, where an octave
+# holds only B * 50 ms ~ 2-4 degrees of freedom per realisation in the early part).
+BAND_RATIO_ENSEMBLE = 300
+
+
+def _ratio_tolerance_db(fc: float) -> float:
+    return 0.5 if fc < 200.0 else 0.2
+
+
+@pytest.mark.parametrize("direct_to_decay_db", [0.0, 10.0])
+def test_band_energy_ratios_match_analytic(direct_to_decay_db):
+    t60 = 0.5
+    irs, a2, b2 = [], None, None
+    for i in range(BAND_RATIO_ENSEMBLE):
+        h, a2, b2 = _delta_plus_decay(t60, direct_to_decay_db, 0.0, seed=10_000 + i)
+        irs.append(h)
+    result = metrics.room_metrics_ensemble(irs, FS)
+
+    def clarity(ms):
+        t = ms / 1000.0
+        return 10.0 * math.log10((a2 + _energy_decay_analytic(t60, 0.0, t, b2)) / _energy_decay_analytic(t60, t, math.inf, b2))
+
+    total = a2 + _energy_decay_analytic(t60, 0.0, math.inf, b2)
+    d50 = (a2 + _energy_decay_analytic(t60, 0.0, 0.05, b2)) / total
+    half = metrics.DIRECT_HALF_WINDOW_S
+    drr = 10.0 * math.log10((a2 + _energy_decay_analytic(t60, 0.0, half, b2)) / _energy_decay_analytic(t60, half, math.inf, b2))
+
+    for fc in bands.OCTAVE_BANDS_HZ:
+        band = result["bands"][bands.band_key(fc)]
+        tol = _ratio_tolerance_db(fc)
+        assert band["C80"] == pytest.approx(clarity(80.0), abs=tol), f"C80 {fc} Hz"
+        assert band["C50"] == pytest.approx(clarity(50.0), abs=tol), f"C50 {fc} Hz"
+        assert band["D50"] == pytest.approx(d50, abs=0.005 if fc > 200.0 else 0.012), f"D50 {fc} Hz"
+        if bands.impulse_energy_within(FS, fc, half) >= metrics.DRR_MIN_BAND_RESOLUTION:
+            assert band["DRR"] == pytest.approx(drr, abs=0.2), f"DRR {fc} Hz"
+        else:
+            assert band["DRR"] is None
+            assert any(w.startswith("DRR:") for w in band["warnings"])
+
+
+def test_per_band_drr_needs_a_band_that_resolves_the_window():
+    # AX13: at 48 kHz, 1 kHz and up resolve ±2.5 ms; 63-500 Hz don't.
+    resolved = [fc for fc in bands.OCTAVE_BANDS_HZ if bands.impulse_energy_within(FS, fc, metrics.DIRECT_HALF_WINDOW_S) >= 0.99]
+    assert resolved == [1000.0, 2000.0, 4000.0, 8000.0]
+
+
+# --------------------------------------------------------------------------------------------
+# IRs that end in exact zeros (image-source IRs from Phase 03 on; review question 1)
+# --------------------------------------------------------------------------------------------
+
+
+def test_ir_ending_in_exact_zeros_is_noise_free_and_unbiased():
+    full = signals.synthetic_decay(FS, 1.0, seed=5, duration_s=2.0)  # noise-free, down to -120 dB
+    cut = full.copy()
+    cut[int(1.0 * FS) :] = 0.0  # stops at -60 dB, then exact zeros
+    a, b = metrics.room_metrics(full, FS), metrics.room_metrics(cut, FS)
+    for fc in bands.OCTAVE_BANDS_HZ:
+        key = bands.band_key(fc)
+        # Filter ringing after the zeros is not mistaken for a noise floor.
+        assert b["bands"][key]["noise_floor_db"] is None, b["bands"][key]
+        assert b["bands"][key]["dynamic_range_db"] is None
+        # Cutting below -60 dB changes T30 (-5..-35 dB) and C80 only by the missing tail energy.
+        assert b["bands"][key]["T30"] == pytest.approx(a["bands"][key]["T30"], rel=0.002), key
+        assert b["bands"][key]["C80"] == pytest.approx(a["bands"][key]["C80"], abs=0.01), key
+
+    spikes = np.zeros(int(0.5 * FS))
+    spikes[np.arange(20) * 1000 + 50] = 10.0 ** (-np.arange(20) / 10.0)  # 20 arrivals, 1 dB apart in level per 1000 samples
+    result = metrics.room_metrics(spikes, FS)
+    json.dumps(result)
+    # Broadband ends in exact zeros: noise-free. (In the narrow bands the last spike's filter
+    # ringing still reaches the final 10% of this short IR; that is band signal, and Lundeby then
+    # reports it as the level the IR ends at. Simulated IRs should run well past their last arrival.)
+    assert result["broadband"]["noise_floor_db"] is None
+    assert result["bands"]["8000"]["noise_floor_db"] is None
+
+
+# --------------------------------------------------------------------------------------------
+# Different T60 per band (review major 2): octave-filter leakage, pinned and documented in
+# metrics.py "Known limits". These are measurements of the analysis, not targets to tune.
+# --------------------------------------------------------------------------------------------
+
+_B = bands.OCTAVE_BANDS_HZ
+PROFILES = {
+    # Smooth, realistic profiles: every band within the T30 criterion's tolerance.
+    "room": (dict(zip(_B, [0.7, 0.65, 0.6, 0.55, 0.5, 0.48, 0.45, 0.4])), {}),
+    # Hall: T60 falls 1.3 -> 0.9 s from 4 to 8 kHz; 8 kHz reads ~+5% (leakage from 4 kHz).
+    "hall": (dict(zip(_B, [2.4, 2.2, 2.0, 1.9, 1.8, 1.6, 1.3, 0.9])), {8000.0: (0.02, 0.08)}),
+    # Contrast cases: a 2:1 step between 125 and 250 Hz, and a 1 kHz absorber dip.
+    "step_2_to_1": (dict(zip(_B, [2.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])), {250.0: (0.14, 0.26)}),
+    "dip_1k": (dict(zip(_B, [0.8, 0.8, 0.8, 0.8, 0.5, 0.8, 0.8, 0.8])), {1000.0: (0.12, 0.24)}),
+}
+
+
+@pytest.mark.parametrize("name", sorted(PROFILES))
+def test_per_band_t60_profiles_and_their_leakage_bias(name):
+    t60s, biased = PROFILES[name]
+    irs = [signals.synthetic_decay(FS, t60s, seed=20_000 + i, noise_floor_db=-90.0) for i in range(60)]
+    result = metrics.room_metrics_ensemble(irs, FS)
+    for fc in _B:
+        error = result["bands"][bands.band_key(fc)]["T30"] / t60s[fc] - 1.0
+        if fc in biased:
+            lo, hi = biased[fc]
+            assert lo <= error <= hi, f"{name} {fc} Hz: leakage bias {100 * error:+.1f}% outside the documented {100 * lo:+.0f}..{100 * hi:+.0f}%"
+        else:
+            assert abs(error) <= 1.5 * _tolerance(fc), f"{name} {fc} Hz: {100 * error:+.1f}%"

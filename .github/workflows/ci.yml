@@ -105,7 +105,8 @@ jobs:
           else
             export RENDER_CLI="$PWD/build/cli/render_cli"
           fi
-          python -m pytest tools -v
+          # -rP prints the margins some tests log (click detector, pyroomacoustics agreement).
+          python -m pytest tools -v -rP
 
       - name: Listening pack
         if: runner.os == 'Linux'

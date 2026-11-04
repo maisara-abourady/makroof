@@ -9,6 +9,8 @@ from tools.acoustics import bands
 
 from conftest import REPO
 
+FS48 = 48000.0
+
 
 def test_band_set_matches_contract():
     header = (REPO / "src" / "contract" / "SceneDescription.h").read_text(encoding="utf-8")
@@ -61,3 +63,28 @@ def test_band_that_does_not_fit_is_rejected():
 def test_filter_bands_shape():
     x = np.random.default_rng(0).standard_normal(4800)
     assert bands.filter_bands(x, 48000.0).shape == (8, 4800)
+
+
+@pytest.mark.parametrize("fc", bands.OCTAVE_BANDS_HZ)
+def test_filter_band_with_lead_keeps_the_energy_before_sample_0(fc):
+    # Review blocker 1: an impulse at sample 0 must keep all of its band energy (the zero-phase
+    # response is symmetric, so ~half of it lies before sample 0).
+    n = 1 << 15
+    centred = np.zeros(n)
+    centred[n // 2] = 1.0
+    reference = np.sum(bands.filter_band(centred, FS48, fc) ** 2)
+    at_zero = np.zeros(n)
+    at_zero[0] = 1.0
+    y, lead = bands.filter_band_with_lead(at_zero, FS48, fc)
+    assert y.size == lead + n
+    assert np.sum(y**2) == pytest.approx(reference, rel=1e-9)
+    # The same-length variant drops that part (documented), and lines up with y[lead:].
+    assert np.array_equal(bands.filter_band(at_zero, FS48, fc), y[lead:])
+    assert np.sum(bands.filter_band(at_zero, FS48, fc) ** 2) < 0.7 * reference
+
+
+def test_impulse_energy_within_window():
+    fractions = [bands.impulse_energy_within(FS48, fc, 0.0025) for fc in bands.OCTAVE_BANDS_HZ]
+    assert all(0.0 < f <= 1.0 for f in fractions)
+    assert fractions == sorted(fractions)  # wider bands resolve short windows better
+    assert fractions[0] < 0.5 and fractions[-1] > 0.999

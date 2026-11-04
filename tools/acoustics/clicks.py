@@ -100,9 +100,14 @@ def detect_clicks(
             start, stop = int(group[0]) * n, min((int(group[-1]) + 1) * n, hp.size)
             peak = start + int(np.argmax(np.abs(hp[start:stop])))
             events.append({"time_s": peak / fs, "sample": peak, "level_dbfs": float(np.max(levels[group]))})
+    threshold = max(baseline + threshold_db, floor_dbfs)
     return {
         "events": events,
         "baseline_dbfs": baseline,
+        # The level a frame must exceed to be flagged, and the loudest frame found: their difference
+        # is the margin, which tests log so that a regression shows before a result flips.
+        "effective_threshold_dbfs": float(threshold),
+        "max_frame_dbfs": float(np.max(levels)) if levels.size else -600.0,
         "threshold_db": float(threshold_db),
         "floor_dbfs": float(floor_dbfs),
         "frame_s": float(frame_s),

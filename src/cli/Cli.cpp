@@ -154,10 +154,12 @@ std::string usage()
            "  --mode       output kind (default: the scene's render.outputMode)\n"
            "  --automation not implemented until Phase 10\n"
            "\n"
-           "exit codes: 0 ok, 1 usage error, 2 invalid scene, 3 I/O error\n";
+           "exit codes: 0 ok, 1 usage error, 2 invalid scene, 3 I/O error, 4 internal error\n";
 }
 
-int runCli(const std::vector<std::string>& args, std::ostream& out, std::ostream& err)
+namespace {
+
+int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::ostream& err)
 {
     Options options;
     if (const std::string problem = parseArgs(args, options); !problem.empty())
@@ -263,6 +265,21 @@ int runCli(const std::vector<std::string>& args, std::ostream& out, std::ostream
             << rendered.numFrames() << " samples)\n";
     }
     return kExitOk;
+}
+
+} // namespace
+
+int runCli(const std::vector<std::string>& args, std::ostream& out, std::ostream& err)
+{
+    try
+    {
+        return runUnchecked(args, out, err);
+    }
+    catch (const std::exception& e)
+    {
+        err << "render_cli: internal error: " << e.what() << "\n";
+        return kExitInternal;
+    }
 }
 
 } // namespace cli

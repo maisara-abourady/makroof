@@ -2,16 +2,23 @@
 
 Pipeline for one IR (``room_metrics``):
 
-1. **Onset** (ISO 3382-1 A.3.3 / ISO 18233): the first sample of the broadband IR whose energy
-   is no more than 20 dB below the maximum. It is the common time origin for every band. Energy
-   before the onset (zero-phase filter pre-ringing in the bands) counts as early energy for C50,
-   C80 and D50 and is ignored by the decay curve.
-2. **Band filtering** with ``bands.filter_band`` (zero-phase order-6 Butterworth octaves).
+1. **Onset**: the first sample of the broadband IR whose energy is no more than 20 dB below the
+   maximum. It is the common time origin for every band. ISO 3382-1 (Annex A) puts the start
+   where the signal first rises significantly above the background noise, *before* it gets within
+   20 dB of the maximum; for an impulsive direct sound both rules give the same sample, for a
+   smeared onset (a band-limited or measured direct sound) this one is later by up to the rise
+   time. Energy before the onset counts as early energy for C50, C80 and D50 and is ignored by the
+   decay curve.
+2. **Band filtering** with ``bands.filter_band_with_lead`` (zero-phase order-6 Butterworth
+   octaves), which keeps the part of each band's response that the zero-phase filter puts before
+   sample 0. Without it, a direct sound within a few ms of the start of the file loses up to half
+   of its band energy and the band clarity reads several dB low.
 3. **Noise floor and truncation, Lundeby et al. (1995)** (``lundeby``): an iterative estimate of
    the background noise level and of the "crosspoint", where the decay sinks into the noise. The
    Schroeder integral is truncated at the crosspoint and the energy the decay would have had after
    it is added back analytically (Lundeby's compensation term C). ISO 3382-1:2009 5.3.3 names this
-   truncation-plus-correction approach as the way to handle background noise.
+   truncation-plus-correction approach as the way to handle background noise. A signal whose end
+   is more than 200 dB below its peak (exact zeros, or filter ringing after them) is noise-free.
 4. **Schroeder backward integration** (ISO 3382-1 5.3.3, Schroeder 1965): EDC(t) = C + sum of
    h^2 from t to the crosspoint, normalised to 0 dB at the onset.
 5. **Decay times** (ISO 3382-1 A.2.1/A.2.2): least-squares line through the EDC (in dB, every
@@ -21,21 +28,37 @@ Pipeline for one IR (``room_metrics``):
    above the noise level) is at least 10 dB more than the bottom of the evaluation range
    (EDT >= 20 dB, T20 >= 35 dB, T30 >= 45 dB, after ISO 3382-1 5.3.2), and the regression is
    well defined. Otherwise the value is None and the reason is listed in ``warnings``.
+   Decay times of *stochastic* decays (noise tails) are meant to be read on ensemble-averaged
+   decay curves (``room_metrics_ensemble``, BUILD_PLAN AX11).
 6. **Energy ratios** (ISO 3382-1 A.2.4/A.2.5): C50 and C80 = 10 log10(early / late) with the
    boundary at 50 / 80 ms after the onset; D50 = early(50 ms) / total, a ratio in [0, 1]. The late
    part is integrated to the crosspoint plus the compensation term, so background noise doesn't
    lower the clarity.
-7. **DRR** (not in ISO 3382-1; definition as in ISO 18233 practice / Zahorik 2002): energy within
-   ±2.5 ms of the direct-sound peak (the largest broadband |h| in the first 2.5 ms after the
-   onset) over all energy after that window up to the crosspoint (+ compensation). Early energy
-   before the window counts as neither.
+7. **DRR** (not in ISO 3382-1; BUILD_PLAN AX13): energy within ±2.5 ms of the direct-sound peak
+   (the largest broadband |h| in the first 2.5 ms after the onset) over all energy after that
+   window up to the crosspoint (+ compensation). Early energy before the window counts as neither.
+   Per band, DRR is reported only where the band filter keeps >= 99% of an impulse's energy inside
+   the window (at 44.1-96 kHz: 1 kHz and up); narrower bands can't resolve a 5 ms window.
 
 All results are plain Python floats or None, so ``json.dumps`` works on the returned dict.
 
-Known limits (see also bands.py): 63 Hz decays shorter than ~0.4 s are biased by the band filter;
-a measured IR whose noise floor is not stationary defeats Lundeby's method (it assumes stationary
-noise after the crosspoint); an IR shorter than its decay into the noise has no noise estimate,
-so the last 10% of the decay stands in for it and the result is a mild extrapolation.
+Known limits (see also bands.py):
+- **Cross-band leakage in octave analysis.** A band whose T60 is shorter than an adjacent band's
+  reads long: the slower neighbour leaks through the filter skirts (-6 dB at the edges, ~36 dB per
+  octave beyond) and dominates the late decay. Measured on ensemble-averaged synthetic decays
+  (tools/acoustics/tests/test_metrics.py): +20% at 250 Hz next to a 2:1 step (2.0 s below, 1.0 s
+  above), +18% for a 0.5 s band between 0.8 s neighbours, +5% at 8 kHz for a hall profile falling
+  1.3 -> 0.9 s from 4 to 8 kHz; smooth profiles stay within a few percent. It affects simulated and
+  measured IRs alike, so comparisons through this same filterbank are fair, but a per-band
+  comparison with an analytic per-band prediction (e.g. Eyring in Phase 04) inherits it. A
+  property of octave filtering of this order, not tunable away here (note for the Expert).
+- 63 Hz decays shorter than ~0.4 s are biased by the band filter (B * T60 < 16).
+- A measured IR whose noise floor is not stationary defeats Lundeby's method (it assumes
+  stationary noise after the crosspoint).
+- An IR shorter than its decay into the noise has no noise estimate, so the last 10% of the decay
+  stands in for it and the result is a mild extrapolation.
+- One realisation of a noise decay scatters in T30 by roughly 0.5 T30 / sqrt(B T30) (AX11): use
+  ``room_metrics_ensemble`` to measure the expected decay.
 """
 
 from __future__ import annotations
@@ -48,7 +71,15 @@ import numpy as np
 from . import bands as _bands
 
 ONSET_THRESHOLD_DB = -20.0
-DIRECT_HALF_WINDOW_S = 0.0025
+# A "noise" level this far below the peak energy is numerical (filter ringing after exact zeros),
+# so the signal is treated as noise-free (no truncation, no compensation, noise_floor_db None).
+NOISE_FREE_BELOW_PEAK_DB = -200.0
+DIRECT_HALF_WINDOW_S = 0.0025  # AX13
+# AX13: per-band DRR only where the band filter keeps >= 99% of an impulse's energy within the
+# ±2.5 ms window. The fraction f that leaks out of the window is counted as reverberant, which
+# biases DRR by about -10 log10(1 + f * 10^(DRR/10)) dB: -0.4 dB at f = 1% and DRR = +10 dB. At
+# 48 kHz this leaves 1 kHz and up (1 kHz keeps 99.8%; 500 Hz 98.4%, 250 Hz 88%, 63-125 Hz ~40%).
+DRR_MIN_BAND_RESOLUTION = 0.99
 
 # Evaluation ranges in dB below the EDC start: (upper, lower, factor to 60 dB).
 DECAY_RANGES: dict[str, tuple[float, float]] = {
@@ -132,8 +163,9 @@ def lundeby(e: np.ndarray, fs: float, initial_block_s: float = 0.010, intervals_
     samples' worth, with tau the power decay time constant of that line (the line meets the
     noise level at the crosspoint by construction).
 
-    A noise-free signal (its last 10% is exactly zero) is not truncated: crosspoint = end of the
-    last non-zero sample, C = 0, dynamic range = inf.
+    A noise-free signal (the mean of its last 10% is zero or more than 200 dB below its peak, i.e.
+    exact zeros or filter ringing after them) is not truncated: crosspoint = end of the last
+    non-zero sample, C = 0, dynamic range = inf (reported as None).
     """
     e = np.asarray(e, dtype=np.float64)
     n = e.size
@@ -143,7 +175,9 @@ def lundeby(e: np.ndarray, fs: float, initial_block_s: float = 0.010, intervals_
         raise ValueError("band signal is all zeros")
     tail_start = int(0.9 * n)
     noise = float(np.mean(e[tail_start:])) if n - tail_start > 0 else 0.0
-    if noise <= 0.0:
+    # Noise-free: the end is exact zeros, or (after band filtering of an IR that ends in zeros, e.g.
+    # an image-source IR) only filter ringing far below anything physical.
+    if noise <= float(np.max(e)) * 10.0 ** (NOISE_FREE_BELOW_PEAK_DB / 10.0):
         return LundebyResult(int(nonzero[-1]) + 1, 0.0, 0.0, None, math.inf, 0, warnings)
 
     # Steps 1-4.
@@ -238,9 +272,21 @@ def decay_time(edc_db: np.ndarray, fs: float, upper_db: float, lower_db: float) 
     return -60.0 / fit[1]
 
 
-def _band_metrics(h: np.ndarray, fs: float, onset: int, direct: int, energy: np.ndarray | None = None) -> dict:
+def _band_metrics(
+    h: np.ndarray,
+    fs: float,
+    onset: int,
+    direct: int,
+    energy: np.ndarray | None = None,
+    lead: int = 0,
+    band_hz: float | None = None,
+) -> dict:
     """Metrics of one (band-filtered or broadband) IR given the common onset and direct indices.
-    ``energy`` (h^2, or an average of h^2 over an ensemble) replaces h when given."""
+
+    ``energy`` (h^2, or an average of h^2 over an ensemble) replaces h when given. ``onset`` and
+    ``direct`` index into ``e``; ``lead`` is the number of samples in ``e`` before sample 0 of the
+    original IR (the anti-causal part of a zero-phase band filter, ``bands.filter_band_with_lead``),
+    which counts as early energy. ``band_hz`` is the band's nominal centre (None for broadband)."""
     e = np.asarray(h, dtype=np.float64) ** 2 if energy is None else np.asarray(energy, dtype=np.float64)
     warnings: list[str] = []
     result: dict = {}
@@ -280,15 +326,25 @@ def _band_metrics(h: np.ndarray, fs: float, onset: int, direct: int, energy: np.
     boundary50 = min(onset + int(round(0.050 * fs)), end)
     result["D50"] = float(np.sum(e[:boundary50]) / total) if total > 0.0 else None
 
+    # AX13: DRR window ±2.5 ms around the direct-sound peak. A band whose filter can't resolve that
+    # window (less than DRR_MIN_BAND_RESOLUTION of an impulse's band energy inside it) gets None.
     half = int(round(DIRECT_HALF_WINDOW_S * fs))
     d0, d1 = max(direct - half, 0), min(direct + half + 1, end)
     direct_energy = float(np.sum(e[d0:d1]))
     reverberant = float(np.sum(e[d1:end])) + lb.compensation
-    result["DRR"] = float(_db(direct_energy / reverberant)) if direct_energy > 0.0 and reverberant > 0.0 else None
+    resolution = 1.0 if band_hz is None else _bands.impulse_energy_within(fs, band_hz, DIRECT_HALF_WINDOW_S)
+    if resolution < DRR_MIN_BAND_RESOLUTION:
+        result["DRR"] = None
+        warnings.append(
+            f"DRR: the band filter keeps only {100 * resolution:.0f}% of an impulse's energy within "
+            f"±{1000 * DIRECT_HALF_WINDOW_S:.1f} ms (< {100 * DRR_MIN_BAND_RESOLUTION:.0f}%), so the band can't resolve the direct sound"
+        )
+    else:
+        result["DRR"] = float(_db(direct_energy / reverberant)) if direct_energy > 0.0 and reverberant > 0.0 else None
 
     result["noise_floor_db"] = _none_if_nan(float(_db(lb.noise_power))) if lb.noise_power > 0.0 else None
     result["dynamic_range_db"] = _none_if_nan(lb.dynamic_range_db)
-    result["crosspoint_s"] = (onset + lb.crosspoint) / fs
+    result["crosspoint_s"] = (onset - lead + lb.crosspoint) / fs
     result["warnings"] = warnings
     return result
 
@@ -315,7 +371,9 @@ def room_metrics(h: np.ndarray, fs: float, bands: tuple[float, ...] = _bands.OCT
         "bands": {},
     }
     for fc in bands:
-        out["bands"][_bands.band_key(fc)] = _band_metrics(_bands.filter_band(h, fs, fc), fs, onset, direct)
+        # With the lead: the band energy a zero-phase filter puts before sample 0 is kept (early).
+        band, lead = _bands.filter_band_with_lead(h, fs, fc)
+        out["bands"][_bands.band_key(fc)] = _band_metrics(band, fs, onset + lead, direct + lead, lead=lead, band_hz=fc)
     out["broadband"] = _band_metrics(h, fs, onset, direct)
     return out
 
@@ -328,7 +386,8 @@ def room_metrics_ensemble(irs: list[np.ndarray], fs: float, bands: tuple[float, 
     averaged before Lundeby and Schroeder integration. This is the "average of decay curves" of
     ISO 3382-1 (spatial averaging by combining decay curves) and of ISO 3382-2: it estimates the
     expected decay of a random process, which a single noise realisation only approximates (its
-    T30 scatters by roughly 0.55 T30 / sqrt(B T30) in a band of bandwidth B, ISO 3382-2 A.1).
+    T30 scatters by roughly 0.5 T30 / sqrt(B T30) in a band of bandwidth B, cf. ISO 3382-2 Annex A;
+    BUILD_PLAN AX11).
     The direct-sound index is the mean of the per-IR direct indices relative to their onsets.
     """
     if not irs:
@@ -353,8 +412,12 @@ def room_metrics_ensemble(irs: list[np.ndarray], fs: float, bands: tuple[float, 
         "bands": {},
     }
     for fc in bands:
-        energy = np.mean([_bands.filter_band(a, fs, fc) ** 2 for a in aligned], axis=0)
-        out["bands"][_bands.band_key(fc)] = _band_metrics(np.empty(0), fs, 0, direct, energy=energy)
+        filtered = [_bands.filter_band_with_lead(a, fs, fc) for a in aligned]
+        lead = filtered[0][1]
+        energy = np.mean([y**2 for y, _ in filtered], axis=0)
+        out["bands"][_bands.band_key(fc)] = _band_metrics(
+            np.empty(0), fs, lead, direct + lead, energy=energy, lead=lead, band_hz=fc
+        )
     energy = np.mean([a**2 for a in aligned], axis=0)
     out["broadband"] = _band_metrics(np.empty(0), fs, 0, direct, energy=energy)
     return out

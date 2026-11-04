@@ -1,7 +1,7 @@
 # Third-party dependencies
 
 Every dependency is pinned to a tag or commit and pulled in by CMake `FetchContent` or downloaded by
-checksum in a script. Add a row here whenever a pin changes or a dependency is added (CLAUDE.md
+checksum in a script. Python requirements are pinned by version and SHA-256 (`tools/ci/pin_hashes.py`). Add a row here whenever a pin changes or a dependency is added (CLAUDE.md
 "Code conventions").
 
 ## Linked into the product
@@ -17,8 +17,8 @@ checksum in a script. Add a row here whenever a pin changes or a dependency is a
 | Dependency | Version / pin | Licence | How it is pulled in | Notes |
 |---|---|---|---|---|
 | [Catch2](https://github.com/catchorg/Catch2) | tag `v3.16.1` | [BSL-1.0](https://www.boost.org/LICENSE_1_0.txt) | `cmake/SpatialDependencies.cmake`, `FetchContent` | C++ unit-test framework, linked into `spatial_tests` only. |
-| [jsonschema](https://github.com/python-jsonschema/jsonschema) | `4.26.0` (PyPI, pinned in `tools/ci/requirements.txt` with its dependencies `jsonschema-specifications`, `referencing`, `rpds-py`, `attrs`) | [MIT](https://github.com/python-jsonschema/jsonschema/blob/main/COPYING) | `pip install -r tools/ci/requirements.txt` | Validates the scene fixtures against `docs/contract/scene-v1.schema.json` in `tools/ci/test_schema_agreement.py`. |
-| [pytest](https://github.com/pytest-dev/pytest) | `9.2.0` (PyPI, pinned in `tools/ci/requirements.txt` and `tools/acoustics/requirements.txt` with `iniconfig`, `packaging`, `pluggy`, `Pygments`) | [MIT](https://github.com/pytest-dev/pytest/blob/main/LICENSE) | `pip install -r tools/ci/requirements.txt` | Runs the Python tests in `tools/ci/` and `tools/acoustics/`. |
+| [jsonschema](https://github.com/python-jsonschema/jsonschema) | `4.26.0` (PyPI, pinned in `tools/ci/requirements.txt` with its dependencies `jsonschema-specifications`, `referencing`, `rpds-py`, `attrs`) | [MIT](https://github.com/python-jsonschema/jsonschema/blob/main/COPYING) | `pip install -r tools/ci/requirements.txt` | Validates the scene fixtures against `docs/contract/scene-v1.schema.json` in `tools/ci/test_schema_agreement.py`. `typing_extensions` 4.16.0 (PSF-2.0) is pinned for `referencing` on Python < 3.13. |
+| [pytest](https://github.com/pytest-dev/pytest) | `9.2.0` (PyPI, pinned in `tools/ci/requirements.txt` and `tools/acoustics/requirements.txt` with `iniconfig`, `packaging`, `pluggy`, `Pygments`, and `colorama` 0.4.6 (BSD-3-Clause) on Windows) | [MIT](https://github.com/pytest-dev/pytest/blob/main/LICENSE) | `pip install -r tools/ci/requirements.txt` | Runs the Python tests in `tools/ci/` and `tools/acoustics/`. |
 | [NumPy](https://github.com/numpy/numpy) | `2.5.4` (PyPI, `tools/acoustics/requirements.txt`) | [BSD-3-Clause](https://github.com/numpy/numpy/blob/main/LICENSE.txt) | `pip install -r tools/acoustics/requirements.txt` | Arrays for the analysis tooling (`tools/acoustics`). |
 | [SciPy](https://github.com/scipy/scipy) | `1.18.1` | [BSD-3-Clause](https://github.com/scipy/scipy/blob/main/LICENSE.txt) | same | Butterworth filterbank, `sosfiltfilt`, correlation. |
 | [python-soundfile](https://github.com/bastibe/python-soundfile) | `0.14.0` (with `cffi` 2.1.1 MIT, `pycparser` 3.12 BSD-3-Clause, `typing_extensions` 4.16.0 PSF-2.0) | [BSD-3-Clause](https://github.com/bastibe/python-soundfile/blob/master/LICENSE); its wheels bundle [libsndfile](https://github.com/libsndfile/libsndfile) (LGPL-2.1) | same | WAV I/O in the Python tooling and the listening pack. Tooling only, never shipped, so LGPL has no effect on the product. |

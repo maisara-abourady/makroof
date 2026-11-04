@@ -152,10 +152,18 @@ def update_mode() -> str | None:
     return reason
 
 
-def _prune_like(template, actual):
-    """``actual`` restricted to the keys of ``template`` (so an update keeps the golden's scope)."""
+def _prune_like(template, actual, path: str = "", missing: list[str] | None = None):
+    """``actual`` restricted to the keys of ``template`` (so an update keeps the golden's scope).
+    Paths the golden pins but ``actual`` lacks are appended to ``missing``."""
     if isinstance(template, dict) and isinstance(actual, dict):
-        return {k: _prune_like(v, actual[k]) for k, v in template.items() if k in actual}
+        out = {}
+        for k, v in template.items():
+            sub = f"{path}.{k}" if path else str(k)
+            if k in actual:
+                out[k] = _prune_like(v, actual[k], sub, missing)
+            elif missing is not None:
+                missing.append(sub)
+        return out
     return actual
 
 
@@ -173,11 +181,19 @@ def check_golden(name: str, actual: dict, description: str = "", default_toleran
     path = golden_path(name)
     old = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
     before = compare_to_golden(name, actual, old) if old is not None else None
+    missing: list[str] = []
+    pruned = _prune_like(old["metrics"], actual, "", missing) if old is not None else actual
+    if missing:
+        # Never let an update silently drop a pinned value (the golden would lose that check).
+        raise RuntimeError(
+            f"golden '{name}': the new metrics lack {len(missing)} pinned value(s): {', '.join(missing)}. "
+            "Remove them from the golden by hand (and say why in the PR) if that is intended."
+        )
     new = {
         "name": name,
         "description": (old or {}).get("description", description),
         "tolerances": (old or {}).get("tolerances", {"default": default_tolerance or {"abs": 0.0, "rel": 0.0}}),
-        "metrics": _prune_like(old["metrics"], actual) if old is not None else actual,
+        "metrics": pruned,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(new, indent=2, sort_keys=False) + "\n", encoding="utf-8")
