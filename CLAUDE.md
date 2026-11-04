@@ -29,7 +29,7 @@ the status table, and stop.
 ## Assumptions and decisions
 
 - Q1–Q10 from the PRD are **unresolved**. The plan runs on the defaults in `BUILD_PLAN.md` §2
-  (IDs `AQ1`–`AQ10`, `AX1`–`AX7`). Cite the ID in code comments where a default shapes the code
+  (IDs `AQ1`–`AQ10`, `AX1`–`AX8` and any added later). Cite the ID in code comments where a default shapes the code
   (e.g. `// AQ4: 30 ms equal-gain crossfade`).
 - Never invent an answer quietly. If you need a decision that isn't covered, add a new `AX<n>` row
   (assumption, one-line rationale, phases that break), mention it in the PR, and keep the change small.
