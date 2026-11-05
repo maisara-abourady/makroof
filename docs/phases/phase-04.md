@@ -58,7 +58,7 @@ IR for every valid shoebox scene.
    estimate well-conditioned; the earlier √V-milliseconds term (the widely used estimate of perceptual
    mixing time, cite the source in a comment) and the 20 ms are kept as a lower bound, counted from the
    emitter's direct sound, not from emission. The Expert may revise the rule. For t_dir,e → 0 the k_eff
-   criterion alone gives roughly 5.5·V^(1/3) ms (≈ 28 expected arrivals) (approximate, from
+   criterion alone gives roughly 6.8·V^(1/3) ms (≈ 53 expected arrivals) (approximate, from
    N(t) = (4π/3)(ct)³/V). Each emitter gets its own t_mix,e, as it gets its own tail; the matching window
    and the crossfade use t_mix,e. There is no clamp to the requested ISM order: the image list is
    time-bounded instead (AX20, scope 3).

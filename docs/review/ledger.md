@@ -421,22 +421,22 @@ cells), 4.5·σ₁², 6·ln10 = 13.82, 3·ln10 = 6.91, m = D/4.34, the −3 dB e
 | id | kind | item | verdict | evidence | severity | question | status |
 |---|---|---|---|---|---|---|---|
 | V1 | FACT | Tail level matched per 10 ms interval at t_mix; nothing accumulated from t = 0 | CORRECT | Vorländer §11.7 Eq. 11.51 (envelope per interval); §15.2.3 (envelopes averaged over some 10 ms suffice). | none | — | open |
-| V2 | NUMBER | One 10 ms bin of the image list before t_mix is an adequate level estimate | CONDITIONS VIOLATED | Blauert Ch.3 §3.3 (Fig. 3.46): density 4πc³t²/V; arrivals in bin 0 ≈ 3.0 (400 m³, 20 ms), ≈ 4.6 (10⁴ m³, 100 ms), limit ≈ 5.1 for t_mix = √V ms; Poisson-like scatter ≈ 45 % (+1.6/−2.6 dB). Mean order at t_mix ≈ 2.4 (Vorländer Eq. 4.22, 20×30×10 m), below the order 3–4 of §11.6. | major | Q4 | open |
+| V2 | NUMBER | One 10 ms bin of the image list before t_mix is an adequate level estimate | CONDITIONS VIOLATED | Blauert Ch.3 §3.3 (Fig. 3.46): density 4πc³t²/V; arrivals in bin 0 ≈ 3.0 (400 m³, 20 ms), ≈ 4.6 (10⁴ m³, 100 ms), limit ≈ 5.1 for t_mix = √V ms; Poisson-like scatter ≈ 45 % (+1.6/−2.6 dB). Mean order at t_mix ≈ 2.4 (Vorländer Eq. 4.22, 20×30×10 m), below the order 3–4 of §11.6. | major | Q4 | resolved |
 | V3 | DECISION | Scattered energy placed at the specular arrival time (AX16) | CONSEQUENCE | Vorländer §3.3.2 Fig. 3.9: scattered paths are longer and delayed; a delay δ shifts bin 0 by ≈ 60·δ/T dB (δ = 5 ms, T = 0.3 s → 1 dB). No corpus value for δ. | minor | — | open |
 | V4 | NUMBER | Specular-only matching ≈ 9 dB low (s = 0.5, 3 hits) | CORRECT | Vorländer Eq. 3.23: (1−s)³ = −9.03 dB. | none | — | open |
 | V5 | FACT | Open-field fixture: bin 0 empty for any floor s | CORRECT for the fixture | Eq. 3.23 (α = 1 faces carry no energy); fixture: direct 60.2 ms, floor 61.6 ms, t_mix ≈ 548 ms, nearest order-3 image 198 ms. Holds in general only if the floor arrives before t_mix − 10 ms (V6). | none | — | open |
-| V6 | FACT | Direct and floor arrivals are "long before" the window; ISM dropped after the fade | CONDITIONS VIOLATED | Blauert Ch.3 §3.3, Vorländer §11.7: the transition comes after the direct sound, but t_mix = max(20 ms, √V ms) is counted from emission. 10×10×2.5 m, 8 m apart: direct at 23.3 ms > t_mix = 20 ms, bin 0 empty → E_b = 0 and the direct sound is dropped. Also 100×100×1.5 m (t_mix 122 ms vs direct up to 411 ms). Both are inside AX6. | major | Q2 | open |
-| V7 | FACT | "Empty bin 0 ⇒ E_b = 0" combined with the t_mix clamp to the ISM order's coverage | CONDITIONS VIOLATED | Eq. 4.32 gives a finite T in any closed room; with maxReflectionOrder 0–1 bin 0 is empty (no tail in a reverberant room) or holds the direct sound (tail level set by it). | major | Q3 | open |
+| V6 | FACT | Direct and floor arrivals are "long before" the window; ISM dropped after the fade | CONDITIONS VIOLATED | Blauert Ch.3 §3.3, Vorländer §11.7: the transition comes after the direct sound, but t_mix = max(20 ms, √V ms) is counted from emission. 10×10×2.5 m, 8 m apart: direct at 23.3 ms > t_mix = 20 ms, bin 0 empty → E_b = 0 and the direct sound is dropped. Also 100×100×1.5 m (t_mix 122 ms vs direct up to 411 ms). Both are inside AX6. | major | Q2 | resolved |
+| V7 | FACT | "Empty bin 0 ⇒ E_b = 0" combined with the t_mix clamp to the ISM order's coverage | CONDITIONS VIOLATED | Eq. 4.32 gives a finite T in any closed room; with maxReflectionOrder 0–1 bin 0 is empty (no tail in a reverberant room) or holds the direct sound (tail level set by it). | major | Q3 | resolved |
 | V8 | NUMBER | E_target = E_bin0·exp(−13.82·0.010/T60_b); amplitude exp(−6.91 t/T) | CORRECT | Vorländer §4.4.1 Eq. 4.26–4.27. | none | — | open |
 | V9 | DECISION | Eyring slope rather than a fit | CONSEQUENCE | Vorländer §4.4: concentrated absorption is not diffuse; a slope error ε over 10 ms gives 0.6·ε/T dB (ε = 20 %, T = 0.3 s → 0.4 dB). | minor | — | open |
-| V10 | NUMBER | §6 row says "extrapolated over [t_mix − 10 ms, t_mix]"; phase-04 says from bin 0 into [t_mix, t_mix + 10 ms) | INCONSISTENT | Different matching windows stated; phase-04 says the open-field result depends on them. | major | — | open |
+| V10 | NUMBER | §6 row says "extrapolated over [t_mix − 10 ms, t_mix]"; phase-04 says from bin 0 into [t_mix, t_mix + 10 ms) | INCONSISTENT | Different matching windows stated; phase-04 says the open-field result depends on them. | major | — | resolved |
 | V11 | FACT | Cached unit-energy decay depends only on V, S, ᾱ_b, m_b, tailSeed, fs; the rest is recomputed | CORRECT | Vorländer Eq. 4.32; §15.3 Table 15.1. | none | — | open |
 | V12 | NUMBER | R ≥ (σ₁/(tol/3))² (3σ coverage) | CORRECT (arithmetic) | ≈ 0.27 % two-sided false-fail per gate, assuming Gaussian scatter and no bias; no corpus statistics of decay estimates. | none | — | open |
 | V13 | NUMBER | σ₁ table and σ₁ ≈ 0.5/√(B·T) | NOT CHECKABLE | Not in the corpus (ISO 3382-2 Annex A would settle it); matches AX11 and falls with T in every band. | none | — | open |
 | V14 | NUMBER | R table (Eyring and seed gates) | CORRECT (recomputed) | e.g. Eyring 250 Hz ⌈23.04⌉ = 24; seed 125 Hz 4.5·6.7² → 203; all cells agree. | none | — | open |
 | V15 | NUMBER | Seed gate tol/√2, R = 4.5·σ₁² | CORRECT (arithmetic) | Difference of two independent means has √2·σ_R. | none | — | open |
 | V16 | NUMBER | σ₁ column "at or just below" T60_b | CORRECT (conservative) | σ₁ falls with T in every band. | none | — | open |
-| V17 | NUMBER | Below 0.3 s, "scale the 0.3 s value by 0.3 s/T60_b" | IMPRECISE | The sentence is in the σ₁ rule, but σ₁ scales by √(0.3/T) and R by 0.3/T; the dead_booth figure (36) scales R; scaling σ₁ would give 52. | minor | Q5 | open |
+| V17 | NUMBER | Below 0.3 s, "scale the 0.3 s value by 0.3 s/T60_b" | IMPRECISE | The sentence is in the σ₁ rule, but σ₁ scales by √(0.3/T) and R by 0.3/T; the dead_booth figure (36) scales R; scaling σ₁ would give 52. | minor | Q5 | resolved |
 | V18 | DECISION | Whole tolerance spent on random error at 3σ | CONSEQUENCE | With an analysis bias of tol/3 the false-fail rate rises from 0.27 % to ≈ 2.3 %. | minor | — | open |
 | V19 | FACT | m_b = D/4.34 energy coefficient | CORRECT | Vorländer §3.6 Eq. 3.31, 3.33–3.34; §4.4.1 Eq. 4.32. | none | — | open |
 | V20 | NUMBER | "≈ 8 % too long a T at 4 kHz in 20×30×10 m" | NOT CHECKABLE | Needs D(4 kHz) and ᾱ, not stated. | none | — | open |
@@ -445,8 +445,8 @@ cells), 4.5·σ₁², 6·ln10 = 13.82, 3·ln10 = 6.91, m = D/4.34, the −3 dB e
 | V23 | FACT | Energy conserved across the seam with E_b matched on the un-faded tail | CORRECT in expectation | A single render deviates by the bin-0 sampling error of V2. | none | — | open |
 | V24 | NUMBER | Open-field gate: energy > 50 ms after the direct sound < −60 dB re direct | NOT CHECKABLE | No corpus threshold; AX15's ≈163 ms filterbank ringing means the gate also measures band-filter ringing. | none | — | open |
 | V25 | FACT | Eyring does not apply to the open field | CORRECT | Vorländer §4.4, §4.4.1. | none | — | open |
-| V26 | NUMBER | 44.1 vs 96 kHz: same T30/EDT within ±2 % | INCONSISTENT | Contradicts AX11 (single realisations are reported, not gated): the two renders are independent realisations, σ_diff = √2·σ₁ = 6.2 % at 250 Hz, T = 1 s. Valid only with per-rate ensembles (R ≥ 4.5·σ₁²) and measured σ₁ for EDT, which AX11 lacks. | major | Q1 | open |
-| V27 | NUMBER | 44.1 vs 96 kHz: C80 within ±2 % | WRONG | Vorländer §6.4.3 Eq. 6.7, Table 6.1: C80 is in dB (jnd 1 dB) and can be 0 or negative, so a relative tolerance is undefined; it must be in dB. | blocker | Q1 | open |
+| V26 | NUMBER | 44.1 vs 96 kHz: same T30/EDT within ±2 % | INCONSISTENT | Contradicts AX11 (single realisations are reported, not gated): the two renders are independent realisations, σ_diff = √2·σ₁ = 6.2 % at 250 Hz, T = 1 s. Valid only with per-rate ensembles (R ≥ 4.5·σ₁²) and measured σ₁ for EDT, which AX11 lacks. | major | Q1 | resolved |
+| V27 | NUMBER | 44.1 vs 96 kHz: C80 within ±2 % | WRONG | Vorländer §6.4.3 Eq. 6.7, Table 6.1: C80 is in dB (jnd 1 dB) and can be 0 or negative, so a relative tolerance is undefined; it must be in dB. | blocker | Q1 | resolved |
 | V28 | NUMBER | T30 on a 12 s IR only for T ≤ ≈ 20 s | CORRECT (arithmetic) | Eq. 4.26: 35/60 · 20 s = 11.7 s. | none | — | open |
 
 **Questions:** Q1 (V27, V26) C80 tolerance in dB, and ensembles for T30/EDT in the sample-rate gate?
@@ -454,3 +454,52 @@ Q2 (V6) is t_mix counted from emission or from the direct-sound arrival? Q3 (V7)
 covered by the ISM order" for order 0–1? Q4 (V2) what tail-level uncertainty is accepted with 3–5
 arrivals in bin 0, and how large is the E_b jump when one arrival crosses a bin edge? Q5 (V17) below
 0.3 s, is R or σ₁ scaled by 0.3/T60_b?
+
+## docs/phases/phase-04.md — 2026-11-05 (/fix-plan rounds 3–5)
+
+First run of the `/fix-plan` loop: the plan-editor applied only specified fixes and returned every acoustic
+or numeric choice; the interrogator verified the options (corpus 22dc9dd) and the main session chose
+with the PRD (NFR-1 accuracy first, NFR-3/FR-SIM-6 smooth movement, NFR-6, NFR-8). Commits c0754fc,
+32a96dd, 3bfffc8 and the F1 fix.
+
+**Round 3 (V-rows).** Specified fixes applied: V10 (change-log windows), V17 (R, not σ₁, scales below
+0.3 s), V26 T30 part (per-rate ensembles). Decisions verified and chosen:
+
+| decision | chosen | interrogator verdicts (others) | basis for the choice |
+|---|---|---|---|
+| D1 EDT in the rate gate | (a) ensembles, σ₁(EDT) measured (AX19) | (b) CONDITIONS VIOLATED (the decay curve contains the stochastic tail, Vorländer Eq. 6.4); (c) correct but checks nothing | CLAUDE.md: every DSP behaviour needs an automated check |
+| D2 C80 tolerance | (a) ±0.5 dB on ensembles; E_b matched to the *expected* window energy | (b) ±1 dB valid (one jnd, Table 6.1, 500–1000 Hz only); (c) ±2 dB CONDITIONS VIOLATED (AQ9 is sim-vs-measured) | NFR-1; consistent with the T30 gate at 0.4 jnd |
+| D3 63 Hz | (b) included | (a) also valid | NFR-1/NFR-8: every shipped band at every rate |
+| D4 t_mix reference | (c) per emitter from its own direct arrival; direct path never faded | (a) CONDITIONS VIOLATED (emitter spread); (b) correct but couples emitters | NFR-3: continuous in position, per emitter like the tails |
+| D5 low order | (a) time-bounded matching list | (b), (c), (d) CONDITIONS VIOLATED | NFR-1, NFR-8 |
+| D6 level estimator | (a) + (d1): Eyring-referred Hann window | (b) uncompensated biased, k ≈ 15 IMPRECISE; (c) CONDITIONS VIOLATED; (d2) breaks offline/realtime equivalence | NFR-1, NFR-3, NFR-6 |
+
+**Round 4 (follow-ups E1–E5 + science check R1–R10).** R1 (major): sparse windows gave no tail in
+closed near-cubic rooms of ≈370–480 m³. R2 WRONG (4.91 should be 5.52·V^(1/3) under the old rule). R3
+INCONSISTENT (maxReflectionOrder "minimum" had no effect). R4 (k_eff must weight arrival energy
+1/(ct)²). R5 (σ is an expectation only). R6/E5 (ē_b independent of the window, truncation). R7, R8
+minor. Chosen: an **adaptive mixing time** (the corpus has no transition-time rule, Vorländer §11.7, so
+PRD NFR-1 decided: a later t_mix keeps more of the response deterministic and conditions the
+estimator); energy-weighted k_eff ≥ 19; E1 (a) EDT 63 Hz–8 kHz; E2 (b) σ₁ measured at both rates with
+n ≥ 51 (sampling statistics, not corpus); E3 energy-weighted; E4 (a)+(c) limitation + Expert question,
+no cut-off; E5 (b) truncation-aware ē_b; R3: maxReflectionOrder applies only to the kept ISM-only IR
+(`Kind::OmniEarly`, `render_cli --mode omni-early`, a software choice so the Phase 03
+pyroomacoustics cross-check and goldens stay valid), contract minor bump in Phase 04.
+
+**Round 5 (final science check).** One finding:
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| F1 | NUMBER | "≈ 5.5·V^(1/3) ms (≈ 28 arrivals)" for the k_eff criterion with t_dir → 0 | WRONG | From the document's own energy-weighted k_eff with a Hann window: K = π[Si(2π) − ½Si(4π)] = 2.111, k_eff = 1.488·c³L³/V, so k_eff = 19 gives cL = 2.338·V^(1/3) m, L ≈ 6.8·V^(1/3) ms, N ≈ 53 (Blauert Ch.3 §3.3 density). | major (explanatory; understated rebuild cost) | — | resolved (corrected to 6.8·V^(1/3) ms, ≈ 53) |
+
+Confirmed CORRECT in round 5: the k_eff formula and its dimensions; the adaptive rule always terminates
+and t_mix,e is continuous in position (k_eff strictly increasing in window length; entries enter and leave
+at zero weight), as artifact-free movement needs; σ ≈ 1 dB at k_eff = 19; the R1 cube case is handled;
+the ē_b formula and its time origin; the R rule for unequal σ₁; n ≥ 51 ↔ 10 % relative SE (statistics
+outside the corpus; ≈ ±20 % on R); gate bands; crossfade note; consistency across phase-04, phase-10,
+AX19, AX20, §4 and §6.
+
+**Status:** V2, V6, V7, V10, V17, V26, V27, R1–R8, E1–E5, F1 resolved in the plan text. Open, for the
+Expert: the mixing-time rule itself (Vorländer §11.7 gives none); the E4 sparse/non-diffuse limitation.
+Open follow-up: AQ10 and `phase-13.md` still state the rebuild budget at "order 30", which no longer sets
+the hybrid IR's workload (AX20).
