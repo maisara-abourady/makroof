@@ -611,8 +611,9 @@ TEST_CASE("flat room (Kuttruff Eq. 4.3 / 9.24): per-image energies and their sum
 {
     // Four walls a = 1, floor and ceiling with the same a and s = 0, source and listener at mid-height
     // (Kuttruff §4.1 example 1). The hybrid IR's image list runs to the handover (t_mix,e here; the
-    // AX22 fallback, if it triggered, would move it to the cap); every image of it must match (1/r_n^2)(1 - a)^|n| e^(-m r_n),
-    // r_n = sqrt(r^2 + n^2 h^2), per band, and the sum must match Eq. 4.3 truncated to the same images.
+    // AX22 fallback, if it triggered, would move it to the cap); every image of it must match (1/r_n^2)(1 -
+    // a)^|n| e^(-m r_n), r_n = sqrt(r^2 + n^2 h^2), per band, and the sum must match Eq. 4.3 truncated to the
+    // same images.
     const double h = 4.0, alpha = 0.3;
     auto scene = loadScene("medium_room.json");
     scene.room = boxRoom(200.0, 200.0, h, 1.0);
