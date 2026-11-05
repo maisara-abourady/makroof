@@ -17,6 +17,29 @@ decider report 17 (`docs/review/phase-04-consult/20-decider-05d-followups.md`), 
 2026-11-05, with the corrections of interrogator check 19
 (`docs/review/phase-04-consult/19-interrogator-05d-check.md`). This phase has no open items.
 
+## Raise with Maisara (she does not track these herself)
+
+The session raises each item in its **first message** and again in the **PR description**, and does not
+mark the phase `done` while one is unanswered.
+
+1. **DELTA panel report (Arni α provenance).** At the start, ask Maisara whether she has sent the request
+   and received an answer. The draft is `docs/review/drafts/delta-report-request.md`. If it has not been
+   sent, give her the draft and the recipient (the corresponding author of Prawda et al., JASA 2022, DOI
+   10.1121/10.0013575) and ask her to send it. If the report has arrived, record its standard, room and
+   uncertainty in `arni_mapping.md` and update the Arni provenance label. If it has not, keep the label
+   "one unretrievable exploratory report" and say so in the PR (decider report 15, SD-4).
+2. **dEchorate omni coverage.** Before any mapping file is committed, read the dataset's own metadata to
+   find which of the 11 configurations include the omnidirectional source (positions omni₀–omni₂;
+   researcher report 17, R6–R7). Report the result to Maisara. If no configuration has an omni
+   recording, apply the reversal in Risks (Motus moves up as the under-100 m³ source, labelled
+   "reduction-limited") and tell her before continuing.
+3. **Commissioning decision (BUILD_PLAN §3 F2).** In the PR, put the decision to Maisara explicitly:
+   with the Phase 05 and 05d numbers in hand, does she commission a room with measured absorption for all
+   surfaces? State the reading rule: a matched-pair differential within 1 jnd but large absolute AQ9
+   errors means the input data dominate (Vorländer §11.5), so a commissioned room is the only route to
+   "validated"; a differential above 1 jnd means the method comes first (B12/B2). Record her answer in
+   BUILD_PLAN §6. If she defers, record "deferred" with the date; Phase 13 raises it again.
+
 ## Goal
 
 Add a second measured source beside BRAS (BUILD_PLAN §3 F2), with the same comparison chain as

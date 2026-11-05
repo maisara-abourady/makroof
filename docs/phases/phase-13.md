@@ -2,6 +2,17 @@
 
 Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12, including 05b and 05d (05d `done` or `blocked (reason)`, decider report 15, accepted by Maisara, 2026-11-05; with 05c, if it exists, `blocked` only on Maisara's recorded decision) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
 
+## Raise with Maisara (she does not track these herself)
+
+The session raises each item in its **first message** and again before the beta decision.
+
+1. **Commissioning decision (BUILD_PLAN §3 F2).** Check BUILD_PLAN §6 for Maisara's answer, recorded by
+   phase 05d. If it is missing or "deferred", put the question to her again with the Phase 05/05d
+   numbers before the beta decision.
+2. **DELTA panel report.** Check whether `docs/phases/phase-05d.md`'s PR recorded an answer. If not,
+   remind her that the request (`docs/review/drafts/delta-report-request.md`) is still outstanding, and
+   keep the Arni provenance label as is in the beta wording.
+
 ## Goal
 
 Turn the vertical slice into a **private-beta build**: meet the performance budget, survive real-world

@@ -2,6 +2,20 @@
 
 Size: **M** · Depends on: 04 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ9, AX4, AX16, AX21, AX22) and §3 (F2, F3), PRD NFR-1, NFR-8, Q2, Q9
 
+## Raise with Maisara (she does not track these herself)
+
+The session raises each item in its **first message** and again in the **PR description**.
+
+1. **BRAS surface areas and room classification.** Read the per-material areas and d_char from
+   `_descr/mat_CRx.txt` inside `3_surface_descriptions.zip` (researcher report 16 §4–5). Confirm or
+   correct the preliminary classification in Data (CR2 uniform/low-s; CR3 and CR4 one strong, high-s
+   absorber). Report to Maisara whether any BRAS room combines uneven α with low s. If none does, say
+   that the X-b bias and B11 cannot be tested against BRAS for that case (F2).
+2. **DELTA panel report.** If Maisara has not sent the request drafted in
+   `docs/review/drafts/delta-report-request.md`, remind her. Phase 05d needs the answer.
+3. **Commissioning decision.** Tell Maisara that this decision comes after Phase 05d (see phase-05d,
+   "Raise with Maisara"), and summarise for her what this phase's numbers already suggest.
+
 ## Goal
 
 Get the **first real-world evidence** of accuracy (NFR-1) early, while changing the simulation
