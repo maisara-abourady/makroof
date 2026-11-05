@@ -827,3 +827,40 @@ The advocate was given the SME reports as written, without the main session's su
 - the gain of early scattering in real rooms (Phase 05).
 
 **Caveat:** the SME and the advocate run on the same underlying model. Their convergence is a useful sign but not independent verification.
+
+## docs/phases/phase-04.md (with phase-05, phase-06, phase-10, BUILD_PLAN) — 2026-11-05 (/fix-plan, consultation applied; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+This run applied the resolved items of the fresh pass (B1–B4, AX5 wording) and of the expert consultation (rounds 1–4 above).
+- Plan-editor: 3 rounds. Interrogator: one decision round and 3 science-check rounds, the maximum.
+- Commits: a016d0a (round 1, D1–D14 pending), then the round-2 commit, 380ef01 (cap counting, flat-room sum tolerance), and 048edf0 (FQ corrections).
+- Change-log row: BUILD_PLAN §6, 2026-11-05, "Phase 04 expert consultation applied".
+- New assumptions: AX21 (specular-only early part is a known deficit; Maisara decided on 2026-11-05 that it should contain scattered energy) and AX22 (realised-k switch and image-count cap). New backlog: B11, B12.
+- No contract change and no golden changed.
+
+**Decisions**
+
+| D | decision | how decided |
+|---|---|---|
+| D4 (air) | 4mV in the denominator; equivalent to exp(−mR) in the a* kernel, and factors out for γ²-Eyring | **verified** by the interrogator (Kuttruff §4.5, Eq. 5.55, Eq. 5.29) |
+| D9 (decay) | remove 60·0.010/T60_b dB between the envelope-step bins | **verified** (Vorländer Eq. 11.13) |
+| D6 | switch rule: expected-k t_mix; ISM-only fallback to the cap if k_real < 19 at 500 Hz–2 kHz; a single jump point, with the crossfade dip measured in Phase 10 | Maisara. Options (a)–(c) had CONDITIONS VIOLATED or PRODUCT MATTER verdicts. Only (d) was continuous, and it dropped the sparse-room fallback. |
+| D1–D3, D4 (γ²), D5, D7, D8, D9 (bins, R), D10–D14, cap counting, flat-room sum tolerance, FQ-01 (96 cube elements), FQ-03 (gate bins with ≥ 19 expected images) | as listed in the §6 row | Maisara (no corpus answer: PRODUCT MATTER or NOT CHECKABLE), mostly following the interrogator's lean |
+
+The main session computed one fact from the code: the repository's ISO 9613-1 implementation (`src/sim/AirAbsorption.cpp`) matches Kuttruff Table 6.1 within 0.7 % at 0.5–8 kHz and 40/50/70 % RH (6.83 against 6.84·10⁻³ m⁻¹ at 4 kHz / 50 %). So the code is consistent with Kuttruff, and the coarse Vorländer Annex bins account for the disagreement between the two books. This also corrects the builder answers B1 (0.028 dB/m should be ≈ 0.0297) and B2 (T at 125 Hz ≈ 160 s, so the original "160 s" was right for that band).
+
+**Science checks**
+- Round 1: FP-01–FP-15. Three major CONDITIONS VIOLATED: the flat-room conditions, rigid walls for Eq. 4.16, and the all-Lambert Eq. 4.28. All fixed.
+- Round 2: FQ-01–FQ-10. Three major: the 88-element cube layout, the γ² "≤ 0.3 %", and the early 1/t bins. All fixed.
+- Round 3: nothing WRONG. Remaining findings:
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| FQ-11 | NUMBER | γ² "≤ 0.3 % in case 4, 0.38 against 0.40" | IMPRECISE | Kuttruff Eqs. 5.33–5.34: 0.34 %. 0.38 is interpolated, not a Table 5.1 row. | minor | open |
+| FQ-12 | NUMBER | one-absorbing-wall gate ±1 dB on bins with ≥ 19 expected images, "expected scatter ≤ 1 dB" | CONDITIONS VIOLATED | Vorländer Eqs. 11.7–11.9/11.17: σ ≈ 1 dB at 19 counts, so ±1 dB is a 1σ bound and about a third of bins would fail under that model (AX11 uses tol/3). Lattice counts are deterministic, so the corpus doesn't settle it. The main session's own recommendation caused this. | major | open: needs Maisara (e.g. ≥ 171 images for 3σ, or ±3 dB) |
+| FQ-13 | NUMBER | crossfade "≈ 4.4 dB at 10:1" | IMPRECISE | the mid-fade dip is 3 dB at any ratio; 4.4 dB is the largest dip (g ≈ 0.24) relative to power-linear interpolation, which the text should name | minor | open |
+| FQ-14 | FACT | "Table 6.1 prints 2–3 significant figures" | IMPRECISE | it prints two decimals (2–4 significant figures); the ±0.8 % is unaffected | minor | open |
+
+**Still open:**
+- FQ-11 to FQ-14 (FQ-12 needs Maisara's choice; the other three are wording).
+- Expert questions: the mixing-time rule, a diffuseness threshold, the X-b residual, and the size of early scattering in real rooms (Phase 05).
+- Follow-up: AQ10 and phase-13 still state the rebuild budget "order 30".
