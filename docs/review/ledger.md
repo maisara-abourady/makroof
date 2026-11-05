@@ -5,10 +5,12 @@ Adversarial reviews of the PRD, BUILD_PLAN and phase files against the reference
 Citations name sections, equations and figures as numbered in the corpus files; evidence is
 paraphrased (no quote over 25 words).
 
-Corpus short names: **Vorländer** = `auralization_compressed.md`; **Begault** = `begault_compressed.md`;
-**Blauert Ch.n** = `blauert_spatial_hearing_chN_compressed.md`; **Immersive Sound** =
-`immersive_sound_compressed.md`; **Toole** = `sound-reproduction_compressed.md`; **Zotter & Frank** =
-`1007063_compressed.md`; **Spatial Audio** = `spatial_audio_compressed.md`.
+Corpus short names (files in `docs/corpus/`, fetched from `maisara-abourady/audio-resources` by
+`tools/ci/fetch_corpus.sh`; revision 22dc9dd for the 2026-11-05 runs, same texts as the earlier local
+upload): **Vorländer** = `vorlaender-auralization.md`; **Begault** = `begault-3d-sound-vr-multimedia.md`;
+**Blauert Ch.n** = `blauert-chN-*.md`; **Immersive Sound** = `roginska-geluso-immersive-sound.md`;
+**Toole** = `toole-sound-reproduction.md`; **Zotter & Frank** = `zotter-frank-ambisonics.md`;
+**Spatial Audio** = `rumsey-spatial-audio.md`.
 
 ## docs/PRD.md — 2026-11-05
 
@@ -197,21 +199,21 @@ Worked examples use c = 343.2 m/s (Vorländer Eq. 1.20, 20 °C) and the Vorländ
 | B3 | FACT/NUMBER | F3 + AQ2: "outdoor field" = ground plane only (5 surfaces α=1.0) with the Eyring + air tail | CONDITIONS VIOLATED | Vorländer §4.4, §4.4.1 Eq. 4.32 assume a diffuse field and homogeneous absorption. Working (e.g. 100×100×10 m, ground α=0.1): mean α 0.625 (Eq. 4.30), T ≈ 0.67 s at 1 kHz — a reverberant tail for a scene expected to be nearly dry. | major | Q3 | open |
 | B4 | FACT | AQ4/Phase 10: late tail cached when only positions change (AQ2: tail energy-matched to ISM at the mixing time) | CONDITIONS VIOLATED | Vorländer §15.3 Table 15.1: moves > 1 m need the scattering part updated; only after ≈140 ms can the receiver-specific reverberation be replaced by a statistical decay. Blauert Ch.5 "Real-time demands": translation needs full recalculation. | major | Q4 | open |
 | B5 | NUMBER | AX6: emitter ≥ 0.3 m from listener, rendered with a generic far-field HRTF (Phase 08) | CONDITIONS VIOLATED | Vorländer §9.5: standard HRTFs are distance-independent only beyond 1 m; Fig. 9.7 shows ILD growing below 1 m. Blauert Ch.2 §2.3.2: below 3 m head and pinna filtering depend on distance. | major | Q5 | open |
-| B6 | FACT | AQ2: "ISM is exact for specular shoebox reflections" | CONDITIONS VIOLATED | Vorländer §11.3: exact only for \|R\|=1; with absorbing walls an approximation for non-grazing incidence. §11.3.3: errors > 1 dB at grazing angles > 60° within about one wavelength of a wall. Working: at the 0.1 m AX6 clearance, d ≤ λ in every band up to 2 kHz. | major | — | open |
+| B6 | FACT | AQ2: "ISM is exact for specular shoebox reflections" | CONDITIONS VIOLATED | Vorländer §11.3: exact only for \|R\|=1; with absorbing walls an approximation for non-grazing incidence. §11.3.3: errors > 1 dB at grazing angles > 60° within about one wavelength of a wall. Working: at the 0.1 m AX6 clearance, d ≤ λ in every band up to 2 kHz. | major | — | resolved |
 | B7 | FACT | AQ2 hybrid ISM + Eyring for small rooms (Phase 12 living room, car-sized room; Phase 04 gate down to 250 Hz) | CONDITIONS VIOLATED | Toole §4.3.4: small rooms are not Sabine spaces. Vorländer §11.5, §10.1.3: energetic geometric methods hold above f_S. Working (Toole §4.3.1, f_c=2000√(T/V)): 60 m³ at 0.5 s → ≈183 Hz; 3.4 m³ at 0.1 s → ≈344 Hz, so 63–250 Hz are modal there. | major | — | open |
-| B8 | NUMBER | AQ1 "1 broadband scattering coefficient" vs Phase 12 "per-band α and s from published tables" | INCONSISTENT | Vorländer Annex scattering tables are per octave band and vary strongly with frequency (e.g. 0.01 → 1.0); Fig. 3.11 0.07 → 1.03. | major | — | open |
-| B9 | FACT | F8: under AX3 "sources can never be heard behind or beside the listener"; a circling source "will sound like nothing moves" | INCONSISTENT | AX3 faces the emitters' centroid, not each emitter. Working: listener at origin, L=(−5,1), R=(5,1) → L at 78.7° (beside); L=(−1,5), R=(1,−3) → R at 161.6° (behind). | major | — | open |
-| B10 | NUMBER | AX11: one tail realisation scatters 4–7 % at 250 Hz for T60 ≤ 1 s | INCONSISTENT | AX11's own σ₁ table at 250 Hz: 8 % (0.3 s), 4.4 % (1.0 s), so 4.4–8 %; for a ±5 % gate R ≥ (8/1.667)² ≈ 23, not ≈ 18. | major | — | open |
+| B8 | NUMBER | AQ1 "1 broadband scattering coefficient" vs Phase 12 "per-band α and s from published tables" | INCONSISTENT | Vorländer Annex scattering tables are per octave band and vary strongly with frequency (e.g. 0.01 → 1.0); Fig. 3.11 0.07 → 1.03. | major | — | resolved |
+| B9 | FACT | F8: under AX3 "sources can never be heard behind or beside the listener"; a circling source "will sound like nothing moves" | INCONSISTENT | AX3 faces the emitters' centroid, not each emitter. Working: listener at origin, L=(−5,1), R=(5,1) → L at 78.7° (beside); L=(−1,5), R=(1,−3) → R at 161.6° (behind). | major | — | resolved |
+| B10 | NUMBER | AX11: one tail realisation scatters 4–7 % at 250 Hz for T60 ≤ 1 s | INCONSISTENT | AX11's own σ₁ table at 250 Hz: 8 % (0.3 s), 4.4 % (1.0 s), so 4.4–8 %; for a ±5 % gate R ≥ (8/1.667)² ≈ 23, not ≈ 18. | major | — | resolved |
 | B11 | FACT | AX13: ±2.5 ms DRR window "keeps typical first reflections out" | WRONG | Working (image source, Vorländer Eq. 11.34): source and listener 1.2 m above the floor at distance r, floor delay (√(r²+2.4²)−r)/c = 2.45 ms at 3 m, 1.59 ms at 5 m; inside the window for any r > 2.93 m. | major | — | open |
-| B12 | NUMBER | AX13 leakage bias ≈ −10·log10(1+f·10^(DRR/10)) dB; ≥ 99 % rule | IMPRECISE | Working: D'=(1−f)D, R'=R+fD give ΔDRR = 10log(1−f) − 10log(1+f·10^(DRR/10)); a term is missing. f=0.01: −0.09 dB at 0 dB, −0.46 dB at +10 dB, −3.05 dB at +20 dB, so 99 % does not bound the bias at high DRR. | minor | — | open |
-| B13 | NUMBER | AQ9: T30 within ±10 % (≈2 JND) | IMPRECISE | Vorländer §6.4.4 Table 6.1 gives 5 % for EDT only; no T/T30 jnd in the corpus. | minor | — | open |
+| B12 | NUMBER | AX13 leakage bias ≈ −10·log10(1+f·10^(DRR/10)) dB; ≥ 99 % rule | IMPRECISE | Working: D'=(1−f)D, R'=R+fD give ΔDRR = 10log(1−f) − 10log(1+f·10^(DRR/10)); a term is missing. f=0.01: −0.09 dB at 0 dB, −0.46 dB at +10 dB, −3.05 dB at +20 dB, so 99 % does not bound the bias at high DRR. | minor | — | resolved |
+| B13 | NUMBER | AQ9: T30 within ±10 % (≈2 JND) | IMPRECISE | Vorländer §6.4.4 Table 6.1 gives 5 % for EDT only; no T/T30 jnd in the corpus. | minor | — | resolved |
 | B14 | NUMBER | AQ9: EDT ±10 % (≈2 JND), C80 ±2 dB (≈2 JND) | CORRECT | Vorländer Table 6.1: EDT 5 %, C80 1 dB; Fig. 11.33 note: clarity jnd revised from 0.5 to 1 dB. | none | — | resolved |
-| B15 | NUMBER | AQ9: thresholds averaged over 500 Hz–2 kHz | IMPRECISE | Vorländer Table 6.1 states the jnds for 500–1000 Hz; the 2 JND equivalence is not stated for 2 kHz. | minor | — | open |
-| B16 | FACT | AQ9 rationale: ≈2 JND is a common bar in round robins | IMPRECISE | Vorländer §11.5: Round-robin I, 3 of 17 programs reached jnd-level accuracy; Round-robin III reports 1–2 jnd as the achievable best, not a common bar. | minor | — | open |
+| B15 | NUMBER | AQ9: thresholds averaged over 500 Hz–2 kHz | IMPRECISE | Vorländer Table 6.1 states the jnds for 500–1000 Hz; the 2 JND equivalence is not stated for 2 kHz. | minor | — | resolved |
+| B16 | FACT | AQ9 rationale: ≈2 JND is a common bar in round robins | IMPRECISE | Vorländer §11.5: Round-robin I, 3 of 17 programs reached jnd-level accuracy; Round-robin III reports 1–2 jnd as the achievable best, not a common bar. | minor | — | resolved |
 | B17 | NUMBER | AQ2/Phase 04: per-band T60 from Eyring + air absorption | CORRECT | Vorländer §4.4.1 Eq. 4.32 (diffuse field, homogeneous absorption; see B3, B7). Working: constant 24 ln10/c = 0.1610 at 343.2 m/s vs the rounded 0.16 (c=340), a 0.6 % offset against the ±5 % gate. | none | — | resolved |
 | B18 | FACT | Phase 04 risk: Eyring inaccurate for uneven absorption | CORRECT | Toole §4.1 Box; Vorländer §4.4.1 (homogeneous-absorption assumption). | none | — | resolved |
 | B19 | NUMBER | AX4: 20 °C, 50 % RH, ISO 9613-1 | CORRECT | Vorländer Abbreviations name ISO 9613-1; 50 % RH sits on the edge of two Annex rows (4 kHz: 5.8 vs 4.1·10⁻³ m⁻¹); D = 4.34·m (Eq. 3.34). | none | — | resolved |
-| B20 | FACT | F6: air absorption matters above about 2 kHz in large spaces | IMPRECISE | Working (Eq. 4.32, Annex m; 20×30×10 m, T=2 s): the 4mV term shortens T by 2.9 % at 500 Hz, 4.8 % at 1 kHz, 7.8 % at 2 kHz, 17 % at 4 kHz — already ≈1 EDT jnd at 1 kHz. | minor | — | open |
+| B20 | FACT | F6: air absorption matters above about 2 kHz in large spaces | IMPRECISE | Working (Eq. 4.32, Annex m; 20×30×10 m, T=2 s): the 4mV term shortens T by 2.9 % at 500 Hz, 4.8 % at 1 kHz, 7.8 % at 2 kHz, 17 % at 4 kHz — already ≈1 EDT jnd at 1 kHz. | minor | — | resolved |
 | B21 | NUMBER | Phase 03: per-band reflection factor √(1−α); α=1 → direct path only | CORRECT | Vorländer §11.3.2 Eq. 11.37. | none | — | resolved |
 | B22 | NUMBER | Phase 03: 1/r spreading; AX2 direct path at 1 m = 0 dB | CORRECT | Vorländer §11.3.2 Eq. 11.36; §9.4 Eq. 9.3. | none | — | resolved |
 | B23 | FACT | Phase 03: source↔receiver reciprocity; symmetric rooms give symmetric IRs | CORRECT | Vorländer §10.1.1 Eq. 10.9. | none | — | resolved |
@@ -223,21 +225,21 @@ Worked examples use c = 343.2 m/s (Vorländer Eq. 1.20, 20 °C) and the Vorländ
 | B29 | NUMBER | AQ7: ORTF = two cardioids ±55°, 17 cm | CORRECT | Spatial Audio §6.2.4, Fig. 6.11. | none | — | resolved |
 | B30 | FACT | AQ7: XTC needs a fixed sweet spot | IMPRECISE | Vorländer §16.2.4: with a head tracker and adaptive filtering the sweet spot can follow the listener; true only without tracking. | minor | — | open |
 | B31 | FACT | AQ4: crossfading convolvers is the standard way to vary an IR without clicks | CORRECT | Vorländer §15.1.1 "Fast convolution", §9.2.1 (tuned against colouration and clicks). | none | — | resolved |
-| B32 | DECISION | AQ4: 30 ms equal-gain crossfade | CONSEQUENCE | Vorländer §9.2.1: constant power across the overlap is required; equal gain gives it only for coherent outputs. Working: uncorrelated outputs at 0.5/0.5 → −3 dB at mid-fade (Phase 09 mode switch, Phase 10 corner jumps). | minor | — | open |
+| B32 | DECISION | AQ4: 30 ms equal-gain crossfade | CONSEQUENCE | Vorländer §9.2.1: constant power across the overlap is required; equal gain gives it only for coherent outputs. Working: uncorrelated outputs at 0.5/0.5 → −3 dB at mid-fade (Phase 09 mode switch, Phase 10 corner jumps). | minor | — | resolved |
 | B33 | NUMBER | AQ4: IR updates capped at one per 20 ms | CORRECT | Vorländer §15.3 (20 ms as printed; Table 15.1: 35 ms rotation, 700 ms for moves > 0.25 m); Blauert Ch.5: no single-number criterion. | none | — | resolved |
-| B34 | NUMBER | AQ4 20 ms cap vs 30 ms fade (Phase 06) and ≤ 50 ms rebuild (AQ10) | IMPRECISE | Working: an uninterrupted 30 ms fade allows one IR per 30 ms and an order-30 rebuild one per 50 ms, so 20 ms is unreachable. | minor | — | open |
+| B34 | NUMBER | AQ4 20 ms cap vs 30 ms fade (Phase 06) and ≤ 50 ms rebuild (AQ10) | IMPRECISE | Working: an uninterrupted 30 ms fade allows one IR per 30 ms and an order-30 rebuild one per 50 ms, so 20 ms is unreachable. | minor | — | resolved |
 | B35 | NUMBER | Phase 04: mixing-time estimate | NOT CHECKABLE | Vorländer §11.7: no simple rule; §11.6.1 ≈100 ms; §15.3 140 ms. | none | — | open |
 | B36 | FACT | AQ2: a statistical tail is the standard companion to ISM | CORRECT | Vorländer §11.6.1, §15.3; §11.6: scattered energy dominates after order 3–4. | none | — | resolved |
 | B37 | DECISION | AQ1: 8 octave bands, 63 Hz–8 kHz | CONSEQUENCE | Working: top band edge 8k·√2 ≈ 11.3 kHz, while Begault Ch.3 "Spectral Changes…" says air absorption above 10 kHz is audible at ≈15 ft; Vorländer §11.7: coarse band data can ring when interpolated. | minor | — | open |
 | B38 | FACT | AQ3: α in [0.01, 1.0] and broadband s are "the quantities in published material tables" | IMPRECISE | Vorländer Annex: α tables 125 Hz–8 kHz (no 63 Hz), s tables per band; Toole §4.3.3: measured α can exceed 1.0. | minor | — | open |
 | B39 | FACT | F5/AQ3: reflectivity = 1−α, same quantity as absorption | IMPRECISE | Vorländer §11.3.2 Eq. 11.37: α fixes only \|R\|=√(1−α), the phase is separate; Eq. 3.23: specular energy (1−α)(1−s). | minor | — | open |
-| B40 | NUMBER | Phase 04 IR length capped at 12 s; AX6 limits avoid "unbounded IR lengths" | IMPRECISE | Working (Eq. 4.32): 100 m cube, α=0.01 at 125 Hz → T ≈ 160 s; a 12 s IR reaches only −4.5 dB, and T30 needs T ≤ 20.6 s. Only the cap bounds length. | minor | — | open |
+| B40 | NUMBER | Phase 04 IR length capped at 12 s; AX6 limits avoid "unbounded IR lengths" | IMPRECISE | Working (Eq. 4.32): 100 m cube, α=0.01 at 125 Hz → T ≈ 160 s; a 12 s IR reaches only −4.5 dB, and T30 needs T ≤ 20.6 s. Only the cap bounds length. | minor | — | resolved |
 | B41 | FACT | F3: non-shoebox spaces and terrain need mesh geometry and diffraction | CORRECT | Vorländer §11.3.4, §11.6. | none | — | resolved |
 | B42 | FACT | Phase 08 risk: front/back confusion and in-head localisation with a generic HRTF | CORRECT | Blauert Ch.5 "Static limitation and head tracking"; Immersive Sound Ch.4 "Inside-the-Head Locatedness" Fig. 4.14. | none | — | resolved |
 | B43 | DECISION | AX3/AQ6: static yaw, no head tracking, generic HRTF | CONSEQUENCE | Immersive Sound Ch.4 Fig. 4.14: without tracking most listeners hear frontal sources behind or above, against the Phase 08 listening expectation that ±30° emitters sound in front and out of the head. | minor | — | open |
 | B44 | DECISION | AQ8: omnidirectional point sources | CONSEQUENCE | Vorländer §11.7 Eq. 11.50 (H_source per path); Toole §4.3.5 (directivity changes reflections and decays). | minor | — | open |
 | B45 | DECISION | AX1: no Doppler, IR switches crossfaded | CONSEQUENCE | Vorländer §15.1.1 (comb colouration when fading). Working (Phase 10, 1→15 m over 8 bars at 120 bpm = 0.875 m/s): 17.5 mm (51 µs) per 20 ms update, first notch 9.8 kHz mid-fade on unaligned paths. | minor | — | open |
-| B46 | NUMBER | AX11: fluctuation "on a 1/B time scale (≈ 0.5·T/√(B·T))" | IMPRECISE | The text equates a time scale with a standard deviation; they differ by 0.5√(BT). As relative std 0.5/√(BT): 1.9 % (1 kHz, 1 s) vs 1.5 % measured, 3.4 % (0.3 s) vs 3.4 %. Vorländer §11.2.5 supports averaging repeated runs. | minor | — | open |
+| B46 | NUMBER | AX11: fluctuation "on a 1/B time scale (≈ 0.5·T/√(B·T))" | IMPRECISE | The text equates a time scale with a standard deviation; they differ by 0.5√(BT). As relative std 0.5/√(BT): 1.9 % (1 kHz, 1 s) vs 1.5 % measured, 3.4 % (0.3 s) vs 3.4 %. Vorländer §11.2.5 supports averaging repeated runs. | minor | — | resolved |
 | B47 | NUMBER | AX11: R = 300/130/48/24 for the Phase 02 ±2 %/±5 % gate | NOT CHECKABLE | Working with R ≥ (σ₁/(tol/3))²: 63 Hz at ±2 % needs 729 (0.3 s) and 144 (1 s); the figures fit only if 63 Hz uses ±5 %; band split not stated; no σ₁ for 2.5 s. | none | — | open |
 | B48 | NUMBER | Phase 12: living room T30 0.3–0.6 s | CORRECT | Toole §4.3.3 (0.36–0.4 s typical); Figs. 4.10–4.11 (0.32 s, 0.4 s). | none | — | resolved |
 | B49 | FACT | Phase 07 / AX2: farther away = more room, less direct, quieter | CORRECT | Blauert Ch.3 §3.3; Immersive Sound Ch.1 "Reverberation Cues": beyond the critical distance overall level is roughly constant, so "quieter" applies to the direct sound. | none | — | resolved |
@@ -352,3 +354,12 @@ No blocker remains, so no round 2 was run.
 | B12, B13, B15, B16, B20, B28, B30, B32, B34, B37–B40, B43–B46 | minor | open | No question asked; listed for the next plan revision. |
 | B14, B17–B19, B21–B26, B29, B31, B33, B36, B41, B42, B48, B49 | none (CORRECT) | resolved | — |
 | B27, B35, B47, B50, B51 | none (NOT CHECKABLE) | open | Needs a source outside the corpus. |
+
+### Plan fixes applied (2026-11-05)
+
+Commit "plan: apply corpus-review corrections" on `claude/modest-turing-afvz7v` fixed the plan text for
+B1, B2, B6, B8 (AX14; per-band s moved to backlog B10), B9, B10, B12, B13, B15, B16, B20, B32 (AX15),
+B34, B40, B46 and PRD row P1; those rows are now **resolved**. Phase 04's open-field wording was
+corrected along with B3, which stays open until the interrogator re-checks it. Not changed, still open:
+the ±2.5 ms DRR window (B11), the minimum binaural distance (B5), small-room validity (B7), the cached
+tail (B4), and the phase-07 / phase-10 lines that still mention only the 20 ms cap.
