@@ -83,8 +83,10 @@ Licensing/trial (B1), auto-update, anything listed in BUILD_PLAN §5.
       source: Arni (202 m³) and dEchorate (86 m³), CC BY 4.0, used in phase 05d. No open dataset has
       measured α for all surfaces; all measured comparisons (BRAS, Arni, dEchorate) are evidence, not
       validation of NFR-1. Input-matched distribution test: [result]. Coverage: domestic small room (one
-      treated empty cuboid), mid room 145–454 m³, halls 2 350/8 650 m³ (BRAS); none for outdoor, cars or
-      furnished living rooms." Your decision goes in BUILD_PLAN §6.
+      treated empty cuboid, dEchorate 86 m³), mid rooms 145 m³ (BRAS CR2) and 202 m³ (Arni), halls
+      2 350/8 650 m³ (BRAS); none for outdoor, cars or furnished living rooms." The coverage sentence is
+      corrected by decider report 16 (`docs/review/phase-04-consult/18-decider-05d-choices.md`), accepted
+      by Maisara, 2026-11-05. Your decision goes in BUILD_PLAN §6.
 
 ## Contractor review focus
 
