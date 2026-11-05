@@ -37,9 +37,45 @@ the status table, and stop.
   through `/fix-plan` (the `plan-editor` subagent applies them; any acoustic or numeric choice it would
   have to make goes to the `interrogator` first). In a phase session, a new or changed AX/AQ value gets
   an interrogator check against `docs/corpus/` before it is committed, and the PR links the ledger rows.
-  The main session runs these steps itself; Maisara doesn't have to ask for them.
+  The main session runs these steps itself (see "Subagents and skills" below); Maisara doesn't have to ask for them.
 - Never add preset-specific or scene-specific logic to `src/sim/` (PRD NFR-8). If accuracy falls
   short for a scene, report it. Don't tune for it.
+
+## Subagents and skills: who does what
+
+The main session is always the orchestrator. Subagents cannot start other subagents, so the main session
+calls each one itself, passes outputs between them, and does this without being asked. Never ask Maisara
+which agent to use: the trigger column below decides it. Ask Maisara only for the cases in "Who decides".
+
+| Who | Responsible for | Call it when | Gets from you | Gives back | Never |
+|---|---|---|---|---|---|
+| `interrogator` (subagent, read-only) | **Scientific correctness** of plan text and AX/AQ values, judged only against `docs/corpus/` | Before starting any phase (on its phase file); on any new or changed AX/AQ value, tolerance, formula or threshold; on `plan-editor` DECISIONS NEEDED; on the finished `/fix-plan` diff | The file or passages, or the decision options | Issue ledger (`id \| kind \| item \| verdict \| evidence \| severity \| question \| status`), verdicts CORRECT / WRONG / CONDITIONS VIOLATED / IMPRECISE / NOT CHECKABLE / INCONSISTENT | Edits files, judges product decisions, proposes implementations |
+| `advocate` (subagent, read-only) | **Product counterweight**: cross-examines interrogator findings for evidence, applicability, materiality, proportionality and scope, in favour of the PRD | After every `/interrogate` run or interrogator consultation whose findings would change the plan (any non-CORRECT row above minor), **before** those findings go to `/fix-plan` | The interrogator ledger rows or report, and the target file | Verdict per item (CONCEDED / CHALLENGED / NARROWED / ALTERNATIVE / UNDECIDED), a recommended position for Maisara, rebuttal questions for the interrogator | Edits files, overrides a WRONG result that a gate, golden or shipped behaviour rests on |
+| `plan-editor` (subagent, edits docs only) | **Applying** specified corrections to `docs/PRD.md`, `docs/BUILD_PLAN.md`, `docs/phases/*.md` | Only through `/fix-plan`, once the fixes are settled | Exact fixes, ledger row ids, every decision already verified | Applied / Held / DECISIONS NEEDED / Interpretations / `git diff --stat` | Makes acoustic or numeric choices, touches `src/`, `tests/`, `tools/`, `docs/contract/`, goldens or the ledger, commits |
+| `/interrogate <file>` (command) | Running the interrogator on a document, appending `docs/review/ledger.md`, answering as the builder (≤ 3 rounds) | Auditing a PRD, BUILD_PLAN or phase file | Path of the file | Ledger section with row statuses | — |
+| `/fix-plan <fixes>` (command) | Any change to PRD, BUILD_PLAN or phase files: plan-editor applies, interrogator verifies decisions and the diff, ledger updated, commit `plan: …` | Any time those files must change, in or outside a phase session | Fixes or ledger row ids (after the advocate pass) | Committed, pushed change and a report | — |
+| `/review-phase-pr <pr \| branch>` (skill) | **Reviewing a phase PR** as the contracted engineer and plan gatekeeper | Every phase PR, before Maisara goes through a listening checklist; any "review / check / is it ready" request about a PR or branch | PR number or branch | Severity-ranked review with evidence | Writes PR descriptions or implements the phase |
+| `Explore` / `Plan` (built-in) | Wide read-only code search / implementation planning inside a phase | A search across many files, or planning a large phase step | A narrow question | Conclusion, not file dumps | Decides acoustics (that is the interrogator's job) |
+
+**Standard pipelines** (run them end to end, in this order):
+
+1. *Plan audit*: `/interrogate <file>` → `advocate` on the open rows → interrogator answers the
+   advocate's questions (one rebuttal round) → settled rows go to `/fix-plan`.
+2. *Plan change*: `/fix-plan` (plan-editor → interrogator on DECISIONS NEEDED → plan-editor applies →
+   interrogator on the diff → ledger, commit).
+3. *New or changed AX/AQ value in a phase session*: interrogator on the value → advocate if the verdict
+   is not CORRECT → record in the ledger → commit; link the ledger rows in the PR.
+4. *Phase PR*: CI green → `/review-phase-pr` → fix what it finds (in scope) → listening checklist for Maisara.
+
+All corpus-based steps first make sure `docs/corpus/SOURCE_COMMIT` exists (`tools/ci/fetch_corpus.sh`;
+in a cloud session attach `maisara-abourady/audio-resources` first). If the corpus can't be fetched, stop
+and report it; don't fall back to recollection.
+
+**Who decides.** The corpus decides acoustics, the PRD decides product questions, Maisara decides the rest.
+Adopt a finding without asking when the interrogator rates it WRONG or CONDITIONS VIOLATED and the
+advocate CONCEDES, or when exactly one option is CORRECT. Ask Maisara (briefly, with both sides' evidence)
+when the advocate CHALLENGES, NARROWS or proposes an ALTERNATIVE and the rebuttal round doesn't settle it,
+when several options are valid or none is, or when the choice is a product matter.
 
 ## Repository layout
 
