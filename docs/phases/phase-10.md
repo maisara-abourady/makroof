@@ -1,6 +1,6 @@
 # Phase 10 — Artifact-free movement under automation
 
-Size: **M** · Depends on: 06, 07, 08, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ4, AQ10, AX1), PRD FR-SIM-6, NFR-3, Q4
+Size: **M** · Depends on: 06, 07, 08, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ4, AQ10, AX1, AX20), PRD FR-SIM-6, NFR-3, Q4
 
 ## Goal
 
@@ -30,12 +30,13 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
      so behaviour is reproducible for tests. Document the mechanism.
 2. **Tail cache:** cache the Phase 04/08/09 **unmatched, unit-energy per-band noise decay** (Phase 04
    scope 3: it depends only on V, S, ᾱ_b, m_b, `tailSeed` and the sample rate, per output for 08/09),
-   stored **before** E_b scaling, `t_mix` gating and the ISM→tail crossfade. Key it by (room
+   stored **before** E_b scaling, `t_mix,e` gating and the ISM→tail crossfade. Key it by (room
    dimensions, materials, mode, seed, sample rate). Every rebuild, including a position-only one,
-   recomputes the early part, the AX16 scattered-energy list, `t_mix` (including its clamp to the ISM
-   order's coverage, which depends on positions and `maxReflectionOrder`), E_b and the crossfade from
-   the new image list. Prove the result equals a full rebuild (test), including a move that changes the
-   `t_mix` clamp.
+   recomputes the early part, the AX16 scattered-energy list, each emitter's `t_mix,e` (it follows the
+   emitter's direct-arrival time, so it depends on positions), the AX20 time-bounded image list (every
+   image arriving before t_mix,e + 2.5 ms), E_b and the crossfade from the new image list. Prove the
+   result equals a full rebuild (test), including a move that changes t_mix,e and the time-bounded
+   image list.
 3. **Rebuild scheduling:** the builder always works on the newest scene (coalescing). If a build takes
    longer than 20 ms, the next build starts immediately with the latest scene. The audio thread keeps
    using the last IR and never blocks. Track and expose "IR staleness" (time between the parameter
