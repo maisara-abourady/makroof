@@ -1,6 +1,17 @@
 # Phase 13 — v1 hardening: performance, DAW matrix, signing
 
-Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
+Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12, including 05b and 05d (05d `done` or `blocked (reason)`, decider report 15, accepted by Maisara, 2026-11-05; with 05c, if it exists, `blocked` only on Maisara's recorded decision) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
+
+## Raise with Maisara (she does not track these herself)
+
+The session raises each item in its **first message** and again before the beta decision.
+
+1. **Commissioning decision (BUILD_PLAN §3 F2).** Check BUILD_PLAN §6 for Maisara's answer, recorded by
+   phase 05d. If it is missing or "deferred", put the question to her again with the Phase 05/05d
+   numbers before the beta decision.
+2. **DELTA panel report.** Check whether `docs/phases/phase-05d.md`'s PR recorded an answer. If not,
+   remind her that the request (`docs/review/drafts/delta-report-request.md`) is still outstanding, and
+   keep the Arni provenance label as is in the beta wording.
 
 ## Goal
 
@@ -11,7 +22,8 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
 ## Assumptions in force
 
 - **AQ10** budget (latency ≤ 512 samples at 48 kHz; ≤ 15% of one core per instance for a 3 s tail;
-  IR rebuild ≤ 50 ms at order 30). **AX5**: the definition of "exactly as saved" across machines.
+  IR rebuild ≤ 50 ms for the AQ10 workloads W1 and W2 (position-only), in every output mode
+  (decider report 8, accepted by Maisara, 2026-11-05)). **AX5**: the definition of "exactly as saved" across machines.
 
 ## Scope
 
@@ -41,7 +53,7 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
      SmartScreen warning if unsigned.
    - Version number from the git tag, embedded in the plugin (`JucePlugin_VersionString`) and shown in the UI.
 5. **Licences and attribution:** `docs/THIRD_PARTY.md` complete (JUCE tier and terms, PFFFT,
-   nlohmann/json, dr_wav, Catch2 (test only), HRTF dataset, material sources, BRAS (validation only,
+   nlohmann/json, dr_wav, Catch2 (test only), HRTF dataset, material sources, BRAS, Arni and dEchorate (validation only,
    not shipped)). The installer includes `THIRD_PARTY_NOTICES.txt`. **Confirm the JUCE licence tier
    that will apply at commercial launch**, and the splash-screen and revenue-cap rules for that tier,
    recording it in BUILD_PLAN §6.
@@ -59,7 +71,10 @@ Licensing/trial (B1), auto-update, anything listed in BUILD_PLAN §5.
 
 - [ ] Full CI matrix green; nightly validation green (no regression).
 - [ ] Benchmarks: AQ10 met on the macOS runner and Windows runner, or the miss is quantified in the status
-      notes with a proposal.
+      notes, with the effective update interval max(30 ms, rebuild) and the worst staleness, together
+      with a proposal that does not change the output beyond −100 dB. Raising N_cap with time freed by
+      optimisation is an intended output change, proposed through /fix-plan (decider report 8, accepted by Maisara, 2026-11-05). Re-derive the
+      AX22 i₀ after optimisation if AX22 records 'cap limits accuracy'.
 - [ ] Robustness tests above pass, including cross-architecture ≤ −100 dBFS residual.
 - [ ] pluginval strictness 10 on the **release** build, 3 OSes (both macOS slices). auval passes.
 - [ ] Release workflow on a test tag produces: notarized and stapled pkg (`spctl -a -vv -t install` says
@@ -73,7 +88,16 @@ Licensing/trial (B1), auto-update, anything listed in BUILD_PLAN §5.
 - [ ] Fill in `docs/compat/v1.md` completely.
 - [ ] A final listening pass through all presets in both modes on the Adam monitors and headphones,
       plus a real session with 10 instances on stems. Note CPU in your DAW's meter.
-- [ ] Decide: is this build good enough to give to 3–5 beta users? Your decision goes in BUILD_PLAN §6.
+- [ ] Decide: is this build good enough to give to 3–5 beta users? The decision lists 'AQ9 met in x/y'
+      and every recorded known deficit (AX16, AX21, AX22, AQ10 misses) (decider report 8, accepted by Maisara, 2026-11-05). It also
+      states (BUILD_PLAN §3 F2; decider report 15, accepted by Maisara, 2026-11-05): "Second measured
+      source: Arni (202 m³) and dEchorate (86 m³), CC BY 4.0, used in phase 05d. No open dataset has
+      measured α for all surfaces; all measured comparisons (BRAS, Arni, dEchorate) are evidence, not
+      validation of NFR-1. Input-matched distribution test: [result]. Coverage: domestic small room (one
+      treated empty cuboid, dEchorate 86 m³), mid rooms 145 m³ (BRAS CR2) and 202 m³ (Arni), halls
+      2 350/8 650 m³ (BRAS); none for outdoor, cars or furnished living rooms." The coverage sentence is
+      corrected by decider report 16 (`docs/review/phase-04-consult/18-decider-05d-choices.md`), accepted
+      by Maisara, 2026-11-05. Your decision goes in BUILD_PLAN §6.
 
 ## Contractor review focus
 

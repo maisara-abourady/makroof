@@ -249,7 +249,7 @@ def main():
         if len(cells) >= 4 and cells[3].startswith("done"):
             plan_log = run(["git", "log", "-p", "--format=%H", rng, "--", "docs/BUILD_PLAN.md"], repo).stdout
             if not re.search(r"^\+\|\s*" + re.escape(cells[0]) + r"\s*\|.*\|\s*in progress\s*\|", plan_log, re.M):
-                warnings.append(f"BUILD_PLAN row {cells[0]} reaches `done` without an `in progress` commit first (CLAUDE.md step 3).")
+                warnings.append(f"BUILD_PLAN row {cells[0]} reaches `done` without an `in progress` commit first (CLAUDE.md step 4).")
     if s["contract_sources_touched"]:
         def version_at(ref):
             txt = run(["git", "show", f"{ref}:src/contract/Version.h"], repo).stdout
