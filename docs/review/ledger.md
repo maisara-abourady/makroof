@@ -629,3 +629,22 @@ the interrogator derived (2.9), so no further round was run.
 **Remaining for Maisara / the Expert:** the height-keeping shoebox closure (V5-6, product choice); the T30
 limits (±10 % AQ9, ±2 % gate) have no corpus jnd; the onset rule, noise compensation and 10 dB margin rest on
 ISO 3382-1, outside the corpus.
+
+### docs/phases/phase-05.md — consultant answers (2026-11-05, corpus 22dc9dd)
+
+Maisara asked the interrogator, as a consultant and subject-matter expert (outside its usual audit role), the
+three questions left open after the final check. Answers label each point [corpus] or [expert]; expert points
+that rest on ISO 3382-1/-2 or the literature are applied to the plan marked "expert recommendation" or "to
+verify".
+
+| q | question | recommendation | basis | confidence | status |
+|---|---|---|---|---|---|
+| C1 | Shoebox closure (V5-6) | Keep h, defined as V / floor area: floor and ceiling areas, total wall area and perimeter then exact, only the x/y wall split approximate; floor-ratio closure valid but moves floor/ceiling α and the 2h/c series; keep r and source/receiver heights when mapping; report absorption contrast and decay curvature as non-diffuseness indicators | expert, using Vorländer Eq. 4.22, 4.23, 4.28, 4.30, §11.3.3, §4.4, Table 4.1; Toole §21.4, §4.1 | medium (second-order next to absorption and scattering input, Vorländer §11.5) | resolved (applied) |
+| C2 | T30 tolerances | Working T jnd 5 % (Seraphim 1958); keep ±10 % AQ9 (2 working jnd, above single-position σ(T30) ≈ 2–3.5 %); keep ±2 % gate (0.5 % also valid, product choice) | Vorländer §11.5, Table 6.1, Immersive Sound Ch. 1 Fig. 1.14; expert (ISO 3382-2 σ formula, from memory) | medium / high | resolved (applied; 0.5 % option not taken) |
+| C3a | Onset detection | Broadband \|h\|², max − 20 dB, before band filtering, one t₀ for all bands; zero-phase or delay-compensated filters on the full IR; check measured lead-in | expert (ISO 3382-1); Immersive Sound Fig. 1.14 (peak ≠ first arrival) | high | resolved (applied) |
+| C3b | Measured-EDC noise | Lundeby-style crossing with compensation (A/k)e^(−k·t_c) from the late slope; noise from a verified noise tail; one correction only; same energy in C80's late integral | expert (ISO 3382-1 practice; Lundeby 1995); Vorländer Eq. 6.4 | high (method), medium (constants) | resolved (applied) |
+| C3c | 10 dB margin | Keep; noise referred to the decay-line intercept; T20 vs T20 fallback; "not evaluable" rules; curvature report; low-band B·T > 16 flag | expert (ISO 3382-1/-2; Jacobsen); Immersive Sound Fig. 1.14 | high (margin), medium (curvature threshold, B·T rule) | resolved (applied) |
+
+**To verify against the standards before they are cited as fact:** the ISO 3382-2 constants in σ(T20/T30) and
+its "integrated IR ≈ 10 averaged decays" equivalence; the ISO 3382-2 curvature threshold (≈ 10 %); whether the
+ISO 3382-1 jnd table lists T. These are marked "to verify" in the plan text.
