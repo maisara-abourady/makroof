@@ -775,3 +775,55 @@ constraints. No plan file was edited; adopting any of this goes through `/fix-pl
 3. Does the Annex air table agree with the ISO 9613-1 values AX4 uses? 50 % RH falls between rows that differ ≈ 1.5× at 4–8 kHz.
 4. Should t_mix,e also require a realised k_eff ≥ 19?
 5. If a ray-traced decay is adopted, room-averaged T60_b (cache stays position-independent) or receiver-specific?
+
+## docs/phases/phase-04.md — 2026-11-05 (expert consultation, rounds 2–4: Kuttruff added, advocate, rebuttal; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Corpus c1b171f adds `kuttruff-room-acoustics.md` (Kuttruff, *Room Acoustics*, 6th ed., 2017). The other
+13 files are byte-identical to 22dc9dd (git diff), so earlier citations stand.
+
+The four reports are kept verbatim in `docs/review/phase-04-consult/`:
+1. SME consult, 22dc9dd
+2. SME re-consult with Kuttruff
+3. advocate cross-examination
+4. SME rebuttal
+
+The advocate was given the SME reports as written, without the main session's summary. The SME answered the advocate's questions in one rebuttal round.
+
+**Main-session spot checks:**
+- Kuttruff Table 5.2 (Eyring and iteration columns) and Table 6.1 (m of air at 20 °C) match the values used.
+- phase-12 expects slap echoes in `courtyard`.
+- Izhaki "Early reflections (ERs)": ER level indicates room size; ERs carry most of the spatial information.
+- Not independently re-derived by the main session: the open_field scattering integral, the q_d flat-room value, γ²-Eyring. The SME and the advocate each computed these and agree.
+
+**Corrections the SME made to its own earlier reports:**
+- Its proposed Eyring check (s = 1, uniform α, ±5 %) would fail. Kuttruff Table 5.2 puts Lambert rooms 5–10 % above Eyring.
+- Its ray-tracing cost was understated (Kuttruff §9.8: 10⁵–10⁶ particles).
+- Millington–Sette is rejected (Kuttruff §5.4).
+- Eyring with arithmetic ᾱ is the correct diffuse-field result. The error comes from lost diffuseness, not uneven α as such (§5.2, §5.4).
+- In the rebuttal it withdrew three things: the a* tail decay (item 3), the specular-share t_mix (item 4) and q_d (item 5). It also accepted that its check C3 was circular.
+
+| id | final position (SME and advocate) | agree? | status |
+|---|---|---|---|
+| X-a | The hybrid IR has no scattered energy before t_mix. The step is ≈ 0.9 / 1.8 / 4.9 / 8.7 dB for s = 0.05 / 0.1 / 0.25 / 0.4 in the AQ10 room. The EDC gate cannot see it (Eq. 6.4). Add a reported-only 10 ms envelope-step metric. | yes | open: needs Maisara's decision (Q1) |
+| X-b | AX16 energy accounting is exact for uniform α (Kuttruff §5.2). A bias of unbounded sign and size appears with uneven α (§4.5, §4.6 Gilbert, Table 5.2). Phase 05 groups errors by absorption contrast. | partly | disputed: an unquantified per-path hit-count residual even with uniform α |
+| 1 | Keep Eyring in 04. Add radiosity a* (§5.7) as a Phase 05 reference in `tools/acoustics`; promote on BRAS evidence only. γ²-Eyring for information only: it moves T away from the iteration in Table 5.2 cases 2 and 4. | yes | resolved (to adopt via /fix-plan: phase-05 scope line) |
+| 2 | Keep AX4. Report a humidity bound in Phase 05: 8 kHz −11.6 % / +17.2 % at 40 / 70 % RH in a 10 000 m³ room (Kuttruff Table 6.1, Eq. 5.24). Add a validation-only render_cli override and an `AirAbsorption` test against Kuttruff Table 6.1. No UI display. | yes | resolved (to adopt); Q3 answered by that test |
+| 3 | Inject early scattered energy (Lambert, Eq. 4.24, Gilbert §4.6) as a Phase 05 Python reference hybrid. Promote to `src/sim` in a later phase only if EDT/C80 errors drop. The tail decay source is decided by item 1's evidence, not a*. | yes | resolved (direction); open: Maisara's Q1 |
+| 4 | Keep the k_eff ≥ 19 rule and add a realised-k condition. No specular-share re-derivation (0.7–1.4 s, up to 8·10⁴ images). Compare 80 / 140 ms handovers in Phase 05. | yes | resolved (to adopt); the rule itself remains an Expert question |
+| 5 | Realised k plus capped ISM extension (§4.1, Eq. 4.3). Report per-axis energy shares, not q_d (q_d ≈ 0.85 for a 1-D flat-room field). No diffusion-equation fallback (§4.6). | partly | disputed: per-axis shares are also only necessary (they miss three-axis flutter); no threshold; cap to be measured against AQ10 |
+| OF | Keep E_b = 0 for open_field. Recast "< −60 dB after 50 ms" as an AX16 consistency check, not physics. Lambert floor scattering with the fixture geometry gives −23 to −43 dB per band (exact integral). AX17's broadband s overstates LF ground scattering. | yes | resolved (to adopt via /fix-plan) |
+| C1 | The a* test reproduces Table 5.2 by calling the solver directly (α = 0 is forbidden in scenes by AQ3). | yes | resolved |
+| C3 | The s = 1 hybrid test is circular. Mixed-s reference: an independent Kuttruff §9.8 ray tracer, plus Vorländer Table 4.1 (plot-read). | yes | resolved |
+| C5 | Flat-room (Eq. 4.3) and 1/t (Eq. 4.16) tests with α ≥ 0.01, air absorption and the ISM cap. | yes | resolved |
+
+**Remaining for Maisara:**
+1. Is the early part meant to have no scattered energy (X-a, items 3 and 4)?
+2. Is E_target meant to be independent of s?
+
+**Remaining for the Expert:**
+- the mixing-time rule;
+- a diffuseness criterion with a threshold (none in the corpus);
+- the X-b residual;
+- the gain of early scattering in real rooms (Phase 05).
+
+**Caveat:** the SME and the advocate run on the same underlying model. Their convergence is a useful sign but not independent verification.
