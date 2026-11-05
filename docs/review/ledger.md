@@ -192,8 +192,8 @@ Worked examples use c = 343.2 m/s (Vorländer Eq. 1.20, 20 °C) and the Vorländ
 
 | id | kind | item | verdict | evidence | severity | question | status |
 |---|---|---|---|---|---|---|---|
-| B1 | NUMBER | Phase 09 gate: an emitter at +55° gives the maximum L/R level difference (ORTF cardioids at ±55°) | WRONG | Spatial Audio §6.2.1 cardioid 0.5(1+cos ϑ). Working: at +55° L=1, R=0.5(1+cos 110°)=0.329 → 9.7 dB; at +90° L=0.910, R=0.090 → 20.1 dB; at +125° R=0 → unbounded. The maximum is at 125° (90° on the front half), not 55°. | blocker | Q1 | open |
-| B2 | NUMBER | Phase 03: "scattering removing (1−s) of specular energy" | WRONG (as written) | Vorländer §3.3.2 Eq. 3.23, Fig. 3.10: specular (1−α)(1−s), scattered (1−α)s, so scattering removes s and keeps (1−s); read literally the text leaves s. | blocker | Q2 | open |
+| B1 | NUMBER | Phase 09 gate: an emitter at +55° gives the maximum L/R level difference (ORTF cardioids at ±55°) | WRONG | Spatial Audio §6.2.1 cardioid 0.5(1+cos ϑ). Working: at +55° L=1, R=0.5(1+cos 110°)=0.329 → 9.7 dB; at +90° L=0.910, R=0.090 → 20.1 dB; at +125° R=0 → unbounded. The maximum is at 125° (90° on the front half), not 55°. | minor (was blocker) | Q1 | resolved |
+| B2 | NUMBER | Phase 03: "scattering removing (1−s) of specular energy" | WRONG (as written) | Vorländer §3.3.2 Eq. 3.23, Fig. 3.10: specular (1−α)(1−s), scattered (1−α)s, so scattering removes s and keeps (1−s); read literally the text leaves s. | minor (was blocker) | Q2 | resolved |
 | B3 | FACT/NUMBER | F3 + AQ2: "outdoor field" = ground plane only (5 surfaces α=1.0) with the Eyring + air tail | CONDITIONS VIOLATED | Vorländer §4.4, §4.4.1 Eq. 4.32 assume a diffuse field and homogeneous absorption. Working (e.g. 100×100×10 m, ground α=0.1): mean α 0.625 (Eq. 4.30), T ≈ 0.67 s at 1 kHz — a reverberant tail for a scene expected to be nearly dry. | major | Q3 | open |
 | B4 | FACT | AQ4/Phase 10: late tail cached when only positions change (AQ2: tail energy-matched to ISM at the mixing time) | CONDITIONS VIOLATED | Vorländer §15.3 Table 15.1: moves > 1 m need the scattering part updated; only after ≈140 ms can the receiver-specific reverberation be replaced by a statistical decay. Blauert Ch.5 "Real-time demands": translation needs full recalculation. | major | Q4 | open |
 | B5 | NUMBER | AX6: emitter ≥ 0.3 m from listener, rendered with a generic far-field HRTF (Phase 08) | CONDITIONS VIOLATED | Vorländer §9.5: standard HRTFs are distance-independent only beyond 1 m; Fig. 9.7 shows ILD growing below 1 m. Blauert Ch.2 §2.3.2: below 3 m head and pinna filtering depend on distance. | major | Q5 | open |
@@ -205,42 +205,42 @@ Worked examples use c = 343.2 m/s (Vorländer Eq. 1.20, 20 °C) and the Vorländ
 | B11 | FACT | AX13: ±2.5 ms DRR window "keeps typical first reflections out" | WRONG | Working (image source, Vorländer Eq. 11.34): source and listener 1.2 m above the floor at distance r, floor delay (√(r²+2.4²)−r)/c = 2.45 ms at 3 m, 1.59 ms at 5 m; inside the window for any r > 2.93 m. | major | — | open |
 | B12 | NUMBER | AX13 leakage bias ≈ −10·log10(1+f·10^(DRR/10)) dB; ≥ 99 % rule | IMPRECISE | Working: D'=(1−f)D, R'=R+fD give ΔDRR = 10log(1−f) − 10log(1+f·10^(DRR/10)); a term is missing. f=0.01: −0.09 dB at 0 dB, −0.46 dB at +10 dB, −3.05 dB at +20 dB, so 99 % does not bound the bias at high DRR. | minor | — | open |
 | B13 | NUMBER | AQ9: T30 within ±10 % (≈2 JND) | IMPRECISE | Vorländer §6.4.4 Table 6.1 gives 5 % for EDT only; no T/T30 jnd in the corpus. | minor | — | open |
-| B14 | NUMBER | AQ9: EDT ±10 % (≈2 JND), C80 ±2 dB (≈2 JND) | CORRECT | Vorländer Table 6.1: EDT 5 %, C80 1 dB; Fig. 11.33 note: clarity jnd revised from 0.5 to 1 dB. | none | — | open |
+| B14 | NUMBER | AQ9: EDT ±10 % (≈2 JND), C80 ±2 dB (≈2 JND) | CORRECT | Vorländer Table 6.1: EDT 5 %, C80 1 dB; Fig. 11.33 note: clarity jnd revised from 0.5 to 1 dB. | none | — | resolved |
 | B15 | NUMBER | AQ9: thresholds averaged over 500 Hz–2 kHz | IMPRECISE | Vorländer Table 6.1 states the jnds for 500–1000 Hz; the 2 JND equivalence is not stated for 2 kHz. | minor | — | open |
 | B16 | FACT | AQ9 rationale: ≈2 JND is a common bar in round robins | IMPRECISE | Vorländer §11.5: Round-robin I, 3 of 17 programs reached jnd-level accuracy; Round-robin III reports 1–2 jnd as the achievable best, not a common bar. | minor | — | open |
-| B17 | NUMBER | AQ2/Phase 04: per-band T60 from Eyring + air absorption | CORRECT | Vorländer §4.4.1 Eq. 4.32 (diffuse field, homogeneous absorption; see B3, B7). Working: constant 24 ln10/c = 0.1610 at 343.2 m/s vs the rounded 0.16 (c=340), a 0.6 % offset against the ±5 % gate. | none | — | open |
-| B18 | FACT | Phase 04 risk: Eyring inaccurate for uneven absorption | CORRECT | Toole §4.1 Box; Vorländer §4.4.1 (homogeneous-absorption assumption). | none | — | open |
-| B19 | NUMBER | AX4: 20 °C, 50 % RH, ISO 9613-1 | CORRECT | Vorländer Abbreviations name ISO 9613-1; 50 % RH sits on the edge of two Annex rows (4 kHz: 5.8 vs 4.1·10⁻³ m⁻¹); D = 4.34·m (Eq. 3.34). | none | — | open |
+| B17 | NUMBER | AQ2/Phase 04: per-band T60 from Eyring + air absorption | CORRECT | Vorländer §4.4.1 Eq. 4.32 (diffuse field, homogeneous absorption; see B3, B7). Working: constant 24 ln10/c = 0.1610 at 343.2 m/s vs the rounded 0.16 (c=340), a 0.6 % offset against the ±5 % gate. | none | — | resolved |
+| B18 | FACT | Phase 04 risk: Eyring inaccurate for uneven absorption | CORRECT | Toole §4.1 Box; Vorländer §4.4.1 (homogeneous-absorption assumption). | none | — | resolved |
+| B19 | NUMBER | AX4: 20 °C, 50 % RH, ISO 9613-1 | CORRECT | Vorländer Abbreviations name ISO 9613-1; 50 % RH sits on the edge of two Annex rows (4 kHz: 5.8 vs 4.1·10⁻³ m⁻¹); D = 4.34·m (Eq. 3.34). | none | — | resolved |
 | B20 | FACT | F6: air absorption matters above about 2 kHz in large spaces | IMPRECISE | Working (Eq. 4.32, Annex m; 20×30×10 m, T=2 s): the 4mV term shortens T by 2.9 % at 500 Hz, 4.8 % at 1 kHz, 7.8 % at 2 kHz, 17 % at 4 kHz — already ≈1 EDT jnd at 1 kHz. | minor | — | open |
-| B21 | NUMBER | Phase 03: per-band reflection factor √(1−α); α=1 → direct path only | CORRECT | Vorländer §11.3.2 Eq. 11.37. | none | — | open |
-| B22 | NUMBER | Phase 03: 1/r spreading; AX2 direct path at 1 m = 0 dB | CORRECT | Vorländer §11.3.2 Eq. 11.36; §9.4 Eq. 9.3. | none | — | open |
-| B23 | FACT | Phase 03: source↔receiver reciprocity; symmetric rooms give symmetric IRs | CORRECT | Vorländer §10.1.1 Eq. 10.9. | none | — | open |
-| B24 | FACT | Phase 03 listening: echo pattern sparser and later as the room grows | CORRECT | Vorländer §4.4 Eq. 4.22 (n̄ = cS/4V). | none | — | open |
-| B25 | NUMBER | AX1: a source 30 m away arrives 87 ms late | CORRECT | Vorländer §1.2 Eq. 1.20: 30/343.2 = 87.4 ms. | none | — | open |
-| B26 | NUMBER | Phase 08: ITD 0.6–0.75 ms at ±90°; positive ILD above 2 kHz | CORRECT | Blauert Ch.2 §2.2.2 Fig. 2.30 (≈650 µs); Immersive Sound Ch.1 "Sound Localization in the Horizontal Dimension" (650 µs, 750 µs low-frequency); Vorländer §6.3.1 Fig. 6.7; Fig. 9.7. The 0.75 ms edge depends on the ITD estimator. | none | — | open |
+| B21 | NUMBER | Phase 03: per-band reflection factor √(1−α); α=1 → direct path only | CORRECT | Vorländer §11.3.2 Eq. 11.37. | none | — | resolved |
+| B22 | NUMBER | Phase 03: 1/r spreading; AX2 direct path at 1 m = 0 dB | CORRECT | Vorländer §11.3.2 Eq. 11.36; §9.4 Eq. 9.3. | none | — | resolved |
+| B23 | FACT | Phase 03: source↔receiver reciprocity; symmetric rooms give symmetric IRs | CORRECT | Vorländer §10.1.1 Eq. 10.9. | none | — | resolved |
+| B24 | FACT | Phase 03 listening: echo pattern sparser and later as the room grows | CORRECT | Vorländer §4.4 Eq. 4.22 (n̄ = cS/4V). | none | — | resolved |
+| B25 | NUMBER | AX1: a source 30 m away arrives 87 ms late | CORRECT | Vorländer §1.2 Eq. 1.20: 30/343.2 = 87.4 ms. | none | — | resolved |
+| B26 | NUMBER | Phase 08: ITD 0.6–0.75 ms at ±90°; positive ILD above 2 kHz | CORRECT | Blauert Ch.2 §2.2.2 Fig. 2.30 (≈650 µs); Immersive Sound Ch.1 "Sound Localization in the Horizontal Dimension" (650 µs, 750 µs low-frequency); Vorländer §6.3.1 Fig. 6.7; Fig. 9.7. The 0.75 ms edge depends on the ITD estimator. | none | — | resolved |
 | B27 | NUMBER | Phase 08: frontal \|ITD\| < 20 µs; tail coherence ±0.1; diffuse energy ±1 dB; ≤ 1 dB per 1° | NOT CHECKABLE | Vorländer §9.5: 1° frontal discrimination, no step threshold; Begault Ch.4 Fig. 4.42: one measured person ≈0.02 ms at 0°, exactly the gate limit. | none | — | open |
 | B28 | DECISION | Phase 08: HRIR interpolation, nearest-neighbour then bilinear/spherical | CONSEQUENCE | Begault Ch.4 "Problems with Interpolation Algorithms" Figs. 4.39–4.40: time-domain interpolation without separating ITD gives double impulses and deeper notches; the ≤ 1 dB/1° gate would not catch it. | minor | — | open |
-| B29 | NUMBER | AQ7: ORTF = two cardioids ±55°, 17 cm | CORRECT | Spatial Audio §6.2.4, Fig. 6.11. | none | — | open |
+| B29 | NUMBER | AQ7: ORTF = two cardioids ±55°, 17 cm | CORRECT | Spatial Audio §6.2.4, Fig. 6.11. | none | — | resolved |
 | B30 | FACT | AQ7: XTC needs a fixed sweet spot | IMPRECISE | Vorländer §16.2.4: with a head tracker and adaptive filtering the sweet spot can follow the listener; true only without tracking. | minor | — | open |
-| B31 | FACT | AQ4: crossfading convolvers is the standard way to vary an IR without clicks | CORRECT | Vorländer §15.1.1 "Fast convolution", §9.2.1 (tuned against colouration and clicks). | none | — | open |
+| B31 | FACT | AQ4: crossfading convolvers is the standard way to vary an IR without clicks | CORRECT | Vorländer §15.1.1 "Fast convolution", §9.2.1 (tuned against colouration and clicks). | none | — | resolved |
 | B32 | DECISION | AQ4: 30 ms equal-gain crossfade | CONSEQUENCE | Vorländer §9.2.1: constant power across the overlap is required; equal gain gives it only for coherent outputs. Working: uncorrelated outputs at 0.5/0.5 → −3 dB at mid-fade (Phase 09 mode switch, Phase 10 corner jumps). | minor | — | open |
-| B33 | NUMBER | AQ4: IR updates capped at one per 20 ms | CORRECT | Vorländer §15.3 (20 ms as printed; Table 15.1: 35 ms rotation, 700 ms for moves > 0.25 m); Blauert Ch.5: no single-number criterion. | none | — | open |
+| B33 | NUMBER | AQ4: IR updates capped at one per 20 ms | CORRECT | Vorländer §15.3 (20 ms as printed; Table 15.1: 35 ms rotation, 700 ms for moves > 0.25 m); Blauert Ch.5: no single-number criterion. | none | — | resolved |
 | B34 | NUMBER | AQ4 20 ms cap vs 30 ms fade (Phase 06) and ≤ 50 ms rebuild (AQ10) | IMPRECISE | Working: an uninterrupted 30 ms fade allows one IR per 30 ms and an order-30 rebuild one per 50 ms, so 20 ms is unreachable. | minor | — | open |
 | B35 | NUMBER | Phase 04: mixing-time estimate | NOT CHECKABLE | Vorländer §11.7: no simple rule; §11.6.1 ≈100 ms; §15.3 140 ms. | none | — | open |
-| B36 | FACT | AQ2: a statistical tail is the standard companion to ISM | CORRECT | Vorländer §11.6.1, §15.3; §11.6: scattered energy dominates after order 3–4. | none | — | open |
+| B36 | FACT | AQ2: a statistical tail is the standard companion to ISM | CORRECT | Vorländer §11.6.1, §15.3; §11.6: scattered energy dominates after order 3–4. | none | — | resolved |
 | B37 | DECISION | AQ1: 8 octave bands, 63 Hz–8 kHz | CONSEQUENCE | Working: top band edge 8k·√2 ≈ 11.3 kHz, while Begault Ch.3 "Spectral Changes…" says air absorption above 10 kHz is audible at ≈15 ft; Vorländer §11.7: coarse band data can ring when interpolated. | minor | — | open |
 | B38 | FACT | AQ3: α in [0.01, 1.0] and broadband s are "the quantities in published material tables" | IMPRECISE | Vorländer Annex: α tables 125 Hz–8 kHz (no 63 Hz), s tables per band; Toole §4.3.3: measured α can exceed 1.0. | minor | — | open |
 | B39 | FACT | F5/AQ3: reflectivity = 1−α, same quantity as absorption | IMPRECISE | Vorländer §11.3.2 Eq. 11.37: α fixes only \|R\|=√(1−α), the phase is separate; Eq. 3.23: specular energy (1−α)(1−s). | minor | — | open |
 | B40 | NUMBER | Phase 04 IR length capped at 12 s; AX6 limits avoid "unbounded IR lengths" | IMPRECISE | Working (Eq. 4.32): 100 m cube, α=0.01 at 125 Hz → T ≈ 160 s; a 12 s IR reaches only −4.5 dB, and T30 needs T ≤ 20.6 s. Only the cap bounds length. | minor | — | open |
-| B41 | FACT | F3: non-shoebox spaces and terrain need mesh geometry and diffraction | CORRECT | Vorländer §11.3.4, §11.6. | none | — | open |
-| B42 | FACT | Phase 08 risk: front/back confusion and in-head localisation with a generic HRTF | CORRECT | Blauert Ch.5 "Static limitation and head tracking"; Immersive Sound Ch.4 "Inside-the-Head Locatedness" Fig. 4.14. | none | — | open |
+| B41 | FACT | F3: non-shoebox spaces and terrain need mesh geometry and diffraction | CORRECT | Vorländer §11.3.4, §11.6. | none | — | resolved |
+| B42 | FACT | Phase 08 risk: front/back confusion and in-head localisation with a generic HRTF | CORRECT | Blauert Ch.5 "Static limitation and head tracking"; Immersive Sound Ch.4 "Inside-the-Head Locatedness" Fig. 4.14. | none | — | resolved |
 | B43 | DECISION | AX3/AQ6: static yaw, no head tracking, generic HRTF | CONSEQUENCE | Immersive Sound Ch.4 Fig. 4.14: without tracking most listeners hear frontal sources behind or above, against the Phase 08 listening expectation that ±30° emitters sound in front and out of the head. | minor | — | open |
 | B44 | DECISION | AQ8: omnidirectional point sources | CONSEQUENCE | Vorländer §11.7 Eq. 11.50 (H_source per path); Toole §4.3.5 (directivity changes reflections and decays). | minor | — | open |
 | B45 | DECISION | AX1: no Doppler, IR switches crossfaded | CONSEQUENCE | Vorländer §15.1.1 (comb colouration when fading). Working (Phase 10, 1→15 m over 8 bars at 120 bpm = 0.875 m/s): 17.5 mm (51 µs) per 20 ms update, first notch 9.8 kHz mid-fade on unaligned paths. | minor | — | open |
 | B46 | NUMBER | AX11: fluctuation "on a 1/B time scale (≈ 0.5·T/√(B·T))" | IMPRECISE | The text equates a time scale with a standard deviation; they differ by 0.5√(BT). As relative std 0.5/√(BT): 1.9 % (1 kHz, 1 s) vs 1.5 % measured, 3.4 % (0.3 s) vs 3.4 %. Vorländer §11.2.5 supports averaging repeated runs. | minor | — | open |
 | B47 | NUMBER | AX11: R = 300/130/48/24 for the Phase 02 ±2 %/±5 % gate | NOT CHECKABLE | Working with R ≥ (σ₁/(tol/3))²: 63 Hz at ±2 % needs 729 (0.3 s) and 144 (1 s); the figures fit only if 63 Hz uses ±5 %; band split not stated; no σ₁ for 2.5 s. | none | — | open |
-| B48 | NUMBER | Phase 12: living room T30 0.3–0.6 s | CORRECT | Toole §4.3.3 (0.36–0.4 s typical); Figs. 4.10–4.11 (0.32 s, 0.4 s). | none | — | open |
-| B49 | FACT | Phase 07 / AX2: farther away = more room, less direct, quieter | CORRECT | Blauert Ch.3 §3.3; Immersive Sound Ch.1 "Reverberation Cues": beyond the critical distance overall level is roughly constant, so "quieter" applies to the direct sound. | none | — | open |
+| B48 | NUMBER | Phase 12: living room T30 0.3–0.6 s | CORRECT | Toole §4.3.3 (0.36–0.4 s typical); Figs. 4.10–4.11 (0.32 s, 0.4 s). | none | — | resolved |
+| B49 | FACT | Phase 07 / AX2: farther away = more room, less direct, quieter | CORRECT | Blauert Ch.3 §3.3; Immersive Sound Ch.1 "Reverberation Cues": beyond the critical distance overall level is roughly constant, so "quieter" applies to the direct sound. | none | — | resolved |
 | B50 | NUMBER | AX13: ±2.5 ms window (Zahorik 2002) | NOT CHECKABLE | Zahorik 2002 appears only in the Immersive Sound reference list, no window value. | none | — | open |
 | B51 | NUMBER | ±1 sample/±0.5 dB vs pyroomacoustics; −100/−120 dB gates; ±2 % across rates; ≤ 100 ms staleness; mono-sum notch ≤ 6 dB; ORTF diffuse coherence; BS.1770 ±1 dB; "robust on any neutral pair"; photo HRTF | NOT CHECKABLE | Not in the corpus. Pointers: Vorländer §6.4.5 Eq. 6.14 sin(kd)/kd is for omni points, not cardioids; Immersive Sound Ch.1 "HRTFs and Virtual Acoustics" lists fast individualisation, not photos. | none | — | open |
 
@@ -311,3 +311,44 @@ Maisara: raise the binaural minimum emitter–listener distance to 1 m, or keep 
 0.3–1 m renders with far-field ILD and spectrum (level by 1/r only). Proposed test either way: ILD at
 90° for 0.5 m and 2 m sources is reported; if near-field treatment is added, it must grow below 1 m as in
 Fig. 9.7.
+
+### Round 1 (interrogator on blockers B1, B2)
+
+Builder's descriptions of the phase files confirmed: `phase-09.md` (gate line) and BUILD_PLAN §4 Phase 09
+carry the old +55° gate; BUILD_PLAN §4 Phase 03 carries "(1−s) of specular energy"; `phase-03.md` already
+uses √(1−α)·√(1−s) per hit and "(1−s) on energy", consistent with Vorländer Eq. 3.23.
+
+| id | verdict | severity now | citation/arithmetic check | reason | follow-up |
+|---|---|---|---|---|---|
+| B1 (A1) | OPEN | minor (was blocker) | Citations check (Spatial Audio §6.2.1, §6.2.4 Table 6.2). ΔL: +30° 4.88 dB, +55° 9.66 dB, +90° 20.05 dB, +125° unbounded — correct. 5 m 1/r bound 0.295 dB correct, but point-source parallax (≈0.56° per capsule at +55°) adds ≈0.12 dB, so ≈0.36 dB total at 55°. The left channel's peak at 5 m falls near +56.7°, not exactly +55°. | Acoustics and values right, the ΔL table is falsifiable; the "≤ 0.3 dB" bound and "peak at +55°" are slightly off for a 5 m point source. | What angular tolerance on the left-channel peak, and what geometric correction (1/r + parallax), does the gate use? |
+| B2 (A2) | OPEN | minor (was blocker) | Citations check (Vorländer §3.3.2 Eq. 3.23, Fig. 3.10; §11.3.2 Eq. 11.37; §11.6, Fig. 11.34). √((1−α)(1−s)) correct. With AX4 air on, a 10 m path loses ≈0.59 dB at 8 kHz (Annex m, Eq. 3.34), above the ±0.05 dB test tolerance. With s = 0.5, the specular share after 3 hits is (1−s)³ = −9.0 dB, so a tail matched to specular energy only would be ≈9 dB low. | Wording fix and model correct; the test must state air off (or include it), and the tail matching must count the scattered energy. | Is the Phase 04 tail matched to specular ISM energy plus accumulated scattered energy, or specular only? |
+
+**Builder replies to the round-1 follow-ups**
+
+- **B1.** The expected value is computed from the exact geometry, not from the plane-wave formula: per
+  capsule, its own angle to the source (parallax) in the cardioid 0.5(1+cos ϑ) and its own distance in
+  1/r (Vorländer Eq. 11.36). Gate: measured ΔL equals that value within ±0.5 dB at φ ∈ {0°, ±30°, ±55°,
+  ±90°} for a 5 m source, sign positive for positive φ, mirrored for negative φ; the left channel's level
+  peaks within ±3° of the geometric prediction (≈+56.7° at 5 m). The plane-wave values (9.7 dB at 55°,
+  20.1 dB at 90°) are kept as a sanity check, within ±0.5 dB.
+- **B2.** The ±0.05 dB first-order test runs with air absorption off (or, equivalently, with
+  4.34·m·r dB per band included in the analytic value). Phase 04 matches the tail's onset energy to the
+  specular ISM energy **plus** the accumulated scattered energy Σ(1−α)s per hit (Vorländer Eq. 3.23,
+  Fig. 3.10; §11.6), so with s = 0.5 the tail is not 9 dB low. This also makes A3's open-field answer
+  precise: with five α = 1 faces the scattered energy is zero too, so the tail is still zero.
+
+No blocker remains, so no round 2 was run.
+
+### Status after round 1
+
+| id | severity | status | what closes it |
+|---|---|---|---|
+| B1 | minor (was blocker) | resolved | Builder adopted the geometric gate. Maisara: correct the +55° gate in `phase-09.md` and BUILD_PLAN §4 Phase 09 before Phase 09 starts. |
+| B2 | minor (was blocker) | resolved | Builder: specular (1−α)(1−s), air off in the test, tail matched to specular + scattered energy. Maisara: fix the BUILD_PLAN §4 Phase 03 wording; add the matching rule to `phase-04.md`. |
+| B3 | major | open | A3 answer given (energy-matched tail is zero in the open field) but not re-checked; matching window still undefined in the plan. |
+| B4 | major | open | A4 answer given (cache decay rates and seed only, recompute onset level) but not re-checked. |
+| B5 | major | open | Maisara: raise the binaural minimum distance to 1 m, or document far-field rendering for 0.3–1 m. |
+| B6–B11 | major | open | No question asked in this run (ISM "exact" wording, small-room validity, per-band s, F8 vs AX3, AX11 range, DRR window). |
+| B12, B13, B15, B16, B20, B28, B30, B32, B34, B37–B40, B43–B46 | minor | open | No question asked; listed for the next plan revision. |
+| B14, B17–B19, B21–B26, B29, B31, B33, B36, B41, B42, B48, B49 | none (CORRECT) | resolved | — |
+| B27, B35, B47, B50, B51 | none (NOT CHECKABLE) | open | Needs a source outside the corpus. |
