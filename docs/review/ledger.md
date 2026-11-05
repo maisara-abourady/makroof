@@ -738,3 +738,40 @@ general form), B2 (160 s → of order 200–270 s, also in BUILD_PLAN AX6), B3 (
 §4.3 Eq. 4.14–4.16), B4 (drop the §11.7 filter-ringing citation), and the AX5 mt19937 wording. Carried
 over from the earlier phase-04 run: the Expert questions on the mixing-time rule and on sparse or
 non-diffuse fields, and the AQ10 / phase-13 "order 30" rebuild-budget follow-up.
+
+## docs/phases/phase-04.md — 2026-11-05 (expert consultation on P4-D1–D3, P4-D5, sparse fields; corpus 22dc9dd)
+
+Maisara asked the interrogator to act as the subject-matter expert and to recommend alternatives.
+Acoustic claims are from the corpus. PRD, BUILD_PLAN and the phase files were used only as
+constraints. No plan file was edited; adopting any of this goes through `/fix-plan`.
+
+**Cross-cutting finding X.** Checked by the main session against phase-03 scope 1 and BUILD_PLAN AX16.
+- Phase 03 renders only specular energy (1−α)(1−s) per hit, and the AX16 scattered entries are used only to set the tail level.
+- So the rendered IR has no scattered energy before t_mix and has it after. For one path the mean level steps by 10·log(1/Π(1−s)^hits) dB: ≈ 11 dB at s = 0.4 after 5 hits (Vorländer Eq. 3.23). Kuttruff's example puts the diffuse share at ≈ 45 % at order 2 (Vorländer §11.6, Fig. 11.34).
+- The Schroeder EDC is an integral (Eq. 6.4), so this step changes its slope, not its value, and the EDC-step gate does not detect it.
+- Under AX16, specular + scattered = E_noScatter, so E_target does not depend on s. AX16 also never sends scattered energy toward absorbent faces, which is the mechanism that diffuses non-uniform rooms (§11.5).
+- Severity: major (affects EDT, C80 and D50 of the hybrid IR, and the seam). Status: **open**.
+
+| item | recommendation | confidence | would change | corpus basis |
+|---|---|---|---|---|
+| 1 Eyring, uneven α (P4-D1) | Keep Eyring in 04. Add a seeded Lambert-scattering stochastic ray tracer (energy multiplication) as a second decay predictor in Phase 05. Promote it to T60_b only if BRAS T30/EDT errors drop. Reject fitting the decay to the late ISM (pure specular, per X). | medium | AQ2, new AX, AQ10; phases 05, 04, 10, 13; no contract change | Vorländer §4.4, §4.4.1–4.4.2, §11.2, Tables 11.3–11.5, §11.5–11.6.1; Toole Box "Calculating reverberation time" (no universal formula). Millington, Kuttruff correction and Fitzroy/Arau formulas NOT CHECKABLE. |
+| 2 fixed atmosphere (P4-D2) | Keep AX4. Report a per-band T bound at 30 % and 70 % RH. Add a render_cli atmosphere override for validation only. | high (keep) / medium | AX4; phases 04, 05; no contract change | Eq. 4.32 with the Vorländer Annex air table, rooms from Table 11.2, ᾱ = 0.15: 8 kHz −12 %/+6 % (1000 m³), −17 %/+10 % (10000 m³); 4 kHz −4 to −7 %; Begault Ch. 3 |
+| 3 AX16 timing (P4-D3) | Render the scattered entries before t_mix as seeded noise on an energy-preserving causal kernel, so specular + scattered is continuous across t_mix. Keep the AX16 list for matching. A physical transfer (ray tracing or diffuse rain) comes later. | medium | AX16, new AX; phases 04, 05, 08; no contract change | Eq. 3.23, Fig. 3.9, Figs. 11.34, 11.35, 11.42, Eq. 11.51; kernel shape NOT CHECKABLE |
+| 4 mixing time (P4-D5) | Keep the k_eff ≥ 19 rule, restated as "1 dB expected level precision" (Eq. 11.9/11.17, Table 6.1). Don't lengthen t_mix before item 3. In Phase 05, compare floors at t_dir + 80 ms and + 140 ms. | medium | phase-04 scope 2 wording; phases 04, 05 | Blauert Ch. 3 §3.3; Vorländer §6.4, §11.6.1, §11.7, §15.3; Begault Ch. 3/4; √V NOT CHECKABLE |
+| 5 sparse fields | Require realised k_eff ≥ 19 as well as the expected value. Extend the time-bounded ISM up to a cap. Prune zero-energy images. Report k_real, the realised σ and diffuseness ψ. open_field keeps E_b = 0. | medium-low | new AX (cap, realised-k rule), AX20, AQ10; phases 04, 05, 10, 13 | Vorländer §4.4, §4.4.2, Table 4.1, §11.3.3, §15.2.3; Zotter & Frank §A.6.2 Eq. A.82 (ψ on image sums NOT CHECKABLE) |
+
+**Proposed falsifiable checks:**
+1. Ray-traced T within ±5 % of Eq. 4.32 for uniform α and s = 1. In Phase 05, a lower mean |T30 error| at 500 Hz–2 kHz in the BRAS rooms with uneven absorption.
+2. A unit test that T60_b moves by the Eq. 4.32 prediction when m_b is swapped.
+3. A 10 ms-bin ensemble envelope with no step > 1 dB across t_mix ± 5 ms, plus a Phase 05 C80 error no worse than with AX16 as is.
+4. With item 3 in place, BRAS EDT/C80 errors change by less than 1 jnd across the three handover times.
+5. A flat-room test scene matches the Table 4.1 specular sum within ±1 dB.
+
+**Requirement notes from the consult:** NFR-6 in the PRD is Persistence. Offline/realtime equivalence comes from AQ4, AX5 and Phase 10. Shoebox-only comes from AQ1/F3, not the PRD ("any environment"; B2 plans ray/beam tracing).
+
+**Questions for Maisara and the Expert (open):**
+1. Is the rendered early part meant to have no scattered energy (X)?
+2. Is E_target meant to be independent of s?
+3. Does the Annex air table agree with the ISO 9613-1 values AX4 uses? 50 % RH falls between rows that differ ≈ 1.5× at 4–8 kHz.
+4. Should t_mix,e also require a realised k_eff ≥ 19?
+5. If a ray-traced decay is adopted, room-averaged T60_b (cache stays position-independent) or receiver-specific?
