@@ -199,7 +199,7 @@ IR for every valid shoebox scene.
 
 ## Out of scope
 
-Binaural tail coherence (08); validation against real rooms (05); any per-scene tuning (forbidden by NFR-8).
+Binaural tail coherence (08); comparison with measured rooms (evidence; 05, 05d); any per-scene tuning (forbidden by NFR-8).
 
 ## Acceptance criteria — automated
 

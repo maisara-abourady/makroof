@@ -1,4 +1,4 @@
-# Phase 05 — Validation against measured impulse responses + accuracy report
+# Phase 05 — Comparison with measured impulse responses (evidence) + accuracy report
 
 Size: **M** · Depends on: 04 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ9, AX4, AX16, AX21, AX22) and §3 (F2, F3), PRD NFR-1, NFR-8, Q2, Q9
 
@@ -35,6 +35,12 @@ hand-tuned.
   measure method plus input data, not a validation of NFR-1: Phase 05 calls them evidence (researcher
   findings F1–F3, F6, F7 from the BRAS documentation, researcher report 9, `docs/review/phase-04-consult/9-researcher-measurements.md`; outside the corpus)
   (decider report 11, accepted by Maisara, 2026-11-05).
+- Per-material α and s for CR2–CR4 are tabulated in the BRAS `_csv/initial_estimates`, and areas and
+  d_char are in `_descr/mat_CRx.txt` inside `3_surface_descriptions.zip`; from α alone, CR2 is uniform
+  and low-s, while CR3 and CR4 each have one strong absorber (seating) that is also high-s, so BRAS
+  likely has no room that combines uneven α with low s, which Phase 05 confirms with the areas
+  (researcher report 16 §4–5, `docs/review/phase-04-consult/16-researcher-bras-materials-priors.md`;
+  external, outside the corpus; researcher report 16, preliminary; Phase 05 re-reads the values from the zip).
 - Write `tools/validation/fetch_bras.py`. It downloads only the files needed (scene documentation,
   material tables, omni RIRs for the selected source/receiver pairs) from the official repository
   (DepositOnce), verifies SHA-256 checksums stored in `tools/validation/bras_manifest.json`, and caches
@@ -373,6 +379,7 @@ a* against Table 5.2), and whether the conclusions in the report follow from the
 - BRAS gives at most three usable rooms with estimated inputs: results are evidence, not validation. A
   second measured dataset is required before the Phase 13 beta decision (BUILD_PLAN §3 F2); Maisara
   decides, the researcher agent searches. It does not block this phase (decider report 11, accepted by Maisara, 2026-11-05).
+  Second source adopted: Arni + dEchorate, phase 05d, run after this phase (decider report 15, accepted by Maisara, 2026-11-05).
 
 ## Definition of done
 

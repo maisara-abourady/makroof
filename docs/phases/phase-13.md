@@ -1,6 +1,6 @@
 # Phase 13 — v1 hardening: performance, DAW matrix, signing
 
-Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12, including 05b (with 05c, if it exists, `blocked` only on Maisara's recorded decision) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
+Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12, including 05b and 05d (05d `done` or `blocked (reason)`, decider report 15, accepted by Maisara, 2026-11-05; with 05c, if it exists, `blocked` only on Maisara's recorded decision) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
 
 ## Goal
 
@@ -42,7 +42,7 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
      SmartScreen warning if unsigned.
    - Version number from the git tag, embedded in the plugin (`JucePlugin_VersionString`) and shown in the UI.
 5. **Licences and attribution:** `docs/THIRD_PARTY.md` complete (JUCE tier and terms, PFFFT,
-   nlohmann/json, dr_wav, Catch2 (test only), HRTF dataset, material sources, BRAS (validation only,
+   nlohmann/json, dr_wav, Catch2 (test only), HRTF dataset, material sources, BRAS, Arni and dEchorate (validation only,
    not shipped)). The installer includes `THIRD_PARTY_NOTICES.txt`. **Confirm the JUCE licence tier
    that will apply at commercial launch**, and the splash-screen and revenue-cap rules for that tier,
    recording it in BUILD_PLAN §6.
@@ -79,8 +79,12 @@ Licensing/trial (B1), auto-update, anything listed in BUILD_PLAN §5.
       plus a real session with 10 instances on stems. Note CPU in your DAW's meter.
 - [ ] Decide: is this build good enough to give to 3–5 beta users? The decision lists 'AQ9 met in x/y'
       and every recorded known deficit (AX16, AX21, AX22, AQ10 misses) (decider report 8, accepted by Maisara, 2026-11-05). It also
-      states whether a second measured dataset beyond BRAS was found and used (BUILD_PLAN §3 F2; BRAS
-      results are evidence, not validation) (decider report 11, accepted by Maisara, 2026-11-05). Your decision goes in BUILD_PLAN §6.
+      states (BUILD_PLAN §3 F2; decider report 15, accepted by Maisara, 2026-11-05): "Second measured
+      source: Arni (202 m³) and dEchorate (86 m³), CC BY 4.0, used in phase 05d. No open dataset has
+      measured α for all surfaces; all measured comparisons (BRAS, Arni, dEchorate) are evidence, not
+      validation of NFR-1. Input-matched distribution test: [result]. Coverage: domestic small room (one
+      treated empty cuboid), mid room 145–454 m³, halls 2 350/8 650 m³ (BRAS); none for outdoor, cars or
+      furnished living rooms." Your decision goes in BUILD_PLAN §6.
 
 ## Contractor review focus
 

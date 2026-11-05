@@ -95,7 +95,9 @@ t_mix,e. This phase promotes the Phase 05 reference hybrid's early Lambert-scatt
    rule), seeds and bins are never changed after results are seen.
 6. **Gate (B)** on the Phase 05 numbers, as in B11: not worse by more than δ = 0.25 jnd room-averaged,
    no room's Δ̂ above +1 jnd, each with SE ≤ threshold/3, from seed-paired ensembles sized per phase-05
-   "Paired comparisons". Follow the no-minimum-count and no-evaluable-pair branches of B11.
+   "Paired comparisons". Follow the no-minimum-count and no-evaluable-pair branches of B11. (B) stays on
+   BRAS; where phase 05d has results, the report additionally prints the 05d numbers as context, not
+   gated (decider report 15, accepted by Maisara, 2026-11-05).
 7. **`open_field`:** re-derive the Phase 04 consistency check (energy later than 50 ms after the direct
    sound) against the Lambert estimate (−23 to −43 dB per band, ledger OF).
 8. **AQ10:** measure W1 and W2 with the promoted early part and record them in §0 (not a blocker).
