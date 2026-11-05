@@ -580,8 +580,8 @@ absorption input and scattering as the corpus's main error sources alongside sha
 level offset removed by loudness matching (dB, per pair) so G errors stay visible; V5-21 the A/B pack
 judges monaural attributes only.
 
-**Status after round 0 (no blocker, no verification round run):** 11 rows resolved (CORRECT / NOT CHECKABLE),
-11 open: 4 major (V5-6, V5-15, V5-17, V5-18) and 7 minor. None disputed. Every open major row has a
+**Status after round 0 (no blocker, no verification round run):** 9 rows resolved (CORRECT / NOT CHECKABLE),
+13 open: 4 major (V5-6, V5-15, V5-17, V5-18) and 9 minor. None disputed. Every open major row has a
 proposed answer that needs a plan decision (Maisara) and then `/fix-plan`; the numeric choices in the
 answers (±2 % / ±0.2 dB, held height, 20 dB onset, 10 dB noise margin) are outside the corpus and should
 go to the interrogator when `/fix-plan` applies them.
