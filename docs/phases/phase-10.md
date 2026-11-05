@@ -34,7 +34,9 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
    dimensions, materials, mode, seed, sample rate). Every rebuild, including a position-only one,
    recomputes the early part, the AX16 scattered-energy list, each emitter's `t_mix,e` (it follows the
    emitter's direct-arrival time, so it depends on positions), the AX20 time-bounded image list (every
-   image arriving before t_mix,e + 2.5 ms), E_b and the crossfade from the new image list. Prove the
+   image of any order arriving before t_mix,e + 2.5 ms; `maxReflectionOrder` has no effect on it), E_b
+   (against ē_b, which depends only on T60_b, t_mix,e on the cached decay's emission-referenced time
+   axis and the IR length) and the crossfade from the new image list. Prove the
    result equals a full rebuild (test), including a move that changes t_mix,e and the time-bounded
    image list.
 3. **Rebuild scheduling:** the builder always works on the newest scene (coalescing). If a build takes
@@ -56,8 +58,8 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
 
 ## Out of scope
 
-Doppler / interpolated delay lines (would need a new AX entry and Expert input), dynamic reflection-order
-reduction while moving (needs an AX entry if introduced).
+Doppler / interpolated delay lines (would need a new AX entry and Expert input), dynamic reduction of the
+image list while moving (it would change AX20; needs an AX entry if introduced).
 
 ## Acceptance criteria — automated
 
@@ -67,8 +69,9 @@ reduction while moving (needs an AX entry if introduced).
 - [ ] Offline render of every scenario is **bit-identical** across two runs.
 - [ ] A static scene renders identically (within −120 dB) in offline and realtime-sim modes.
 - [ ] Tail-cache result equals a full rebuild within −120 dB.
-- [ ] Worst-case IR staleness in realtime-sim ≤ **100 ms** in all scenarios at order 20 (recorded in the
-      CI log; failing it fails the job).
+- [ ] Worst-case IR staleness in realtime-sim ≤ **100 ms** in all scenarios (recorded in the CI log;
+      failing it fails the job). The hybrid IR's image list is time-bounded (AX20), so its size follows
+      t_mix,e and the room, not `maxReflectionOrder`.
 - [ ] No allocation in `processBlock` during the automation scenarios (AllocationTracker through the plugin processor).
 - [ ] pluginval strictness 10 passes (its automation test exercises this path too).
 
@@ -90,8 +93,9 @@ clock mechanism, and whether the negative control really exercises the same code
 
 ## Risks
 
-- IR rebuild cost at high orders in large rooms could exceed the 20 ms cadence and cause visible
-  staleness. Measure it. If it's too slow, propose (don't implement) a moving-order reduction as an AX entry.
+- IR rebuild cost in large rooms (the AX20 image list grows with t_mix,e, whatever `maxReflectionOrder`
+  is) could exceed the 20 ms cadence and cause visible staleness. Measure it. If it's too slow, propose
+  (don't implement) a reduction of the image list while moving as an AX entry (it would change AX20).
 - The click detector's blind spots for very low-frequency artifacts (thumps below 2 kHz). Add one scenario
   with a 40 Hz tone and a low-band detector variant if cheap.
 

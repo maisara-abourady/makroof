@@ -23,8 +23,9 @@ IR for every valid shoebox scene.
 - **AX19**: σ₁(EDT) and σ₁(C80) of the hybrid IR are measured in this phase and recorded there; they
   set R for the EDT and C80 sample-rate gates.
 - **AX20**: the image list used for matching and for the rendered early part is time-bounded (every
-  image of any order arriving before t_mix,e + 2.5 ms), so `maxReflectionOrder` is a minimum, not a cap,
-  in the hybrid IR.
+  image of any order arriving before t_mix,e + 2.5 ms; later images are represented by the tail), so
+  `maxReflectionOrder` has no effect on the hybrid IR. It applies only to the early-reflection-only
+  (Omni ISM) IR of Phase 03, kept after Phase 04 as `Kind::OmniEarly` / `render_cli --mode omni-early`.
 
 ## Scope
 
@@ -41,21 +42,32 @@ IR for every valid shoebox scene.
      **level** comes from energy matching (below), which only looks at entries in the matching window
      before `t_mix,e`. In `open_field` the only non-zero entries are the direct sound and the floor
      reflection (specular and AX16 scattered part); in the fixture the floor reflection arrives 1.4 ms
-     after the direct sound, before the window's earliest start t_dir,e + 2.5 ms, and every later image
+     after the direct sound, before the window's start t_dir,e + 2.5 ms, and every later image
      hits an α = 1 face, so every entry in the window is zero and E_b = 0 for any floor scattering s.
      No scene-specific logic is involved (NFR-8).
    - Expose `T60_b` for tests and UI display.
-2. `src/sim/tail/MixingTime.h/.cpp` — per emitter e, `t_mix,e = t_dir,e + max(20 ms, √V ms)` with V
-   in m³ and t_dir,e the emitter's own direct-arrival time from emission (distance / c, before the AX1
-   shift). The √V-milliseconds term is the widely used estimate of perceptual mixing time (cite the
-   source in a comment); it is counted from the emitter's direct sound, not from emission. Each emitter
-   gets its own t_mix,e, as it gets its own tail; the matching window and the crossfade use t_mix,e.
-   There is no clamp to the requested ISM order: the image list is time-bounded instead (AX20, scope 3).
+2. `src/sim/tail/MixingTime.h/.cpp` — per emitter e, t_mix,e is the **smallest t ≥ t_dir,e +
+   max(20 ms, √V ms)** such that the expected energy-weighted k_eff of the Hann window
+   [t_dir,e + 2.5 ms, t] is **≥ 19**, with
+   k_eff = (4πc³/V) · (∫w dt)² / ∫ w(t)²/t² dt,
+   w the Hann taper over [t_dir,e + 2.5 ms, t], t measured from emission, c = 343 m/s, V in m³, and
+   t_dir,e the emitter's own direct-arrival time from emission (distance / c, before the AX1 shift).
+   (Sources: Blauert Ch. 3 §3.3, Cremer's reflection density; Vorländer Eqs. 11.8, 11.20, 11.50 and
+   11.9/11.17.) The corpus gives no rule for the transition time (Vorländer §11.7). This rule is
+   chosen for accuracy (PRD NFR-1: more of the response is deterministic ISM) and to make the level
+   estimate well-conditioned; the earlier √V-milliseconds term (the widely used estimate of perceptual
+   mixing time, cite the source in a comment) and the 20 ms are kept as a lower bound, counted from the
+   emitter's direct sound, not from emission. The Expert may revise the rule. For t_dir,e → 0 the k_eff
+   criterion alone gives roughly 5.5·V^(1/3) ms (≈ 28 expected arrivals) (approximate, from
+   N(t) = (4π/3)(ct)³/V). Each emitter gets its own t_mix,e, as it gets its own tail; the matching window
+   and the crossfade use t_mix,e. There is no clamp to the requested ISM order: the image list is
+   time-bounded instead (AX20, scope 3).
 3. `src/sim/tail/NoiseTail.h/.cpp` — for each emitter:
    - **Image list (AX20):** matching and the rendered early part use every image of any order that
-     arrives before t_mix,e + 2.5 ms (the end of the crossfade), plus the images up to
-     `maxReflectionOrder` as in Phase 03. So `maxReflectionOrder` acts as a minimum, not a cap, in the
-     hybrid IR (accuracy first, PRD NFR-1); the list is complete up to the end of the fade.
+     arrives before t_mix,e + 2.5 ms (the end of the crossfade); later images are represented by the
+     tail. The early part is time-bounded, so `maxReflectionOrder` has no effect on the hybrid IR
+     (accuracy first, PRD NFR-1); it applies only to the early-reflection-only (Omni ISM) IR of Phase 03 /
+     `render_cli --mode omni-early`. The list is complete up to the end of the fade.
    - Generate Gaussian white noise (seeded, see AX5), split it into the 8 bands with the **same
      filterbank as Phase 03**, and apply the envelope `exp(−6.91·t / T60_b)` per band. Normalise each
      band to unit total energy. This **unmatched, unit-energy per-band decay** depends only on V, S,
@@ -71,50 +83,63 @@ IR for every valid shoebox scene.
         path's specular arrival time t_i. The scattered entries are what keeps the tail from being too
         quiet: matching to specular energy alone would put it ≈ 9 dB low with s = 0.5 after 3 hits
         (Vorländer Eq. 3.23, Fig. 3.10; §11.6: scattered energy dominates after a few orders).
-     2. **Window.** It ends at t_mix,e and starts at t_mix,e − L_w, never earlier than t_dir,e + 2.5 ms.
-        Its taper w is a Hann window over [t_mix,e − L_w, t_mix,e], zero at both ends. L_w is the
-        shortest length that gives an expected k_eff ≥ 19, with k the expected number of arrivals in
-        the window from N(t) = (4π/3)·(c·t)³ / V (arrivals up to time t after emission) and
-        k_eff = (Σw)²/Σw² ≈ 0.67·k for Hann. k_eff ≥ 19 keeps the level scatter σ ≤ 1 dB
-        (σ_dB = 4.34/√k_eff, Vorländer Eqs. 11.9/11.17). Where the start limit prevents k_eff ≥ 19,
-        use the longest allowed window (start = t_dir,e + 2.5 ms) and report the expected
-        σ_dB = 4.34/√k_eff for that emitter.
+     2. **Window.** The window is [t_dir,e + 2.5 ms, t_mix,e], the one scope 2 uses to choose t_mix,e.
+        Its taper w is a Hann window over that interval, zero at both ends. By scope 2 its expected
+        energy-weighted k_eff is ≥ 19. **Report**, per emitter and band, σ_dB = 4.34/√k_eff
+        (Vorländer Eqs. 11.9/11.17) as the **expected** precision under Poisson-like arrivals, together
+        with the realised count of non-zero entries in the window. Shoebox image arrivals are
+        deterministic, so in sparse or non-diffuse fields the actual error is not bounded by this σ
+        (see Risks).
      3. **Estimate.** Refer each entry to t_mix,e along the diffuse decay (energy falls 60 dB per
         T60_b) and weight it by the taper, normalised to a 10 ms window:
         E_target,b = (0.010 s / ∫w dt) · Σ_i w(t_i) · E_i,b · exp(−13.82 · (t_mix,e − t_i) / T60_b).
         This is the band energy per 10 ms at t_mix,e.
      4. **Match.** Set E_b so that E_b² · ē_b = E_target,b, where ē_b is the **expected** energy of the
-        unit-energy decay per 10 ms at t_mix,e (the same 10 ms normalisation), computed analytically
-        from T60_b and the window, **not** the realisation's own Σ unitDecay_b². E_b is then
+        unit-energy decay per 10 ms at t_mix,e (the same 10 ms normalisation), computed analytically,
+        **not** the realisation's own Σ unitDecay_b²:
+        ē_b = 0.010 s · (13.82/T60_b) · exp(−13.82·t_m/T60_b) / (1 − exp(−13.82·L_IR/T60_b)),
+        with t_m = t_mix,e measured from emission on the unit decay's time axis (the unit decay starts at
+        emission time 0 and is independent of positions, which Phase 10's cache relies on) and L_IR the
+        rendered IR length (12 s cap, below). ē_b does not depend on the matching window. Band-filter
+        ringing is not included in ē_b; it is a measured, reported check. E_b is then
         seed-independent, and so is the tail's total energy E_b² (Vorländer §11.7 Eq. 11.51: the
         envelope is deterministic, the noise carries the fine structure). Match on the un-faded tail
         (before the crossfade below). Nothing is accumulated from t = 0.
      - Entries outside the window (for example the direct sound, and the `open_field` floor
        reflection in the fixture, specular or scattered) do **not** set the tail level. If every entry
        in the window is zero, E_b = 0: the matched tail is zero.
-     - The matching window, its taper and its length rule are part of this phase's spec and must be
-       stated exactly in code and tests (they are the ones above); the open-field result depends on them.
+     - The mixing-time rule (scope 2), the matching window and its taper are part of this phase's spec
+       and must be stated exactly in code and tests (they are the ones above); the open-field result
+       depends on them.
    - **Crossfade** ISM → tail over 5 ms centred on `t_mix,e` (`[t_mix,e − 2.5 ms, t_mix,e + 2.5 ms]`). ISM
      and tail are uncorrelated, so the crossfade is **equal-power** (AX18; Vorländer §9.2.1: signal
      power in the overlap stays constant): with τ running from 0 to 1 across the 5 ms, the
      **amplitude** windows are w_ISM = cos(πτ/2) on the ISM and w_tail = sin(πτ/2) on the tail, so
      w_ISM² + w_tail² = 1. (Equal-gain windows, whose amplitudes sum to 1, dip by up to 3 dB mid-fade
      on uncorrelated signals.) Before the fade the tail is absent; after it, ISM contributions are
-     dropped. The direct path always arrives before the fade (t_mix,e ≥ t_dir,e + 20 ms), so it is never
-     faded or dropped.
+     dropped. The direct arrival always lies before the fade (t_mix,e ≥ t_dir,e + 20 ms), so it is never
+     faded or dropped; but band-filter ringing of the direct sound and of early images that extends past
+     t_mix,e − 2.5 ms is crossfaded like other ISM content (Vorländer §11.7, which describes filter
+     ringing qualitatively only).
    - IR length: until the slowest band decays 90 dB below its start level, capped at **12 s**. The cap
      is the only bound (AX6 room limits allow T of order 160 s, e.g. α = 0.01 in a 100 m room); longer
      decays are **truncated** at 12 s, and T30 is measurable on a 12 s IR only for T ≤ ≈20 s (it needs
      ≥ 35 dB of decay).
-4. Update `sim::buildRoomIR(Kind::Omni)` to return ISM + tail. Phase 08 will need decorrelated tails
-   per ear; leave the hook as a per-output seed offset (`seed ^ (outputIndex · 0x9E3779B9)`).
+4. Update `sim::buildRoomIR(Kind::Omni)` to return ISM + tail. Keep the Phase 03 early-reflection-only
+   IR available as its own path (`Kind::OmniEarly`, `render_cli --mode omni-early`), unchanged, so the
+   Phase 03 pyroomacoustics cross-check and its goldens keep testing the ISM; `maxReflectionOrder`
+   applies to that path (AX20). Phase 08 will need decorrelated tails per ear; leave the hook as a
+   per-output seed offset (`seed ^ (outputIndex · 0x9E3779B9)`).
 5. Update golden metrics for all valid fixtures (this is an **intended** change; use
    `update_goldens.py --reason "phase 04 adds tail"`).
 6. Add 6 test rooms to `tests/scenes/valid/` covering T60 from about 0.2 s to about 6 s
    (`dead_booth`, `living_room`, `classroom`, `club`, `concert_hall_box`, `stone_box`).
 7. Follow-up from the plan review (AX20): `docs/contract/README.md` must document in this phase that
-   `maxReflectionOrder` is a minimum, not a cap, in the hybrid IR (the early part also holds every image
-   arriving before t_mix,e + 2.5 ms).
+   `maxReflectionOrder` has no effect on the hybrid IR (its early part holds every image of any order
+   arriving before t_mix,e + 2.5 ms, later images are represented by the tail) and applies only to the
+   early-reflection-only (Omni ISM) IR of Phase 03, kept after Phase 04 as `Kind::OmniEarly` / `render_cli --mode omni-early`. This changes the field's
+   meaning, so this phase bumps `contractVersion` (minor) and updates the field's description in
+   `docs/contract/scene-v1.schema.json` and `docs/contract/README.md`, per CLAUDE.md's contract rule.
 
 ## Out of scope
 
@@ -139,18 +164,24 @@ Binaural tail coherence (08); validation against real rooms (05); any per-scene 
       T30/EDT/C80 differences are reported, not gated.
       - **T30** within ±2 %, bands 63 Hz–8 kHz, R per band from the seed-gate row below
         (R ≥ 4.5·σ₁², tol/√2); at 63 Hz R = 1458 / 288 / 41 (see "Ensemble sizes").
-      - **EDT** within ±2 %, on the ensemble-averaged decay curves, R ≥ 4.5·σ₁(EDT)² per band, with
-        σ₁(EDT) measured per band on this phase's hybrid IRs (not on noise × exp) and recorded in
-        AX19. Until σ₁(EDT) is measured, EDT is reported only. Bands: **pending decision**.
+      - **EDT** within ±2 %, on the ensemble-averaged decay curves, R ≥ 9·(σ₁,44² + σ₁,96²)/(2 %)² per
+        band (= 4.5·σ₁(EDT)² when the two are equal), with σ₁(EDT) measured per band and rate on this
+        phase's hybrid IRs (not on noise × exp) and recorded in AX19. Until σ₁(EDT) is measured, EDT is
+        reported only. Bands 63 Hz–8 kHz, as T30.
       - **C80** within ±0.5 dB, computed per rate from the ensemble-averaged early and late band
-        energies, R ≥ 72·σ₁(C80, dB)² (= (σ₁ / (0.5 dB / (3·√2)))²), with σ₁(C80) measured on this
-        phase's hybrid IRs and recorded in AX19; bands 125 Hz–8 kHz. The 1 dB jnd of C80 is stated
-        only for 500–1000 Hz (Vorländer Table 6.1).
+        energies, R ≥ 9·(σ₁,44² + σ₁,96²)/(0.5 dB)² (= 72·σ₁(C80, dB)² = (σ₁ / (0.5 dB / (3·√2)))² when
+        the two are equal), with σ₁(C80) measured per band and rate on this phase's hybrid IRs and
+        recorded in AX19; bands 125 Hz–8 kHz. The 1 dB jnd of C80 is stated only for 500–1000 Hz
+        (Vorländer Table 6.1).
+      - **Measuring σ₁(EDT) and σ₁(C80) (AX19):** on the six test rooms at both 44.1 kHz and 96 kHz
+        (σ₁,44 and σ₁,96 per band), with n ≥ 51 realisations per room and rate, so the relative
+        standard error of each σ₁ estimate, ≈ 1/√(2(n−1)), is ≤ 10 % (standard sampling statistics,
+        not from the corpus).
 - [ ] `open_field` gives no tail: E_b = 0 in every band, and the energy later than 50 ms after the
       direct sound's arrival is < −60 dB relative to the direct sound. Checked on the fixture (floor
       s = 0.4) **and** on a test-local variant with floor scattering s = 0.5: in both, every specular
       and scattered entry in the matching window is zero (the floor reflection arrives 1.4 ms after
-      the direct sound, before the window's earliest start), so E_b = 0.
+      the direct sound, before the window's start t_dir,e + 2.5 ms), so E_b = 0.
 
 **Ensemble sizes (AX11).** R ≥ (σ₁ / (tol/3))² per band, rounded up; one ensemble per room uses the
 largest R over its gated bands and metrics (more is allowed). σ₁ is AX11's measured single-realisation T30 scatter
@@ -187,10 +218,11 @@ Listening pack (still a mono omni preview): pink bursts, clicks and any WAVs you
 
 ## Contractor review focus
 
-Energy matching at `t_mix,e` (units, band energies vs amplitudes, the Hann-weighted window of specular +
-AX16 scattered entries referred to t_mix,e, its k_eff ≥ 19 length rule and start limit, E_b matched to
-the expected, not the realised, unit-decay energy), t_mix,e per emitter from its direct arrival, the
-AX20 time-bounded image list, m_b as the energy coefficient D/4.34, the equal-power crossfade, the cached
+Energy matching at `t_mix,e` (units, band energies vs amplitudes, the Hann-weighted window
+[t_dir,e + 2.5 ms, t_mix,e] of specular + AX16 scattered entries referred to t_mix,e, E_b matched to the
+expected, not the realised, unit-decay energy ē_b, the reported σ_dB and non-zero entry count), t_mix,e
+per emitter as the smallest t from t_dir,e + max(20 ms, √V ms) with expected k_eff ≥ 19, the
+AX20 time-bounded image list (`maxReflectionOrder` without effect on the hybrid IR, the contract bump), m_b as the energy coefficient D/4.34, the equal-power crossfade, the cached
 unit-energy decay being independent of positions, the AX11 ensemble sizes, PRNG portability,
 filterbank reuse, and IR truncation.
 
@@ -199,10 +231,15 @@ filterbank reuse, and IR truncation.
 - Eyring is known to be inaccurate for strongly non-uniform absorption (e.g. one absorbent ceiling).
   Note it as an input for Phase 05 and the Expert; don't patch it with per-scene factors.
 - An audible seam at `t_mix,e`. Mitigated by the energy-matched crossfade and the seam test.
-- **Expert question (small rooms):** where the window's start limit prevents k_eff ≥ 19, the tail level
-  scatters more than 1 dB (e.g. V = 400 m³: σ ≈ 1.7–2.1 dB). Reaching 19 arrivals would need
-  t_mix ≥ 4.91·V^(1/3) ms, and the corpus has no rule for t_mix (Vorländer §11.7). The reported σ_dB
-  is the input for the Expert; t_mix,e stays as in scope 2 until the Expert answers.
+- **Expert question (mixing time):** the corpus gives no rule for the transition time (Vorländer
+  §11.7). Scope 2's k_eff ≥ 19 rule, with t_dir,e + max(20 ms, √V ms) as a lower bound, is chosen for
+  accuracy (NFR-1) and a well-conditioned level estimate; the Expert may revise it. t_mix,e stays as in
+  scope 2 until the Expert answers.
+- **Limitation / Expert question (sparse or non-diffuse fields):** where the window holds far fewer
+  non-zero arrivals than expected (non-diffuse or sparse fields, e.g. one floor reflection in a box with
+  five α = 1 faces), E_target has no stated accuracy and Eyring T60 does not apply (Vorländer §4.4.1).
+  No cut-off rule is applied; the reported σ_dB and realised non-zero count are the input for the
+  Expert.
 - AX20 makes the image list grow with t_mix,e, not with `maxReflectionOrder` (large rooms need high
   orders to reach t_mix,e). Measure rebuild time against AQ10 and record it; don't cap the list.
 
