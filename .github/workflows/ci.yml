@@ -52,6 +52,74 @@ jobs:
       - name: pytest tools/ci
         run: python -m pytest tools/ci -v
 
+  # Phase 02: the Python analysis harness (tools/acoustics) and the tools/ci scripts that use
+  # render_cli. Builds render_cli alone (cli preset, no JUCE), runs `pytest tools` with the binary
+  # required, and on Linux builds and uploads the listening pack. Runs on all three OSes so the
+  # render_cli end-to-end tests and the metrics see every platform.
+  python:
+    name: python tools (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, name: linux }
+          - { os: macos-14, name: macos }
+          - { os: windows-2022, name: windows }
+    env:
+      SPATIAL_REQUIRE_RENDER_CLI: "1"
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            tools/ci/requirements.txt
+            tools/acoustics/requirements.txt
+      - name: Install Python dependencies
+        run: python -m pip install -r tools/ci/requirements.txt -r tools/acoustics/requirements.txt
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x64
+
+      - name: Build render_cli
+        run: |
+          cmake --preset cli
+          cmake --build --preset cli
+
+      - name: pytest tools
+        shell: bash
+        run: |
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            export RENDER_CLI="$PWD/build/cli/render_cli.exe"
+          else
+            export RENDER_CLI="$PWD/build/cli/render_cli"
+          fi
+          # -rP prints the margins some tests log (click detector, pyroomacoustics agreement).
+          python -m pytest tools -v -rP
+
+      - name: Listening pack
+        if: runner.os == 'Linux'
+        run: python tools/ci/listening_pack.py --phase phase-02 --render-cli build/cli/render_cli
+
+      - name: Upload listening pack
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: listening-pack
+          path: build/listening-pack
+          if-no-files-found: error
+
   build:
     name: build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}

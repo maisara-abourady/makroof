@@ -27,3 +27,6 @@ Thumbs.db
 
 # Downloaded tools and datasets (always fetched by script, by checksum)
 tools/ci/.pluginval/
+
+# Your own listening material for tools/ci/listening_pack.py (never committed)
+tools/ci/listening_inputs/
