@@ -23,7 +23,7 @@ Add a second measured source beside BRAS (BUILD_PLAN §3 F2), with the same comp
 Phase 05 and nothing hand-tuned. Neither set has measured α for all surfaces, so every absolute
 comparison is **evidence, not validation**. The only claim stronger than evidence is the
 **input-matched distribution test**, stated as: "method evidence with the input bias cancelled
-exactly for Eyring (equal ᾱ, Vorländer Eq. 4.32); for distribution-sensitive models a common α error
+exactly for Eyring (equal ᾱ at a common atmosphere, Vorländer Eq. 4.32; with per-IR atmospheres the members' sensitivities differ by ≈ Δ(4mV)/A ≈ 1 %, interrogator check, N3); for distribution-sensitive models a common α error
 ε leaves a residual ε·(∂lnX_a/∂α − ∂lnX_b/∂α); not an NFR-1 validation" (wording corrected by
 interrogator check 19, B5). No method change.
 
@@ -139,7 +139,7 @@ Use these labels verbatim in the report and the beta decision (decider report 15
 | Question | Arni | dEchorate |
 |---|---|---|
 | Absolute T30/EDT/C80 vs AQ9 | **Evidence, not validation.** Panel α come from one unretrievable "exploratory" report; walls and floor use textbook α (V1–V3). Vorländer §11.5: the operator's absorption choice has "crucial influence". | **Evidence, not validation.** No α at all, so α come from a published table chosen by a rule committed before results. |
-| Effect of absorption distribution with the input bias held fixed (T30, EDT, C80) | **Yes**, on matched pairs: same receiver, same number of open panels, equal open–open shared-edge length, and equal open-panel edge length against perpendicular walls and the ceiling (Kuttruff §8.7, Eq. 8.57). Position effects cancel too (EDT "varies considerably within a hall", Kuttruff §8). | **Yes, if** two configurations have equal absorbing area on different faces and equal absorbing-face perimeter adjoining perpendicular surfaces (e.g. two separate 6 × 2.4 m walls; Kuttruff §8.7, Eq. 8.57). The 05d session checks this; panel gaps are counted and reported, not gated. |
+| Effect of absorption distribution with the input bias held fixed (T30, EDT, C80) | **Yes**, on matched pairs: same receiver, same number of open panels, equal open–open shared-edge length, and equal open-panel edge length against perpendicular walls and the ceiling (Kuttruff §8.7, Eq. 8.57). Position effects cancel too (EDT "varies considerably within a hall", Kuttruff §8). | **Yes, if** two configurations have equal absorbing area on different faces and equal absorbing-face perimeter adjoining perpendicular rigid (reflective-state) surfaces (e.g. two separate 6 × 2.4 m walls; Kuttruff §8.7, Eq. 8.57). The 05d session checks this; panel gaps are counted and reported, not gated. |
 | Early reflection **timing** per wall | Not useful (protruding panels). | Sanity check only. The authors refined positions against echo times (0.4 cm), so agreement is nearly circular, and Phase 03 already gates timing analytically. Compare arrival times scaled by c_meas/c_sim = 346.98/343 (1.16 %, ≈ 16 samples at 48 kHz over 10 m), analysis-side, no code change. |
 | Early reflection **level** per wall (reflective vs absorbing state) | No. | Reported, descriptive. It depends on the table α. Vorländer §11.1.2: random-incidence α keeps a reflection's level error below 2 dB while the specific-angle loss is within 40 % of the random-incidence loss; as a level bound (reflected energy 1 − α) this holds only for α ≤ 0.48. Per face and band where either state's committed α exceeds 0.48, ΔL is labelled "α-limited: no corpus bound"; elsewhere it carries "≤ 2 dB per level if the angle loss is within 40 % (§11.1.2)". The measured ΔL is evidence on the absorbing panels' table α, not a method test. |
 | Small room under 100 m³ | No (201.9 m³, V5). | Yes, at 500 Hz–4 kHz only. |
@@ -175,7 +175,9 @@ Use these labels verbatim in the report and the beta decision (decider report 15
      - **Isolation** (decider report 17, `…/20-decider-05d-followups.md`, B4, accepted by Maisara, 2026-11-05;
        it replaces D6's broadband 10 dB rule): A reflection is evaluated only if, by the simulated image
        list, in each reported band and in both the reflective and the absorbing scene, the other arrivals
-       within ±2.5 ms of it satisfy Σᵢ √(Eᵢ/E₀) ≤ 0.1, where E₀ is the reflection's own predicted energy.
+       within ±(2.5 ms + h_b) of its predicted arrival satisfy Σᵢ √(Eᵢ/E₀) ≤ 0.1, where E₀ is the
+       reflection's own predicted energy and h_b the band filter's half-length (AX15), so every arrival
+       whose band-filtered energy can reach the level window is counted (interrogator check, N1).
        Stronger arrivals, including the direct sound, count. Coherent addition then bounds the leakage to
        20·log10(1 ± 0.1) = +0.83 / −0.92 dB per level, and ±1.75 dB worst case on ΔL. A single neighbour
        meets it at ≥ 20 dB below. The report prints the number of evaluable reflections per face; a face
@@ -183,13 +185,15 @@ Use these labels verbatim in the report and the beta decision (decider report 15
        Unit tests:
        - (i) The rule accepts one neighbour at amplitude ratio 0.10 and rejects 0.11, and rejects two
          neighbours at 0.06 each.
-       - (ii) Two band-filtered pulses at amplitude ratio 0.1, with the delay swept over ±2.5 ms, give a
+       - (ii) Two band-filtered pulses at amplitude ratio 0.1, with the delay swept over ±(2.5 ms + h_b), give a
          windowed band level within 20·log10(1 ± 0.1/√0.99) of the single pulse's windowed level. The
          √0.99 allows for AX13's ≥ 99 % window rule.
      - **Timing:** the largest broadband |h| within ±2.5 ms of the predicted arrival. Delays are taken
        relative to each IR's t₀ (Phase 05 rule), and the simulated delay is scaled by
        c_sim/c_meas = 343/346.98 before comparison.
-     - **Level:** band energy in a ±2.5 ms window centred on each IR's own detected peak, with bands
+     - **Level:** band energy in a ±2.5 ms window centred on the predicted arrival in both IRs (the image
+       list's arrival relative to t₀, at c_sim for the simulated IR and c_meas for the measured one), not on
+       a detected peak, so there is no peak-offset gap (Maisara, 2026-11-05; interrogator check, N1), with bands
        reported per AX13 (≥ 99 % rule: 1 kHz and up). Reported per face as
        ΔL = L_absorbing − L_reflective, simulated against measured, in dB. Reported, descriptive. It
        depends on the table α. Vorländer §11.1.2: random-incidence α keeps a reflection's level error
@@ -207,7 +211,7 @@ Use these labels verbatim in the report and the beta decision (decider report 15
 4. **Matched pairs (input-matched distribution test).** Eyring depends on α only through ᾱ
    (Vorländer Eq. 4.30, 4.32), so a common error in a material's α cancels exactly from the Eyring ΔT
    of two configurations with the same area of each material: the input bias is cancelled exactly for
-   Eyring (equal ᾱ, Vorländer Eq. 4.32); for distribution-sensitive models a common α error ε leaves a
+   Eyring (equal ᾱ at a common atmosphere, Vorländer Eq. 4.32; with per-IR atmospheres the members' sensitivities differ by ≈ Δ(4mV)/A ≈ 1 %, interrogator check, N3); for distribution-sensitive models a common α error ε leaves a
    residual ε·(∂lnX_a/∂α − ∂lnX_b/∂α) (interrogator check 19, B5). Placement alone changes the effective α at free edges
    (Kuttruff §8.7 Eq. 8.56, α_eff = βL′ + α_∞), so an Arni pair must have:
    - the same receiver;
@@ -220,7 +224,8 @@ Use these labels verbatim in the report and the beta decision (decider report 15
    Eq. 8.57 term along perimeters next to perpendicular surfaces cancels only for equal adjoining
    perimeters, and documented panel gaps create edges (interrogator check 19, B6). A pair needs equal
    absorbing area on different faces **and** equal absorbing-face perimeter adjoining perpendicular
-   surfaces (Kuttruff §8.7, Eq. 8.57; e.g. two separate 6 × 2.4 m walls pass, adjacent walls against
+   rigid (reflective-state) surfaces (Kuttruff §8.7, Eq. 8.57: the term applies next to a perpendicularly
+   adjacent rigid wall; e.g. two separate 6 × 2.4 m walls pass, adjacent walls against
    opposite walls do not), which the session checks and the selector test covers. Documented panel
    gaps are counted (number and total length per configuration) and reported, not gated: the corpus
    gives no value for gap width (Maisara, 2026-11-05). The slope across different

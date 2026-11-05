@@ -1000,3 +1000,68 @@ The researcher's second-dataset search was still running when this entry was wri
 - Paired-comparison noise (Phase 05).
 - Tracer results (05b).
 - The second dataset, which Maisara will choose from the researcher's candidates.
+
+## docs/phases/phase-05d.md (new), phase-05, 05b, 13, BUILD_PLAN, THIRD_PARTY — 2026-11-05 (second measured dataset; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d; external sources: researcher reports 13, 14, 16, 17)
+
+Sources, verbatim in `docs/review/phase-04-consult/`:
+
+| file | agent | content |
+|---|---|---|
+| 13 | researcher | candidate datasets |
+| 14 | researcher | Arni, Bologna and May et al. verified |
+| 15 | decider | dataset choice |
+| 16 | researcher | BRAS CR2–CR4 materials and priors |
+| 17 | researcher | citations and licences verified |
+| 18 | decider (report 16) | 05d D1–D7 |
+| 19 | interrogator | 05d check |
+| 20 | decider (report 17) | follow-ups |
+| 21 | interrogator | final 05d check |
+
+Draft email for the DELTA panel report: `docs/review/drafts/delta-report-request.md`. Not sent; Maisara sends it.
+
+**Decisions (all accepted by Maisara, 2026-11-05)**
+
+*Datasets and phase structure*
+- Second source: Arni and dEchorate (CC BY 4.0, verified on the live records).
+- New phase 05d, after 05. Phase 05b is independent of it; Phase 13 depends on it.
+- Labels: "evidence, not validation", plus the input-matched distribution test.
+- The measured-α bar is kept for the word "validated". Commissioning a measured room is decided after 05/05d.
+- Wording: "compared with measured rooms (evidence)".
+- §1 BRAS row corrected (decider challenge).
+
+*Phase 05d rules*
+- D1–D7:
+  - seeded per-n sample and configuration-disjoint pairs;
+  - log-ratio d with the a* orientation;
+  - signed 500 Hz–2 kHz mean;
+  - Annex scattering and α rules, with an s/2 sensitivity run;
+  - Arni atmosphere rule;
+  - dEchorate reflection rules;
+  - descriptive output when too few pairs.
+- Mean |d̄| and the hybrid-IR EDT/C80 are printed.
+- Follow-ups:
+  - noise-model d = 0 reference, and RMS of the measured placement spread;
+  - selector at a common atmosphere;
+  - "α-limited" ΔL above α 0.48;
+  - 20 dB per-band amplitude-sum isolation.
+- Last choices:
+  - dEchorate pairs need equal perimeter against perpendicular rigid surfaces; panel gaps are reported;
+  - the noise model matches each measured IR;
+  - the level window is centred on the predicted arrival.
+
+**Verification**
+- **Check 19:** nothing WRONG in the plan text.
+  - Major findings: B1 (atmosphere vs. selector), B2 (edges against perpendicular surfaces), B3 (2 dB bound only for α ≤ 0.48), B4 (coherent leakage 2.4/3.3 dB at 10 dB isolation). All fixed.
+  - Minor findings: B5–B9, all fixed.
+  - It also corrected the main session: the recomputed humidity effect of 0.89 % was wrong (air counted twice). The decider's 0.95 % stands.
+- **Check 21:** B1–B9 confirmed fixed; arithmetic confirmed: 0.480 / 0.594; +0.828 / −0.915 dB; 1.752 dB; 0.0181. Nothing WRONG.
+  - N1 (major): leakage outside the counted window. Fixed by Maisara's choice: the level window is centred on the predicted arrival and neighbours are counted over ±(2.5 ms + h_b).
+  - N2 (major): the perimeter rule must count only rigid surfaces (Kuttruff §8.7). Fixed.
+  - N3 (minor): Eyring cancellation is exact only at a common atmosphere. Fixed.
+- This was the third check round, the /fix-plan limit. The N1–N3 fixes follow the interrogator's stated readings and Maisara's choice, and were not re-checked.
+
+**Status:** phase-05d has no open items.
+
+**Remaining**
+- Empirical: which dEchorate configurations include the omni source (in the dataset metadata, read by the 05d session), the BRAS areas, and all measured numbers.
+- Maisara: send the DELTA request.
