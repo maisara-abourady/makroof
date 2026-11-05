@@ -111,3 +111,27 @@ def filter_bands(x: np.ndarray, fs: float, bands: tuple[float, ...] = OCTAVE_BAN
 def band_key(nominal_hz: float) -> str:
     """JSON key of a band: "63", "125", ..., "8000"."""
     return str(int(round(nominal_hz)))
+
+
+def band_energies_fft(x: np.ndarray, fs: float, half_width_octaves: float = 0.5,
+                      bands: tuple[float, ...] = OCTAVE_BANDS_HZ) -> np.ndarray:
+    """Energy of ``x`` per band from its spectrum: the sum of |X(f)|^2 over
+    exact_centre * 2^(+-half_width_octaves), with rectangular (brick-wall) band edges.
+
+    With ``half_width_octaves = 0.5`` these are full octaves. ``0.25`` measures each band's
+    central half octave: what Phase 03 uses for per-band levels of band-reconstructed IRs (AX14),
+    because neither this full-octave sum nor the Butterworth filters above can resolve more than
+    ~20 dB (FFT) or ~16 dB (Butterworth) between adjacent octaves: the crossover of the renderer
+    and the skirts of the meter put the louder band's energy into the quieter one.
+    Zero padding doesn't change the result (Parseval), so ``x`` can be any length.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    n = 1 << int(np.ceil(np.log2(max(x.size, 2) * 2)))
+    power = np.abs(np.fft.rfft(x, n)) ** 2
+    freqs = np.fft.rfftfreq(n, 1.0 / fs)
+    out = []
+    for fc in bands:
+        c = exact_centre_hz(fc)
+        lo, hi = c * 2.0**-half_width_octaves, c * 2.0**half_width_octaves
+        out.append(float(np.sum(power[(freqs >= lo) & (freqs < hi)])))
+    return np.array(out)

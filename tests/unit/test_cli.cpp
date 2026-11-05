@@ -10,6 +10,8 @@
 #include <chrono>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <random>
 #include <sstream>
 
@@ -109,8 +111,9 @@ TEST_CASE("render_cli stub render is bit-identical to the input", "[cli]")
 TEST_CASE("render_cli --ir writes emitter x output channels", "[cli]")
 {
     TempDir dir;
+    // Binaural is still the Phase 02 pass-through stub, so the layout is easy to see.
     const Run r = run(
-        {"--scene", scene("small_room.json"), "--ir", (dir.path / "ir.wav").string(), "--mode", "omni"});
+        {"--scene", scene("small_room.json"), "--ir", (dir.path / "ir.wav").string(), "--mode", "binaural"});
     INFO(r.err);
     REQUIRE(r.exitCode == cli::kExitOk);
 
@@ -129,6 +132,41 @@ TEST_CASE("render_cli --ir writes emitter x output channels", "[cli]")
     REQUIRE(r96.exitCode == cli::kExitOk);
     REQUIRE(cli::readWav(dir.path / "ir96.wav", ir, error));
     CHECK(ir.sampleRate == 96000u);
+}
+
+TEST_CASE("render_cli --mode omni writes the early-reflection IR, the same on both outputs", "[cli]")
+{
+    TempDir dir;
+    const Run r = run(
+        {"--scene", scene("medium_room.json"), "--ir", (dir.path / "ir.wav").string(), "--mode", "omni"});
+    INFO(r.err);
+    REQUIRE(r.exitCode == cli::kExitOk);
+    cli::Audio ir;
+    std::string error;
+    REQUIRE(cli::readWav(dir.path / "ir.wav", ir, error));
+    REQUIRE(ir.channels.size() == 4);
+    CHECK(ir.channels[0].size() > 1000);
+    CHECK(ir.channels[0] == ir.channels[1]);
+    CHECK(ir.channels[2] == ir.channels[3]);
+}
+
+TEST_CASE("render_cli --images writes the image-source list as JSON", "[cli]")
+{
+    TempDir dir;
+    const auto path = dir.path / "images.json";
+    const Run r = run(
+        {"--scene", scene("open_field.json"), "--images", path.string(), "--no-air-absorption"});
+    INFO(r.err);
+    REQUIRE(r.exitCode == cli::kExitOk);
+    std::ifstream in(path);
+    const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    // open_field: only the floor reflects, so each emitter has the direct path and one floor image.
+    CHECK(text.find("\"airAbsorption\":false") != std::string::npos);
+    CHECK(text.find("\"alignPreRollSamples\":32") != std::string::npos);
+    CHECK(text.find("\"order\":1") != std::string::npos);
+    CHECK(text.find("\"order\":2") == std::string::npos);
+    CHECK(text.find("\"hits\":[0,0,0,0,1,0]") != std::string::npos);
+    CHECK(text.find("\"sample\":32") != std::string::npos); // the direct path lands at the pre-roll
 }
 
 TEST_CASE("render_cli returns exit code 2 with readable errors for every invalid fixture", "[cli]")
