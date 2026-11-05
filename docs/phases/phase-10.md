@@ -28,9 +28,14 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
    - `--realtime-sim`: the builder runs on a real background thread with the 20 ms cadence. The audio loop
      runs as fast as possible, but the *simulated* clock decides when the builder's results are picked up,
      so behaviour is reproducible for tests. Document the mechanism.
-2. **Tail cache:** cache the Phase 04/08/09 tail keyed by (room dimensions, materials, mode, seed, sample
-   rate). Position-only changes rebuild just the early part and re-run energy matching. Prove the result
-   equals a full rebuild (test).
+2. **Tail cache:** cache the Phase 04/08/09 **unmatched, unit-energy per-band noise decay** (Phase 04
+   scope 3: it depends only on V, S, ᾱ_b, m_b, `tailSeed` and the sample rate, per output for 08/09),
+   stored **before** E_b scaling, `t_mix` gating and the ISM→tail crossfade. Key it by (room
+   dimensions, materials, mode, seed, sample rate). Every rebuild, including a position-only one,
+   recomputes the early part, the AX16 scattered-energy list, `t_mix` (including its clamp to the ISM
+   order's coverage, which depends on positions and `maxReflectionOrder`), E_b and the crossfade from
+   the new image list. Prove the result equals a full rebuild (test), including a move that changes the
+   `t_mix` clamp.
 3. **Rebuild scheduling:** the builder always works on the newest scene (coalescing). If a build takes
    longer than 20 ms, the next build starts immediately with the latest scene. The audio thread keeps
    using the last IR and never blocks. Track and expose "IR staleness" (time between the parameter

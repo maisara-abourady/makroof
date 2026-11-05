@@ -196,7 +196,7 @@ Worked examples use c = 343.2 m/s (Vorländer Eq. 1.20, 20 °C) and the Vorländ
 |---|---|---|---|---|---|---|---|
 | B1 | NUMBER | Phase 09 gate: an emitter at +55° gives the maximum L/R level difference (ORTF cardioids at ±55°) | WRONG | Spatial Audio §6.2.1 cardioid 0.5(1+cos ϑ). Working: at +55° L=1, R=0.5(1+cos 110°)=0.329 → 9.7 dB; at +90° L=0.910, R=0.090 → 20.1 dB; at +125° R=0 → unbounded. The maximum is at 125° (90° on the front half), not 55°. | minor (was blocker) | Q1 | resolved |
 | B2 | NUMBER | Phase 03: "scattering removing (1−s) of specular energy" | WRONG (as written) | Vorländer §3.3.2 Eq. 3.23, Fig. 3.10: specular (1−α)(1−s), scattered (1−α)s, so scattering removes s and keeps (1−s); read literally the text leaves s. | minor (was blocker) | Q2 | resolved |
-| B3 | FACT/NUMBER | F3 + AQ2: "outdoor field" = ground plane only (5 surfaces α=1.0) with the Eyring + air tail | CONDITIONS VIOLATED | Vorländer §4.4, §4.4.1 Eq. 4.32 assume a diffuse field and homogeneous absorption. Working (e.g. 100×100×10 m, ground α=0.1): mean α 0.625 (Eq. 4.30), T ≈ 0.67 s at 1 kHz — a reverberant tail for a scene expected to be nearly dry. | major | Q3 | disputed |
+| B3 | FACT/NUMBER | F3 + AQ2: "outdoor field" = ground plane only (5 surfaces α=1.0) with the Eyring + air tail | CONDITIONS VIOLATED | Vorländer §4.4, §4.4.1 Eq. 4.32 assume a diffuse field and homogeneous absorption. Working (e.g. 100×100×10 m, ground α=0.1): mean α 0.625 (Eq. 4.30), T ≈ 0.67 s at 1 kHz — a reverberant tail for a scene expected to be nearly dry. | major | Q3 | resolved |
 | B4 | FACT | AQ4/Phase 10: late tail cached when only positions change (AQ2: tail energy-matched to ISM at the mixing time) | CONDITIONS VIOLATED | Vorländer §15.3 Table 15.1: moves > 1 m need the scattering part updated; only after ≈140 ms can the receiver-specific reverberation be replaced by a statistical decay. Blauert Ch.5 "Real-time demands": translation needs full recalculation. | minor (was major) | Q4 | resolved |
 | B5 | NUMBER | AX6: emitter ≥ 0.3 m from listener, rendered with a generic far-field HRTF (Phase 08) | CONDITIONS VIOLATED | Vorländer §9.5: standard HRTFs are distance-independent only beyond 1 m; Fig. 9.7 shows ILD growing below 1 m. Blauert Ch.2 §2.3.2: below 3 m head and pinna filtering depend on distance. | major | Q5 | open |
 | B6 | FACT | AQ2: "ISM is exact for specular shoebox reflections" | CONDITIONS VIOLATED | Vorländer §11.3: exact only for \|R\|=1; with absorbing walls an approximation for non-grazing incidence. §11.3.3: errors > 1 dB at grazing angles > 60° within about one wavelength of a wall. Working: at the 0.1 m AX6 clearance, d ≤ λ in every band up to 2 kHz. | major | — | resolved |
@@ -378,9 +378,9 @@ New rows (phase-04 acoustic content):
 
 | id | kind | item | verdict | evidence | severity | question | status |
 |---|---|---|---|---|---|---|---|
-| B52 | NUMBER | Phase 04 energy matching: tail energy in a 10 ms window after t_mix = extrapolated ISM energy **plus** scattered energy "up to that time" | INCONSISTENT | Vorländer §11.6 Eq. 11.51 matches the envelope per time interval; §4.4.1 Eq. 4.25 is an energy density. A sum over [0, t_mix] is not a 10 ms quantity; at a steady arrival rate the ratio is t_mix/10 ms (7.7, +8.9 dB, for V = 6000 m³). B3 is the extreme case. | major | Is the scattered term an energy per 10 ms at t_mix, in the same units as the ISM window term? | open |
-| B53 | NUMBER | Phase 04 gates: "a different seed gives the same T30 within ±2 %"; T30 within ±5 % of Eyring on one realisation | INCONSISTENT | Not set by the corpus; conflicts with BUILD_PLAN AX11's measured single-realisation scatter σ₁ = 8 % at 250 Hz, T60 0.3 s, so two seeds differ by ≈ 8·√2 ≈ 11 %. AX11 requires the ±5 % gate on an ensemble (R ≥ 23); phase-04 doesn't say so. | major | Are both T30 gates evaluated on AX11 ensemble-averaged decays, and with which R per band? | open |
-| B54 | NUMBER | Phase 04: "m_b = air attenuation coefficient in nepers/m" in 4·m_b·V | IMPRECISE | Vorländer §3.6 Eq. 3.31–3.34, §4.4.1 Eq. 4.32: m is the energy coefficient (I = I₀e^(−mx), D = 4.34·m dB/m); a pressure-neper value (D/8.686) would halve the 4mV term, biasing T by ≈8 % at 4 kHz in a 20×30×10 m room (B20 working). The 0.161 constant (24 ln10/c at 343.2 m/s) is correct. | minor | Is m_b the energy coefficient D/4.34 or the pressure attenuation D/8.686? | open |
+| B52 | NUMBER | Phase 04 energy matching: tail energy in a 10 ms window after t_mix = extrapolated ISM energy **plus** scattered energy "up to that time" | INCONSISTENT | Vorländer §11.7 Eq. 11.51 matches the envelope per time interval; §4.4.1 Eq. 4.25 is an energy density. A sum over [0, t_mix] is not a 10 ms quantity; at a steady arrival rate the ratio is t_mix/10 ms (7.7, +8.9 dB, for V = 6000 m³). B3 is the extreme case. | major | Is the scattered term an energy per 10 ms at t_mix, in the same units as the ISM window term? | resolved |
+| B53 | NUMBER | Phase 04 gates: "a different seed gives the same T30 within ±2 %"; T30 within ±5 % of Eyring on one realisation | INCONSISTENT | Not set by the corpus; conflicts with BUILD_PLAN AX11's measured single-realisation scatter σ₁ = 8 % at 250 Hz, T60 0.3 s, so two seeds differ by ≈ 8·√2 ≈ 11 %. AX11 requires the ±5 % gate on an ensemble (R ≥ 23); phase-04 doesn't say so. | major | Are both T30 gates evaluated on AX11 ensemble-averaged decays, and with which R per band? | resolved |
+| B54 | NUMBER | Phase 04: "m_b = air attenuation coefficient in nepers/m" in 4·m_b·V | IMPRECISE | Vorländer §3.6 Eq. 3.31–3.34, §4.4.1 Eq. 4.32: m is the energy coefficient (I = I₀e^(−mx), D = 4.34·m dB/m); a pressure-neper value (D/8.686) would halve the 4mV term, biasing T by ≈8 % at 4 kHz in a 20×30×10 m room (B20 working). The 0.161 constant (24 ln10/c at 343.2 m/s) is correct. | minor | Is m_b the energy coefficient D/4.34 or the pressure attenuation D/8.686? | resolved |
 
 Checked and CORRECT (no rows): "≈9 dB low with s = 0.5 after 3 hits" ((1−s)³ = −9.0 dB); the 12 s cap vs
 T30 (needs T ≤ 60·12/35 = 20.6 s). Noted, not filed (row cap): phase-04's ISM→tail crossfade uses
@@ -394,4 +394,20 @@ against Vorländer §9.2.1 and AX18 (≈0.3 dB EDC effect at T60 0.2 s, below th
 | B3 | major | disputed: the open-field tail is not zero as specified; needs B52's fix and a defined summation interval |
 | B4 | minor | resolved (follow-up on the t_mix clamp vs the cache key) |
 | B52, B53 | major | open |
-| B54 | minor | open |
+| B54 | minor | resolved |
+
+### Plan fixes applied (round 2)
+
+`docs/phases/phase-04.md`, `docs/phases/phase-10.md` and BUILD_PLAN (AX18, §4 Phases 04/10, §6) were
+corrected for B3, B52, B53, B54, the B4 cache follow-up and the ISM→tail crossfade:
+- one time-binned energy envelope (specular + AX16 scattered, at arrival time), matched per 10 ms
+  window at t_mix, so the open-field tail is zero for any floor s;
+- the cached object is the unmatched unit-energy decay, with E_b, t_mix and the crossfade recomputed on
+  every rebuild;
+- both T30 gates run on AX11 ensembles with R per band in phase-04;
+- m_b is the energy coefficient D/4.34;
+- the ISM→tail crossfade is equal-power (AX18).
+
+Rows B3, B52, B53 and B54 are now **resolved** in the plan text, not re-checked by the interrogator.
+B52's citation is corrected to §11.7. Follow-up still open: the phase-04 gate "44.1 vs 96 kHz give the
+same T30/EDT/C80 within ±2 %" compares different noise realisations, so B53's problem applies to it too.
