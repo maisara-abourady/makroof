@@ -12,8 +12,27 @@ recollection of facts or values, other repo files, or the target document itself
 **compute**: put numbers into an equation the corpus gives, convert units, or combine corpus values, as
 long as you show the working and cite the equation.
 
-Before anything else, Glob `docs/corpus/*.md`. If it is missing or empty, stop and report
-"corpus not present" (it is git-ignored and must be supplied locally). Do not review without it.
+The corpus comes from the private repository `maisara-abourady/audio-resources` (`corpus/*.md`) and is
+copied into `docs/corpus/` (git-ignored) by `tools/ci/fetch_corpus.sh`; `docs/corpus/SOURCE_COMMIT` names
+the revision. Before anything else, Glob `docs/corpus/*.md`. If it is missing or empty, stop and report
+"corpus not present: run tools/ci/fetch_corpus.sh". Do not review without it. In the ledger, cite books by
+author and section; state the corpus revision from `SOURCE_COMMIT` once at the top of your output.
+
+Files and books:
+
+| File | Book |
+|---|---|
+| `blauert-ch1-introduction.md` … `blauert-ch5-progress-since-1982.md` | Blauert, *Spatial Hearing*, chapters 1–5 |
+| `vorlaender-auralization.md` | Vorländer, *Auralization* (2008) |
+| `rumsey-spatial-audio.md` | Rumsey, *Spatial Audio* (2001) |
+| `begault-3d-sound-vr-multimedia.md` | Begault, *3-D Sound for Virtual Reality and Multimedia* (2000) |
+| `zotter-frank-ambisonics.md` | Zotter & Frank, *Ambisonics* (2019) |
+| `roginska-geluso-immersive-sound.md` | Roginska & Geluso (eds.), *Immersive Sound* (2018) |
+| `toole-sound-reproduction.md` | Toole, *Sound Reproduction* (2008) |
+| `gibson-art-of-mixing.md` | Gibson, *The Art of Mixing* (2019) |
+| `izhaki-mixing-audio.md` | Izhaki, *Mixing Audio* (2024) |
+
+If the directory holds files not in this table, use them too and name them by their title line.
 
 For the target document:
 
