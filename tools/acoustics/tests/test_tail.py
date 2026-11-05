@@ -352,9 +352,10 @@ GOLDEN_TOLERANCES = {
     "C80": {"abs": 0.05},
     "DRR": {"abs": 0.05},
     "D50": {"abs": 0.002},
-    "t60": {"rel": 1e-6},
+    "eyring_t60": {"rel": 1e-6},
     "mix_ms": {"rel": 1e-6},
 }
+NO_LATE_ENERGY_DB = 60.0
 ALL_FIXTURES = sorted(p.stem for p in VALID.glob("*.json"))
 
 
@@ -364,11 +365,23 @@ def test_golden_metrics_hybrid(render_cli_path, name):
     d = diag(str(render_cli_path), name)
     m = metrics.room_metrics(irs[0, 0], float(fs))
     keep = ("EDT", "T20", "T30", "C50", "C80", "D50", "DRR")
+
+    def pinned(values: dict) -> dict:
+        out = {n: values[n] for n in keep}
+        # A band without late energy (open_field) has an energy ratio that is numerical noise
+        # (late energy ~1e-15 of the early: 140 dB on one platform, None or 159 dB on another).
+        for n in ("C50", "C80", "DRR"):
+            if out[n] is None or out[n] > NO_LATE_ENERGY_DB:
+                out[n] = f"no late energy (> {NO_LATE_ENERGY_DB:.0f} dB)"
+        return out
+
     actual = {
-        "bands": {k: {n: v[n] for n in keep} for k, v in m["bands"].items()},
-        "broadband": {n: m["broadband"][n] for n in keep},
-        "t60": d["t60"],
-        "mix_ms": [1e3 * e["mixS"] for e in d["emitters"]],
+        "bands": {
+            bands.band_key(fc): {**pinned(m["bands"][bands.band_key(fc)]), "eyring_t60": d["t60"][i]}
+            for i, fc in enumerate(bands.OCTAVE_BANDS_HZ)
+        },
+        "broadband": pinned(m["broadband"]),
+        "emitters": {e["id"]: {"mix_ms": 1e3 * e["mixS"]} for e in d["emitters"]},
         "length_samples": int(irs.shape[2]),
     }
     golden.assert_golden(

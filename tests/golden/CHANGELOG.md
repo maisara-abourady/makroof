@@ -17,7 +17,7 @@ Reason: Phase 03: first goldens of the early-reflection (ISM) omni IR of small_r
 
 ## 2026-11-05
 
-Reason: phase 04 adds tail: first goldens of the hybrid omni IR (ISM + late tail) of every valid fixture, 48 kHz, the fixture's own tailSeed
+Reason: phase 04 adds tail: first goldens of the hybrid omni IR (ISM + late tail) of every valid fixture, 48 kHz, the fixture's own tailSeed; energy ratios without late energy recorded as such
 
 - `phase04_asymmetric_materials_omni`: created
 - `phase04_classroom_omni`: created
