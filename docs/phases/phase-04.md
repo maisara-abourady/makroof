@@ -23,8 +23,10 @@ IR for every valid shoebox scene.
    - S = total surface area, ᾱ_b = area-weighted mean absorption, V = W·D·H.
    - m_b = air attenuation coefficient in nepers/m (from `AirAbsorption`, converted).
    - Eyring: `T60_b = 0.161·V / (−S·ln(1−ᾱ_b) + 4·m_b·V)`. Clamp ᾱ_b ≤ 0.999 so ln stays finite.
-     For the `open_field` case (five surfaces at α = 1.0), T60 → near 0, so the tail is effectively
-     absent. That's correct.
+     For the `open_field` case (five surfaces at α = 1.0) Eyring does not apply (no diffuse field,
+     Vorländer §4.4.1) and its nominal T60 need not be near 0. The tail is still absent because its
+     **level** comes from energy matching (below): with no ISM or scattered energy around `t_mix`, the
+     matched tail is zero. No scene-specific logic is involved (NFR-8).
    - Expose `T60_b` for tests and UI display.
 2. `src/sim/tail/MixingTime.h/.cpp` — `t_mix = max(20 ms, √V ms)` with V in m³ (the widely used
    √V-milliseconds estimate of perceptual mixing time; cite the source in a comment). Clamp it to the time covered by the
@@ -36,9 +38,19 @@ IR for every valid shoebox scene.
      equals the energy the statistical model predicts at that time. Use the diffuse-field decay
      extrapolated from the ISM's band energy over `[t_mix − 10 ms, t_mix]`, **plus** the scattered
      energy collected by Phase 03 up to that time. This keeps the energy budget consistent.
+     - The onset energy is the **specular ISM energy plus the accumulated scattered energy**, Σ(1−α)·s
+       per hit (Vorländer Eq. 3.23, Fig. 3.10; §11.6: scattered energy dominates after a few orders).
+       Matching to specular energy alone would make the tail too quiet (≈9 dB low with s = 0.5 after
+       3 hits).
+     - With no ISM and no scattered energy around `t_mix`, E_b = 0: the matched tail is zero.
+     - The matching windows are part of this phase's spec and must be stated exactly in code and tests
+       (they are the ones above); the open-field result depends on them.
    - **Crossfade** ISM → tail over 5 ms around `t_mix` with complementary cos² windows applied to both
      signals. Before `t_mix`, the tail is absent; after it, ISM contributions are dropped.
-   - IR length: until the slowest band decays 90 dB below its start level, capped at **12 s**.
+   - IR length: until the slowest band decays 90 dB below its start level, capped at **12 s**. The cap
+     is the only bound (AX6 room limits allow T of order 160 s, e.g. α = 0.01 in a 100 m room); longer
+     decays are **truncated** at 12 s, and T30 is measurable on a 12 s IR only for T ≤ ≈20 s (it needs
+     ≥ 35 dB of decay).
 4. Update `sim::buildRoomIR(Kind::Omni)` to return ISM + tail. Phase 08 will need decorrelated tails
    per ear; leave the hook as a per-output seed offset (`seed ^ (outputIndex · 0x9E3779B9)`).
 5. Update golden metrics for all valid fixtures (this is an **intended** change; use
