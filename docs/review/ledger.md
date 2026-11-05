@@ -648,3 +648,93 @@ verify".
 **To verify against the standards before they are cited as fact:** the ISO 3382-2 constants in σ(T20/T30) and
 its "integrated IR ≈ 10 averaged decays" equivalence; the ISO 3382-2 curvature threshold (≈ 10 %); whether the
 ISO 3382-1 jnd table lists T. These are marked "to verify" in the plan text.
+
+## docs/phases/phase-04.md — 2026-11-05 (/interrogate, fresh pass; corpus 22dc9dd59cf2f4ced36440b3b3f4cc23576e56f0)
+
+Independent re-read of the current phase-04 text (after /fix-plan rounds 3–5). Earlier reviews were not
+taken as evidence. Phase 04 has already been executed on another branch; this pass covers the plan text
+only, and cross-examination against that branch comes later. One interrogator round: there were no
+blockers, so the builder answers were not re-interrogated (the skill re-runs only for open blockers).
+The target document was not edited. "Resolved" below means the question is answered here; the
+document wording it points at is unchanged and is listed under "Remaining" for Maisara.
+
+**Round 1: interrogator.** No WRONG items, so no gate or golden rests on a corpus contradiction.
+1 major, 3 minor, 3 CONSEQUENCE rows.
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| P4-01 | NUMBER | m_b = D_b/4.34 (energy coefficient) enters Eyring as 4mV | CORRECT | Vorländer §3.6 Eq. 3.33–3.34; §4.4.1 Eq. 4.31–4.32 | none | — | — |
+| P4-02 | FACT | the Np/m coefficient D/8.686 halves the 4mV term | CORRECT | Vorländer §3.6 Eq. 3.31: pressure decays as e^(−(m/2)x) | none | — | — |
+| P4-03 | NUMBER | "≈ 8 % too long a T at 4 kHz in a 20×30×10 m room" | CONDITIONS VIOLATED | Vorländer Eq. 4.32: with x = 4mV/(−S ln(1−ᾱ)), T_wrong/T_right = (1+x)/(1+x/2), which is 1.08 only at x ≈ 0.174. ᾱ_4k and D_4k are not stated. | major | Q1 | resolved (answer B1); text fix pending |
+| P4-04 | FORMULA | T60 = 0.161V/(−S ln(1−ᾱ) + 4mV), ᾱ area-weighted | CORRECT | Vorländer §4.4.1 Eq. 4.28, 4.30, 4.32; 24 ln10/343 = 0.1611 | none | — | — |
+| P4-05 | FACT | Eyring does not apply in open_field and is inaccurate for non-uniform absorption | CORRECT | Vorländer §4.4, §4.4.1 (diffuse field, homogeneous absorption) | none | — | — |
+| P4-06 | FORMULA | reflection density 4πc³t²/V, N(t) = (4π/3)(ct)³/V | CORRECT | Blauert Ch. 3 §3.3 (after Cremer) | none | — | — |
+| P4-07 | FORMULA | k_eff = (4πc³/V)(∫w)²/∫w²/t² | CORRECT | Poisson rate from Blauert §3.3 with entry energy ∝ 1/t² (Vorländer Eq. 11.50); mean²/variance via Eq. 11.8, 11.20 | none | — | — |
+| P4-08 | NUMBER | t_dir → 0: ≈ 6.8·V^(1/3) ms, ≈ 53 arrivals | CORRECT | Hann on [0, b]: k = πc³b³/(V·2.111); k = 19 gives b = 6.81·V^(1/3) ms, N ≈ 53.5 | none | — | — |
+| P4-09 | NUMBER | σ_dB = 4.34/√k_eff is an expectation under Poisson arrivals only | CORRECT | Vorländer §11.2.5 Eq. 11.9, 11.17; k = 19 gives 0.996 dB | none | — | — |
+| P4-10 | FACT | equal-power crossfade for uncorrelated ISM and tail, citing Vorländer §9.2.1; equal-gain dips 3 dB | IMPRECISE | The arithmetic is right, but §9.2.1 (segmented convolution) states constant power without any correlation condition. The "uncorrelated → powers add" step is §4.3 Eq. 4.14–4.16. | minor | Q3 | resolved (answer B3); citation fix pending |
+| P4-11 | FACT | band-filter ringing "Vorländer §11.7, which describes filter ringing qualitatively only" | IMPRECISE | Vorländer §11.7 "Interpolation", Fig. 11.41: that ringing comes from coarse interpolation of reflection-factor spectra, not from an analysis filterbank | minor | Q4 | resolved (answer B4); citation fix pending |
+| P4-12 | FACT | the corpus gives no transition-time rule | CORRECT | Vorländer §11.7, last bullet before Fig. 11.42 | none | — | — |
+| P4-13 | NUMBER | specular-only matching ≈ 9 dB low at s = 0.5 after 3 hits | CORRECT | Vorländer §3.3.2 Eq. 3.23, Fig. 3.10: (1−s)³ = 0.125 = −9.03 dB; §11.6 | none | — | — |
+| P4-14 | FORMULA | exp(−6.91t/T), exp(−13.82Δt/T), ē_b formula | CORRECT | Vorländer §11.2.5 Eq. 11.13; ln 10⁶ = 13.82; ē_b = 10 ms × density of a truncated unit exponential; Eq. 11.51 | none | — | — |
+| P4-15 | NUMBER | AX6 limits allow "T of order 160 s, e.g. α = 0.01 in a 100 m room" | IMPRECISE | Vorländer Eq. 4.32, 100 m cube: T = 267 s without air; Fig. 3.15 low-frequency D of 10⁻⁵ to 5·10⁻⁴ dB/m gives 151–263 s. 160 s holds only at the top of that range. The cap conclusion is unaffected. | minor | Q2 | resolved (answer B2); text fix pending |
+| P4-16 | NUMBER | T30 on a 12 s IR only for T ≤ ≈ 20 s | CORRECT | Vorländer §6.4.1 (−5 to −35 dB); 12·60/35 = 20.6 s | none | — | — |
+| P4-17 | FACT | the Schroeder EDC is monotonic | CORRECT | Vorländer §6.4.1 Eq. 6.4 | none | — | — |
+| P4-18 | NUMBER | C80 jnd 1 dB stated only for 500–1000 Hz | CORRECT | Vorländer §6.4.4 Table 6.1 | none | — | — |
+| P4-19 | FACT | open_field: every window entry is zero for any s | CORRECT | Vorländer §3.3.2 Eq. 3.23 (both parts ∝ 1−α = 0). The 1.4 ms floor delay is fixture geometry and not checkable here. | none | — | — |
+| P4-20 | FORMULA | AX16 scattered entry E·(1 − Π(1−s)^hits) | CORRECT | Vorländer Eq. 3.23 applied per hit | none | — | — |
+| P4-21 | NUMBER | √V ms as the widely used perceptual mixing-time estimate | NOT CHECKABLE | not in the corpus; needs a perceptual mixing-time source | none | — | — |
+| P4-22 | NUMBER | AX11 σ₁ table; σ₁ ∝ 1/√(B·T) | NOT CHECKABLE | not in the corpus (ISO 3382-2 annex / Davy would settle it) | none | — | — |
+| P4-23 | NUMBER | all R rules and table cells, 1458/288/41, dead_booth 2187/36/675 | CORRECT (arithmetic) | every cell recomputed, rounding up | none | — | — |
+| P4-24 | NUMBER | n ≥ 51 gives a relative SE of σ̂ ≤ 10 % | NOT CHECKABLE | the arithmetic holds; the formula is sampling statistics, outside the corpus | none | — | — |
+| P4-25 | NUMBER | gate tolerances (±5/10 %, ±2 %, ±0.5 dB, 1 dB seam, −60 dB) | NOT CHECKABLE | chosen tolerances; each is tighter than the Table 6.1 jnd where one exists | none | — | — |
+| P4-D1 | DECISION | AQ2 Eyring noise tail | CONSEQUENCE | Vorländer §4.4, §4.4.1: non-diffuse rooms and concentrated absorption will differ | minor | — | open (Expert, Phase 05) |
+| P4-D2 | DECISION | AX4 fixed atmosphere | CONSEQUENCE | Vorländer §3.6 Fig. 3.15: humidity matters strongly at 1–10 kHz, so the HF decay is fixed to one atmosphere | minor | — | open (product decision) |
+| P4-D3 | DECISION | AX16 scattered energy at the specular time | CONSEQUENCE | Vorländer §3.3.2 Fig. 3.9: scattered paths are longer, so their temporal smearing is not represented | minor | — | open (product decision) |
+| P4-D4 | DECISION | AX20 time-bounded image list | CONSEQUENCE | Vorländer §11.6; cost grows with t_mix | none | — | — |
+| P4-D5 | DECISION | mixing-time rule, window, 5 ms fade, 12 s cap, test rooms | CONSEQUENCE | Vorländer §11.7: no corpus rule, so the rule is unvalidated against a reference | none | — | open (existing Expert question) |
+| P4-S | SOFTWARE | Rng.h PRNG, seed offsets, `Kind::OmniEarly`, cache, filterbank reuse, contract bump, goldens, NaN/denormal check, bit-identity, AQ10 timing | listed, not rated | — | — | — | — |
+
+**Round 1: builder answers** (corpus 22dc9dd; working shown; ISO 9613-1 values are outside the corpus and marked so).
+
+- **B1 (Q1, P4-03).** Room 20×30×10 m: V = 6000 m³, S = 2200 m². AX4 is 20 °C, 50 % RH. Fig. 3.15
+  (Vorländer §3.6) puts D at 4 kHz at the order of 10⁻² dB/m for 40–80 % RH. The ISO 9613-1 value at
+  20 °C/50 % RH is ≈ 0.028 dB/m (not in the corpus; the `AirAbsorption` unit test pins it). Then
+  m = 0.028/4.34 = 6.45·10⁻³ m⁻¹ and 4mV = 155 m². x = 0.174 needs −S ln(1−ᾱ) = 890, so ᾱ_4k ≈ 0.33.
+  For D from 0.02 to 0.04 dB/m the same 8 % needs ᾱ_4k from 0.25 to 0.44. The general statement from
+  Eq. 4.32 is: the error is (1+x)/(1+x/2) − 1. It runs from 0 in absorptive rooms up to +100 % as air
+  dominates. The figure is explanatory, and no gate depends on it. Proposed wording: "≈ 8 % too long a T
+  at 4 kHz in a 20×30×10 m room with ᾱ_4k ≈ 0.33 (up to 2× where air absorption dominates)". Status:
+  resolved as answered; the text change is Maisara's.
+- **B2 (Q2, P4-15).** A 100 m cube with α = 0.01: −S ln(0.99) = 603 m², and 0.161·10⁶/603 = 267 s
+  without air. With D at 63 Hz ≈ 10⁻⁴ dB/m (Fig. 3.15 low-frequency range; the ISO 9613-1 order of
+  magnitude, outside the corpus), 4mV = 92 m² and T ≈ 232 s. The "160 s" is reached only at
+  D ≈ 5·10⁻⁴ dB/m. Proposed wording, here and in AX6: "of order 200–270 s". This strengthens the point
+  that only the 12 s cap bounds the IR. Status: resolved; the text change is Maisara's.
+- **B3 (Q3, P4-10).** Yes. The equal-power choice rests on incoherent energy addition, Vorländer §4.3
+  Eq. 4.14–4.16: for broadband signals the cross term averages out and powers add. That is the
+  condition under which sin/cos amplitude windows keep the power constant. §9.2.1 only shows that
+  constant overlap power is the goal in segmented convolution. The citation should read "Vorländer §4.3
+  Eq. 4.14–4.16; cf. §9.2.1". The 3 dB dip of equal-gain windows follows from the same equations
+  (0.5² + 0.5² = 0.5). Status: resolved; the citation change is Maisara's.
+- **B4 (Q4, P4-11).** No. §11.7 covers ringing from coarse interpolation of octave-band
+  reflection-factor spectra (Fig. 11.41). Ringing of the octave-band analysis filterbank is not
+  addressed in the corpus, so the claim is NOT CHECKABLE. The plan already treats it as a measured,
+  reported check (scope 3, ē_b). The parenthetical citation should be dropped or replaced by "not
+  covered by the corpus". Status: resolved; the citation change is Maisara's.
+- **Interrogator aside (P4-S, not corpus).** The builder agrees, from the C++ standard
+  ([rand.eng.mt], [rand.dist]) and outside the corpus. The `std::mt19937` output sequence is fixed by
+  the standard (the 10000th output is required to be 4123659995). `std::normal_distribution` and the
+  other distributions are implementation-defined. The AX5 sentence should read "the standard library
+  distributions (e.g. `std::normal_distribution`) are not portable". The conclusion stands: use a
+  self-contained PRNG with its own Gaussian transform.
+
+**Status after round 1:** no blockers. P4-03, P4-10, P4-11, P4-15 resolved as answered. P4-D1–D3 stay
+open as stated consequences (decisions, not questions), and P4-D5 stays open under the existing Expert
+question.
+
+**Remaining (Maisara's decision; target unchanged):** text fixes from B1 (state ᾱ_4k, or give the
+general form), B2 (160 s → of order 200–270 s, also in BUILD_PLAN AX6), B3 (equal-power citation
+§4.3 Eq. 4.14–4.16), B4 (drop the §11.7 filter-ringing citation), and the AX5 mt19937 wording. Carried
+over from the earlier phase-04 run: the Expert questions on the mixing-time rule and on sparse or
+non-diffuse fields, and the AQ10 / phase-13 "order 30" rebuild-budget follow-up.
