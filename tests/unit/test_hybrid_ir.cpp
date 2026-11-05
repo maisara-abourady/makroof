@@ -382,7 +382,8 @@ TEST_CASE("benchmark: AQ10 W1/W2 position-only rebuild, 20 x 30 x 10 m, 48 kHz, 
               << (largest >= 10 ? std::to_string(largest)
                                 : std::string("none (N_cap = nu_r(10), miss recorded)"))
               << "; compiled kImageCountCapOrder = " << sim::kImageCountCapOrder << "\n";
-    BENCHMARK("W1 rebuild (cached unit decays)")
+    // Full rebuild including noise generation (room or material change): recorded, not budgeted (AQ10).
+    BENCHMARK("W1 full rebuild (noise generated; recorded, not budgeted)")
     {
         return sim::buildRoomIR(w1, kOmni48).length();
     };
@@ -720,8 +721,30 @@ TEST_CASE("one absorbing wall (Kuttruff Eqs. 4.14-4.16): 1/t energy decay within
     const auto set = sim::ism::computeImageSources(room, source, receiver, iso);
     const auto airDb = sim::bandsAirAttenuationDbPerMetre();
 
+    // Energy of the solver's images in [t1, t2) and the Eq. 4.16 reference over the same span.
+    const auto rendered = [&](std::size_t b, double t1, double t2) {
+        double e = 0.0;
+        for (const auto& image : set.images)
+            if (image.order > 0 && image.arrivalTimeS >= t1 && image.arrivalTimeS < t2)
+                e += image.bandsAmplitude[b] * image.bandsAmplitude[b];
+        return e;
+    };
+    const auto reference = [&](std::size_t b, double t1, double t2) {
+        // int_t1^t2 4 pi sigma e^(-m c t) / t dt, by Simpson's rule.
+        const double m = sim::tail::airEnergyAttenuationPerMetre(airDb[b]);
+        constexpr int kSteps = 2000;
+        double integral = 0.0;
+        for (int i = 0; i <= kSteps; ++i)
+        {
+            const double t = t1 + (t2 - t1) * i / kSteps;
+            integral += std::exp(-m * c * t) / t * ((i == 0 || i == kSteps) ? 1.0 : (i % 2 == 1 ? 4.0 : 2.0));
+        }
+        return integral * (t2 - t1) / kSteps / 3.0 * 4.0 * std::numbers::pi * sigma;
+    };
+
     int gated = 0;
     double worst = 0.0;
+    double gatedEnd = tOn;
     for (double t1 = tOn; t1 < tEnd; t1 += 0.100)
     {
         const double t2 = std::min(t1 + 0.100, tEnd);
@@ -731,30 +754,49 @@ TEST_CASE("one absorbing wall (Kuttruff Eqs. 4.14-4.16): 1/t energy decay within
             continue;
         for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
         {
-            const double m = sim::tail::airEnergyAttenuationPerMetre(airDb[b]);
-            double rendered = 0.0;
-            for (const auto& image : set.images)
-                if (image.order > 0 && image.arrivalTimeS >= t1 && image.arrivalTimeS < t2)
-                    rendered += image.bandsAmplitude[b] * image.bandsAmplitude[b];
-            // int_t1^t2 4 pi sigma e^(-m c t) / t dt, by Simpson's rule.
-            constexpr int kSteps = 2000;
-            double integral = 0.0;
-            for (int i = 0; i <= kSteps; ++i)
-            {
-                const double t = t1 + (t2 - t1) * i / kSteps;
-                const double f = std::exp(-m * c * t) / t;
-                integral += f * ((i == 0 || i == kSteps) ? 1.0 : (i % 2 == 1 ? 4.0 : 2.0));
-            }
-            integral *= (t2 - t1) / kSteps / 3.0 * 4.0 * std::numbers::pi * sigma;
-            const double err = toDb(rendered / integral);
+            const double err = toDb(rendered(b, t1, t2) / reference(b, t1, t2));
             worst = std::max(worst, std::abs(err));
             CHECK(std::abs(err) <= 1.0);
         }
+        const char* where = t1 >= tCap
+                                ? " (entirely beyond the AX22 cap)"
+                                : (t2 > tCap ? " (partly beyond the AX22 cap)" : " (before the AX22 cap)");
         std::cout << "one absorbing wall: bin [" << t1 << ", " << t2 << ") s, " << expectedImages
-                  << " expected images" << (t1 >= tCap ? " (beyond the AX22 cap)" : "") << "\n";
+                  << " expected images" << where << "\n";
         ++gated;
+        gatedEnd = t2;
     }
     std::cout << "one absorbing wall: t_on " << tOn << " s, AX22 cap at " << tCap << " s, " << gated
               << " gated bins, worst " << worst << " dB\n";
+
+    // Reported only (phase-04 acceptance): 10 ms bins from L/c, the energy over the gated range
+    // against the Eq. 4.16 integral, and the fitted exponent of t (1 kHz band; expect about -1).
+    {
+        const std::size_t b = 4;
+        const double m = sim::tail::airEnergyAttenuationPerMetre(airDb[b]);
+        double worst10 = 0.0;
+        double sx = 0.0, sy = 0.0, sxx = 0.0, sxy = 0.0;
+        int count = 0;
+        for (double t1 = L / c; t1 + 0.010 <= gatedEnd; t1 += 0.010)
+        {
+            const double e = rendered(b, t1, t1 + 0.010);
+            if (e <= 0.0)
+                continue;
+            worst10 = std::max(worst10, std::abs(toDb(e / reference(b, t1, t1 + 0.010))));
+            // Remove the air factor so the remaining law is t^p.
+            const double tm = t1 + 0.005;
+            const double x = std::log(tm), y = std::log(e / 0.010 * std::exp(m * c * tm));
+            sx += x;
+            sy += y;
+            sxx += x * x;
+            sxy += x * y;
+            ++count;
+        }
+        const double slope = (count * sxy - sx * sy) / (count * sxx - sx * sx);
+        std::cout << "one absorbing wall (reported): 10 ms bins from L/c, worst " << worst10
+                  << " dB; gated-range energy vs the Eq. 4.16 integral "
+                  << toDb(rendered(b, tOn, gatedEnd) / reference(b, tOn, gatedEnd))
+                  << " dB; fitted exponent of t " << slope << "\n";
+    }
     CHECK(gated >= 3);
 }

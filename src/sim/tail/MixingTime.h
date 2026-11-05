@@ -11,13 +11,14 @@
 // (sum x)^2 / sum x^2 of the arrivals' weights x_i = w(t_i) / t_i^2 (energy 1/r^2) under Cremer's
 // reflection density dN/dt = 4 pi c^3 t^2 / V (Blauert Ch. 3 §3.3; Vorlaender Eqs. 11.8, 11.20,
 // 11.50), and k_eff >= 19 is a level estimate with sigma <= 4.34 / sqrt(19) = 1 dB (Vorlaender
-// Eqs. 11.9 / 11.17). The corpus gives no rule for the transition time (Vorlaender §11.7); this one
-// is chosen for accuracy (PRD NFR-1) and a well-conditioned level estimate, and the Expert may revise
-// it. The lower bound keeps the widely used estimate of the perceptual mixing time, sqrt(V) ms
-// (Rubak & Johansen 1999, "Artificial reverberation based on a pseudo-random impulse response II",
-// AES 106th Convention; also Lindau, Kosanke & Weinzierl 2012, JAES 60(11)) and 20 ms, counted from
-// the emitter's own direct sound. For t_dir,e -> 0 the k_eff criterion alone gives roughly
-// 6.8 V^(1/3) ms.
+// Eqs. 11.9 / 11.17), i.e. 1 dB expected level precision, against the 1 dB jnd of G (Vorlaender
+// Table 6.1, stated for 500-1000 Hz). No corpus rule exists for the transition time (Vorlaender
+// §11.7); the rule is revised only on the Phase 05 handover evidence (phase-05 scope 6). The lower
+// bound keeps sqrt(V) ms, "the popular estimate attributed to Cremer & Mueller (1978), reported in
+// Lindau, Kosanke & Weinzierl 2012, JAES 60(11), §1.1; their Eq. 1 at 400 s^-1 gives 0.89 sqrt(V) ms"
+// (DOI 10.14279/depositonce-15236), and 20 ms, counted from the emitter's own direct sound. For
+// t_dir,e -> 0 the k_eff criterion alone gives roughly 6.8 V^(1/3) ms. AX22 may move the handover
+// later (Engine.cpp planEmitter).
 namespace sim::tail {
 
 inline constexpr double kMixingMinAfterDirectS = 0.020;         // 20 ms

@@ -1099,3 +1099,36 @@ the T30 gates read the tail; Q3 reworded; Q4 `dead_booth` 1 / 2 kHz: octave +0.3
 octave +0.0 % / +0.4 %; Q5 each realisation's pressure IR is FIR-filtered, then squared and averaged.
 
 **Status:** AX23 committed with the corrections above. Open for the Expert: AX23-10.
+
+## BUILD_PLAN AX22 measured values and AX23 re-check (Phase 04 session) — 2026-11-05
+
+Interrogator on the AX22 values recorded in Phase 04 (PR #8) and on AX23 against corpus revision
+c1b171f (adds Kuttruff, Room Acoustics). Corrections applied to the rows are listed after the tables.
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| AX22-M1 | NUMBER | N_cap = ν_r(10) = 1 560 | CORRECT | Kuttruff §9.8 Eq. 9.23: (2/3)(2000+300+40) = 1560 (orders 1…i₀, direct not counted) | – | – |
+| AX22-M2 | NUMBER | ν_r(30) = 37 880; ν_r(11…16, 20) | CORRECT | Eq. 9.23 | – | – |
+| AX22-M3 | NUMBER | W1/W2 timings | NOT CHECKABLE | project measurements (CI logs) | – | – |
+| AX22-M4 | FACT | rebuild time not proportional to image count | NOT CHECKABLE (internally consistent) | ×1.31 images, ×1.99 time from i₀ 10 → 11 | – | – |
+| AX22-M5 | FACT | "steps where the early part's FFT size doubles" | NOT CHECKABLE; corpus-mean working does not support it | t_cap + 0.163 s = 26 112 / 27 840 samples at i₀ 10 / 11, same power-of-two block | – | resolved: sentence removed |
+| AX22-M6 | NUMBER | t_cap ≈ 0.38 s at ν_r(10) | CORRECT | Kuttruff Eq. 4.6 integrated: 0.381 / 0.526 / 1.104 s at ν_r(10 / 14 / 30) | – | – |
+| AX22-M7 | FACT | Eq. 4.6 time for a cap counted by ν_r(i₀) | IMPRECISE | Eq. 4.6 is the mean N-th arrival of any order, not the completion of orders ≤ i₀ | minor | resolved: row states arrival-order counting |
+| AX22-M8 | NUMBER | jnd EDT 5 %, C80 1 dB | CORRECT | Vorländer Table 6.1 | – | – |
+| AX22-M9 | NUMBER | jnd applied at 500 Hz–2 kHz | CONDITIONS VIOLATED | Table 6.1 states 500–1000 Hz | major | resolved: extension stated in the row |
+| AX22-M10 | NUMBER | T jnd "working 5 %" | IMPRECISE | Kuttruff §7.6: ≈ 4 % | minor | resolved: noted in the row |
+| AX22-M11 | FACT | 'cap limits accuracy' (39.7 jnd) | NOT CHECKABLE; follows from the rule | far above AX19 single-realisation scatter (≤ 2.2 jnd) | – | – |
+| AX23-1 (changed) | NUMBER | m_8k = 0.0242 1/m | CORRECT (was WRONG vs corpus) | Kuttruff Table 6.1: 24.29·10⁻³ m⁻¹ at 50 % RH | – | – |
+| AX23-2 (changed) | NUMBER | air-only T60 8 kHz ≈ 1.7 s | CORRECT | Kuttruff Eq. 5.24: 1.657 s | – | – |
+| AX23-3 (changed) | NUMBER | m_4k, air-only T60 ≈ 5.9 s | CORRECT | Kuttruff Table 6.1: 6.84·10⁻³ → 5.885 s | – | – |
+| AX23-6 (changed) | FACT | octave filter reads the faster band long | mechanism CORRECT in substance; magnitude NOT CHECKABLE | Kuttruff §3.8 Fig. 3.13, §8.4 | – | – |
+| AX23-10 (re-checked) | FACT | half-octave reading for an octave Eyring comparison | NOT CHECKABLE | Kuttruff names octave / third-octave only | – | open (Expert) |
+| AX23-18 (new) | FACT | filter, square, ensemble-average, then Schroeder | CORRECT | Kuttruff §8.4 Eq. 8.29 | – | – |
+| AX23-19 (new) | FACT | "not checked against the corpus" (stale) | IMPRECISE | Kuttruff agrees with ISO; Vorländer annex differs | minor | resolved: row cites both |
+| AX23-20 (new) | FACT | direct sound / early part shape a high-band EDC start | CORRECT in substance | Kuttruff §8.4 | – | – |
+| AX23-21 (new) | FACT | 4 → 8 kHz ratio ≈ 1.8–2.2 : 1 with Kuttruff m | CORRECT | Eq. 5.24: 2.29 with a 6 s wall term | – | – |
+
+**Status:** AX22 values committed with the corrections above; AX23 verdicts hold on c1b171f
+(AX23-1…3 now CORRECT). Open: AX23-10 (Expert); which corpus air table AX4/AX23 should cite
+(Kuttruff Table 6.1 agrees with ISO 9613-1; Vorländer's annex bins do not) is a plan question.
+

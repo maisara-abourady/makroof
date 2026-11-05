@@ -7,6 +7,8 @@
 // Phase 04: Kind::Omni renders the hybrid room IR (image-source early part + stochastic late tail);
 // Kind::OmniEarly is the Phase 03 early-reflection-only IR, kept unchanged. Binaural and
 // StereoSpeakers are still the Phase 02 dry pass-through stub (Phases 08 and 09).
+// AX21: the hybrid IR is specular-only before its handover; the AX16 scattered entries only set the
+// tail level (a known deficit, fix planned on Phase 05 evidence, BUILD_PLAN §5 B11).
 #include "contract/SceneDescription.h"
 #include "sim/ism/ImageSources.h"
 #include "sim/tail/Decay.h"
@@ -74,7 +76,7 @@ struct BuildOptions
     // don't pay for the other.
     int onlyEmitterChannel = -1;
     // Kind::Omni, validation only (render_cli --image-cap): overrides the AX22 image-count cap N_cap
-    // (0 = kImageCountCap). For the AX22 sensitivity report at nu_r(2 i0).
+    // (0 = imageCountCap()). For the AX22 sensitivity report at nu_r(2 i0).
     std::size_t imageCountCapOverride = 0;
     // Kind::Omni, benchmark / Phase 10 proxy only: precomputed unit decays by emitter channel
     // (tail::BandNoiseGenerator::make with the scene's seed and stream). When set and of the right

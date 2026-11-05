@@ -535,23 +535,47 @@ def test_ax22_sensitivity_report(render_cli_path, tmp_path):
 # Envelope step across t_mix (reported only, AX21)
 # ---------------------------------------------------------------------------------------------
 
+def predicted_ax21_step_db(images: dict, t_dir: float, t_h: float, t60: list[float]) -> list[float]:
+    """AX21's prediction of the envelope step: the tail is matched to specular + scattered entries in
+    the Hann window [t_dir + 2.5 ms, t_h] (referred to t_h), the rendered early part holds only the
+    specular ones, so the step is 10 log10((S + Sc) / S) of those window-weighted sums."""
+    a, b = t_dir + 0.0025, t_h
+    out = []
+    for band in range(8):
+        rate = 6.0 * math.log(10.0) / t60[band]
+        def weighted(entries):
+            total = 0.0
+            for t, e in entries:
+                if a < t < b and e[band] > 0.0:
+                    total += math.sin(math.pi * (t - a) / (b - a)) ** 2 * e[band] * math.exp(-rate * (b - t))
+            return total
+        spec = weighted((im["time"], np.array(im["amplitude"]) ** 2) for im in images["images"])
+        scat = weighted((sc["time"], np.array(sc["energy"])) for sc in images["scattered"])
+        out.append(round(10.0 * math.log10((spec + scat) / spec), 2) if spec > 0.0 else None)
+    return out
+
+
 @pytest.mark.parametrize("name", ROOMS)
-def test_envelope_step_reported(render_cli_path, name):
+def test_envelope_step_reported(render_cli_path, tmp_path, name):
     """Per emitter and band: ensemble-averaged band energy in [t_h - 10 ms, t_h) and [t_h, t_h + 10 ms)
     (t_h the handover, t_mix,e or the AX22 cap), on R hybrid IRs with the Eyring gate's R, as the level
     step in dB after removing the expected decay 60 * 0.010 / T60_b dB (Vorlaender Eq. 11.13). The EDC
-    seam gate cannot see such a step (a backward integral changes slope, not value). AX21's upper
-    estimates of the step from the missing early scattered energy: ~0.9 / 1.8 / 4.9 / 8.7 dB for
-    s = 0.05 / 0.1 / 0.25 / 0.4 in the AQ10 room. Reported, not gated."""
+    seam gate cannot see such a step (a backward integral changes slope, not value). Printed next to
+    AX21's prediction from the room's own image list (scattered energy missing from the early part).
+    Reported, not gated; the gap between the two is not explained here (input for the Expert)."""
     d = diag(str(render_cli_path), name)
     r = max(eyring_r(d["t60"]).values())
     irs, fs = ensembles.render_ensemble(render_cli_path, scene_path(name), SEED_EYRING_A, r, 48000)
-    steps = []
+    images_path = tmp_path / "images.json"
+    assert render_cli.run(render_cli_path, "--scene", scene_path(name), "--mode", "omni", "--images", images_path).returncode == 0
+    images = json.loads(images_path.read_text(encoding="utf-8"))
+    measured, predicted = [], []
     for e in (0, 1):
         acc = ensembles.EnsembleAccumulator(float(fs))
         acc.add_all(irs[:, e])
         onset = metrics.onset_index(irs[0, e])
-        t_h = (d["emitters"][e]["handoverS"] - d["alignmentShiftS"]) * fs - onset
+        em = d["emitters"][e]
+        t_h = (em["handoverS"] - d["alignmentShiftS"]) * fs - onset
         n10 = int(round(0.010 * fs))
         row = []
         for i, fc in enumerate(bands.OCTAVE_BANDS_HZ):
@@ -559,8 +583,8 @@ def test_envelope_step_reported(render_cli_path, name):
             c = int(round(t_h)) + lead
             before, after = float(np.sum(energy[c - n10 : c])), float(np.sum(energy[c : c + n10]))
             row.append(round(10.0 * math.log10(after / before) + 60.0 * 0.010 / d["t60"][i], 2))
-        steps.append(row)
-    scattering = sorted({s["scattering"] for s in load(name)["room"]["surfaces"].values()})
-    print(f"{name}: envelope step across the handover, R = {r}, [emitter][63 Hz..8 kHz]: {steps} dB "
-          f"(surface scattering {scattering}; reported only, AX21)")
-    assert all(math.isfinite(x) for row in steps for x in row)
+        measured.append(row)
+        predicted.append(predicted_ax21_step_db(images["emitters"][e], em["directS"], em["handoverS"], d["t60"]))
+    print(f"{name}: envelope step across the handover, R = {r}, [emitter][63 Hz..8 kHz]: measured {measured} dB; "
+          f"AX21 prediction {predicted} dB (reported only)")
+    assert all(math.isfinite(x) for row in measured for x in row)
