@@ -503,3 +503,35 @@ AX19, AX20, §4 and §6.
 Expert: the mixing-time rule itself (Vorländer §11.7 gives none); the E4 sparse/non-diffuse limitation.
 Open follow-up: AQ10 and `phase-13.md` still state the rebuild budget at "order 30", which no longer sets
 the hybrid IR's workload (AX20).
+
+## BUILD_PLAN AX21 (Phase 04 session) — 2026-11-05
+
+Interrogator on the proposed AX21 row (signal and meter of the Phase 04 decay-time gates), corpus
+revision 22dc9dd. Builder answers and the resulting changes to the row follow the table.
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| AX21-1 | NUMBER | m_8k = 0.0242 1/m at 20 °C, 50 % RH | WRONG (vs corpus) | Vorländer air table: 20.3·10⁻³ (30–50 %) / 13.5·10⁻³ (50–70 %) 1/m at 8 kHz; ISO 9613-1 (AX4) not in the corpus | major | resolved: attributed to ISO 9613-1 (AX4), marked unchecked against the corpus, corpus value quoted |
+| AX21-2 | NUMBER | air-only T60 limit 8 kHz ≈ 1.66 s | WRONG (input) | 0.161/(4m), Eq. 4.32: 1.98 s with the corpus m | major | resolved as AX21-1 |
+| AX21-3 | NUMBER | air-only T60 limit 4 kHz ≈ 5.9 s | WRONG (vs corpus) | corpus m gives 6.94 / 9.82 s | major | resolved as AX21-1 |
+| AX21-4 | FACT | air caps T60 in any room; m = D/4.34 | CORRECT | Vorländer Eqs. 4.32/4.34, notation D = 4.34 m | – | – |
+| AX21-5 | FACT | "always ≥ 2:1 between 4 and 8 kHz" | WRONG as stated | Eq. 4.32: ratio < 2 below T_wall ≈ 3.8 s; concert_hall_box 1.77 | major | resolved: reworded to "in rooms like stone_box … ≈ 1.8–2.2 : 1" |
+| AX21-6 | FACT | octave filters read the faster band long (leakage) | NOT CHECKABLE | corpus silent on filter-skirt bias | – | – |
+| AX21-7 | NUMBER | measured biases | NOT CHECKABLE | project measurements, reproducible | – | – |
+| AX21-8 | NUMBER | half octave = centre · 2^±¼ | CORRECT | Vorländer §1.8 Eqs. 1.39/1.40 | – | – |
+| AX21-9 | NUMBER | Kaiser FIR spec | NOT CHECKABLE | no filter-design source in the corpus | – | – |
+| AX21-10 | FACT | half-octave reading acceptable for an octave Eyring T60 | NOT CHECKABLE | §1.8 standard bands octave / third octave; nothing forbids it | – | open (Expert) |
+| AX21-11 | NUMBER | R × 2 for half octaves | CORRECT (given AX11) | bandwidth ratio 2.03, round up | – | – |
+| AX21-12 | FACT | half-octave FIR too long below 1 kHz | NOT CHECKABLE | – | – | 1–2 kHz data added (Q4) |
+| AX21-13 | FACT | early part dominates high-band EDC start at C80 ≈ +5 dB | CORRECT (given C80) | Eq. 6.7: EDC(80 ms) = −6.2 dB | – | – |
+| AX21-14 | FACT | tail-only T30 stands for "T30 of the generated IR" | INCONSISTENT | §6.4.1 evaluates T on the whole IR | major | resolved: the row says the gate is on the tail; hybrid T30 reported; the join is gated by the seam test |
+| AX21-15 | DECISION | hybrid T30 not gated | CONSEQUENCE | §11.7 no rule for the transition | minor | noted in the row and PR |
+| AX21-16 | DECISION | two meters in the gate bands | CONSEQUENCE | – | minor | noted in the row |
+| AX21-17 | DECISION | EDT, C80 on the full IR | CONSISTENT | §6.4.1, Eq. 6.7 | – | – |
+
+Builder answers: Q1 the Eyring reference and the generator use the ISO 9613-1 m_b of AX4 (D_b/4.343
+from `sim::airAttenuationDbPerMetre`), so the corpus table is not used; Q2 the row now states that
+the T30 gates read the tail; Q3 reworded; Q4 `dead_booth` 1 / 2 kHz: octave +0.3 % / −0.0 %, half
+octave +0.0 % / +0.4 %; Q5 each realisation's pressure IR is FIR-filtered, then squared and averaged.
+
+**Status:** AX21 committed with the corrections above. Open for the Expert: AX21-10.

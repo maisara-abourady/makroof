@@ -17,6 +17,7 @@
 #include <locale>
 #include <optional>
 #include <ostream>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 
@@ -34,6 +35,8 @@ struct Options
     std::string imagesPath;
     std::string diagnosticsPath;
     std::optional<std::uint32_t> tailSeed;
+    std::optional<std::uint32_t> ensemble;
+    std::optional<std::uint32_t> ensembleEmitter;
     bool noAirAbsorption = false;
     bool tailOnly = false;
     std::optional<double> rate;
@@ -117,7 +120,8 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             target = &options.imagesPath;
         else if (arg == "--diagnostics")
             target = &options.diagnosticsPath;
-        else if (arg != "--rate" && arg != "--mode" && arg != "--tail-seed")
+        else if (arg != "--rate" && arg != "--mode" && arg != "--tail-seed" && arg != "--ensemble"
+                 && arg != "--ensemble-emitter")
             return "unknown argument '" + arg + "'";
 
         if (i + 1 >= args.size())
@@ -142,6 +146,18 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             if (!options.tailSeed)
                 return "--tail-seed must be an integer in [0, 4294967295], got '" + value + "'";
         }
+        else if (arg == "--ensemble")
+        {
+            options.ensemble = parseSeed(value);
+            if (!options.ensemble || *options.ensemble == 0 || *options.ensemble > 100000)
+                return "--ensemble must be an integer in [1, 100000], got '" + value + "'";
+        }
+        else if (arg == "--ensemble-emitter")
+        {
+            options.ensembleEmitter = parseSeed(value);
+            if (!options.ensembleEmitter || *options.ensembleEmitter > 1)
+                return "--ensemble-emitter must be 0 or 1, got '" + value + "'";
+        }
         else
         {
             if (!target->empty())
@@ -165,6 +181,12 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         return "--diagnostics needs --mode omni (the hybrid IR)";
     if (options.tailOnly && (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni))
         return "--tail-only needs --mode omni (the hybrid IR)";
+    if (options.ensemble
+        && (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni || options.irPath.empty()
+            || !options.inPath.empty() || !options.imagesPath.empty() || !options.diagnosticsPath.empty()))
+        return "--ensemble needs --mode omni and --ir, without --in, --images or --diagnostics";
+    if (options.ensembleEmitter && !options.ensemble)
+        return "--ensemble-emitter needs --ensemble";
     if (options.rate && !sim::isSupportedSampleRate(*options.rate))
         return "--rate must be one of 44100, 48000, 88200, 96000 (AX6)";
     return {};
@@ -393,6 +415,11 @@ std::string usage()
            "  --no-air-absorption  validation only: switch off air absorption (AX4 keeps it on)\n"
            "  --tail-only  validation only, --mode omni: write just the matched late tail (no early part,\n"
            "               no crossfade), for decay-time ensembles\n"
+           "  --ensemble   validation only, --mode omni --ir: render N realisations with tail seeds\n"
+           "               tailSeed, tailSeed + 1, ...; channel 2k = emitter 0 and 2k + 1 = emitter 1 of\n"
+           "               seed tailSeed + k (output 0)\n"
+           "  --ensemble-emitter  with --ensemble: build and write only emitter channel 0 or 1 (one\n"
+           "               WAV channel per seed)\n"
            "  --automation not implemented until Phase 10\n"
            "\n"
            "exit codes: 0 ok, 1 usage error, 2 invalid scene, 3 I/O error, 4 internal error\n";
@@ -475,6 +502,8 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
     build.kind = options.mode.value_or(sim::kindForOutputMode(scene.render.outputMode));
     build.airAbsorption = !options.noAirAbsorption;
     build.tailOnly = options.tailOnly;
+    if (options.ensembleEmitter)
+        build.onlyEmitterChannel = static_cast<int>(*options.ensembleEmitter);
 
     if (!options.imagesPath.empty())
     {
@@ -494,7 +523,7 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
         return kExitUsage;
     }
     sim::HybridDiagnostics diagnostics;
-    const sim::RoomIR ir = sim::buildRoomIR(scene, build, &diagnostics);
+    const sim::RoomIR ir = options.ensemble ? sim::RoomIR{} : sim::buildRoomIR(scene, build, &diagnostics);
 
     if (!options.diagnosticsPath.empty())
     {
@@ -504,6 +533,34 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
             return kExitIo;
         }
         out << "wrote diagnostics " << options.diagnosticsPath << "\n";
+    }
+
+    // ---- Ensemble of IRs (validation, AX11): seeds tailSeed, tailSeed + 1, ... ----
+    if (options.ensemble)
+    {
+        Audio irAudio;
+        irAudio.sampleRate = static_cast<std::uint32_t>(build.sampleRate);
+        std::vector<std::uint32_t> seeds(*options.ensemble);
+        for (std::uint32_t k = 0; k < *options.ensemble; ++k)
+            seeds[k] = scene.render.tailSeed + k; // wraps modulo 2^32
+        // In chunks, so a long ensemble doesn't hold every IR twice.
+        for (std::size_t first = 0; first < seeds.size(); first += 64)
+        {
+            const auto count = std::min<std::size_t>(64, seeds.size() - first);
+            for (auto& one : sim::buildRoomIREnsemble(scene, build, std::span(seeds).subspan(first, count)))
+                for (int e = 0; e < 2; ++e)
+                    if (!options.ensembleEmitter || static_cast<int>(*options.ensembleEmitter) == e)
+                        irAudio.channels.push_back(std::move(one.taps[one.index(e, 0)]));
+        }
+        std::string error;
+        if (!writeWavFloat32(options.irPath, irAudio, error))
+        {
+            err << "render_cli: " << error << "\n";
+            return kExitIo;
+        }
+        out << "wrote IR ensemble " << options.irPath << " (" << irAudio.channels.size() << " channels, "
+            << (irAudio.channels.empty() ? 0 : irAudio.channels.front().size()) << " samples)\n";
+        return kExitOk;
     }
 
     // ---- IR ----

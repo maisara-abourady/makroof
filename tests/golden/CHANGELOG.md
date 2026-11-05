@@ -15,3 +15,20 @@ Reason: Phase 03: first goldens of the early-reflection (ISM) omni IR of small_r
 - `phase03_medium_room_omni_order10`: created
 - `phase03_large_hall_omni_order10`: created
 
+## 2026-11-05
+
+Reason: phase 04 adds tail: first goldens of the hybrid omni IR (ISM + late tail) of every valid fixture, 48 kHz, the fixture's own tailSeed
+
+- `phase04_asymmetric_materials_omni`: created
+- `phase04_classroom_omni`: created
+- `phase04_club_omni`: created
+- `phase04_concert_hall_box_omni`: created
+- `phase04_dead_booth_omni`: created
+- `phase04_edge_values_omni`: created
+- `phase04_large_hall_omni`: created
+- `phase04_living_room_omni`: created
+- `phase04_medium_room_omni`: created
+- `phase04_open_field_omni`: created
+- `phase04_small_room_omni`: created
+- `phase04_stone_box_omni`: created
+

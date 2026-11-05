@@ -15,6 +15,8 @@
 #include <array>
 
 #include <cstddef>
+#include <cstdint>
+#include <span>
 #include <vector>
 
 namespace sim {
@@ -67,6 +69,10 @@ struct BuildOptions
     // the crossfade. The T30 ensembles of Phase 04 measure the tail generator's decay on these
     // ("tail-only renders", phase-04.md, "Ensemble sizes").
     bool tailOnly = false;
+    // Kind::Omni, validation only (render_cli --ensemble-emitter): when >= 0, only this emitter
+    // channel is built; the other emitter's taps stay zero. Ensembles that analyse one emitter
+    // don't pay for the other.
+    int onlyEmitterChannel = -1;
 };
 
 // AX1: the earliest direct arrival (over all emitters) lands at this sample, so the
@@ -142,5 +148,12 @@ struct HybridDiagnostics
 // sample); the other two pairs are a single 0. Positions, materials and gains are ignored.
 RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& options,
                    HybridDiagnostics* diagnostics = nullptr);
+
+// Kind::Omni only (validation, AX11 ensembles): the hybrid IR of `scene` for each tail seed in
+// tailSeeds, element k equal to buildRoomIR with render.tailSeed = tailSeeds[k]. The seed-independent
+// work (images, matching, early part, band filters) is done once. Throws std::invalid_argument for
+// another kind or an unsupported sample rate.
+std::vector<RoomIR> buildRoomIREnsemble(const contract::SceneDescription& scene, const BuildOptions& options,
+                                        std::span<const std::uint32_t> tailSeeds);
 
 } // namespace sim

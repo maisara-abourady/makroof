@@ -12,6 +12,7 @@
 //    energy of the unit decay per 10 ms at t_mix,e. The band amplitude E_b is then seed-independent.
 // 3. Equal-power crossfade ISM -> tail over [t_mix,e - 2.5 ms, t_mix,e + 2.5 ms] (AX18).
 #include "contract/SceneDescription.h"
+#include "sim/Fft.h"
 #include "sim/ism/BandRenderer.h"
 #include "sim/ism/ImageSources.h"
 #include "sim/tail/Decay.h"
@@ -56,6 +57,28 @@ struct UnitDecay
     std::array<std::vector<double>, contract::kNumOctaveBands> bands;
 
     std::size_t length() const noexcept { return bands[0].size(); }
+};
+
+// Samples of a unit decay of lengthS seconds: ceil(lengthS * fs), at least 1.
+std::size_t unitDecayLength(double lengthS, double sampleRate) noexcept;
+
+// Makes unit decays of one length and sample rate. The band filters' spectra are computed once in
+// the constructor, so several emitters, seeds or rebuilds share them; make() gives the same values
+// as makeUnitDecay().
+class BandNoiseGenerator
+{
+public:
+    BandNoiseGenerator(const ism::OctaveFilterbank& filterbank, std::size_t length);
+
+    std::size_t length() const noexcept { return length_; }
+    UnitDecay make(const RoomDecay& decay, std::uint32_t seed, std::uint32_t emitterStream) const;
+
+private:
+    double sampleRate_;
+    std::size_t length_;
+    std::size_t half_;
+    Fft fft_;
+    std::array<std::vector<double>, contract::kNumOctaveBands> bandSpectrum_;
 };
 
 UnitDecay makeUnitDecay(const RoomDecay& decay, std::uint32_t seed, std::uint32_t emitterStream,

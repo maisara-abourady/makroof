@@ -16,7 +16,9 @@
 #include <iostream>
 #include <limits>
 #include <set>
+#include <stdexcept>
 #include <tuple>
+#include <vector>
 
 using Catch::Matchers::WithinAbs;
 
@@ -281,4 +283,24 @@ TEST_CASE("benchmark: hybrid omni IR, 20 x 30 x 10 m, 48 kHz, 2 emitters", "[.][
     {
         return sim::buildRoomIR(scene, kOmni48);
     };
+}
+
+TEST_CASE("buildRoomIREnsemble: member k equals buildRoomIR with tailSeed = seeds[k]", "[sim][hybrid]")
+{
+    auto scene = loadScene("dead_booth.json");
+    const std::vector<std::uint32_t> seeds{5u, 4294967295u, 0u};
+    for (const bool tailOnly : {false, true})
+    {
+        auto options = kOmni48;
+        options.tailOnly = tailOnly;
+        const auto irs = sim::buildRoomIREnsemble(scene, options, seeds);
+        REQUIRE(irs.size() == seeds.size());
+        for (std::size_t k = 0; k < seeds.size(); ++k)
+        {
+            scene.render.tailSeed = seeds[k];
+            CHECK(irs[k].taps == sim::buildRoomIR(scene, options).taps);
+        }
+    }
+    CHECK_THROWS_AS(sim::buildRoomIREnsemble(scene, {48000.0, sim::BuildOptions::Kind::OmniEarly}, seeds),
+                    std::invalid_argument);
 }

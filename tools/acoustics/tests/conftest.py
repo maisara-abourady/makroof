@@ -14,6 +14,14 @@ if str(REPO) not in sys.path:
 from tools.acoustics import render_cli  # noqa: E402
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "ensemble: Phase 04 AX11 ensemble gates (thousands of renders); CI runs them in the tail-gates "
+        "job, one room per job, and deselects them in the python job",
+    )
+
+
 @pytest.fixture(scope="session")
 def render_cli_path() -> pathlib.Path:
     """The render_cli binary. Skips when it isn't built, unless SPATIAL_REQUIRE_RENDER_CLI=1 (CI),
