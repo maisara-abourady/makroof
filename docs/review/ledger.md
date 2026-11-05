@@ -935,3 +935,68 @@ The main session computed one fact from the code: the repository's ISO 9613-1 im
 **Remaining:**
 - Empirical, to be settled by Phase 05 or the B11 phase: BRAS room coverage, σ₁,Δ, ΔL_b, and the ray-tracer bias. Each has a decision rule in the plan.
 - Old follow-up: AQ10 and phase-13 still state the rebuild budget as "order 30".
+
+## docs/phases (phase-04, 05, 05b, 08, 10, 13) and BUILD_PLAN — 2026-11-05 (/fix-plan, open items closed; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d; external sources: researcher report 9)
+
+Sources, kept verbatim in `docs/review/phase-04-consult/`:
+
+| report | what it is |
+|---|---|
+| 8 | decider, open items |
+| 9 | researcher, BRAS and priors; external, cited by DOI |
+| 10 | interrogator, check of the report-8 diff |
+| 11 | decider, DN-1, FR-01–05 and the researcher findings |
+| 12 | interrogator, pre-check of report 11 |
+
+The researcher's second-dataset search was still running when this entry was written.
+
+**Decisions, all accepted by Maisara on 2026-11-05**
+
+*Report 8*
+- **AQ10:** the budget is a position-only rebuild, measured as workloads W1 (no fallback) and W2 (AX22 fallback at N_cap). Order 30 now applies only to omni-early.
+- **N_cap:** ν_r(i₀) for the largest i₀ ≥ 10 that meets W2. Frozen, with a sensitivity report at ν_r(2i₀).
+- **Measurement-rule repairs:**
+  - room selection is committed before any result is seen;
+  - zero suitable rooms: Phase 05 is done without BRAS, and the measured part moves to 05c;
+  - R > 2 000: run if ≤ 24 h, otherwise δ goes to Maisara;
+  - branches for an (A) failure and for tracer bias.
+- **New v1 phase 05b**, early scattered energy (B11), placed before 08.
+- **B12 and B10:** decision rules added.
+- **AQ9 failures:** go to Maisara.
+- **Switch-point dip:** gated ≤ 1 dB (decider challenge, accepted).
+
+*Report 11*
+- **DN-1, rendering:** equivalent-reflection pulses at the Kuttruff Eq. 4.6 density, with a floor of one pulse per 1 ms step.
+- **DN-1, patches:** a frozen absolute patch size, floor 0.343 m.
+- **FR-01:** the exact Phase 10 dip gate.
+- **FR-02 to FR-05:** applied.
+- **BRAS:** results are evidence, not validation; G is not evaluable; B12 uses the initial α set only.
+- **C1 and C2:** |ΔL_b,tr| trigger; BRAS-only B12 results labelled "input-limited".
+- **Second measured dataset:** required before the Phase 13 beta.
+
+*DN-A*
+- **Window:** the padded whole early part, verified by the interrogator.
+- **Tolerance:** 3σ of the exact random-sign scatter, gated where ≤ 1 dB (the interrogator's proposal, adopted by Maisara).
+
+**Verification**
+- **Report-8 diff (report 10):** nothing WRONG.
+  - FR-01, major: the f ≤ 0.41 bound assumed equal segment powers; fixed by report 11.
+  - FR-02 to FR-05: minor.
+  - DN-1 rendering option (c), envelope only: rejected as WRONG for audio.
+- **Report-11 pre-check (report 12):** two WRONG items, both corrected before applying:
+  - the energy-exactness claim was valid only in the tap domain;
+  - the continuity threshold: 0.79 gives a 0.48 dB dip, and 0.59 gives 1 dB.
+- **Report-11 diff:** nothing WRONG. FS-01 (signed trigger) and FS-02 (2.6×, not 3×) are fixed. DN-A tolerance option (b) was rejected as the wrong fluctuation model.
+- **Main session:** re-ran the FR-01 bounds (0.411 / 0.324 / 0.206) and the density figures (1 300 s⁻¹; t_floor 109 / 17 ms).
+
+**Deliberately left to the phase sessions (low stakes)**
+- DN-B: the room set for the t_mp context.
+- DN-C: which of the two Phase 10 self-test forms to use.
+
+**Status:** no open plan decisions.
+
+**Waiting on data**
+- BRAS material files (Phase 05).
+- Paired-comparison noise (Phase 05).
+- Tracer results (05b).
+- The second dataset, which Maisara will choose from the researcher's candidates.

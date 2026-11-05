@@ -50,7 +50,7 @@ t_mix,e. This phase promotes the Phase 05 reference hybrid's early Lambert-scatt
    n_k = max(1, ⌈ν(t_k)·Δt⌉) pulses, ν(t) = 4πc³t²/V (Kuttruff Eq. 4.6; Blauert Ch. 3 §3.3), Δt = 1 ms
    (Kuttruff §9.8 class width): equivalent reflections with density n_j matching the reflection
    statistics (Vorländer Eq. 11.51). Below t_floor = √(V/(4πc³Δt)) (≈ 109 ms at 6 000 m³, ≈ 17 ms at
-   145 m³) n_k exceeds Eq. 4.6; up to t_mix in 6 000 m³ the count is ≈ 3× the diffuse-field count.
+   145 m³) n_k exceeds Eq. 4.6; up to t_mix in 6 000 m³ the count is ≈ 2.6× the diffuse-field count (≈ 139 pulses against ≈ 54 by Kuttruff Eq. 4.6).
    This is a departure from Eq. 4.6, low confidence. Pulse offsets within the step and signs come from
    a counter-based RNG keyed by (tailSeed, emitter, step, pulse), independent of positions and patch
    layout (AX5). Each pulse is a broadband equivalent reflection with per-band amplitude √(E_k,b/n_k),
@@ -117,9 +117,19 @@ decay source (B12); changes to the mixing-time rule, AX22 or N_cap; any per-scen
         max(30 ms, measured rebuild time), i.e. 1.5 cm at 30 ms, and for a 1 cm room-dimension change
         that crosses a patch boundary; so the equal-gain mid-fade dip of that part alone is
         ≤ 10·log10((1+0.59)/2) = −1.0 dB (Vorländer Eq. 4.14), the Phase 10 bound;
-      - (iii) rendered domain: the per-band energy of the rendered diffuse part, measured with the AX14
-        half-octave meter over windows longer than the band filter's length, matches Σ E_k,b over the
-        same window. Tolerance and window choice: **pending decision**.
+      - (iii) Rendered domain: render the diffuse part alone and measure its per-band energy with the
+        AX14 half-octave meter, calibrated so that a single tap reads its tap energy. Measure over the
+        whole early part [t_dir,e − maxHalfLength, t_mix,e + 2.5 ms + maxHalfLength] (padded by the
+        band filter's half-length, AX15, so no energy rings out of the window). Compare it with
+        Σ E_k,b over all steps, each weighted by its crossfade window (AX18). The equality holds in
+        expectation over the random signs. The band energy is a quadratic form in the signs, with
+        relative SD σ_rel = √(2·Σ_{i≠j} R_ij²)/Σ R_ii, where R_ij is the band-filtered pulse
+        cross-energy. It is computed exactly from the seeded pulse times and the band filter (derived,
+        not corpus; ≈ 1/√(B·T_w) when pulses overlap, ≈ 0 when resolved). Tolerance: ±3·4.34·σ_rel dB
+        (the AX11 3σ convention). The check is gated in bands where 3·4.34·σ_rel ≤ 1 dB and reported
+        in the others (for example 63 Hz, where 3σ ≈ 6 dB). The window is verified by the
+        interrogator; the tolerance rule is the interrogator's proposal, adopted by Maisara on
+        2026-11-05.
 - [ ] The window-level check of scope 4 is run and its branch is recorded.
 - [ ] Any tracer bias above 0.3 dB is diagnosed as in scope 5, and the result is recorded.
 - [ ] Gate (B) is evaluated on the Phase 05 numbers, and Δ̂, SE, R and pass/fail are printed per
