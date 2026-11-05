@@ -93,8 +93,9 @@ IR for every valid shoebox scene.
    AQ10 and recorded in AX22 (for scale: the order-30 budget is ν_r(30) = 37 880 images, Kuttruff
    Eq. 9.23). The handover then moves to t_cap,e, the arrival time of the N_cap-th image in arrival
    order, and the tail is matched there (scope 3, window [t_dir,e + 2.5 ms, t_cap,e]) only if the
-   window holds non-zero energy (else E_b = 0). Whether pruned images count towards N_cap, and the case
-   t_cap,e < t_mix,e: **pending decision**. k_real is not monotonic in t: entries never leave the window
+   window holds non-zero energy (else E_b = 0). N_cap counts every enumerated lattice image,
+   pruned or not (as Kuttruff Eq. 9.23 does), so the cap bounds the enumeration cost; if
+   t_cap,e < t_mix,e the handover stays at max(t_mix,e, t_cap,e) = t_mix,e (Maisara, 2026-11-05). k_real is not monotonic in t: entries never leave the window
    (its left edge is fixed), but the Hann re-weighting as t grows changes their weights (derived, not
    from the corpus); so k_real is tested only at the expected-rule t_mix,e. The switch is a single jump
    point in source position (see Risks). Images with exactly zero energy (any hit on a face with α = 1)
@@ -250,7 +251,8 @@ Binaural tail coherence (08); validation against real rooms (05); any per-scene 
       Eq. 4.3): per band, the rendered energy of each image arrival matches the per-image reference
       (the Kuttruff Eq. 9.24 form, with (1−α)^|n| and the air factor exp(−m·r_n)) within **±0.5 dB**
       (AQ9's ISM tolerance), up to the end of the ISM part. Eq. 4.3 stays as the steady-state sum
-      check (its tolerance: **pending decision**).
+      check: the summed rendered image energies match the reference sum within **±0.5 dB**, as the
+      per-image check (Maisara, 2026-11-05).
 - [ ] **One absorbing wall:** a box with one wall at α = 1 and the **other walls rigid** (α = 0,
       s = 0), so Kuttruff Eq. 4.16 applies. AQ3 forbids α = 0 in scenes, so the test calls the solver
       directly. The energy decay follows Eq. 4.16 (∝ 1/t, times the air factor exp(−m·c·t)) within
