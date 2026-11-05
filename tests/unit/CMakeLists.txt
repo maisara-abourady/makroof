@@ -13,7 +13,13 @@ add_executable(spatial_tests
                test_image_sources.cpp
                test_band_renderer.cpp
                test_offline_render.cpp
-               test_cli.cpp)
+               test_cli.cpp
+               test_rng.cpp
+               test_fft.cpp
+               test_tail_decay.cpp
+               test_mixing_time.cpp
+               test_noise_tail.cpp
+               test_hybrid_ir.cpp)
 
 # The contract tests read the fixtures in tests/scenes/ (valid/ and invalid/).
 target_compile_definitions(spatial_tests PRIVATE SPATIAL_SCENES_DIR="${PROJECT_SOURCE_DIR}/tests/scenes")

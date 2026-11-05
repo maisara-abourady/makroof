@@ -48,6 +48,7 @@ struct ScatteredEnergy
     double arrivalTimeS = 0.0;
     int order = 0;
     contract::BandArray bandsEnergy{};
+    contract::Vec3 arrivalDirection; // the specular path's direction of arrival (AX16: same path)
 };
 
 struct ImageSourceSet
@@ -58,7 +59,10 @@ struct ImageSourceSet
 
 struct ImageSourceOptions
 {
-    int maxOrder = 0;                          // reflection orders 0..maxOrder
+    int maxOrder = 0; // reflection orders 0..maxOrder (if maxArrivalTimeS <= 0)
+    // AX20 (Phase 04 hybrid IR): when > 0, the list is time-bounded instead: every image of any
+    // order whose arrival time is < maxArrivalTimeS, and maxOrder is ignored.
+    double maxArrivalTimeS = 0.0;
     double gain = 1.0;                         // linear emitter gain (10^(gainDb / 20))
     bool airAbsorption = true;                 // AX4; false only for validation against references
     Directivity directivity = omniDirectivity; // AQ8
@@ -67,7 +71,18 @@ struct ImageSourceOptions
 // Number of images of order <= maxOrder in a shoebox: (2N + 1)(2N^2 + 2N + 3) / 3.
 std::size_t imageCount(int maxOrder) noexcept;
 
-// All images of `source` seen from `listener` up to options.maxOrder. Images whose specular
+// nu_r(i): the number of image sources of orders 1..i (Kuttruff Eq. 9.23), imageCount(i) - 1:
+// nu_r(10) = 1 560, nu_r(30) = 37 880.
+std::size_t reflectionImageCount(int maxOrder) noexcept;
+
+// AX22: arrival time (from emission, s) of the n-th reflection image (n >= 1) of `source` at
+// `listener` in arrival order, counting every lattice image, pruned or not (as Kuttruff Eq. 9.23
+// counts them); the direct path is not counted. Independent of the materials.
+double nthReflectionArrivalTimeS(const contract::Room& room, const contract::Vec3& source,
+                                 const contract::Vec3& listener, std::size_t n);
+
+// All images of `source` seen from `listener` up to options.maxOrder (or, with
+// options.maxArrivalTimeS > 0, every image arriving before that time, AX20). Images whose specular
 // amplitude and scattered energy are zero in every band (a reflection off an a = 1 surface) are
 // dropped, except the direct path, which is always images[0]. Deterministic: ties in arrival time
 // keep the enumeration order. Requires a validated scene (positions inside the room).

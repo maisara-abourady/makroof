@@ -1,5 +1,5 @@
 """tools/ci/listening_pack.py builds a complete pack (phase 02: every render is bit-identical;
-phase 03: omni early-reflection renders, identical in both channels)."""
+phase 03: omni early-reflection renders, identical in both channels; phase 04: the full room)."""
 
 import importlib.util
 
@@ -42,3 +42,22 @@ def test_phase_03_pack_renders_the_room_in_omni(render_cli_path, tmp_path):
         assert out.shape[1] == 2 and out.shape[0] > dry.shape[0]
         # Omni: both outputs carry the same room (the L and R emitters are summed into each).
         assert out[:, 0].tobytes() == out[:, 1].tobytes()
+
+
+def test_phase_04_pack_renders_the_full_room(render_cli_path, tmp_path):
+    from tools.acoustics import wav
+
+    lp = _load()
+    pack = lp.build(tmp_path, "phase-04", render_cli_path, log=lambda *_: None)
+    readme = (pack / "README.txt").read_text(encoding="utf-8")
+    assert "FULL ROOM" in readme
+    for scene in ("dead_booth", "living_room", "classroom", "club", "concert_hall_box", "stone_box"):
+        out, fs = wav.read_float32(pack / scene / "clicks.wav")
+        assert fs == 48000
+        assert out[:, 0].tobytes() == out[:, 1].tobytes()  # still a mono omni preview
+    # The tail makes stone_box ring for seconds after the last click; dead_booth hardly at all.
+    dry, _ = wav.read_float32(pack / "dry" / "clicks.wav")
+    stone, _ = wav.read_float32(pack / "stone_box" / "clicks.wav")
+    booth, _ = wav.read_float32(pack / "dead_booth" / "clicks.wav")
+    assert stone.shape[0] - dry.shape[0] > 5 * 48000
+    assert booth.shape[0] - dry.shape[0] < 48000

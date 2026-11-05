@@ -138,6 +138,15 @@ def _smooth_db(e: np.ndarray, block: int) -> tuple[np.ndarray, np.ndarray]:
     return centres, _db(np.maximum(means, 1e-300))
 
 
+def _upper_hull_db(level: np.ndarray) -> np.ndarray:
+    """Running maximum from the end: hull[i] = max(level[i:]). The smoothed decay of a measured IR
+    is close to monotonic, so this is (almost) the level itself; in a synthetic IR whose early part
+    is a few sparse reflections, a band filter can leave blocks of exact zeros (-3000 dB) between
+    them, and Lundeby's steps would take the first such gap for the noise floor. The hull bridges
+    those gaps with the later energy, so the decisions below see the decay, not the gaps (Phase 04)."""
+    return np.maximum.accumulate(level[::-1])[::-1]
+
+
 def _fit_line(x: np.ndarray, y: np.ndarray) -> tuple[float, float] | None:
     """Least-squares y = a + b x; None if fewer than 2 points or a degenerate x."""
     if x.size < 2 or np.ptp(x) == 0.0:
@@ -151,7 +160,9 @@ def lundeby(e: np.ndarray, fs: float, initial_block_s: float = 0.010, intervals_
     acoustics", Acustica 81, 344-355, as used by ISO 3382-1 5.3.3.
 
     ``e`` is the squared band IR from the onset on. Steps:
-      1. average e in 10 ms blocks (level in dB);
+      1. average e in 10 ms blocks (level in dB), and take the upper hull of that level (running
+         maximum from the end), so exact-zero gaps between sparse early reflections of a synthetic
+         IR are not mistaken for the noise floor (a measured, near-monotonic decay is unchanged);
       2. preliminary noise level = mean of the last 10% of e;
       3. line through the smoothed decay from its peak to the first block 10 dB above the noise;
       4. crosspoint = where the line meets the noise level;
@@ -180,8 +191,9 @@ def lundeby(e: np.ndarray, fs: float, initial_block_s: float = 0.010, intervals_
     if noise <= float(np.max(e)) * 10.0 ** (NOISE_FREE_BELOW_PEAK_DB / 10.0):
         return LundebyResult(int(nonzero[-1]) + 1, 0.0, 0.0, None, math.inf, 0, warnings)
 
-    # Steps 1-4.
+    # Steps 1-4 (on the upper hull of the smoothed decay, see _upper_hull_db).
     centres, level = _smooth_db(e, initial_block_s * fs)
+    level = _upper_hull_db(level)
     peak_i = int(np.argmax(level))
     peak_db = float(level[peak_i])
     noise_db = float(_db(noise))
@@ -212,6 +224,7 @@ def lundeby(e: np.ndarray, fs: float, initial_block_s: float = 0.010, intervals_
         noise_db = float(_db(noise))
 
         centres, level = _smooth_db(e, block)
+        level = _upper_hull_db(level)
         peak_i = int(np.argmax(level))
         dynamic_range = float(level[peak_i]) - noise_db
         lo_db = noise_db + 7.5

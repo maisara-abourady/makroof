@@ -1,5 +1,6 @@
-// sim::buildRoomIR: the omni early-reflection IR (Phase 03), the binaural/stereo stub (Phase 02)
-// and the RoomIR layout.
+// sim::buildRoomIR: the omni early-reflection IR (Kind::OmniEarly, Phase 03, unchanged in Phase 04),
+// the binaural/stereo stub (Phase 02) and the RoomIR layout. The hybrid IR (Kind::Omni, Phase 04)
+// is tested in test_hybrid_ir.cpp.
 #include "ContractFixtures.h"
 #include "contract/Parse.h"
 #include "sim/Engine.h"
@@ -67,7 +68,7 @@ TEST_CASE("buildRoomIR rejects unsupported sample rates (AX6)", "[sim][engine]")
 {
     const auto scene = loadScene("small_room.json");
     for (const double rate : {0.0, 22050.0, 32000.0, 47999.0, 192000.0})
-        CHECK_THROWS_AS(sim::buildRoomIR(scene, {rate, sim::BuildOptions::Kind::Omni}),
+        CHECK_THROWS_AS(sim::buildRoomIR(scene, {rate, sim::BuildOptions::Kind::OmniEarly}),
                         std::invalid_argument);
 }
 
@@ -108,7 +109,7 @@ TEST_CASE("omni IR: both outputs of an emitter are the same; the earliest direct
         const auto scene = loadScene(name);
         for (const double rate : sim::kSupportedSampleRatesHz)
         {
-            const sim::RoomIR ir = sim::buildRoomIR(scene, {rate, sim::BuildOptions::Kind::Omni});
+            const sim::RoomIR ir = sim::buildRoomIR(scene, {rate, sim::BuildOptions::Kind::OmniEarly});
             REQUIRE(ir.numEmitters == 2);
             REQUIRE(ir.numOutputs == 2);
             CHECK(ir.ir(0, 0) == ir.ir(0, 1));
@@ -139,7 +140,7 @@ TEST_CASE("omni IR keeps relative delays and 1/r level (AX1, AX2)", "[sim][engin
     scene.emitters[0].position = {4.0, 5.0, 1.7};  // 2 m in front of the listener at (4, 3, 1.7)
     scene.emitters[1].position = {4.0, 7.43, 1.7}; // 4.43 m
     const double fs = 48000.0;
-    auto options = sim::BuildOptions{fs, sim::BuildOptions::Kind::Omni};
+    auto options = sim::BuildOptions{fs, sim::BuildOptions::Kind::OmniEarly};
     options.airAbsorption = false;
     const sim::RoomIR ir = sim::buildRoomIR(scene, options);
     CHECK(peakIndex(ir.ir(0, 0)) == 32);
@@ -158,7 +159,7 @@ TEST_CASE("omni IR follows the channels when they are swapped (AX10)", "[sim][en
 {
     auto scene = loadScene("medium_room.json");
     scene.emitters[0].position.x = 2.0; // make L and R differ
-    const sim::BuildOptions options{48000.0, sim::BuildOptions::Kind::Omni};
+    const sim::BuildOptions options{48000.0, sim::BuildOptions::Kind::OmniEarly};
     const auto a = sim::buildRoomIR(scene, options);
     for (auto& emitter : scene.emitters)
         emitter.channel = 1 - emitter.channel;
@@ -170,7 +171,7 @@ TEST_CASE("omni IR follows the channels when they are swapped (AX10)", "[sim][en
 TEST_CASE("omni IR is deterministic", "[sim][engine][omni]")
 {
     const auto scene = loadScene("asymmetric_materials.json");
-    const sim::BuildOptions options{44100.0, sim::BuildOptions::Kind::Omni};
+    const sim::BuildOptions options{44100.0, sim::BuildOptions::Kind::OmniEarly};
     const auto a = sim::buildRoomIR(scene, options);
     const auto b = sim::buildRoomIR(scene, options);
     CHECK(a.taps == b.taps);
@@ -181,7 +182,7 @@ TEST_CASE("omni IR: all a = 1 or order 0 gives the direct path only", "[sim][eng
     auto scene = loadScene("small_room.json");
     auto direct = scene;
     direct.render.maxReflectionOrder = 0;
-    const sim::BuildOptions options{48000.0, sim::BuildOptions::Kind::Omni};
+    const sim::BuildOptions options{48000.0, sim::BuildOptions::Kind::OmniEarly};
     const auto reference = sim::buildRoomIR(direct, options);
     const auto images = sim::imageSourcesByChannel(direct, options);
     REQUIRE(images[0].images.size() == 1);
@@ -204,7 +205,7 @@ TEST_CASE("omni IR length: last arrival + kernel + filterbank ringing", "[sim][e
 {
     const auto scene = loadScene("medium_room.json");
     const double fs = 96000.0;
-    const sim::BuildOptions options{fs, sim::BuildOptions::Kind::Omni};
+    const sim::BuildOptions options{fs, sim::BuildOptions::Kind::OmniEarly};
     const auto ir = sim::buildRoomIR(scene, options);
     const auto sets = sim::imageSourcesByChannel(scene, options);
     double last = 0.0;
@@ -226,7 +227,7 @@ TEST_CASE("benchmark: omni IR, order 30, 20 x 30 x 10 m, 48 kHz, 2 emitters", "[
     scene.emitters[0].position = {7.0, 20.0, 2.0};
     scene.emitters[1].position = {13.0, 20.0, 2.0};
     scene.render.maxReflectionOrder = 30;
-    const sim::BuildOptions options{48000.0, sim::BuildOptions::Kind::Omni};
+    const sim::BuildOptions options{48000.0, sim::BuildOptions::Kind::OmniEarly};
 
     const auto start = std::chrono::steady_clock::now();
     const auto ir = sim::buildRoomIR(scene, options);
@@ -251,7 +252,7 @@ TEST_CASE("benchmark: omni IR, order 30, 20 x 30 x 10 m, 48 kHz, 2 emitters", "[
     {
         return sim::imageSourcesByChannel(scene, options);
     };
-    BENCHMARK("buildRoomIR omni")
+    BENCHMARK("buildRoomIR omni-early")
     {
         return sim::buildRoomIR(scene, options);
     };

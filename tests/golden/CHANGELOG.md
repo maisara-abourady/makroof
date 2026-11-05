@@ -15,3 +15,37 @@ Reason: Phase 03: first goldens of the early-reflection (ISM) omni IR of small_r
 - `phase03_medium_room_omni_order10`: created
 - `phase03_large_hall_omni_order10`: created
 
+## 2026-11-05
+
+Reason: phase 04 adds tail: first goldens of the hybrid omni IR (ISM + late tail) of every valid fixture, 48 kHz, the fixture's own tailSeed; energy ratios without late energy recorded as such
+
+- `phase04_asymmetric_materials_omni`: created
+- `phase04_classroom_omni`: created
+- `phase04_club_omni`: created
+- `phase04_concert_hall_box_omni`: created
+- `phase04_dead_booth_omni`: created
+- `phase04_edge_values_omni`: created
+- `phase04_large_hall_omni`: created
+- `phase04_living_room_omni`: created
+- `phase04_medium_room_omni`: created
+- `phase04_open_field_omni`: created
+- `phase04_small_room_omni`: created
+- `phase04_stone_box_omni`: created
+
+## 2026-11-05
+
+Reason: phase 04 plan update (AX22): the realised-k switch falls back to ISM-only up to the image-count cap N_cap = nu_r(10) in asymmetric_materials, edge_values, medium_room and open_field, moving their handover to max(t_mix, t_cap); the other goldens are unchanged
+
+- `phase04_asymmetric_materials_omni`: changed `bands.63.EDT`, `bands.63.T20`, `bands.63.T30`, `bands.63.C50`, `bands.63.C80`, `bands.63.D50`, `bands.125.EDT`, `bands.125.T20`, `bands.125.T30`, `bands.125.C50`, `bands.125.C80`, `bands.125.D50`, `bands.250.EDT`, `bands.250.T20`, `bands.250.T30`, `bands.250.C50`, `bands.250.C80`, `bands.250.D50`, `bands.500.EDT`, `bands.500.T20`, `bands.500.T30`, `bands.500.C50`, `bands.500.C80`, `bands.500.D50`, `bands.1000.EDT`, `bands.1000.T20`, `bands.1000.T30`, `bands.1000.C50`, `bands.1000.C80`, `bands.1000.D50`, `bands.1000.DRR`, `bands.2000.EDT`, `bands.2000.T20`, `bands.2000.T30`, `bands.2000.C50`, `bands.2000.C80`, `bands.2000.D50`, `bands.2000.DRR`, `bands.4000.EDT`, `bands.4000.T20`, `bands.4000.T30`, `bands.4000.C50`, `bands.4000.C80`, `bands.4000.D50`, `bands.4000.DRR`, `bands.8000.EDT`, `bands.8000.T20`, `bands.8000.T30`, `bands.8000.C50`, `bands.8000.C80`, `bands.8000.D50`, `bands.8000.DRR`, `broadband.EDT`, `broadband.T20`, `broadband.T30`, `broadband.C50`, `broadband.C80`, `broadband.D50`, `broadband.DRR`, `emitters.L.mix_ms`, `emitters.R.mix_ms`
+- `phase04_classroom_omni`: rewritten, within tolerance
+- `phase04_club_omni`: rewritten, within tolerance
+- `phase04_concert_hall_box_omni`: rewritten, within tolerance
+- `phase04_dead_booth_omni`: rewritten, within tolerance
+- `phase04_edge_values_omni`: changed `bands.63.T20`, `bands.63.T30`, `bands.63.C50`, `bands.63.C80`, `bands.125.T20`, `bands.125.T30`, `bands.125.C50`, `bands.125.C80`, `bands.250.EDT`, `bands.250.T20`, `bands.250.T30`, `bands.250.C50`, `bands.250.C80`, `bands.250.D50`, `bands.500.T20`, `bands.500.T30`, `bands.500.C50`, `bands.500.C80`, `bands.1000.EDT`, `bands.1000.T20`, `bands.1000.T30`, `bands.1000.C50`, `bands.1000.C80`, `bands.1000.D50`, `bands.1000.DRR`, `bands.2000.EDT`, `bands.2000.T20`, `bands.2000.T30`, `bands.2000.C50`, `bands.2000.C80`, `bands.4000.EDT`, `bands.4000.T20`, `bands.4000.T30`, `bands.4000.C50`, `bands.4000.C80`, `bands.4000.D50`, `bands.4000.DRR`, `bands.8000.T30`, `bands.8000.C50`, `bands.8000.C80`, `broadband.T20`, `broadband.T30`, `broadband.C50`, `broadband.C80`, `broadband.DRR`, `emitters.L.mix_ms`
+- `phase04_large_hall_omni`: rewritten, within tolerance
+- `phase04_living_room_omni`: rewritten, within tolerance
+- `phase04_medium_room_omni`: changed `bands.63.EDT`, `bands.63.T20`, `bands.63.T30`, `bands.63.C50`, `bands.63.C80`, `bands.63.D50`, `bands.125.EDT`, `bands.125.T20`, `bands.125.T30`, `bands.125.C50`, `bands.125.C80`, `bands.125.D50`, `bands.250.EDT`, `bands.250.T20`, `bands.250.T30`, `bands.250.C50`, `bands.250.C80`, `bands.250.D50`, `bands.500.EDT`, `bands.500.T20`, `bands.500.T30`, `bands.500.C50`, `bands.500.C80`, `bands.500.D50`, `bands.1000.EDT`, `bands.1000.T20`, `bands.1000.T30`, `bands.1000.C50`, `bands.1000.C80`, `bands.1000.D50`, `bands.1000.DRR`, `bands.2000.EDT`, `bands.2000.T20`, `bands.2000.T30`, `bands.2000.C50`, `bands.2000.C80`, `bands.2000.D50`, `bands.2000.DRR`, `bands.4000.EDT`, `bands.4000.T20`, `bands.4000.T30`, `bands.4000.C50`, `bands.4000.C80`, `bands.4000.D50`, `bands.4000.DRR`, `bands.8000.EDT`, `bands.8000.T20`, `bands.8000.T30`, `bands.8000.C50`, `bands.8000.C80`, `bands.8000.D50`, `bands.8000.DRR`, `broadband.EDT`, `broadband.T20`, `broadband.T30`, `broadband.C50`, `broadband.C80`, `broadband.D50`, `broadband.DRR`, `emitters.L.mix_ms`, `emitters.R.mix_ms`
+- `phase04_open_field_omni`: changed `emitters.L.mix_ms`, `emitters.R.mix_ms`
+- `phase04_small_room_omni`: rewritten, within tolerance
+- `phase04_stone_box_omni`: rewritten, within tolerance
+

@@ -109,7 +109,7 @@ python -m tools.acoustics metrics ir.wav          # ISO 3382 metrics as JSON (al
 tools/ci/fetch_corpus.sh
 
 # listening pack (CI artifact `listening-pack`): build/listening-pack/<phase>/
-python tools/ci/listening_pack.py --phase phase-03
+python tools/ci/listening_pack.py --phase phase-04
 
 # golden files: the ONLY way to update them (appends the reason to tests/golden/CHANGELOG.md)
 python tools/ci/update_goldens.py --reason "<why>" -- <pytest args selecting the tests>
@@ -123,11 +123,21 @@ auval -v aufx Spsc Mkrf
 # offline render (Phase 02+); exit codes 0 ok, 1 usage, 2 invalid scene, 3 I/O, 4 internal (AX12)
 build/debug/render_cli --scene tests/scenes/valid/medium_room.json --in in.wav --out out.wav
 build/debug/render_cli --scene tests/scenes/valid/medium_room.json --ir ir.wav
-# Phase 03+: --mode omni = early-reflection IR (binaural/stereoSpeakers stay a dry stub until 08/09);
-# --images writes the image-source list as JSON; --no-air-absorption is for validation only (AX4)
-build/debug/render_cli --scene tests/scenes/valid/medium_room.json --mode omni --ir ir.wav --images images.json
+# Phase 04+: --mode omni = hybrid room IR (ISM + late tail), --mode omni-early = the Phase 03
+# early-reflection-only IR to maxReflectionOrder (binaural/stereoSpeakers stay a dry stub until 08/09);
+# --images writes the image-source list as JSON (omni: the AX20 time-bounded list); --diagnostics writes
+# T60/t_mix/matching per emitter; --no-air-absorption is for validation only (AX4)
+build/debug/render_cli --scene tests/scenes/valid/medium_room.json --mode omni --ir ir.wav --diagnostics diag.json
+build/debug/render_cli --scene tests/scenes/valid/medium_room.json --mode omni-early --ir ir.wav --images images.json
+# validation ensembles (AX11): N tail seeds from --tail-seed in one WAV, optionally the tail alone / one emitter
+build/cli/render_cli --scene tests/scenes/valid/club.json --mode omni --tail-seed 1000 --ensemble 64 --tail-only --ensemble-emitter 0 --ir ens.wav
+# AX22 sensitivity: override the image-count cap N_cap (validation only), e.g. nu_r(20) = 11520
+build/cli/render_cli --scene tests/scenes/valid/medium_room.json --mode omni --image-cap 11520 --ir ir.wav
+# Phase 04: sigma1(EDT), sigma1(C80) of the hybrid IR (AX19) -> tools/acoustics/data/phase04_sigma1.json
+python -m tools.acoustics.measure_sigma1
 
-# ISM benchmark (hidden Catch2 test, CI runs it from the release build)
+# ISM and AQ10 W1/W2 benchmarks (hidden Catch2 tests, CI runs them from the release build; the Linux
+# runner's W2 sweep sets N_cap, AX22)
 build/release/tests/unit/spatial_tests "[benchmark]" --benchmark-samples 10
 ```
 

@@ -89,7 +89,8 @@ SIGNALS = {
 
 # render_cli --mode per phase (default: the scene's own outputMode).
 PHASE_MODES = {
-    "phase-03": "omni",
+    "phase-03": "omni-early",
+    "phase-04": "omni",
 }
 
 PHASE_NOTES = {
@@ -110,6 +111,18 @@ PHASE_NOTES = {
         "open_field a dry click with a single ground reflection right after it; on pink_bursts no "
         "pitched ringing, except a flutter (a rapid repeating echo) between hard parallel walls, "
         "which is physically correct. Level follows distance (AX2): far scenes are quieter."
+    ),
+    "phase-04": (
+        "Phase 04: the FULL ROOM (early reflections + statistical late tail), still a mono omni "
+        "preview: both ears get the same signal, so the stereo image collapses to the centre. What to "
+        "listen for: (1) decays sound SMOOTH, not grainy, metallic or fluttery in the tail; "
+        "(2) the six test rooms dead_booth, living_room, classroom, club, concert_hall_box and "
+        "stone_box are clearly ordered from dead (about 0.2 s) to very reverberant (about 6 s); "
+        "(3) on clicks, no audible 'seam' where the early echoes hand over to the tail (a few tens of "
+        "ms after each click in small rooms, up to ~160 ms in concert_hall_box); (4) stone_box (hard "
+        "surfaces) sounds brighter in the tail than concert_hall_box (audience floor). open_field "
+        "has no tail (a dry click and its ground reflection). edge_values is a contract-limits "
+        "test scene (absorption alternating 0.01 / 1.0 between bands): expect an odd, uneven tail."
     ),
 }
 

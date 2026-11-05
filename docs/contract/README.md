@@ -1,6 +1,6 @@
 # Scene contract v1 (3D Module → Simulator)
 
-**Current version: 1.0.** Machine-readable schema: [`scene-v1.schema.json`](scene-v1.schema.json).
+**Current version: 1.1.** Machine-readable schema: [`scene-v1.schema.json`](scene-v1.schema.json).
 Implementation: [`src/contract/`](../../src/contract/). Example scenes: [`tests/scenes/valid/`](../../tests/scenes/valid/).
 
 ## What a scene is
@@ -32,7 +32,7 @@ These follow the defaults in [`BUILD_PLAN.md`](../BUILD_PLAN.md) §2 (AQ1, AQ3, 
 
 ```json
 {
-  "contractVersion": "1.0",
+  "contractVersion": "1.1",
   "units": "meters",
   "room": {
     "geometry": { "kind": "shoebox", "dimensions": [8.0, 12.0, 4.0] },
@@ -90,12 +90,20 @@ A scene is one JSON object. **Every field is required**; there are no optional f
 | `emitters[i].gainDb` | number | Level trim in **[−60, +12] dB**. |
 | `render.outputMode` | string | `"binaural"` (headphones) or `"stereoSpeakers"`. |
 | `render.hrtfId` | string | `"generic-v1"` (the only head model in v1, AQ6). |
-| `render.maxReflectionOrder` | integer | Highest image-source reflection order, in **[0, 60]**. |
+| `render.maxReflectionOrder` | integer | Highest image-source reflection order of the **early-reflection-only** (omni ISM) IR, in **[0, 60]**. Since 1.1 it has **no effect on the hybrid room IR** (see below). |
 | `render.tailSeed` | integer | Unsigned 32-bit, **[0, 4294967295]**. Seeds every random process, so a scene always renders the same. |
 | `extensions` | object | Anything. Preserved in round trips; ignored by the Simulator. |
 
 Details:
 
+- **`maxReflectionOrder` and the hybrid IR (1.1, BUILD_PLAN AX20).** The room IR the Simulator
+  renders (Phase 04 on) is a hybrid: image-source early reflections joined at a per-emitter mixing
+  time t_mix to a statistical late tail. Its early part holds **every image of any order** that
+  arrives before t_mix + 2.5 ms (the end of the early-to-tail crossfade); later images are
+  represented by the tail. So `maxReflectionOrder` has **no effect on the hybrid IR**. It applies
+  only to the early-reflection-only (omni ISM) IR of Phase 03, kept for validation
+  (`render_cli --mode omni-early`). The field stays in the contract, with the same range, so 1.0
+  scenes load unchanged.
 - **Surfaces** are named by the plane they lie on, not by "front/back/left/right", so nothing
   depends on which way the listener faces: `xMin` is x = 0, `xMax` is x = W, `yMin` is y = 0,
   `yMax` is y = D, `floor` is z = 0, `ceiling` is z = H.
@@ -138,12 +146,12 @@ same bytes, and a scene saved and reopened is bit-identical.
 - **Minor** bump = additive change (a new field, a new enum value). Old scenes still load.
 - **Major** bump = breaking change (e.g. a `mesh` geometry kind that replaces `dimensions`).
 
-The reader (version 1.0) treats a document as follows:
+The reader (version 1.1) treats a document as follows:
 
 | Document version | Result |
 |---|---|
-| `1.0` | Loads. An unknown field is an **error** (`E_UNKNOWN_FIELD`), which catches typos such as `gainDB`. |
-| `1.x`, x > 0 | Loads with the **warning** `W_VERSION_MINOR_NEWER`. Unknown fields are ignored, every known rule still applies. The loaded scene is a 1.0 scene. |
+| `1.0`, `1.1` | Loads. An unknown field is an **error** (`E_UNKNOWN_FIELD`), which catches typos such as `gainDB`. A 1.0 document loads as a 1.1 scene (the two have the same fields) and is written back as `"1.1"`. |
+| `1.x`, x > 1 | Loads with the **warning** `W_VERSION_MINOR_NEWER`. Unknown fields are ignored, every known rule still applies. The loaded scene is a 1.1 scene. |
 | `2.0`, `0.9`, any other major | **Error** `E_VERSION_MAJOR`. |
 | `"1"`, `"x"`, `"1.0.0"`, `"01.0"`, a number | **Error** `E_VERSION_FORMAT` (or `E_TYPE` for a non-string). |
 
@@ -194,7 +202,7 @@ reported.
 [`scene-v1.schema.json`](scene-v1.schema.json) (JSON Schema draft 2020-12) expresses types,
 required and unknown fields, ranges, array lengths, enums and the emitter count and uniqueness.
 The **geometric rules** (inside the room with 0.1 m clearance, 0.3 m from the listener) exist only in
-the C++ validator. The schema describes 1.0 documents strictly and doesn't model the
+the C++ validator. The schema describes 1.0 and 1.1 documents strictly and doesn't model the
 "newer minor loads with a warning" rule. `tools/ci/test_schema_agreement.py` checks in CI that
 schema and C++ agree on every fixture; `tests/scenes/invalid/_cppOnly.json` lists the fixtures
 whose rule only C++ can check. The test reads documents the way the C++ reader does (byte-order
@@ -237,3 +245,4 @@ In this code base that also means: update `kContractVersionMinor`/`kContractVers
 | Version | Date | Change | Phase |
 |---|---|---|---|
 | 1.0 | 2026-11-04 | First version: shoebox room, 6 surfaces with 8-band absorption and scattering, one listener, two emitters L/R, render settings, extensions. | 01 |
+| 1.1 | 2026-11-05 | Meaning change, no new fields: `render.maxReflectionOrder` applies only to the early-reflection-only (omni ISM) IR and has no effect on the hybrid room IR, whose early part is time-bounded (BUILD_PLAN AX20). 1.0 documents load unchanged. | 04 |

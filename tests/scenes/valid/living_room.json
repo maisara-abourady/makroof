@@ -1,0 +1,132 @@
+{
+  "contractVersion": "1.1",
+  "units": "meters",
+  "room": {
+    "geometry": {
+      "kind": "shoebox",
+      "dimensions": [
+        5.0,
+        4.0,
+        2.6
+      ]
+    },
+    "surfaces": {
+      "floor": {
+        "absorption": [
+          0.05,
+          0.08,
+          0.2,
+          0.35,
+          0.45,
+          0.5,
+          0.55,
+          0.55
+        ],
+        "scattering": 0.3
+      },
+      "ceiling": {
+        "absorption": [
+          0.12,
+          0.14,
+          0.12,
+          0.1,
+          0.1,
+          0.12,
+          0.12,
+          0.12
+        ],
+        "scattering": 0.1
+      },
+      "xMin": {
+        "absorption": [
+          0.1,
+          0.1,
+          0.08,
+          0.07,
+          0.07,
+          0.08,
+          0.09,
+          0.1
+        ],
+        "scattering": 0.2
+      },
+      "xMax": {
+        "absorption": [
+          0.1,
+          0.1,
+          0.08,
+          0.07,
+          0.07,
+          0.08,
+          0.09,
+          0.1
+        ],
+        "scattering": 0.2
+      },
+      "yMin": {
+        "absorption": [
+          0.1,
+          0.1,
+          0.08,
+          0.07,
+          0.07,
+          0.08,
+          0.09,
+          0.1
+        ],
+        "scattering": 0.2
+      },
+      "yMax": {
+        "absorption": [
+          0.1,
+          0.1,
+          0.08,
+          0.07,
+          0.07,
+          0.08,
+          0.09,
+          0.1
+        ],
+        "scattering": 0.2
+      }
+    }
+  },
+  "listener": {
+    "position": [
+      2.5,
+      1.2,
+      1.2
+    ]
+  },
+  "emitters": [
+    {
+      "id": "L",
+      "channel": 0,
+      "position": [
+        1.6,
+        3.0,
+        1.0
+      ],
+      "gainDb": 0.0
+    },
+    {
+      "id": "R",
+      "channel": 1,
+      "position": [
+        3.4,
+        3.0,
+        1.0
+      ],
+      "gainDb": 0.0
+    }
+  ],
+  "render": {
+    "outputMode": "binaural",
+    "hrtfId": "generic-v1",
+    "maxReflectionOrder": 20,
+    "tailSeed": 102
+  },
+  "extensions": {
+    "notes": "Phase 04 test room: furnished living room (T60 about 0.5 s)"
+  }
+}

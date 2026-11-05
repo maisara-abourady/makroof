@@ -340,3 +340,32 @@ def test_per_band_t60_profiles_and_their_leakage_bias(name):
             assert lo <= error <= hi, f"{name} {fc} Hz: leakage bias {100 * error:+.1f}% outside the documented {100 * lo:+.0f}..{100 * hi:+.0f}%"
         else:
             assert abs(error) <= 1.5 * _tolerance(fc), f"{name} {fc} Hz: {100 * error:+.1f}%"
+
+
+def test_lundeby_ignores_exact_zero_gaps_in_a_sparse_early_part():
+    """Phase 04 (metrics._upper_hull_db): a synthetic IR whose early part is a few isolated impulses
+    with exact zeros between them, then an exponential noise decay with a noise floor. Without the
+    hull, the first zero gap after the direct sound read as the noise floor (crosspoint after ~40 ms,
+    T30 None); with it the T30 of the decay is recovered as for the same decay without the gaps."""
+    fs = 48000.0
+    rng = np.random.default_rng(4)
+    n = int(2.0 * fs)
+    t = np.arange(n) / fs
+    t60 = 0.8
+    tail = rng.standard_normal(n) * np.exp(-6.91 * t / t60) * 0.05
+    tail[: int(0.08 * fs)] = 0.0  # the tail starts at 80 ms
+    h = tail + 1e-6 * rng.standard_normal(n)
+    gapped = h.copy()
+    gapped[: int(0.08 * fs)] = 0.0  # exact zeros between the early impulses
+    for t_i, a in ((0.0, 1.0), (0.012, 0.3), (0.031, 0.2), (0.064, 0.15)):
+        gapped[int(t_i * fs)] = a
+    lb = metrics.lundeby(gapped**2, fs)
+    assert lb.crosspoint > int(1.0 * fs)  # well into the decay, not at the first gap
+    t30 = metrics.room_metrics(gapped, fs)["broadband"]["T30"]
+    assert t30 is not None and abs(t30 / t60 - 1.0) < 0.1
+
+
+def test_upper_hull_leaves_a_monotonic_decay_unchanged():
+    level = np.array([0.0, -3.0, -7.5, -12.0, -40.0, -60.0, -60.0])
+    np.testing.assert_array_equal(metrics._upper_hull_db(level), level)
+    np.testing.assert_array_equal(metrics._upper_hull_db(np.array([0.0, -3000.0, -10.0, -20.0])), [0.0, -10.0, -10.0, -20.0])

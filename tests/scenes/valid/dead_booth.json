@@ -1,0 +1,132 @@
+{
+  "contractVersion": "1.1",
+  "units": "meters",
+  "room": {
+    "geometry": {
+      "kind": "shoebox",
+      "dimensions": [
+        2.5,
+        2.0,
+        2.2
+      ]
+    },
+    "surfaces": {
+      "floor": {
+        "absorption": [
+          0.1,
+          0.12,
+          0.15,
+          0.2,
+          0.25,
+          0.3,
+          0.3,
+          0.3
+        ],
+        "scattering": 0.2
+      },
+      "ceiling": {
+        "absorption": [
+          0.2,
+          0.22,
+          0.25,
+          0.27,
+          0.28,
+          0.28,
+          0.28,
+          0.28
+        ],
+        "scattering": 0.3
+      },
+      "xMin": {
+        "absorption": [
+          0.2,
+          0.22,
+          0.25,
+          0.27,
+          0.28,
+          0.28,
+          0.28,
+          0.28
+        ],
+        "scattering": 0.3
+      },
+      "xMax": {
+        "absorption": [
+          0.2,
+          0.22,
+          0.25,
+          0.27,
+          0.28,
+          0.28,
+          0.28,
+          0.28
+        ],
+        "scattering": 0.3
+      },
+      "yMin": {
+        "absorption": [
+          0.2,
+          0.22,
+          0.25,
+          0.27,
+          0.28,
+          0.28,
+          0.28,
+          0.28
+        ],
+        "scattering": 0.3
+      },
+      "yMax": {
+        "absorption": [
+          0.2,
+          0.22,
+          0.25,
+          0.27,
+          0.28,
+          0.28,
+          0.28,
+          0.28
+        ],
+        "scattering": 0.3
+      }
+    }
+  },
+  "listener": {
+    "position": [
+      1.25,
+      0.7,
+      1.2
+    ]
+  },
+  "emitters": [
+    {
+      "id": "L",
+      "channel": 0,
+      "position": [
+        0.85,
+        1.5,
+        1.3
+      ],
+      "gainDb": 0.0
+    },
+    {
+      "id": "R",
+      "channel": 1,
+      "position": [
+        1.65,
+        1.5,
+        1.3
+      ],
+      "gainDb": 0.0
+    }
+  ],
+  "render": {
+    "outputMode": "binaural",
+    "hrtfId": "generic-v1",
+    "maxReflectionOrder": 20,
+    "tailSeed": 101
+  },
+  "extensions": {
+    "notes": "Phase 04 test room: absorbent vocal booth (T60 about 0.2 s)"
+  }
+}

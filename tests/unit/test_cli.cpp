@@ -134,11 +134,11 @@ TEST_CASE("render_cli --ir writes emitter x output channels", "[cli]")
     CHECK(ir.sampleRate == 96000u);
 }
 
-TEST_CASE("render_cli --mode omni writes the early-reflection IR, the same on both outputs", "[cli]")
+TEST_CASE("render_cli --mode omni-early writes the early-reflection IR, the same on both outputs", "[cli]")
 {
     TempDir dir;
-    const Run r = run(
-        {"--scene", scene("medium_room.json"), "--ir", (dir.path / "ir.wav").string(), "--mode", "omni"});
+    const Run r = run({"--scene", scene("medium_room.json"), "--ir", (dir.path / "ir.wav").string(), "--mode",
+                       "omni-early"});
     INFO(r.err);
     REQUIRE(r.exitCode == cli::kExitOk);
     cli::Audio ir;
@@ -243,4 +243,41 @@ TEST_CASE("render_cli usage and I/O errors", "[cli]")
                (dir.path / "out.wav").string(), "--rate", "44100"})
               .exitCode
           == cli::kExitUsage);
+}
+
+TEST_CASE("render_cli --ensemble writes N realisations at the requested rate", "[cli]")
+{
+    TempDir dir;
+    const auto path = dir.path / "ensemble.wav";
+    const Run r = run({"--scene", scene("dead_booth.json"), "--mode", "omni", "--rate", "44100",
+                       "--tail-seed", "7", "--ensemble", "3", "--ir", path.string()});
+    INFO(r.err);
+    REQUIRE(r.exitCode == cli::kExitOk);
+    cli::Audio ensemble;
+    std::string error;
+    REQUIRE(cli::readWav(path, ensemble, error));
+    CHECK(ensemble.sampleRate == 44100u);
+    REQUIRE(ensemble.channels.size() == 6);
+    // Member 1 is seed 8: the same as a single render with --tail-seed 8.
+    const auto single = dir.path / "single.wav";
+    REQUIRE(run({"--scene", scene("dead_booth.json"), "--mode", "omni", "--rate", "44100", "--tail-seed", "8",
+                 "--ir", single.string()})
+                .exitCode
+            == cli::kExitOk);
+    cli::Audio one;
+    REQUIRE(cli::readWav(single, one, error));
+    CHECK(ensemble.channels[2] == one.channels[0]); // emitter 0, output 0
+    CHECK(ensemble.channels[3] == one.channels[2]); // emitter 1, output 0
+    // --ensemble-emitter 1: one channel per seed, equal to emitter 1 of the full ensemble.
+    const auto onlyR = dir.path / "only_r.wav";
+    REQUIRE(run({"--scene", scene("dead_booth.json"), "--mode", "omni", "--rate", "44100", "--tail-seed", "7",
+                 "--ensemble", "3", "--ensemble-emitter", "1", "--ir", onlyR.string()})
+                .exitCode
+            == cli::kExitOk);
+    cli::Audio rOnly;
+    REQUIRE(cli::readWav(onlyR, rOnly, error));
+    REQUIRE(rOnly.channels.size() == 3);
+    CHECK(rOnly.channels[1] == ensemble.channels[3]);
+    CHECK(run({"--scene", scene("dead_booth.json"), "--ensemble", "3", "--ir", path.string()}).exitCode
+          == cli::kExitUsage); // needs --mode omni
 }
