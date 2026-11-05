@@ -351,8 +351,10 @@ filterbank reuse, and IR truncation.
   approximate. Beyond the cap the tail is
   matched only if the window holds non-zero energy. The reported k_real, realised σ and per-axis energy shares
   are necessary conditions only. No diffuseness threshold: no code path or gate needs one (AX22 uses
-  realised k, a precision criterion), and the corpus gives none (Kuttruff §8.5). (Former Expert
-  question, closed on 2026-11-05: decider, accepted by Maisara.) No diffusion-equation fallback (Kuttruff §4.6: valid
+  realised k, a precision criterion), and the corpus gives none (Kuttruff §8.5). Every tail's T60_b
+  still uses Eyring, which presumes a diffuse field (Kuttruff §5.1); the size of that error is measured
+  by the Phase 05 decay-predictor comparison (B12), not by a threshold. (Former Expert question, closed
+  on 2026-11-05: decider, accepted by Maisara.) No diffusion-equation fallback (Kuttruff §4.6: valid
   only for nearly diffuse fields).
 - **Switch point (AX22, NFR-3, FR-SIM-6):** t_mix,e stays continuous in position, but the realised-k
   fallback is a single jump point in source position. Across it, the IR segment between t_mix,e and

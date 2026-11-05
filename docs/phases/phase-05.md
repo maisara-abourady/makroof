@@ -195,16 +195,25 @@ hand-tuned.
      **X-b bound (AX16):** report per band (500 Hz–2 kHz; other bands for information)
      ΔL_b = 10·log10(E_target,b(AX16) / E_target,b(hybrid)), both in the same Hann window
      [t_dir,e + 2.5 ms, t_mix,e] and both referred to t_mix,e. Compute it for every BRAS pair and for the
-     six Phase 04 test rooms (uniform α per face set, so they isolate the hit-count residual), and for
-     Kuttruff Table 5.2 layouts 2, 4, 5 and 6 with the solver called directly. Reading: if |ΔL_b| ≤ 1 dB
+     six Phase 04 test rooms (per-face α differs between faces, so their ΔL_b mixes X-b with the
+     hit-count residual), and for Kuttruff Table 5.2 layouts 2, 4, 5 and 6 with the solver called
+     directly. The hit-count residual alone is isolated by also computing ΔL_b in the three uniform-α
+     (A) s-cases of BUILD_PLAN §5 B11 (α = 0.15, 20×30×10 m), where AX16 is exact (Kuttruff §5.2).
+     Table 5.2 layouts 2, 4, 5 and 6 are run at s = 0.1, 0.25, 0.4 and 1 on all faces (as in B11).
+     "Everywhere" means every case in bands 500 Hz–2 kHz; the 1 dB is G's jnd (Table 6.1, stated for
+     500–1000 Hz, applied by extension to 2 kHz); other bands are reported. Both E_target values are
+     deterministic, so ΔL_b needs no statistical margin. Reading: if |ΔL_b| ≤ 1 dB
      everywhere, X-b is accepted as is and the measured bound is recorded in AX16; if |ΔL_b| > 1 dB
      anywhere, the B11 phase switches tail-level matching to the hybrid's propagated diffuse energy
      (even if rendering early scattering is not promoted), under the same independent-reference
      validation. This is model against model: it bounds what B11 would change, not a measured truth.
      **Promotion evidence (BUILD_PLAN §5 B11, check (B)):** the AQ9 metric for EDT and C80 (mean
      |sim − meas|/jnd over 500 Hz, 1 kHz, 2 kHz per pair, averaged over pairs per room, then over rooms
-     with equal room weight; 500–1000 Hz mean also printed), with and without the hybrid, from AX11/AX19
-     ensembles with the same seeds in both arms; and the per-room gain sorted by absorption contrast,
+     with equal room weight), with and without the hybrid. Vorländer Table 6.1 states these jnds for
+     500–1000 Hz only; at 2 kHz they are applied by extension (AQ9). The 500–1000 Hz mean is printed as
+     the in-range figure. Pass rule: the room-averaged error with the hybrid is not higher by more than δ = 0.25 jnd for either metric
+     (Δ̂ ≤ +δ), and no room's Δ̂ exceeds +1 jnd on either, each with SE ≤ threshold/3 from seed-paired
+     ensembles sized per "Paired comparisons" below. Report the per-room gain sorted by absorption contrast,
      largest single-face absorption share and broadband s, with no threshold. If BRAS has too few
      uneven-α or low-s rooms, no minimum count applies: the report and `bras_mapping.md` state "B11 not
      validated against measurement for uneven-α / low-s rooms" (F2). Promotion into `src/sim` follows
@@ -217,12 +226,33 @@ hand-tuned.
      bound (not in the contract). Run the three handovers (Phase 04 rule, floors t_dir,e + 80 ms and
      + 140 ms) on both the Phase 04 IR and the reference-hybrid IR. The reference-hybrid run is the
      arbiter (on the Phase 04 IR a later floor mostly measures the AX21 deficit). For each, report the
-     AQ9 error metric (mean |sim − meas|/jnd at 500 Hz, 1 kHz, 2 kHz; 500–1000 Hz mean also printed) for
-     EDT and C80. A floor replaces the current lower bound (through an AX change, raising the lower bound
-     only) only if, on the reference-hybrid IR, all three hold: (a) it moves EDT or C80 by more than
-     1 jnd (EDT 5 %, C80 1 dB, Table 6.1) in at least one evaluable pair; (b) it lowers the
-     room-averaged mean |error|/jnd of both EDT and C80; (c) it makes no room worse by more than 1 jnd.
-     Otherwise the current rule stands (decider D1, accepted by Maisara, 2026-11-05).
+     AQ9 error metric (mean |sim − meas|/jnd at 500 Hz, 1 kHz, 2 kHz) for EDT and C80. Vorländer Table 6.1 states these jnds
+     for 500–1000 Hz only; at 2 kHz they are applied by extension (AQ9). The 500–1000 Hz mean is
+     printed as the in-range figure. A floor replaces the current lower bound (through an AX change, raising the lower bound only)
+     only if, on the reference-hybrid IR, all three hold, with seed-paired ensembles sized per "Paired
+     comparisons" below: (a) |Δ̂| > 1 jnd for EDT or C80 in at least one evaluable pair; (b) the
+     room-averaged mean |error|/jnd falls by at least δ = 0.25 jnd for both EDT and C80 (Δ̂ ≤ −δ);
+     (c) no room's Δ̂ exceeds +1 jnd on either. Each comparison requires SE ≤ threshold/3 (AX11).
+     Otherwise the current rule stands (decider D1, accepted by Maisara, 2026-11-05; margin: decider
+     report 7, FE-01).
+   - **Paired comparisons: margin and ensemble size** (decider report 7, FE-01 and DN5, accepted by
+     Maisara, 2026-11-05). Δ̂_X = (room-averaged AQ9 error of metric X with the change) − (same, base),
+     X ∈ {EDT, C80}, on seed-paired ensembles; δ = 0.25 jnd. "Not worse" means Δ̂_X ≤ +δ; "lowers"
+     means Δ̂_X ≤ −δ; "no room worse by more than 1 jnd" means Δ̂_room,X ≤ +1 jnd; "moves by more than
+     1 jnd" means |Δ̂_pair,X| > 1 jnd. Each is valid only if its standard error is ≤ (its threshold)/3:
+     SE(Δ̂_X) ≤ δ/3 = 0.083 jnd, and SE(Δ̂_room,X), SE(Δ̂_pair,X) ≤ 1/3 jnd. The false-failure rate is
+     0.135 % per one-sided comparison at a true Δ on the wrong side of zero; for the (B) family of
+     m = 2 + 2·n_rooms comparisons, about m·0.135 % (e.g. 4 rooms: 10 comparisons, ≈ 1.3 %). Residual
+     tail noise survives the pairing (Vorländer §11.2.5: fluctuations are reduced, not removed, by
+     averaging repeated runs).
+     **Ensemble size:** first a pilot per comparison, n ≥ 51 seeds through both arms (AX19's sampling
+     rule: relative standard error of σ₁ ≤ 10 %). From the single-realisation metrics take the SD of the
+     paired difference: σ₁,Δ for the room-averaged error, σ₁,Δ,room per room, σ₁,Δ,pair per pair (for
+     the handover (a) only). Then R ≥ max(144·σ₁,Δ², 9·σ₁,Δ,room², 9·σ₁,Δ,pair²), σ in jnd, rounded up
+     ((σ₁/(tol/3))² with tol = δ or 1 jnd). Pilot seeds may count towards R. One R per comparison, used
+     in both arms with the same seeds. After the run, check that σ₁,Δ/√R meets the bound; if not,
+     increase R. If the pilot makes R impractical (more than about 2 000 per arm), δ goes back to
+     Maisara. The report prints Δ̂, SE, R and pass/fail for each comparison.
    - **Humidity bound (AX4):** per band, the Eyring T60 at 40 % and 70 % RH, 20 °C (Kuttruff Table 6.1
      rows, Eq. 5.24) relative to the AX4 atmosphere, for each room; for example 8 kHz in a room with
      V = 10 000 m³, S = 4725 m², ᾱ = 0.15 gives −11.6 % / +17.2 % (an air-dominated room would differ
