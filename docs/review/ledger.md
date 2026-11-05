@@ -894,3 +894,44 @@ The main session computed one fact from the code: the repository's ISO 9613-1 im
 **Still open:**
 - Expert questions: the mixing-time rule, a diffuseness threshold, the X-b residual, and the size of early scattering in real rooms (Phase 05).
 - Follow-up: AQ10 and phase-13 still state the rebuild budget as "order 30".
+
+## docs/phases/phase-04.md (with phase-05, BUILD_PLAN) — 2026-11-05 (/fix-plan, former Expert questions closed; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+**Decisions.** All are product choices by the `decider` agent, accepted by Maisara on 2026-11-05. Its reports are in `docs/review/phase-04-consult/`: report 5 (D1–D4) and report 7 (gate details).
+
+- **D1 (mixing time).** The "Expert may revise" clause is closed. Phase 05 arbitrates by running the three handovers on the Phase 04 IR and on the reference-hybrid IR; the hybrid run is the arbiter.
+- **D2 (diffuseness threshold).** Closed: no code path or gate needs a threshold, and Kuttruff §8.5 gives none. Eyring's diffuse-field presumption is measured in B12.
+- **D3 (X-b).** Bounded by ΔL_b in Phase 05, read against a 1 dB rule.
+- **D4 (B11 promotion).** Two checks:
+  - (A) an independent ray-tracer gate;
+  - (B) the BRAS paired comparison must be "not worse". This was relaxed from "better" on the decider's challenge, accepted by Maisara.
+- **Report 7 (gate details):**
+  - δ = 0.25 jnd, with SE ≤ threshold/3;
+  - a paired pilot of n ≥ 51 runs, then R ≥ max(144·σ₁,Δ², 9·σ₁,Δ,room², 9·σ₁,Δ,pair²);
+  - ray-tracer gate k ≥ 684 (tracer 3σ = 0.498 dB, 0.5 dB systematic budget);
+  - N₀ = ⌈254·V⌉ (Vorländer Eq. 11.12), doubled up to 16·N₀ and then fail;
+  - α = 0.15 for the s-cases.
+- **Verified by the interrogator:**
+  - DN3: Table 5.2 layouts 4–6 run at s = 0.1, 0.25 and 0.4 plus the s = 1 anchor (s = 1 alone is circular, ledger C3);
+  - DN4: the 10×20×30 m room, in Table 5.2's notation.
+
+**Science checks.**
+
+- **Round 1** (report 6), nothing WRONG:
+  - FE-01, major: zero-margin "not worse"/"lowers" can be decided by residual paired tail noise. Fixed by δ and the SE rule.
+  - FE-02, major: k = 171 left no systematic budget. Fixed by k ≥ 684.
+  - FE-03 to FE-07, minor or none. Fixed.
+- **Round 2**, nothing WRONG:
+  - all FE items confirmed fixed, with the arithmetic redone (144σ², 0.135 %, 0.498 dB, N₀ = 253.9·V, the false-failure figures);
+  - two minor items, below.
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| FG-01 | NUMBER | "0.135 % … at a true Δ on the wrong side of zero" | IMPRECISE | 0.135 % is the false failure at Δ = 0 for "not worse"; for "lowers" it is the false pass at Δ = 0 and the false failure at Δ = −2δ; the two-sided rule passes falsely with 0.27 % | minor | resolved (main session: error rates stated per rule, phase-05) |
+| FG-02 | FACT | "residual tail noise survives the pairing (Vorländer §11.2.5)" | IMPRECISE | §11.2.5 concerns ray-tracing fluctuations; survival follows from the tail starting before 80 ms and the EDC integral (Vorländer Eq. 6.4; derived) | minor | resolved (main session: reason restated, §11.2.5 cited by analogy) |
+
+**Status:** all former Expert questions are closed in the plan; FE-01 to FE-07, FG-01 and FG-02 are resolved.
+
+**Remaining:**
+- Empirical, to be settled by Phase 05 or the B11 phase: BRAS room coverage, σ₁,Δ, ΔL_b, and the ray-tracer bias. Each has a decision rule in the plan.
+- Old follow-up: AQ10 and phase-13 still state the rebuild budget as "order 30".

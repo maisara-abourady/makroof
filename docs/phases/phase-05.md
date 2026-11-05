@@ -240,11 +240,15 @@ hand-tuned.
      X ∈ {EDT, C80}, on seed-paired ensembles; δ = 0.25 jnd. "Not worse" means Δ̂_X ≤ +δ; "lowers"
      means Δ̂_X ≤ −δ; "no room worse by more than 1 jnd" means Δ̂_room,X ≤ +1 jnd; "moves by more than
      1 jnd" means |Δ̂_pair,X| > 1 jnd. Each is valid only if its standard error is ≤ (its threshold)/3:
-     SE(Δ̂_X) ≤ δ/3 = 0.083 jnd, and SE(Δ̂_room,X), SE(Δ̂_pair,X) ≤ 1/3 jnd. The false-failure rate is
-     0.135 % per one-sided comparison at a true Δ on the wrong side of zero; for the (B) family of
-     m = 2 + 2·n_rooms comparisons, about m·0.135 % (e.g. 4 rooms: 10 comparisons, ≈ 1.3 %). Residual
-     tail noise survives the pairing (Vorländer §11.2.5: fluctuations are reduced, not removed, by
-     averaging repeated runs).
+     SE(Δ̂_X) ≤ δ/3 = 0.083 jnd, and SE(Δ̂_room,X), SE(Δ̂_pair,X) ≤ 1/3 jnd. Error rates at that
+     SE: "not worse" and the per-room rule fail falsely with 0.135 % at a true Δ = 0 (less for any true
+     Δ < 0); "lowers" passes falsely with 0.135 % at a true Δ = 0 and fails falsely with 0.135 % at a
+     true Δ = −2δ; the two-sided "moves by more than 1 jnd" passes falsely with 0.27 % at a true Δ = 0.
+     For the (B) family of m = 2 + 2·n_rooms comparisons, the false-failure rate at Δ = 0 is about
+     m·0.135 % (e.g. 4 rooms: 10 comparisons, ≈ 1.3 %). Residual tail noise survives the pairing
+     because the tail can start before 80 ms (C80's early integral) and the EDC integrates it (EDT)
+     (Vorländer Eq. 6.4; derived); averaging repeated runs reduces it (by analogy with the ray-tracing
+     fluctuations of Vorländer §11.2.5).
      **Ensemble size:** first a pilot per comparison, n ≥ 51 seeds through both arms (AX19's sampling
      rule: relative standard error of σ₁ ≤ 10 %). From the single-realisation metrics take the SD of the
      paired difference: σ₁,Δ for the room-averaged error, σ₁,Δ,room per room, σ₁,Δ,pair per pair (for
