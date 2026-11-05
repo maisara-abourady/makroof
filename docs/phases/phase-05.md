@@ -75,13 +75,14 @@ hand-tuned.
      the corpus). Not file t = 0, not the peak sample. C80 (Eq. 6.7) and EDT are taken from it.
    - **Measured EDC:** backward integration (Eq. 6.4) from the band's noise-floor intersection, with
      noise-energy compensation (ISO 3382-1 practice; the corpus gives no procedure). Integrating to
-     file end without compensation biases T30 (e.g. +12 % at noise −50 dB, T = 1 s, 3 s file).
+     file end without compensation biases T30 (e.g. ≈ +40 % by −5…−35 dB regression at noise −50 dB re the initial band
+     envelope energy, T = 1 s, 3 s file).
    - **Simulated EDC:** integrated to the end of the IR (the noise-free decay at a −90 dB end leaves
      ≈10⁻⁵ dB error at −35 dB, Eq. 6.4). A band whose IR ends (12 s cap) before the decay has fallen
      62 dB is flagged (keeps the −35 dB point within 0.01 dB).
    - **Usable range:** T30 is evaluated only if the band EDC reaches −35 dB at least 10 dB above the
-     band noise level (margin outside the corpus; it limits the noise contribution at −35 dB to
-     0.4 dB). Otherwise T20 (−5 to −25 dB) is reported for that band, flagged; a 500 Hz–2 kHz band
+     band noise level (margin outside the corpus; it limits the noise in the squared band IR at the
+     −35 dB time to 0.4 dB; the effect on the integrated EDC is larger, ≈ 0.9 dB uncompensated). Otherwise T20 (−5 to −25 dB) is reported for that band, flagged; a 500 Hz–2 kHz band
      without T30 is "not evaluable" and is excluded from the AQ9 T30 mean, never counted as a pass.
 
    The report also states:
@@ -98,9 +99,9 @@ hand-tuned.
      (Vorländer Table 6.1, jnd 1 dB). The report gives the offset removed per pair (dB) as a property
      of the playback; it is not a G error unless both IRs are calibrated to the same free-field
      reference (Eq. 6.5). Where the data permit, G deltas are reported per band from the IRs.
-   - BRAS scattering data enter the scenes through AX17: one broadband s per surface. Because s
-     typically rises with frequency (Vorländer Fig. 3.11, Annex scattering tables), this overstates s
-     at 500 Hz and understates it at 2 kHz, so per-band deltas in the AQ9 bands include an AX17 input
+   - BRAS scattering data enter the scenes through AX17: one broadband s per surface. For a material
+     whose s rises from 500 Hz to 2 kHz (many Annex scattering rows do; some are flat or falling),
+     this overstates s at 500 Hz and understates it at 2 kHz, so per-band deltas in the AQ9 bands include an AX17 input
      error, flagged next to them.
 4. CI: a **nightly** workflow (`.github/workflows/nightly.yml`, `schedule` + `workflow_dispatch`) on
    Linux. It runs the validation, uploads the report as an artifact, and **fails on any change of the
@@ -130,9 +131,11 @@ Expert**. It doesn't implement them.
 - [ ] The nightly workflow runs green on the baseline. With the environment variable test hook
       `MAKROOF_TEST_BIAS_T60=1.05` (scales the tail's per-band T60 only; the hook exists only in debug
       builds) the gate **fails** on T30, and the simulated T30 in each of the 500 Hz, 1 kHz and 2 kHz
-      bands has risen by between +3 % and +5.5 % (the full +5 % when the EDC's −5 dB point lies after
-      t_mix,e; less when the early part covers part of the fit range, e.g. ≈ +4.3 % at T = 0.5 s,
-      t_mix 80 ms). The test does not assert on C80 or EDT (C80 moves only ≈ −0.21 dB at
+      bands with T30 ≥ 3·(t_mix,e − t_dir,e) has risen by between +3 % and +5.5 % (the full +5 % when
+      the EDC's −5 dB point lies after t_mix,e; less when the early part covers part of the fit range,
+      e.g. ≈ +4.7 % at T = 0.5 s, t_mix 80 ms; below T ≈ 2.9·(t_mix,e − t_dir,e) the rise can fall
+      under +3 %, e.g. +2.5 % at T = 0.2 s, so shorter bands are reported only). At least one of the
+      three bands must meet the condition, else the test scene is unsuitable. The test does not assert on C80 or EDT (C80 moves only ≈ −0.21 dB at
       t_mix = 80 ms, at the 0.2 dB limit).
 - [ ] Each chosen scene's AQ9 pass/fail is printed and stated in the report summary.
 

@@ -585,3 +585,47 @@ judges monaural attributes only.
 proposed answer that needs a plan decision (Maisara) and then `/fix-plan`; the numeric choices in the
 answers (±2 % / ±0.2 dB, held height, 20 dB onset, 10 dB noise margin) are outside the corpus and should
 go to the interrogator when `/fix-plan` applies them.
+
+### docs/phases/phase-05.md — verification batches and final check (2026-11-05, corpus 22dc9dd)
+
+On Maisara's instruction, the open rows were batched by topic and each batch verified by its own interrogator;
+the plan-editor then applied the verified options (PR maisara-abourady/makroof#9), and a final interrogator
+checked the applied text.
+
+| batch | rows | decision | verdict | chosen | basis |
+|---|---|---|---|---|---|
+| A | V5-17, V5-18 | gate quantity | (a) two-sided gate on simulated metrics vs baseline simulation CORRECT; (b) one-sided jnd-error gate WRONG (misses the +5 % hook for baseline d ≤ −2.2 %); (c) original CONDITIONS VIOLATED | (a), ±2 % T30/EDT, ±0.2 dB C80 (0.4 / 0.2 jnd; T30 limit NOT CHECKABLE) | only verified option |
+| A | V5-18 | bias-test assertion | T30 rise CORRECT with a stated tolerance (Eq. 6.4 working: +5.0 % when the −5 dB point is after t_mix; less otherwise); C80 only −0.21 dB at t_mix 80 ms | assert on T30, +3 % … +5.5 % | derivable from Eq. 6.4 |
+| B | V5-15 | time origin | direct sound CORRECT (Eq. 6.5 t₀); file t = 0 CONDITIONS VIOLATED (≈1.4 dB C80 bias at 15 ms lead); peak WRONG | direct sound, 20 dB onset rule (ISO practice) | only verified option |
+| B | V5-15 | EDC / noise | measured: compensated integration consistent, uncompensated CONDITIONS VIOLATED; simulated: to end CORRECT by Eq. 6.4 (Eq. 11.39 the wrong citation) | compensated; simulated to end, 62 dB flag | only verified option |
+| B | V5-15 | usable range | T30 with ≥ 10 dB margin else T20 CORRECT in substance; 35 dB-only and always-T30 CONDITIONS VIOLATED | (a), "peak-to-noise ≥ 45 dB" wording dropped (IMPRECISE) | only consistent option |
+| B | V5-4 | AQ9 mean | absolute mean CORRECT (§11.5); signed mean WRONG; dropping 2 kHz valid | absolute mean, keep 2 kHz, also print 500–1000 Hz mean | (a) contains (c) |
+| C | V5-6 | free dimension | keep height and keep floor ratio both valid closures (product choice); uniform scaling CONDITIONS VIOLATED | keep height | main session: single well-defined closure (floor-ratio closure has two roots) |
+| C | V5-8 | face absorption | α_face = ΣSᵢαᵢ/S_face CORRECT (Eq. 4.30); area-weighted mean CONDITIONS VIOLATED | (a) with clamp report | only verified option |
+| C | V5-13 | scattering | area-weighted s IMPRECISE (weight should be Sᵢ(1−αᵢ), Eq. 3.23); s = 0 CONDITIONS VIOLATED | Sᵢ(1−αᵢ)-weighted, then AX17 | corrected per verdict |
+| D | V5-10..14, V5-20, V5-21 | report / risk / listening wording | S6 CORRECT; S1, S4 CONDITIONS VIOLATED; S5 INCONSISTENT; S2, S3 IMPRECISE | interrogator's corrected wording | verdicts |
+
+Status after PR #9: V5-4, V5-6, V5-8, V5-10, V5-11, V5-12, V5-13, V5-14, V5-15, V5-17, V5-18, V5-20, V5-21
+**resolved** in the plan text. V5-6's height closure stays a recorded product choice.
+
+#### Final check of the applied text
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| F5-1 | NUMBER | "+12 % at noise −50 dB, T = 1 s, 3 s file" (uncompensated EDC) | WRONG | Vorländer Eq. 4.25 + Eq. 6.4: EDC = e^(−kt)/k + 10⁻⁵(3 − t); −35 dB reached only at ≈ 0.81 s, ≈ +40 % by regression, +45 % two-point. | major | — | resolved (≈ +40 %, reference stated) |
+| F5-2 | NUMBER | bias test: T30 rises +3 % … +5.5 % in every 500 Hz–2 kHz band | CONDITIONS VIOLATED | Same model, t_mix 80 ms: +3.9 % at 0.3 s, +2.5 % at 0.2 s; bound holds for T ≳ 2.9·(t_mix,e − t_dir,e). | major | — | resolved (assertion limited to bands with T30 ≥ 3·(t_mix,e − t_dir,e), inside the verified bound; at least one band required) |
+| F5-3 | NUMBER | "≈ +4.3 % at T = 0.5 s, t_mix 80 ms" | IMPRECISE | Eq. 6.4 two-point: 0.5236 s, +4.7 %. | minor | — | resolved (+4.7 %) |
+| F5-4 | NUMBER | 10 dB margin "limits the noise contribution at −35 dB to 0.4 dB" | IMPRECISE | 0.41 dB is the instantaneous ratio; integrated uncompensated EDC ≈ 0.9 dB. | minor | — | resolved (both stated) |
+| F5-5 | FACT | AX17 over/understatement because s rises with frequency | IMPRECISE | Fig. 3.11 spans 80–630 Hz only; several Annex rows flat or falling over 500 Hz–2 kHz. | minor | — | resolved (made conditional per material) |
+| F5-6 | FACT | AQ9 rationale "best achievable agreement" | IMPRECISE | §11.5 Round-robin III: 1–2 jnd achievable, not stated as a limit. | minor | — | resolved ("achievable") |
+| F5-7 | NUMBER | 20 dB onset rule, T20 range, noise compensation | NOT CHECKABLE | Marked outside the corpus in the text; ISO 3382-1/-2 settle them. | none | — | resolved (no defect) |
+
+Confirmed CORRECT in the final check: AQ9 wording agrees across phase-05 and BUILD_PLAN; gate limits and
+their jnd fractions; shoebox formulas and existence bound; A conservation; Sᵢ(1−αᵢ) weighting; −90 dB and
+62 dB end-of-IR numbers; all cited sections and equations exist and say what is claimed.
+F5-1, F5-3–F5-6 fixed with the interrogator's own values; the F5-2 condition (factor 3) lies inside the bound
+the interrogator derived (2.9), so no further round was run.
+
+**Remaining for Maisara / the Expert:** the height-keeping shoebox closure (V5-6, product choice); the T30
+limits (±10 % AQ9, ±2 % gate) have no corpus jnd; the onset rule, noise compensation and 10 dB margin rest on
+ISO 3382-1, outside the corpus.
