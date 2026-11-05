@@ -139,7 +139,7 @@ Use these labels verbatim in the report and the beta decision (decider report 15
 | Question | Arni | dEchorate |
 |---|---|---|
 | Absolute T30/EDT/C80 vs AQ9 | **Evidence, not validation.** Panel α come from one unretrievable "exploratory" report; walls and floor use textbook α (V1–V3). Vorländer §11.5: the operator's absorption choice has "crucial influence". | **Evidence, not validation.** No α at all, so α come from a published table chosen by a rule committed before results. |
-| Effect of absorption distribution with the input bias held fixed (T30, EDT, C80) | **Yes**, on matched pairs: same receiver, same number of open panels, equal open–open shared-edge length, and equal open-panel edge length against perpendicular walls and the ceiling (Kuttruff §8.7, Eq. 8.57). Position effects cancel too (EDT "varies considerably within a hall", Kuttruff §8). | **Yes, if** two configurations have equal absorbing area on different faces (e.g. two 6 × 2.4 m walls). The 05d session checks this. |
+| Effect of absorption distribution with the input bias held fixed (T30, EDT, C80) | **Yes**, on matched pairs: same receiver, same number of open panels, equal open–open shared-edge length, and equal open-panel edge length against perpendicular walls and the ceiling (Kuttruff §8.7, Eq. 8.57). Position effects cancel too (EDT "varies considerably within a hall", Kuttruff §8). | **Yes, if** two configurations have equal absorbing area on different faces and equal absorbing-face perimeter adjoining perpendicular surfaces (e.g. two separate 6 × 2.4 m walls; Kuttruff §8.7, Eq. 8.57). The 05d session checks this; panel gaps are counted and reported, not gated. |
 | Early reflection **timing** per wall | Not useful (protruding panels). | Sanity check only. The authors refined positions against echo times (0.4 cm), so agreement is nearly circular, and Phase 03 already gates timing analytically. Compare arrival times scaled by c_meas/c_sim = 346.98/343 (1.16 %, ≈ 16 samples at 48 kHz over 10 m), analysis-side, no code change. |
 | Early reflection **level** per wall (reflective vs absorbing state) | No. | Reported, descriptive. It depends on the table α. Vorländer §11.1.2: random-incidence α keeps a reflection's level error below 2 dB while the specific-angle loss is within 40 % of the random-incidence loss; as a level bound (reflected energy 1 − α) this holds only for α ≤ 0.48. Per face and band where either state's committed α exceeds 0.48, ΔL is labelled "α-limited: no corpus bound"; elsewhere it carries "≤ 2 dB per level if the angle loss is within 40 % (§11.1.2)". The measured ΔL is evidence on the absorbing panels' table α, not a method test. |
 | Small room under 100 m³ | No (201.9 m³, V5). | Yes, at 500 Hz–4 kHz only. |
@@ -219,7 +219,11 @@ Use these labels verbatim in the report and the beta decision (decider report 15
    For dEchorate (whole-face switching), covering a whole face removes free edges (Kuttruff §8.7); the
    Eq. 8.57 term along perimeters next to perpendicular surfaces cancels only for equal adjoining
    perimeters, and documented panel gaps create edges (interrogator check 19, B6). A pair needs equal
-   absorbing area on different faces, which the session checks. The slope across different
+   absorbing area on different faces **and** equal absorbing-face perimeter adjoining perpendicular
+   surfaces (Kuttruff §8.7, Eq. 8.57; e.g. two separate 6 × 2.4 m walls pass, adjacent walls against
+   opposite walls do not), which the session checks and the selector test covers. Documented panel
+   gaps are counted (number and total length per configuration) and reported, not gated: the corpus
+   gives no value for gap width (Maisara, 2026-11-05). The slope across different
    numbers of open panels (dT/dn) is **not** input-independent and is not used for this test.
    **Orientation** (D2, decider report 16, accepted by Maisara, 2026-11-05): a is the configuration with
    the longer a* T at 1 kHz (phase-05 solver, same committed α and s, converged < 0.4 %). Where |ΔT_a*|
@@ -246,8 +250,9 @@ Use these labels verbatim in the report and the beta decision (decider report 15
      estimated on the 51 pilot pairs, with their mean square applied to all pairs.
    - σ_meas,noise,ₖ² = σ²(a) + σ²(b). Each member's σ comes from the AX11 single-realisation model
      (outside the corpus): R ≥ 51 seeded white-noise sequences, split by the `tools/acoustics` octave
-     filters, each band given an exponential decay at that member's measured band T30. The metric is
-     computed per band, then the D3 band mean is taken.
+     filters, each band given an exponential decay at that member's measured band T30, at the member IR's own
+     sample rate and length, with no added noise floor, evaluated under Phase 05 scope 3 metric
+     conditions (Maisara, 2026-11-05). The metric is computed per band, then the D3 band mean is taken.
    - The report prints E|d̄|₀ with its sampling range ±3·√((1−2/π)·Σₖσ₀,ₖ²)/K, descriptive only,
      labelled "noise-model reference (AX11 model, outside the corpus); for EDT and C80 probably an upper
      value, since a measured IR's early reflections are deterministic".
