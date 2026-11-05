@@ -171,15 +171,19 @@ hand-tuned.
      (+2.3 % against +28.6 % vs Eyring). Air absorption enters both as 4mV added to the denominator;
      for a* this is equivalent to an exp(−mR) factor in the kernel (a* = a₀ + 4mV/S, Kuttruff §4.5 with
      Eq. 5.55), for γ²-Eyring it factors out of Eq. 5.29. γ² is the Table 5.1 row where the room's shape
-     is tabulated, else 0.4 (Kuttruff §5.5); the choice changes T by ≤ 0.3 %. a* solver patches: 88
-     equal elements as in Miles' 1:2:3 example (Kuttruff §5.7) for the Table 5.2 test; for BRAS rooms,
+     is tabulated, else 0.4 (Kuttruff §5.5). The choice changes T by ≤ 0.3 % in the Table 5.2 example
+     (case 4, 0.38 against 0.40); in general ΔT/T ≈ (Δγ²·a/2)/(1 − γ²a/2) with a = −ln(1−ᾱ) (Kuttruff
+     Eqs. 5.33–5.34), e.g. ≈ 1 % for case 3 with 0.342 against 0.4, and a few % in elongated rooms with
+     high ᾱ. a* solver patches for the Table 5.2 test: 88 equal elements for the 1:2:3 room (cases 3–6,
+     Miles' example, Kuttruff §5.7) and 96 equal elements (6 × 4²) for the cube (cases 1–2); for BRAS rooms,
      halve the patch size until a* changes by < 1 %. Promotion to the simulator's T60_b source happens only on this evidence, in a later phase, through an AQ2
      change (BUILD_PLAN §5 B12).
    - **Reference hybrid (AX21):** at each specular hit, inject s(1−α) of the incident energy into the
      Lambert boundary patch hit, at the hit time (Kuttruff Eq. 4.24; Gilbert, §4.6). Propagate it with
      the **mixed specular/diffuse** form, not the all-Lambert Eq. 4.28: at every later hit, split the
-     energy into s (re-radiated per Lambert) and 1−s (continuing specularly), as in Gilbert's
-     formulation and Joyce's reflection matrix (Kuttruff §4.6, Eq. 4.35). Gather the diffuse part at the
+     energy into s (re-radiated per Lambert) and 1−s (continuing specularly): Joyce's reflection matrix
+     R_j (Kuttruff §4.6, Eq. 4.35) with the §5.2 split s(1−α) / (1−s)(1−α); Gilbert (§4.6) splits the
+     boundary into specular and non-specular portions. Gather the diffuse part at the
      listener with Eq. 4.29, and add it to the early part before t_mix,e. Patches as for a* (above),
      time step 1 ms (Kuttruff §9.8 typical class width). The gathered energy is added as a per-band
      energy envelope to the squared band IR before the Schroeder integral and C80 (EDT and C80 are
@@ -225,7 +229,8 @@ and do not change the simulator.
 - [ ] Each chosen scene's AQ9 pass/fail is printed and stated in the report summary.
 - [ ] The a* solver reproduces the iteration column of Kuttruff Table 5.2 (all six cases), called
       directly (the α = 0 walls of those cases are forbidden in scenes by AQ3), within **±1 %**, with 88 equal
-      elements as in Miles' example (Kuttruff §5.7). The corpus's own two methods agree to ≈ 0.5 %
+      elements for the 1:2:3 room (cases 3–6, Miles' example, Kuttruff §5.7) and 96 equal elements
+      (6 × 4², the nearest equal layout) for the cube (cases 1–2) (Maisara, 2026-11-05). The corpus's own two methods agree to ≈ 0.5 %
       (Fig. 5.10's slope of −1.57 dB per mean free path, with n̄ = cS/4V, gives 1.216 s against
       case 4's 1.21 s).
 - [ ] The report contains the scope 6 comparisons (decay predictors, reference hybrid, handover,

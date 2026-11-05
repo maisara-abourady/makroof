@@ -54,7 +54,9 @@ IR for every valid shoebox scene.
      Kuttruff Table 6.1 at 40 / 50 / 70 % RH and 0.5–8 kHz, within **±1 %** (e.g. 50 % RH, m in
      10⁻³ m⁻¹: 2.28 / 6.84 / 24.29 at 2 / 4 / 8 kHz). This checks the code against Kuttruff Table 6.1
      (Bass 1995); the Vorländer Annex gives only humidity bins, with 50 % on a bin boundary, so it is not
-     a point reference. On failure, fix the code. (The current ISO 9613-1 code agrees within 0.7 %,
+     a point reference. Table 6.1 prints 2–3 significant figures, so its rounding alone is up to
+     ≈ ±0.8 % at 0.5 kHz; the ±1 % tolerance stays. On failure, fix the code. (The current ISO 9613-1
+     code agrees within 0.7 %,
      e.g. 6.83 against 6.84·10⁻³ m⁻¹ at 4 kHz / 50 % RH; main-session check, 2026-11-05.)
    - Eyring: `T60_b = 0.161·V / (−S·ln(1−ᾱ_b) + 4·m_b·V)`. Clamp ᾱ_b ≤ 0.999 so ln stays finite.
      For the `open_field` case (five surfaces at α = 1.0) Eyring does not apply (no diffuse field,
@@ -95,9 +97,10 @@ IR for every valid shoebox scene.
    order, and the tail is matched there (scope 3, window [t_dir,e + 2.5 ms, t_cap,e]) only if the
    window holds non-zero energy (else E_b = 0). N_cap counts every enumerated lattice image,
    pruned or not (as Kuttruff Eq. 9.23 does), so the cap bounds the enumeration cost; if
-   t_cap,e < t_mix,e the handover stays at max(t_mix,e, t_cap,e) = t_mix,e (Maisara, 2026-11-05). k_real is not monotonic in t: entries never leave the window
-   (its left edge is fixed), but the Hann re-weighting as t grows changes their weights (derived, not
-   from the corpus); so k_real is tested only at the expected-rule t_mix,e. The switch is a single jump
+   t_cap,e < t_mix,e the handover stays at max(t_mix,e, t_cap,e) = t_mix,e (Maisara, 2026-11-05).
+   k_real is not monotonic in t: both the Hann re-weighting as t grows and a strong late arrival can
+   lower k = S²/Q (S = Σ w_i E'_i, Q = Σ (w_i E'_i)²; a new entry x lowers k when x(S² − Q) > 2SQ;
+   derived, not from the corpus), so k_real is tested only at the expected-rule t_mix,e. The switch is a single jump
    point in source position (see Risks). Images with exactly zero energy (any hit on a face with α = 1)
    are pruned, generically (NFR-8).
 3. `src/sim/tail/NoiseTail.h/.cpp` — for each emitter:
@@ -168,10 +171,12 @@ IR for every valid shoebox scene.
      ringing (Vorländer §11.7 concerns ringing from coarse interpolation of reflection-factor spectra),
      so its effect is a measured, reported check.
    - IR length: until the slowest band decays 90 dB below its start level, capped at **12 s**. The cap
-     is the only bound (AX6 room limits allow T of order 160–265 s: 100 m cube, α = 0.01: ≈ 265 s
-     without air absorption (Vorländer Eq. 4.32); with air absorption ≈ 225 s at 63 Hz and ≈ 160 s at
-     125 Hz); longer decays are **truncated** at 12 s, and T30 is
-     measurable on a 12 s IR only for T ≤ ≈20 s (it needs ≥ 35 dB of decay).
+     is the only bound (AX6 room limits allow T of order 160–270 s: 100 m cube, α = 0.01: ≈ 267 s
+     without air absorption; with air absorption ≈ 225 s at 63 Hz and ≈ 160 s at 125 Hz; constant
+     0.161, Kuttruff Eq. 4.12 / Vorländer Eq. 4.32, which prints 0.16; m at 63 Hz is from the
+     repository's ISO 9613-1 code, outside the corpus, which has no 63 Hz value); longer decays are
+     **truncated** at 12 s, and T30 is measurable on a 12 s IR only for T ≤ ≈20 s (it needs ≥ 35 dB of
+     decay).
 4. Update `sim::buildRoomIR(Kind::Omni)` to return ISM + tail. Keep the Phase 03 early-reflection-only
    IR available as its own path (`Kind::OmniEarly`, `render_cli --mode omni-early`), unchanged, so the
    Phase 03 pyroomacoustics cross-check and its goldens keep testing the ISM; `maxReflectionOrder`
@@ -252,11 +257,15 @@ Binaural tail coherence (08); validation against real rooms (05); any per-scene 
       (the Kuttruff Eq. 9.24 form, with (1−α)^|n| and the air factor exp(−m·r_n)) within **±0.5 dB**
       (AQ9's ISM tolerance), up to the end of the ISM part. Eq. 4.3 stays as the steady-state sum
       check: the summed rendered image energies match the reference sum within **±0.5 dB**, as the
-      per-image check (Maisara, 2026-11-05).
+      per-image check (Maisara, 2026-11-05). The reference sum is Eq. 4.3 truncated to the same images
+      as the render (Eq. 4.3 sums n from −∞ to ∞; the render stops at the end of the ISM part).
 - [ ] **One absorbing wall:** a box with one wall at α = 1 and the **other walls rigid** (α = 0,
       s = 0), so Kuttruff Eq. 4.16 applies. AQ3 forbids α = 0 in scenes, so the test calls the solver
       directly. The energy decay follows Eq. 4.16 (∝ 1/t, times the air factor exp(−m·c·t)) within
-      **±1 dB per 10 ms bin**, from t ≥ L/c to the AX22 cap.
+      **±1 dB per 10 ms bin**, up to the AX22 cap, in each bin whose expected image count is ≥ 19, so
+      the expected scatter is ≤ 1 dB (σ = 4.34/√19, Vorländer Eqs. 11.9/11.17, the same basis as the
+      mixing-time rule). Earlier bins, from t ≥ L/c, are reported only. Eq. 4.16 is a mean over
+      irregular arrivals (Kuttruff §4.2) (Maisara, 2026-11-05).
 
 **Ensemble sizes (AX11).** R ≥ (σ₁ / (tol/3))² per band, rounded up; one ensemble per room uses the
 largest R over its gated bands and metrics (more is allowed). σ₁ is AX11's measured single-realisation T30 scatter
@@ -324,7 +333,8 @@ filterbank reuse, and IR truncation.
   five α = 1 faces), E_target has no stated accuracy and Eyring T60 does not apply (Vorländer §4.4.1).
   The realised-k switch (scope 2, AX22) falls back to ISM-only up to the AX22 image-count cap in such
   fields; the shoebox image lattice is complete (Kuttruff §4.1, example of the rectangular room), and
-  image sources are exact only for rigid walls and approximate otherwise. Beyond the cap the tail is
+  the image concept is exact only for boundary specific impedance +1 or −1 (Kuttruff §4.1), otherwise
+  approximate. Beyond the cap the tail is
   matched only if the window holds non-zero energy. The reported k_real, realised σ and per-axis energy shares
   are necessary conditions only; the corpus gives no diffuseness criterion with a threshold (Kuttruff
   §8.5, §9.5), so that stays an Expert question. No diffusion-equation fallback (Kuttruff §4.6: valid
@@ -332,8 +342,9 @@ filterbank reuse, and IR truncation.
 - **Switch point (AX22, NFR-3, FR-SIM-6):** t_mix,e stays continuous in position, but the realised-k
   fallback is a single jump point in source position. Across it, the IR segment between t_mix,e and
   t_cap,e is ISM in one IR and noise in the other, so AX18's equal-gain premise (correlated consecutive
-  IRs) does not hold there, and the 30 ms position crossfade can dip by up to ≈ 3 dB in that segment
-  (Vorländer Eq. 4.14). Phase 10 adds a test that measures the dip at a switch point.
+  IRs) does not hold there, and the 30 ms position crossfade dips in that segment: ≈ 3 dB mid-fade when
+  the two uncorrelated segments have equal power, more when they differ (e.g. ≈ 4.4 dB at a 10:1 power
+  ratio; Vorländer Eq. 4.14). Phase 10 adds a test that measures the dip at a switch point.
 - AX20 makes the image list grow with t_mix,e, not with `maxReflectionOrder` (large rooms need high
   orders to reach t_mix,e), and the realised-k fallback extends it up to the AX22 cap. Measure
   rebuild time against AQ10 and record it; the AX22 cap is the only bound on the list.
