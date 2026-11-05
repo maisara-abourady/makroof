@@ -131,10 +131,13 @@ build/debug/render_cli --scene tests/scenes/valid/medium_room.json --mode omni -
 build/debug/render_cli --scene tests/scenes/valid/medium_room.json --mode omni-early --ir ir.wav --images images.json
 # validation ensembles (AX11): N tail seeds from --tail-seed in one WAV, optionally the tail alone / one emitter
 build/cli/render_cli --scene tests/scenes/valid/club.json --mode omni --tail-seed 1000 --ensemble 64 --tail-only --ensemble-emitter 0 --ir ens.wav
+# AX22 sensitivity: override the image-count cap N_cap (validation only), e.g. nu_r(20) = 11520
+build/cli/render_cli --scene tests/scenes/valid/medium_room.json --mode omni --image-cap 11520 --ir ir.wav
 # Phase 04: sigma1(EDT), sigma1(C80) of the hybrid IR (AX19) -> tools/acoustics/data/phase04_sigma1.json
 python -m tools.acoustics.measure_sigma1
 
-# ISM benchmark (hidden Catch2 test, CI runs it from the release build)
+# ISM and AQ10 W1/W2 benchmarks (hidden Catch2 tests, CI runs them from the release build; the Linux
+# runner's W2 sweep sets N_cap, AX22)
 build/release/tests/unit/spatial_tests "[benchmark]" --benchmark-samples 10
 ```
 

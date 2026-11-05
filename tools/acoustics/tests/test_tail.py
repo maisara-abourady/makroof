@@ -17,6 +17,7 @@ Single-realisation values are printed (pytest -rP), not gated.
 
 from __future__ import annotations
 
+import copy
 import functools
 import json
 import math
@@ -26,7 +27,7 @@ import numpy as np
 import pytest
 from scipy import integrate
 
-from tools.acoustics import air, bands, ensembles, golden, metrics
+from tools.acoustics import air, bands, ensembles, golden, metrics, render_cli, wav
 
 from conftest import REPO
 
@@ -101,26 +102,93 @@ def mixing_time_reference(direct: float, v: float) -> float:
     return hi
 
 
-@pytest.mark.parametrize("name", [*ROOMS, "medium_room", "open_field", "edge_values"])
-def test_diagnostics_match_independent_eyring_and_mixing_time(render_cli_path, name):
+def nth_reflection_time_reference(dims, source, listener, n: int) -> float:
+    """AX22 reference: arrival time of the n-th lattice reflection (every image, pruned or not; the
+    direct path not counted), by brute-force enumeration of x = 2 k L +- s per axis (Allen & Berkley)."""
+    volume = float(np.prod(dims))
+    radius = (3.0 * (n + 1) * volume / (4.0 * math.pi)) ** (1.0 / 3.0) * 1.2 + 2.0 * max(dims)
+    while True:
+        axes = []
+        for L, s_, l_ in zip(dims, source, listener):
+            kmax = int(math.ceil((radius + 2 * L) / (2 * L)))
+            k = np.arange(-kmax, kmax + 1)
+            coords = np.concatenate([2 * k * L + s_, 2 * k * L - s_])
+            orders = np.concatenate([np.abs(k) + np.abs(k), np.abs(k - 1) + np.abs(k)])  # p = 0, p = 1
+            keep = np.abs(coords - l_) <= radius
+            axes.append((coords[keep] - l_, orders[keep]))
+        (dx, ox), (dy, oy), (dz, oz) = axes
+        d2 = dx[:, None, None] ** 2 + dy[None, :, None] ** 2 + dz[None, None, :] ** 2
+        order = ox[:, None, None] + oy[None, :, None] + oz[None, None, :]
+        d2 = d2[(order > 0) & (d2 <= radius * radius)]
+        if d2.size >= n:
+            return math.sqrt(np.partition(d2, n - 1)[n - 1]) / C
+        radius *= 1.5
+
+
+def realised_k_reference(images: dict, t_dir: float, t_mix: float, t60: list[float]) -> list[float]:
+    """k_real = (sum x)^2 / sum x^2 over the specular and AX16 scattered entries in the Hann window
+    [t_dir + 2.5 ms, t_mix], x = w(t) E exp(-13.82 (t_mix - t) / T60) (scale-free per band, so the
+    band-filter energy g_b drops out)."""
+    a, b = t_dir + 0.0025, t_mix
+    entries = [(im["time"], np.array(im["amplitude"]) ** 2) for im in images["images"]]
+    entries += [(sc["time"], np.array(sc["energy"])) for sc in images["scattered"]]
+    out = []
+    for band in range(8):
+        x = []
+        for t, e in entries:
+            if a < t < b and e[band] > 0.0:
+                w = math.sin(math.pi * (t - a) / (b - a)) ** 2
+                x.append(w * e[band] * math.exp(-6.0 * math.log(10.0) * (b - t) / t60[band]))
+        x = np.array(x)
+        out.append(float(x.sum() ** 2 / (x**2).sum()) if x.size else 0.0)
+    return out
+
+
+@pytest.mark.parametrize("name", [*ROOMS, "medium_room", "open_field", "edge_values", "asymmetric_materials"])
+def test_diagnostics_match_independent_eyring_mixing_time_and_switch(render_cli_path, tmp_path, name):
     scene = load(name)
     d = diag(str(render_cli_path), name)
     np.testing.assert_allclose(d["t60"], eyring_reference(scene), rtol=1e-9)
     # m_b = D_b / 4.343 (energy, not pressure), from the independent ISO 9613-1 implementation.
     np.testing.assert_allclose(d["airEnergyPerMetre"], air.attenuation_db_per_m(np.array(bands.OCTAVE_BANDS_HZ)) / 4.342944819032518, rtol=1e-9)
     assert d["tailLengthS"] == pytest.approx(min(12.0, 1.5 * max(d["t60"])), rel=1e-12)
-    w, dd, h = scene["room"]["geometry"]["dimensions"]
+    images_path = tmp_path / "images.json"
+    result = render_cli.run(render_cli_path, "--scene", scene_path(name), "--mode", "omni", "--images", images_path)
+    assert result.returncode == 0, result.stderr
+    images = json.loads(images_path.read_text(encoding="utf-8"))
+    dims = scene["room"]["geometry"]["dimensions"]
+    w, dd, h = dims
     for e in d["emitters"]:
         emitter = next(x for x in scene["emitters"] if x["channel"] == e["channel"])
         direct = math.dist(emitter["position"], scene["listener"]["position"]) / C
         assert e["directS"] == pytest.approx(direct, abs=1e-12)
-        assert e["mixS"] == pytest.approx(mixing_time_reference(direct, w * dd * h), abs=1e-7)
+        expected_mix = mixing_time_reference(direct, w * dd * h)
+        assert e["expectedMixS"] == pytest.approx(expected_mix, abs=1e-7)
+        # AX22: k_real at the expected-rule t_mix from the image list itself, the switch, and t_cap.
+        k_ref = realised_k_reference(images["emitters"][e["channel"]], direct, e["expectedMixS"], d["t60"])
+        np.testing.assert_allclose(e["realisedKeffAtMix"], k_ref, rtol=1e-6, atol=1e-9)
+        fallback = any(k_ref[b] < 19.0 for b in (3, 4, 5))
+        assert e["ismFallback"] == fallback
+        if fallback:
+            cap = nth_reflection_time_reference(dims, emitter["position"], scene["listener"]["position"], e["imageCountCap"])
+            assert e["capTimeS"] == pytest.approx(cap, abs=1e-9)
+            assert e["handoverS"] == pytest.approx(max(expected_mix, cap), abs=1e-7)
+        else:
+            assert e["handoverS"] == pytest.approx(expected_mix, abs=1e-7)
+        assert e["mixS"] == e["handoverS"]
         assert e["expectedKeff"] >= 19.0 - 1e-9
         assert e["expectedSigmaDb"] == pytest.approx(4.342944819032518 / math.sqrt(e["expectedKeff"]), rel=1e-9)
-        print(f"{name} emitter {e['id']}: t_dir {1e3 * direct:.1f} ms, t_mix {1e3 * e['mixS']:.1f} ms, "
-              f"{e['imageCount']} images, expected sigma {e['expectedSigmaDb']:.2f} dB, "
-              f"non-zero entries {e['nonZeroEntries']}, realised k_eff {[round(k, 1) for k in e['realisedKeff']]}, "
-              f"realised/target at t_mix {[None if x is None else round(x, 1) for x in e['realisedOverTargetDb']]} dB")
+        for b in range(8):
+            shares = e["axisShares"][b]
+            assert shares == [0.0, 0.0, 0.0] or sum(shares) == pytest.approx(1.0, abs=1e-9)
+        print(f"{name} emitter {e['id']}: t_dir {1e3 * direct:.1f} ms, expected t_mix {1e3 * e['expectedMixS']:.1f} ms, "
+              f"k_real there (500 Hz-2 kHz) {[round(k, 1) for k in e['realisedKeffAtMix'][3:6]]}, "
+              f"AX22 fallback {e['ismFallback']} (cap {e['imageCountCap']} images at {1e3 * e['capTimeS']:.0f} ms), "
+              f"handover {1e3 * e['handoverS']:.1f} ms, {e['imageCount']} images, expected sigma {e['expectedSigmaDb']:.2f} dB, "
+              f"non-zero entries {e['nonZeroEntries']}, k_real at the handover {[round(k, 1) for k in e['realisedKeff']]}, "
+              f"realised sigma {[round(x, 2) for x in e['realisedSigmaDb']]} dB, "
+              f"axis shares (1 kHz) {[round(x, 2) for x in e['axisShares'][4]]}, "
+              f"realised/target at the handover {[None if x is None else round(x, 1) for x in e['realisedOverTargetDb']]} dB")
 
 
 def test_open_field_has_no_tail(render_cli_path):
@@ -398,3 +466,101 @@ def test_golden_metrics_hybrid(render_cli_path, name):
         "emitter channel 0 / output 0, the fixture's own tailSeed",
         tolerances=GOLDEN_TOLERANCES,
     )
+
+
+# ---------------------------------------------------------------------------------------------
+# AX22 sensitivity report (reported only)
+# ---------------------------------------------------------------------------------------------
+
+def nu_r(i: int) -> int:
+    """Kuttruff Eq. 9.23: images of orders 1..i in a shoebox."""
+    return (2 * i + 1) * (2 * i * i + 2 * i + 3) // 3 - 1
+
+
+def w2_scene() -> dict:
+    """The AQ10 W2 flutter scene of the C++ benchmark (test_hybrid_ir.cpp aq10Room(true))."""
+    scene = copy.deepcopy(load("medium_room"))
+    scene["room"]["geometry"]["dimensions"] = [20.0, 30.0, 10.0]
+    scene["listener"]["position"] = [10.0, 8.0, 1.7]
+    scene["emitters"][0]["position"] = [7.0, 20.0, 2.0]
+    scene["emitters"][1]["position"] = [13.0, 20.0, 2.0]
+    for s in SURFACES:
+        hard = s in ("xMin", "xMax")
+        scene["room"]["surfaces"][s] = {"absorption": [0.02 if hard else 0.8] * 8, "scattering": 0.0 if hard else 0.1}
+    return scene
+
+
+def test_ax22_sensitivity_report(render_cli_path, tmp_path):
+    """Each fallback case at N_cap and at nu_r(2 i0), same tailSeed: EDT, C80, T30 differences at
+    500 Hz-2 kHz in jnd units (EDT 5 %, C80 1 dB, T at the working 5 %). Reported, not gated; a
+    difference above 1 jnd means AX22 records 'cap limits accuracy'."""
+    cases = {name: load(name) for name in ALL_FIXTURES}
+    cases["AQ10_W2"] = w2_scene()
+    worst = 0.0
+    reported = 0
+    for name, scene in cases.items():
+        path = tmp_path / f"{name}.json"
+        path.write_text(json.dumps(scene), encoding="utf-8")
+        d = ensembles.diagnostics(render_cli_path, path)
+        fallback = [e for e in d["emitters"] if e["ismFallback"]]
+        if not fallback:
+            continue
+        cap = fallback[0]["imageCountCap"]
+        i0 = next(i for i in range(1, 100) if nu_r(i) == cap)
+        renders = {}
+        for label, extra in (("N_cap", ()), ("2i0", ("--image-cap", str(nu_r(2 * i0))))):
+            out = tmp_path / f"{name}_{label}.wav"
+            r = render_cli.run(render_cli_path, "--scene", path, "--mode", "omni", "--ir", out, *extra)
+            assert r.returncode == 0, r.stderr
+            ir, fs = wav.read_float32(out)
+            renders[label] = metrics.room_metrics(ir[:, 0].astype(np.float64), fs)
+        diffs = {}
+        for key in ("500", "1000", "2000"):
+            a, b = renders["N_cap"]["bands"][key], renders["2i0"]["bands"][key]
+            for metric, jnd, relative in (("EDT", 5.0, True), ("C80", 1.0, False), ("T30", 5.0, True)):
+                if a[metric] is None or b[metric] is None:
+                    diffs[f"{metric} {key}"] = None
+                    continue
+                delta = rel_pct(b[metric], a[metric]) if relative else b[metric] - a[metric]
+                diffs[f"{metric} {key}"] = round(abs(delta) / jnd, 2)
+                worst = max(worst, abs(delta) / jnd)
+        reported += 1
+        print(f"AX22 sensitivity {name} (cap nu_r({i0}) = {cap} vs nu_r({2 * i0}) = {nu_r(2 * i0)}): |difference| in jnd {diffs}")
+    print(f"AX22 sensitivity: worst {worst:.2f} jnd over {reported} fallback cases -> "
+          f"{'cap limits accuracy' if worst > 1.0 else 'within 1 jnd'}")
+    assert reported >= 1  # W2 always falls back
+
+
+# ---------------------------------------------------------------------------------------------
+# Envelope step across t_mix (reported only, AX21)
+# ---------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name", ROOMS)
+def test_envelope_step_reported(render_cli_path, name):
+    """Per emitter and band: ensemble-averaged band energy in [t_h - 10 ms, t_h) and [t_h, t_h + 10 ms)
+    (t_h the handover, t_mix,e or the AX22 cap), on R hybrid IRs with the Eyring gate's R, as the level
+    step in dB after removing the expected decay 60 * 0.010 / T60_b dB (Vorlaender Eq. 11.13). The EDC
+    seam gate cannot see such a step (a backward integral changes slope, not value). AX21's upper
+    estimates of the step from the missing early scattered energy: ~0.9 / 1.8 / 4.9 / 8.7 dB for
+    s = 0.05 / 0.1 / 0.25 / 0.4 in the AQ10 room. Reported, not gated."""
+    d = diag(str(render_cli_path), name)
+    r = max(eyring_r(d["t60"]).values())
+    irs, fs = ensembles.render_ensemble(render_cli_path, scene_path(name), SEED_EYRING_A, r, 48000)
+    steps = []
+    for e in (0, 1):
+        acc = ensembles.EnsembleAccumulator(float(fs))
+        acc.add_all(irs[:, e])
+        onset = metrics.onset_index(irs[0, e])
+        t_h = (d["emitters"][e]["handoverS"] - d["alignmentShiftS"]) * fs - onset
+        n10 = int(round(0.010 * fs))
+        row = []
+        for i, fc in enumerate(bands.OCTAVE_BANDS_HZ):
+            energy, lead = acc.octave_energy(fc)
+            c = int(round(t_h)) + lead
+            before, after = float(np.sum(energy[c - n10 : c])), float(np.sum(energy[c : c + n10]))
+            row.append(round(10.0 * math.log10(after / before) + 60.0 * 0.010 / d["t60"][i], 2))
+        steps.append(row)
+    scattering = sorted({s["scattering"] for s in load(name)["room"]["surfaces"].values()})
+    print(f"{name}: envelope step across the handover, R = {r}, [emitter][63 Hz..8 kHz]: {steps} dB "
+          f"(surface scattering {scattering}; reported only, AX21)")
+    assert all(math.isfinite(x) for row in steps for x in row)

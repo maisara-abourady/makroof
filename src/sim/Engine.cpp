@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -62,6 +63,56 @@ double directArrivalS(const contract::SceneDescription& scene, const contract::E
     return distance(emitter.position, scene.listener.position) / ism::kSpeedOfSoundMps;
 }
 
+// Scope 2/3 and AX22 for one emitter: t_mix,e, the AX20 image list, the matching, and the
+// realised-k fallback. Shared by the build and imageSourcesByChannel (render_cli --images).
+struct EmitterPlan
+{
+    tail::MixingTime mixing; // mixS = the handover actually used
+    ism::ImageSourceSet set;
+    tail::TailMatch match;
+    contract::BandArray bandsRealisedKeffAtMix{};
+    bool ismFallback = false;
+    double expectedMixS = 0.0;
+    double capTimeS = 0.0;
+};
+
+EmitterPlan planEmitter(const contract::SceneDescription& scene, const contract::Emitter& emitter,
+                        const BuildOptions& options, const tail::RoomDecay& decay, double lengthS,
+                        const contract::BandArray& bandEnergy, std::size_t cap)
+{
+    EmitterPlan plan;
+    // Scope 2: t_mix,e from the emitter's own direct arrival. Scope 3: the AX20 image list.
+    plan.mixing = tail::mixingTime(directArrivalS(scene, emitter), decay.volumeM3);
+    ism::ImageSourceOptions iso = imageOptions(emitter, options);
+    iso.maxArrivalTimeS = plan.mixing.mixS + tail::kCrossfadeHalfS;
+    plan.set = ism::computeImageSources(scene.room, emitter.position, scene.listener.position, iso);
+    plan.match = tail::matchTail(tail::energyEntries(plan.set, bandEnergy), plan.mixing, decay, lengthS);
+    plan.bandsRealisedKeffAtMix = plan.match.bandsRealisedKeff;
+    plan.expectedMixS = plan.mixing.mixS;
+
+    // AX22: k_real < 19 in any of 500 Hz-2 kHz at the expected-rule t_mix,e -> ISM-only up to the
+    // N_cap-th lattice image; the handover moves to max(t_mix,e, t_cap,e), the list extends with it
+    // (AX20) and the tail is matched there (E_b = 0 if the window holds no energy). k_real is not
+    // monotonic in t, so it is tested only at the expected-rule t_mix,e.
+    if (tail::needsIsmFallback(plan.match))
+    {
+        plan.ismFallback = true;
+        plan.capTimeS = ism::nthReflectionArrivalTimeS(scene.room, emitter.position, scene.listener.position,
+                                                       cap);
+        if (plan.capTimeS > plan.mixing.mixS)
+        {
+            plan.mixing.mixS = plan.capTimeS;
+            plan.mixing.expectedKeff = tail::expectedKeff(plan.mixing.windowStartS, plan.mixing.mixS,
+                                                          decay.volumeM3);
+            iso.maxArrivalTimeS = plan.mixing.mixS + tail::kCrossfadeHalfS;
+            plan.set = ism::computeImageSources(scene.room, emitter.position, scene.listener.position, iso);
+            plan.match = tail::matchTail(tail::energyEntries(plan.set, bandEnergy), plan.mixing, decay,
+                                         lengthS);
+        }
+    }
+    return plan;
+}
+
 // The hybrid omni IR for each tail seed in `seeds` (one RoomIR per seed). Everything that doesn't
 // depend on the seed (mixing times, image lists, matching, the early part, the band filters'
 // spectra) is computed once. Diagnostics describe the first seed.
@@ -79,8 +130,17 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
     const auto offset = static_cast<std::size_t>(std::max(0.0, std::round(shift * fs)));
     const tail::RoomDecay decay = tail::eyringDecay(scene.room, options.airAbsorption);
     const double lengthS = tail::tailLengthS(decay);
-    const tail::BandNoiseGenerator generator(filterbank, tail::unitDecayLength(lengthS, fs));
-    const std::size_t tailEnd = generator.length() > offset ? generator.length() - offset : 0;
+    const std::size_t unitLength = tail::unitDecayLength(lengthS, fs);
+    const std::size_t tailEnd = unitLength > offset ? unitLength - offset : 0;
+    const std::size_t cap = options.imageCountCapOverride > 0 ? options.imageCountCapOverride
+                                                              : imageCountCap();
+    // The band filters' spectra are only needed when noise is generated (not for a cached rebuild).
+    const bool cached = options.cachedUnitDecays != nullptr
+                        && options.cachedUnitDecays->size() == static_cast<std::size_t>(numEmitters)
+                        && options.cachedUnitDecays->front().length() == unitLength;
+    std::optional<tail::BandNoiseGenerator> generator;
+    if (!cached)
+        generator.emplace(filterbank, unitLength);
 
     struct PerEmitter
     {
@@ -100,13 +160,16 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
             continue; // validation: one emitter only
         auto& pe = perChannel[static_cast<std::size_t>(emitter.channel)];
         pe.present = true;
-        // Scope 2: t_mix,e from the emitter's own direct arrival. Scope 3: the AX20 image list.
-        pe.mixing = tail::mixingTime(directArrivalS(scene, emitter), decay.volumeM3);
-        ism::ImageSourceOptions iso = imageOptions(emitter, options);
-        iso.maxArrivalTimeS = pe.mixing.mixS + tail::kCrossfadeHalfS;
-        const ism::ImageSourceSet set = ism::computeImageSources(scene.room, emitter.position,
-                                                                 scene.listener.position, iso);
-        pe.match = tail::matchTail(tail::energyEntries(set, bandEnergy), pe.mixing, decay, lengthS);
+        EmitterPlan plan = planEmitter(scene, emitter, options, decay, lengthS, bandEnergy, cap);
+        pe.mixing = plan.mixing;
+        pe.match = plan.match;
+        pe.diag.bandsRealisedKeffAtMix = plan.bandsRealisedKeffAtMix;
+        pe.diag.imageCountCap = cap;
+        pe.diag.ismFallback = plan.ismFallback;
+        pe.diag.expectedMixS = plan.expectedMixS;
+        pe.diag.capTimeS = plan.capTimeS;
+        const ism::ImageSourceSet& set = plan.set;
+        pe.diag.handoverS = pe.mixing.mixS;
         if (!options.tailOnly)
             pe.early = ism::renderImageSources(set.images, shift, filterbank);
         length = std::max({length, pe.early.size(), tailEnd});
@@ -133,8 +196,11 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
                 continue;
             // AX5: tailSeed (output index 0, both outputs the same) with the emitter channel as the
             // PCG32 stream.
-            const tail::UnitDecay unit = generator.make(decay, tail::tailSeedForOutput(seeds[s], 0),
-                                                        static_cast<std::uint32_t>(e));
+            tail::UnitDecay generated;
+            if (!cached)
+                generated = generator->make(decay, tail::tailSeedForOutput(seeds[s], 0),
+                                            static_cast<std::uint32_t>(e));
+            const tail::UnitDecay& unit = cached ? (*options.cachedUnitDecays)[e] : generated;
             auto& taps = ir.taps[ir.index(static_cast<int>(e), 0)];
             for (std::size_t n = 0; n < length; ++n)
             {
@@ -235,6 +301,11 @@ std::vector<RoomIR> buildRoomIREnsemble(const contract::SceneDescription& scene,
     return buildHybridOmni(scene, options, tailSeeds, nullptr);
 }
 
+std::size_t imageCountCap() noexcept
+{
+    return ism::reflectionImageCount(kImageCountCapOrder);
+}
+
 double earliestDirectArrivalS(const contract::SceneDescription& scene) noexcept
 {
     double earliest = std::numeric_limits<double>::infinity();
@@ -257,19 +328,22 @@ std::vector<ism::ImageSourceSet> imageSourcesByChannel(const contract::SceneDesc
     {
         if (emitter.channel < 0 || static_cast<std::size_t>(emitter.channel) >= sets.size())
             continue; // impossible for a validated scene
-        ism::ImageSourceOptions iso = imageOptions(emitter, options);
         if (options.kind == BuildOptions::Kind::Omni)
         {
-            // AX20: the time-bounded list of the hybrid IR.
-            const tail::MixingTime mixing = tail::mixingTime(
-                directArrivalS(scene, emitter),
-                tail::eyringDecay(scene.room, options.airAbsorption).volumeM3);
-            iso.maxArrivalTimeS = mixing.mixS + tail::kCrossfadeHalfS;
+            // AX20/AX22: the time-bounded list of the hybrid IR, after the realised-k decision.
+            // k_real is scale-free per band, so the band energies only need the right ratios.
+            const tail::RoomDecay decay = tail::eyringDecay(scene.room, options.airAbsorption);
+            const ism::OctaveFilterbank filterbank(options.sampleRate);
+            const std::size_t cap = options.imageCountCapOverride > 0 ? options.imageCountCapOverride
+                                                                      : imageCountCap();
+            sets[static_cast<std::size_t>(emitter.channel)] =
+                planEmitter(scene, emitter, options, decay, tail::tailLengthS(decay),
+                            tail::bandImpulseEnergies(filterbank), cap)
+                    .set;
+            continue;
         }
-        else
-        {
-            iso.maxOrder = scene.render.maxReflectionOrder;
-        }
+        ism::ImageSourceOptions iso = imageOptions(emitter, options);
+        iso.maxOrder = scene.render.maxReflectionOrder;
         sets[static_cast<std::size_t>(emitter.channel)] = ism::computeImageSources(
             scene.room, emitter.position, scene.listener.position, iso);
     }

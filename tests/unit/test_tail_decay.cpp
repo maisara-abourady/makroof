@@ -7,6 +7,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <array>
 #include <cmath>
 
 // Exact floating-point comparisons are intended here (determinism, exact zeros, values copied
@@ -105,4 +106,31 @@ TEST_CASE("Eyring T60 of the six Phase 04 test rooms spans about 0.2 s to about 
     }
     CHECK(shortest < 0.25);
     CHECK(longest > 5.0);
+}
+
+TEST_CASE("AirAbsorption matches Kuttruff Table 6.1 (Bass 1995) at 20 degC within 1 %", "[sim][tail][air]")
+{
+    // Phase-04 scope 1: Kuttruff, Room Acoustics, Table 6.1, intensity attenuation constant m in
+    // 10^-3 1/m at 20 degC, normal pressure (adapted from Bass et al., JASA 97, 680, 1995). The table
+    // prints two decimals (rounding up to ~0.8 % at 0.5 kHz); the tolerance stays +-1 %.
+    struct Row
+    {
+        double humidityPercent;
+        std::array<double, 7> m1e3;
+    };
+    constexpr std::array<double, 7> kHz{500.0, 1000.0, 2000.0, 3000.0, 4000.0, 6000.0, 8000.0};
+    constexpr std::array<Row, 3> table{{
+        {40.0, {0.60, 1.07, 2.58, 5.03, 8.40, 17.71, 30.00}},
+        {50.0, {0.63, 1.08, 2.28, 4.20, 6.84, 14.26, 24.29}},
+        {70.0, {0.64, 1.15, 2.08, 3.45, 5.32, 10.62, 17.91}},
+    }};
+    for (const auto& row : table)
+        for (std::size_t i = 0; i < kHz.size(); ++i)
+        {
+            const double m = sim::tail::airEnergyAttenuationPerMetre(
+                sim::airAttenuationDbPerMetre(kHz[i], 20.0, row.humidityPercent));
+            INFO(row.humidityPercent << " % RH, " << kHz[i] << " Hz: m = " << m * 1e3 << "e-3 1/m, table "
+                                     << row.m1e3[i]);
+            CHECK_THAT(m * 1e3, WithinRel(row.m1e3[i], 0.01));
+        }
 }

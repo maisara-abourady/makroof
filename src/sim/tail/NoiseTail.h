@@ -95,6 +95,7 @@ struct EnergyEntry
 {
     double timeS = 0.0;
     contract::BandArray bandsEnergy{};
+    contract::Vec3 arrivalDirection; // unit vector from the listener (per-axis shares)
 };
 
 // Entries of an image set: specular a_b^2 g_b for every image and scattered E_b g_b for every
@@ -117,7 +118,11 @@ struct TailMatch
     contract::BandArray bandsExpectedUnitEnergy{}; // ebar_b
     contract::BandArray bandsAmplitude{};          // E_b, with E_b^2 ebar_b = E_target,b
     std::array<int, contract::kNumOctaveBands> bandsNonZeroEntries{}; // realised, in the window
-    contract::BandArray bandsRealisedKeff{}; // (sum x)^2 / sum x^2 of the weighted entries
+    contract::BandArray bandsRealisedKeff{};    // k_real = (sum x)^2 / sum x^2 of the weighted entries
+    contract::BandArray bandsRealisedSigmaDb{}; // 4.34 / sqrt(k_real) (0 when k_real = 0)
+    // Per-axis energy shares sum E_i u_{i,k}^2 / sum E_i (k = x, y, z) of the entries in the window,
+    // 1/3 each in an isotropic field (Kuttruff Eqs. 5.1-5.2); a necessary condition only, not gated.
+    std::array<std::array<double, 3>, contract::kNumOctaveBands> bandsAxisShares{};
 };
 
 // Energy matching of one emitter (phase-04 scope 3, steps 1-4). Entries outside the window (the
@@ -125,6 +130,13 @@ struct TailMatch
 // the window is zero, E_b = 0.
 TailMatch matchTail(std::span<const EnergyEntry> entries, const MixingTime& mixing, const RoomDecay& decay,
                     double lengthS);
+
+// AX22 realised-k switch: the bands (AQ9's 500 Hz, 1 kHz, 2 kHz, by contract::kOctaveBandsHz
+// index) whose realised k at the expected-rule t_mix,e decides the fallback, and its threshold.
+inline constexpr std::array<std::size_t, 3> kRealisedKBands{3, 4, 5};
+inline constexpr double kRealisedKMin = 19.0;
+// True when k_real < 19 in any of kRealisedKBands (AX22).
+bool needsIsmFallback(const TailMatch& match) noexcept;
 
 // Equal-power crossfade weights at emission time tS around mixS (AX18): tau = (t - (mix - 2.5 ms))
 // / 5 ms clamped to [0, 1], ism = cos(pi tau / 2), tail = sin(pi tau / 2).

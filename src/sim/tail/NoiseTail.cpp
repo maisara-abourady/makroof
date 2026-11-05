@@ -170,6 +170,7 @@ std::vector<EnergyEntry> energyEntries(const ism::ImageSourceSet& set, const con
     {
         EnergyEntry e;
         e.timeS = image.arrivalTimeS;
+        e.arrivalDirection = image.arrivalDirection;
         for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
             e.bandsEnergy[b] = image.bandsAmplitude[b] * image.bandsAmplitude[b] * bandEnergy[b];
         entries.push_back(e);
@@ -178,6 +179,7 @@ std::vector<EnergyEntry> energyEntries(const ism::ImageSourceSet& set, const con
     {
         EnergyEntry e;
         e.timeS = scattered.arrivalTimeS;
+        e.arrivalDirection = scattered.arrivalDirection;
         for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
             e.bandsEnergy[b] = scattered.bandsEnergy[b] * bandEnergy[b];
         entries.push_back(e);
@@ -217,6 +219,8 @@ TailMatch matchTail(std::span<const EnergyEntry> entries, const MixingTime& mixi
         const double rate = kEnergyDecayPerT60 / decay.bandsT60S[b];
         double sum = 0.0;
         double sumSquares = 0.0;
+        double sumEnergy = 0.0;
+        std::array<double, 3> axisEnergy{};
         int nonZero = 0;
         for (const auto& entry : entries)
         {
@@ -227,15 +231,31 @@ TailMatch matchTail(std::span<const EnergyEntry> entries, const MixingTime& mixi
             sum += x;
             sumSquares += x * x;
             ++nonZero;
+            const auto& u = entry.arrivalDirection;
+            sumEnergy += entry.bandsEnergy[b];
+            axisEnergy[0] += entry.bandsEnergy[b] * u.x * u.x;
+            axisEnergy[1] += entry.bandsEnergy[b] * u.y * u.y;
+            axisEnergy[2] += entry.bandsEnergy[b] * u.z * u.z;
         }
         match.bandsNonZeroEntries[b] = nonZero;
         match.bandsRealisedKeff[b] = sumSquares > 0.0 ? sum * sum / sumSquares : 0.0;
+        match.bandsRealisedSigmaDb[b] = expectedSigmaDb(match.bandsRealisedKeff[b]);
+        for (std::size_t k = 0; k < 3; ++k)
+            match.bandsAxisShares[b][k] = sumEnergy > 0.0 ? axisEnergy[k] / sumEnergy : 0.0;
         match.bandsTargetEnergy[b] = integralW > 0.0 ? kMatchNormalisationS / integralW * sum : 0.0;
         match.bandsExpectedUnitEnergy[b] = expectedUnitEnergyPer10ms(decay.bandsT60S[b], end, lengthS);
         const double ebar = match.bandsExpectedUnitEnergy[b];
         match.bandsAmplitude[b] = ebar > 0.0 ? std::sqrt(match.bandsTargetEnergy[b] / ebar) : 0.0;
     }
     return match;
+}
+
+bool needsIsmFallback(const TailMatch& match) noexcept
+{
+    for (const std::size_t b : kRealisedKBands)
+        if (match.bandsRealisedKeff[b] < kRealisedKMin)
+            return true;
+    return false;
 }
 
 CrossfadeWeights crossfade(double tS, double mixS) noexcept

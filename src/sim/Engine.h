@@ -73,7 +73,22 @@ struct BuildOptions
     // channel is built; the other emitter's taps stay zero. Ensembles that analyse one emitter
     // don't pay for the other.
     int onlyEmitterChannel = -1;
+    // Kind::Omni, validation only (render_cli --image-cap): overrides the AX22 image-count cap N_cap
+    // (0 = kImageCountCap). For the AX22 sensitivity report at nu_r(2 i0).
+    std::size_t imageCountCapOverride = 0;
+    // Kind::Omni, benchmark / Phase 10 proxy only: precomputed unit decays by emitter channel
+    // (tail::BandNoiseGenerator::make with the scene's seed and stream). When set and of the right
+    // length, the build uses them instead of generating noise, i.e. it times a position-only rebuild
+    // as AQ10 defines it. nullptr in every product path.
+    const std::vector<tail::UnitDecay>* cachedUnitDecays = nullptr;
 };
+
+// AX22: the image-count cap N_cap = nu_r(i0) (Kuttruff Eq. 9.23) of the realised-k fallback, i0 the
+// largest integer >= 10 at which the AQ10 workload W2 meets 50 ms on the Linux CI runner (Phase 04
+// benchmark, "benchmark: AQ10 W1/W2" in test_hybrid_ir.cpp). Frozen once recorded in AX22; changing
+// it is an intended output change (AX22, goldens via update_goldens.py, a BUILD_PLAN section 6 row).
+inline constexpr int kImageCountCapOrder = 10;
+std::size_t imageCountCap() noexcept; // nu_r(kImageCountCapOrder)
 
 // AX1: the earliest direct arrival (over all emitters) lands at this sample, so the
 // fractional-delay kernel (16 samples either side) isn't truncated. Part of the reported latency
@@ -104,7 +119,15 @@ struct HybridEmitterDiagnostics
     int channel = 0;
     std::size_t imageCount = 0;     // images in the AX20 list (non-zero ones; the direct path always)
     std::size_t scatteredCount = 0; // AX16 scattered-energy records in it
-    tail::TailMatch match;
+    tail::TailMatch match;          // at the handover (t_mix,e, or max(t_mix,e, t_cap,e) in the fallback)
+    // AX22: k_real per band at the expected-rule t_mix,e (the decision), whether the emitter fell
+    // back to ISM-only, the cap's arrival time t_cap,e and the handover time actually used.
+    contract::BandArray bandsRealisedKeffAtMix{};
+    bool ismFallback = false;
+    double expectedMixS = 0.0; // t_mix,e of the expected-k_eff rule (scope 2), where k_real is tested
+    std::size_t imageCountCap = 0;
+    double capTimeS = 0.0;
+    double handoverS = 0.0;
     // Measured check (not used by the matching): the realised tail energy E_b^2 * sum u_b^2 in the
     // 10 ms centred on t_mix,e over E_target,b, in dB (0 dB = the realisation is at its expected
     // level; the band-filter ringing of the ISM is not in it).

@@ -37,6 +37,7 @@ struct Options
     std::optional<std::uint32_t> tailSeed;
     std::optional<std::uint32_t> ensemble;
     std::optional<std::uint32_t> ensembleEmitter;
+    std::optional<std::uint32_t> imageCap;
     bool noAirAbsorption = false;
     bool tailOnly = false;
     std::optional<double> rate;
@@ -121,7 +122,7 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         else if (arg == "--diagnostics")
             target = &options.diagnosticsPath;
         else if (arg != "--rate" && arg != "--mode" && arg != "--tail-seed" && arg != "--ensemble"
-                 && arg != "--ensemble-emitter")
+                 && arg != "--ensemble-emitter" && arg != "--image-cap")
             return "unknown argument '" + arg + "'";
 
         if (i + 1 >= args.size())
@@ -151,6 +152,12 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             options.ensemble = parseSeed(value);
             if (!options.ensemble || *options.ensemble == 0 || *options.ensemble > 100000)
                 return "--ensemble must be an integer in [1, 100000], got '" + value + "'";
+        }
+        else if (arg == "--image-cap")
+        {
+            options.imageCap = parseSeed(value);
+            if (!options.imageCap || *options.imageCap == 0)
+                return "--image-cap must be a positive integer, got '" + value + "'";
         }
         else if (arg == "--ensemble-emitter")
         {
@@ -185,6 +192,8 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         && (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni || options.irPath.empty()
             || !options.inPath.empty() || !options.imagesPath.empty() || !options.diagnosticsPath.empty()))
         return "--ensemble needs --mode omni and --ir, without --in, --images or --diagnostics";
+    if (options.imageCap && (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni))
+        return "--image-cap needs --mode omni (the hybrid IR)";
     if (options.ensembleEmitter && !options.ensemble)
         return "--ensemble-emitter needs --ensemble";
     if (options.rate && !sim::isSupportedSampleRate(*options.rate))
@@ -375,6 +384,23 @@ bool writeDiagnostics(const std::filesystem::path& path, const contract::SceneDe
         arr(m.bandsRealisedKeff);
         os << ",\"realisedOverTargetDb\":";
         arr(e.bandsRealisedOverTargetDb);
+        os << ",\"realisedSigmaDb\":";
+        arr(m.bandsRealisedSigmaDb);
+        os << ",\"axisShares\":[";
+        for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+        {
+            os << (b ? "," : "");
+            arr(m.bandsAxisShares[b]);
+        }
+        os << "],\"realisedKeffAtMix\":";
+        arr(e.bandsRealisedKeffAtMix);
+        os << ",\"ismFallback\":" << (e.ismFallback ? "true" : "false")
+           << ",\"imageCountCap\":" << e.imageCountCap << ",\"capTimeS\":";
+        num(e.capTimeS);
+        os << ",\"handoverS\":";
+        num(e.handoverS);
+        os << ",\"expectedMixS\":";
+        num(e.expectedMixS);
         os << '}';
     }
     os << "]}\n";
@@ -411,13 +437,16 @@ std::string usage()
            "  --diagnostics  hybrid omni IR only: write T60 per band (Eyring), tail length, and per\n"
            "               emitter t_mix, the matching window, expected k_eff and sigma_dB, E_target,\n"
            "               expected unit-decay energy, tail amplitude E_b, non-zero entry count and\n"
-           "               realised k_eff per band\n"
+           "               realised k_eff per band; realised sigma, per-axis energy shares, k_real at\n"
+           "               the expected-rule t_mix, the AX22 fallback, its cap time and the handover time\n"
            "  --no-air-absorption  validation only: switch off air absorption (AX4 keeps it on)\n"
            "  --tail-only  validation only, --mode omni: write just the matched late tail (no early part,\n"
            "               no crossfade), for decay-time ensembles\n"
            "  --ensemble   validation only, --mode omni --ir: render N realisations with tail seeds\n"
            "               tailSeed, tailSeed + 1, ...; channel 2k = emitter 0 and 2k + 1 = emitter 1 of\n"
            "               seed tailSeed + k (output 0)\n"
+           "  --image-cap  validation only, --mode omni: override the AX22 image-count cap N_cap (the\n"
+           "               sensitivity report at nu_r(2 i0))\n"
            "  --ensemble-emitter  with --ensemble: build and write only emitter channel 0 or 1 (one\n"
            "               WAV channel per seed)\n"
            "  --automation not implemented until Phase 10\n"
@@ -502,6 +531,8 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
     build.kind = options.mode.value_or(sim::kindForOutputMode(scene.render.outputMode));
     build.airAbsorption = !options.noAirAbsorption;
     build.tailOnly = options.tailOnly;
+    if (options.imageCap)
+        build.imageCountCapOverride = *options.imageCap;
     if (options.ensembleEmitter)
         build.onlyEmitterChannel = static_cast<int>(*options.ensembleEmitter);
 

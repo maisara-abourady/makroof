@@ -48,6 +48,7 @@ struct ScatteredEnergy
     double arrivalTimeS = 0.0;
     int order = 0;
     contract::BandArray bandsEnergy{};
+    contract::Vec3 arrivalDirection; // the specular path's direction of arrival (AX16: same path)
 };
 
 struct ImageSourceSet
@@ -69,6 +70,16 @@ struct ImageSourceOptions
 
 // Number of images of order <= maxOrder in a shoebox: (2N + 1)(2N^2 + 2N + 3) / 3.
 std::size_t imageCount(int maxOrder) noexcept;
+
+// nu_r(i): the number of image sources of orders 1..i (Kuttruff Eq. 9.23), imageCount(i) - 1:
+// nu_r(10) = 1 560, nu_r(30) = 37 880.
+std::size_t reflectionImageCount(int maxOrder) noexcept;
+
+// AX22: arrival time (from emission, s) of the n-th reflection image (n >= 1) of `source` at
+// `listener` in arrival order, counting every lattice image, pruned or not (as Kuttruff Eq. 9.23
+// counts them); the direct path is not counted. Independent of the materials.
+double nthReflectionArrivalTimeS(const contract::Room& room, const contract::Vec3& source,
+                                 const contract::Vec3& listener, std::size_t n);
 
 // All images of `source` seen from `listener` up to options.maxOrder (or, with
 // options.maxArrivalTimeS > 0, every image arriving before that time, AX20). Images whose specular

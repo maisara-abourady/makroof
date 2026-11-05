@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <limits>
+#include <numbers>
 
 namespace sim::ism {
 
@@ -104,6 +105,57 @@ std::size_t imageCount(int maxOrder) noexcept
     return (2 * n + 1) * (2 * n * n + 2 * n + 3) / 3;
 }
 
+std::size_t reflectionImageCount(int maxOrder) noexcept
+{
+    return maxOrder < 0 ? 0 : imageCount(maxOrder) - 1;
+}
+
+double nthReflectionArrivalTimeS(const contract::Room& room, const Vec3& source, const Vec3& listener,
+                                 std::size_t n)
+{
+    if (n == 0)
+        return 0.0;
+    const Vec3& size = room.geometry.dimensions;
+    const double volume = size.x * size.y * size.z;
+    // Expected radius holding n images, N(r) = 4 pi r^3 / (3 V) (Kuttruff Eq. 4.6), with margin.
+    double radius = std::cbrt(3.0 * static_cast<double>(n + 1) * volume / (4.0 * std::numbers::pi)) * 1.2
+                    + 2.0 * std::max({size.x, size.y, size.z});
+    for (int attempt = 0; attempt < 64; ++attempt, radius *= 1.5)
+    {
+        const auto xs = axisImagesWithin(size.x, source.x, listener.x, radius);
+        const auto ys = axisImagesWithin(size.y, source.y, listener.y, radius);
+        const auto zs = axisImagesWithin(size.z, source.z, listener.z, radius);
+        const double r2 = radius * radius;
+        std::vector<double> d2;
+        for (const auto& ix : xs)
+        {
+            const double dx = ix.coordinate - listener.x;
+            if (dx * dx > r2)
+                break;
+            for (const auto& iy : ys)
+            {
+                const double dy = iy.coordinate - listener.y;
+                if (dx * dx + dy * dy > r2)
+                    break;
+                for (const auto& iz : zs)
+                {
+                    const double dz = iz.coordinate - listener.z;
+                    const double dd = dx * dx + dy * dy + dz * dz;
+                    if (dd > r2)
+                        break;
+                    if (ix.order() + iy.order() + iz.order() > 0) // reflections only
+                        d2.push_back(dd);
+                }
+            }
+        }
+        if (d2.size() < n)
+            continue;
+        std::nth_element(d2.begin(), d2.begin() + static_cast<std::ptrdiff_t>(n - 1), d2.end());
+        return std::sqrt(d2[n - 1]) / kSpeedOfSoundMps;
+    }
+    return 0.0; // unreachable for valid rooms
+}
+
 ImageSourceSet computeImageSources(const contract::Room& room, const Vec3& source, const Vec3& listener,
                                    const ImageSourceOptions& options)
 {
@@ -196,6 +248,7 @@ ImageSourceSet computeImageSources(const contract::Room& room, const Vec3& sourc
 
                 ScatteredEnergy scattered;
                 scattered.arrivalTimeS = image.arrivalTimeS;
+                scattered.arrivalDirection = image.arrivalDirection;
                 scattered.order = order;
                 bool audible = order == 0;
                 bool scatters = false;
