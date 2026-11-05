@@ -38,8 +38,10 @@ IR for every valid shoebox scene.
      equals the energy the statistical model predicts at that time. Use the diffuse-field decay
      extrapolated from the ISM's band energy over `[t_mix − 10 ms, t_mix]`, **plus** the scattered
      energy collected by Phase 03 up to that time. This keeps the energy budget consistent.
-     - The onset energy is the **specular ISM energy plus the accumulated scattered energy**, Σ(1−α)·s
-       per hit (Vorländer Eq. 3.23, Fig. 3.10; §11.6: scattered energy dominates after a few orders).
+     - The onset energy is the **specular ISM energy plus the accumulated scattered energy**, taken from
+       Phase 03's scattered-energy list as defined in **AX16**: one entry per image path,
+       E_noScatter·(1 − Π(1 − s)^hits) per band at the path's specular arrival time (Vorländer Eq. 3.23,
+       Fig. 3.10; §11.6: scattered energy dominates after a few orders).
        Matching to specular energy alone would make the tail too quiet (≈9 dB low with s = 0.5 after
        3 hits).
      - With no ISM and no scattered energy around `t_mix`, E_b = 0: the matched tail is zero.
