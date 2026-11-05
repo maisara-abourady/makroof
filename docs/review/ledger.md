@@ -648,3 +648,420 @@ verify".
 **To verify against the standards before they are cited as fact:** the ISO 3382-2 constants in σ(T20/T30) and
 its "integrated IR ≈ 10 averaged decays" equivalence; the ISO 3382-2 curvature threshold (≈ 10 %); whether the
 ISO 3382-1 jnd table lists T. These are marked "to verify" in the plan text.
+
+## docs/phases/phase-04.md — 2026-11-05 (/interrogate, fresh pass; corpus 22dc9dd59cf2f4ced36440b3b3f4cc23576e56f0)
+
+Independent re-read of the current phase-04 text (after /fix-plan rounds 3–5). Earlier reviews were not
+taken as evidence. Phase 04 has already been executed on another branch; this pass covers the plan text
+only, and cross-examination against that branch comes later. One interrogator round: there were no
+blockers, so the builder answers were not re-interrogated (the skill re-runs only for open blockers).
+The target document was not edited. "Resolved" below means the question is answered here; the
+document wording it points at is unchanged and is listed under "Remaining" for Maisara.
+
+**Round 1: interrogator.** No WRONG items, so no gate or golden rests on a corpus contradiction.
+1 major, 3 minor, 3 CONSEQUENCE rows.
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| P4-01 | NUMBER | m_b = D_b/4.34 (energy coefficient) enters Eyring as 4mV | CORRECT | Vorländer §3.6 Eq. 3.33–3.34; §4.4.1 Eq. 4.31–4.32 | none | — | — |
+| P4-02 | FACT | the Np/m coefficient D/8.686 halves the 4mV term | CORRECT | Vorländer §3.6 Eq. 3.31: pressure decays as e^(−(m/2)x) | none | — | — |
+| P4-03 | NUMBER | "≈ 8 % too long a T at 4 kHz in a 20×30×10 m room" | CONDITIONS VIOLATED | Vorländer Eq. 4.32: with x = 4mV/(−S ln(1−ᾱ)), T_wrong/T_right = (1+x)/(1+x/2), which is 1.08 only at x ≈ 0.174. ᾱ_4k and D_4k are not stated. | major | Q1 | resolved (answer B1); text fix pending |
+| P4-04 | FORMULA | T60 = 0.161V/(−S ln(1−ᾱ) + 4mV), ᾱ area-weighted | CORRECT | Vorländer §4.4.1 Eq. 4.28, 4.30, 4.32; 24 ln10/343 = 0.1611 | none | — | — |
+| P4-05 | FACT | Eyring does not apply in open_field and is inaccurate for non-uniform absorption | CORRECT | Vorländer §4.4, §4.4.1 (diffuse field, homogeneous absorption) | none | — | — |
+| P4-06 | FORMULA | reflection density 4πc³t²/V, N(t) = (4π/3)(ct)³/V | CORRECT | Blauert Ch. 3 §3.3 (after Cremer) | none | — | — |
+| P4-07 | FORMULA | k_eff = (4πc³/V)(∫w)²/∫w²/t² | CORRECT | Poisson rate from Blauert §3.3 with entry energy ∝ 1/t² (Vorländer Eq. 11.50); mean²/variance via Eq. 11.8, 11.20 | none | — | — |
+| P4-08 | NUMBER | t_dir → 0: ≈ 6.8·V^(1/3) ms, ≈ 53 arrivals | CORRECT | Hann on [0, b]: k = πc³b³/(V·2.111); k = 19 gives b = 6.81·V^(1/3) ms, N ≈ 53.5 | none | — | — |
+| P4-09 | NUMBER | σ_dB = 4.34/√k_eff is an expectation under Poisson arrivals only | CORRECT | Vorländer §11.2.5 Eq. 11.9, 11.17; k = 19 gives 0.996 dB | none | — | — |
+| P4-10 | FACT | equal-power crossfade for uncorrelated ISM and tail, citing Vorländer §9.2.1; equal-gain dips 3 dB | IMPRECISE | The arithmetic is right, but §9.2.1 (segmented convolution) states constant power without any correlation condition. The "uncorrelated → powers add" step is §4.3 Eq. 4.14–4.16. | minor | Q3 | resolved (answer B3); citation fix pending |
+| P4-11 | FACT | band-filter ringing "Vorländer §11.7, which describes filter ringing qualitatively only" | IMPRECISE | Vorländer §11.7 "Interpolation", Fig. 11.41: that ringing comes from coarse interpolation of reflection-factor spectra, not from an analysis filterbank | minor | Q4 | resolved (answer B4); citation fix pending |
+| P4-12 | FACT | the corpus gives no transition-time rule | CORRECT | Vorländer §11.7, last bullet before Fig. 11.42 | none | — | — |
+| P4-13 | NUMBER | specular-only matching ≈ 9 dB low at s = 0.5 after 3 hits | CORRECT | Vorländer §3.3.2 Eq. 3.23, Fig. 3.10: (1−s)³ = 0.125 = −9.03 dB; §11.6 | none | — | — |
+| P4-14 | FORMULA | exp(−6.91t/T), exp(−13.82Δt/T), ē_b formula | CORRECT | Vorländer §11.2.5 Eq. 11.13; ln 10⁶ = 13.82; ē_b = 10 ms × density of a truncated unit exponential; Eq. 11.51 | none | — | — |
+| P4-15 | NUMBER | AX6 limits allow "T of order 160 s, e.g. α = 0.01 in a 100 m room" | IMPRECISE | Vorländer Eq. 4.32, 100 m cube: T = 267 s without air; Fig. 3.15 low-frequency D of 10⁻⁵ to 5·10⁻⁴ dB/m gives 151–263 s. 160 s holds only at the top of that range. The cap conclusion is unaffected. | minor | Q2 | resolved (answer B2); text fix pending |
+| P4-16 | NUMBER | T30 on a 12 s IR only for T ≤ ≈ 20 s | CORRECT | Vorländer §6.4.1 (−5 to −35 dB); 12·60/35 = 20.6 s | none | — | — |
+| P4-17 | FACT | the Schroeder EDC is monotonic | CORRECT | Vorländer §6.4.1 Eq. 6.4 | none | — | — |
+| P4-18 | NUMBER | C80 jnd 1 dB stated only for 500–1000 Hz | CORRECT | Vorländer §6.4.4 Table 6.1 | none | — | — |
+| P4-19 | FACT | open_field: every window entry is zero for any s | CORRECT | Vorländer §3.3.2 Eq. 3.23 (both parts ∝ 1−α = 0). The 1.4 ms floor delay is fixture geometry and not checkable here. | none | — | — |
+| P4-20 | FORMULA | AX16 scattered entry E·(1 − Π(1−s)^hits) | CORRECT | Vorländer Eq. 3.23 applied per hit | none | — | — |
+| P4-21 | NUMBER | √V ms as the widely used perceptual mixing-time estimate | NOT CHECKABLE | not in the corpus; needs a perceptual mixing-time source | none | — | — |
+| P4-22 | NUMBER | AX11 σ₁ table; σ₁ ∝ 1/√(B·T) | NOT CHECKABLE | not in the corpus (ISO 3382-2 annex / Davy would settle it) | none | — | — |
+| P4-23 | NUMBER | all R rules and table cells, 1458/288/41, dead_booth 2187/36/675 | CORRECT (arithmetic) | every cell recomputed, rounding up | none | — | — |
+| P4-24 | NUMBER | n ≥ 51 gives a relative SE of σ̂ ≤ 10 % | NOT CHECKABLE | the arithmetic holds; the formula is sampling statistics, outside the corpus | none | — | — |
+| P4-25 | NUMBER | gate tolerances (±5/10 %, ±2 %, ±0.5 dB, 1 dB seam, −60 dB) | NOT CHECKABLE | chosen tolerances; each is tighter than the Table 6.1 jnd where one exists | none | — | — |
+| P4-D1 | DECISION | AQ2 Eyring noise tail | CONSEQUENCE | Vorländer §4.4, §4.4.1: non-diffuse rooms and concentrated absorption will differ | minor | — | open (Expert, Phase 05) |
+| P4-D2 | DECISION | AX4 fixed atmosphere | CONSEQUENCE | Vorländer §3.6 Fig. 3.15: humidity matters strongly at 1–10 kHz, so the HF decay is fixed to one atmosphere | minor | — | open (product decision) |
+| P4-D3 | DECISION | AX16 scattered energy at the specular time | CONSEQUENCE | Vorländer §3.3.2 Fig. 3.9: scattered paths are longer, so their temporal smearing is not represented | minor | — | open (product decision) |
+| P4-D4 | DECISION | AX20 time-bounded image list | CONSEQUENCE | Vorländer §11.6; cost grows with t_mix | none | — | — |
+| P4-D5 | DECISION | mixing-time rule, window, 5 ms fade, 12 s cap, test rooms | CONSEQUENCE | Vorländer §11.7: no corpus rule, so the rule is unvalidated against a reference | none | — | open (existing Expert question) |
+| P4-S | SOFTWARE | Rng.h PRNG, seed offsets, `Kind::OmniEarly`, cache, filterbank reuse, contract bump, goldens, NaN/denormal check, bit-identity, AQ10 timing | listed, not rated | — | — | — | — |
+
+**Round 1: builder answers** (corpus 22dc9dd; working shown; ISO 9613-1 values are outside the corpus and marked so).
+
+- **B1 (Q1, P4-03).** Room 20×30×10 m: V = 6000 m³, S = 2200 m². AX4 is 20 °C, 50 % RH. Fig. 3.15
+  (Vorländer §3.6) puts D at 4 kHz at the order of 10⁻² dB/m for 40–80 % RH. The ISO 9613-1 value at
+  20 °C/50 % RH is ≈ 0.028 dB/m (not in the corpus; the `AirAbsorption` unit test pins it). Then
+  m = 0.028/4.34 = 6.45·10⁻³ m⁻¹ and 4mV = 155 m². x = 0.174 needs −S ln(1−ᾱ) = 890, so ᾱ_4k ≈ 0.33.
+  For D from 0.02 to 0.04 dB/m the same 8 % needs ᾱ_4k from 0.25 to 0.44. The general statement from
+  Eq. 4.32 is: the error is (1+x)/(1+x/2) − 1. It runs from 0 in absorptive rooms up to +100 % as air
+  dominates. The figure is explanatory, and no gate depends on it. Proposed wording: "≈ 8 % too long a T
+  at 4 kHz in a 20×30×10 m room with ᾱ_4k ≈ 0.33 (up to 2× where air absorption dominates)". Status:
+  resolved as answered; the text change is Maisara's.
+- **B2 (Q2, P4-15).** A 100 m cube with α = 0.01: −S ln(0.99) = 603 m², and 0.161·10⁶/603 = 267 s
+  without air. With D at 63 Hz ≈ 10⁻⁴ dB/m (Fig. 3.15 low-frequency range; the ISO 9613-1 order of
+  magnitude, outside the corpus), 4mV = 92 m² and T ≈ 232 s. The "160 s" is reached only at
+  D ≈ 5·10⁻⁴ dB/m. Proposed wording, here and in AX6: "of order 200–270 s". This strengthens the point
+  that only the 12 s cap bounds the IR. Status: resolved; the text change is Maisara's.
+- **B3 (Q3, P4-10).** Yes. The equal-power choice rests on incoherent energy addition, Vorländer §4.3
+  Eq. 4.14–4.16: for broadband signals the cross term averages out and powers add. That is the
+  condition under which sin/cos amplitude windows keep the power constant. §9.2.1 only shows that
+  constant overlap power is the goal in segmented convolution. The citation should read "Vorländer §4.3
+  Eq. 4.14–4.16; cf. §9.2.1". The 3 dB dip of equal-gain windows follows from the same equations
+  (0.5² + 0.5² = 0.5). Status: resolved; the citation change is Maisara's.
+- **B4 (Q4, P4-11).** No. §11.7 covers ringing from coarse interpolation of octave-band
+  reflection-factor spectra (Fig. 11.41). Ringing of the octave-band analysis filterbank is not
+  addressed in the corpus, so the claim is NOT CHECKABLE. The plan already treats it as a measured,
+  reported check (scope 3, ē_b). The parenthetical citation should be dropped or replaced by "not
+  covered by the corpus". Status: resolved; the citation change is Maisara's.
+- **Interrogator aside (P4-S, not corpus).** The builder agrees, from the C++ standard
+  ([rand.eng.mt], [rand.dist]) and outside the corpus. The `std::mt19937` output sequence is fixed by
+  the standard (the 10000th output is required to be 4123659995). `std::normal_distribution` and the
+  other distributions are implementation-defined. The AX5 sentence should read "the standard library
+  distributions (e.g. `std::normal_distribution`) are not portable". The conclusion stands: use a
+  self-contained PRNG with its own Gaussian transform.
+
+**Status after round 1:** no blockers. P4-03, P4-10, P4-11, P4-15 resolved as answered. P4-D1–D3 stay
+open as stated consequences (decisions, not questions), and P4-D5 stays open under the existing Expert
+question.
+
+**Remaining (Maisara's decision; target unchanged):** text fixes from B1 (state ᾱ_4k, or give the
+general form), B2 (160 s → of order 200–270 s, also in BUILD_PLAN AX6), B3 (equal-power citation
+§4.3 Eq. 4.14–4.16), B4 (drop the §11.7 filter-ringing citation), and the AX5 mt19937 wording. Carried
+over from the earlier phase-04 run: the Expert questions on the mixing-time rule and on sparse or
+non-diffuse fields, and the AQ10 / phase-13 "order 30" rebuild-budget follow-up.
+
+## docs/phases/phase-04.md — 2026-11-05 (expert consultation on P4-D1–D3, P4-D5, sparse fields; corpus 22dc9dd)
+
+Maisara asked the interrogator to act as the subject-matter expert and to recommend alternatives.
+Acoustic claims are from the corpus. PRD, BUILD_PLAN and the phase files were used only as
+constraints. No plan file was edited; adopting any of this goes through `/fix-plan`.
+
+**Cross-cutting finding X.** Checked by the main session against phase-03 scope 1 and BUILD_PLAN AX16.
+- Phase 03 renders only specular energy (1−α)(1−s) per hit, and the AX16 scattered entries are used only to set the tail level.
+- So the rendered IR has no scattered energy before t_mix and has it after. For one path the mean level steps by 10·log(1/Π(1−s)^hits) dB: ≈ 11 dB at s = 0.4 after 5 hits (Vorländer Eq. 3.23). Kuttruff's example puts the diffuse share at ≈ 45 % at order 2 (Vorländer §11.6, Fig. 11.34).
+- The Schroeder EDC is an integral (Eq. 6.4), so this step changes its slope, not its value, and the EDC-step gate does not detect it.
+- Under AX16, specular + scattered = E_noScatter, so E_target does not depend on s. AX16 also never sends scattered energy toward absorbent faces, which is the mechanism that diffuses non-uniform rooms (§11.5).
+- Severity: major (affects EDT, C80 and D50 of the hybrid IR, and the seam). Status: **open**.
+
+| item | recommendation | confidence | would change | corpus basis |
+|---|---|---|---|---|
+| 1 Eyring, uneven α (P4-D1) | Keep Eyring in 04. Add a seeded Lambert-scattering stochastic ray tracer (energy multiplication) as a second decay predictor in Phase 05. Promote it to T60_b only if BRAS T30/EDT errors drop. Reject fitting the decay to the late ISM (pure specular, per X). | medium | AQ2, new AX, AQ10; phases 05, 04, 10, 13; no contract change | Vorländer §4.4, §4.4.1–4.4.2, §11.2, Tables 11.3–11.5, §11.5–11.6.1; Toole Box "Calculating reverberation time" (no universal formula). Millington, Kuttruff correction and Fitzroy/Arau formulas NOT CHECKABLE. |
+| 2 fixed atmosphere (P4-D2) | Keep AX4. Report a per-band T bound at 30 % and 70 % RH. Add a render_cli atmosphere override for validation only. | high (keep) / medium | AX4; phases 04, 05; no contract change | Eq. 4.32 with the Vorländer Annex air table, rooms from Table 11.2, ᾱ = 0.15: 8 kHz −12 %/+6 % (1000 m³), −17 %/+10 % (10000 m³); 4 kHz −4 to −7 %; Begault Ch. 3 |
+| 3 AX16 timing (P4-D3) | Render the scattered entries before t_mix as seeded noise on an energy-preserving causal kernel, so specular + scattered is continuous across t_mix. Keep the AX16 list for matching. A physical transfer (ray tracing or diffuse rain) comes later. | medium | AX16, new AX; phases 04, 05, 08; no contract change | Eq. 3.23, Fig. 3.9, Figs. 11.34, 11.35, 11.42, Eq. 11.51; kernel shape NOT CHECKABLE |
+| 4 mixing time (P4-D5) | Keep the k_eff ≥ 19 rule, restated as "1 dB expected level precision" (Eq. 11.9/11.17, Table 6.1). Don't lengthen t_mix before item 3. In Phase 05, compare floors at t_dir + 80 ms and + 140 ms. | medium | phase-04 scope 2 wording; phases 04, 05 | Blauert Ch. 3 §3.3; Vorländer §6.4, §11.6.1, §11.7, §15.3; Begault Ch. 3/4; √V NOT CHECKABLE |
+| 5 sparse fields | Require realised k_eff ≥ 19 as well as the expected value. Extend the time-bounded ISM up to a cap. Prune zero-energy images. Report k_real, the realised σ and diffuseness ψ. open_field keeps E_b = 0. | medium-low | new AX (cap, realised-k rule), AX20, AQ10; phases 04, 05, 10, 13 | Vorländer §4.4, §4.4.2, Table 4.1, §11.3.3, §15.2.3; Zotter & Frank §A.6.2 Eq. A.82 (ψ on image sums NOT CHECKABLE) |
+
+**Proposed falsifiable checks:**
+1. Ray-traced T within ±5 % of Eq. 4.32 for uniform α and s = 1. In Phase 05, a lower mean |T30 error| at 500 Hz–2 kHz in the BRAS rooms with uneven absorption.
+2. A unit test that T60_b moves by the Eq. 4.32 prediction when m_b is swapped.
+3. A 10 ms-bin ensemble envelope with no step > 1 dB across t_mix ± 5 ms, plus a Phase 05 C80 error no worse than with AX16 as is.
+4. With item 3 in place, BRAS EDT/C80 errors change by less than 1 jnd across the three handover times.
+5. A flat-room test scene matches the Table 4.1 specular sum within ±1 dB.
+
+**Requirement notes from the consult:** NFR-6 in the PRD is Persistence. Offline/realtime equivalence comes from AQ4, AX5 and Phase 10. Shoebox-only comes from AQ1/F3, not the PRD ("any environment"; B2 plans ray/beam tracing).
+
+**Questions for Maisara and the Expert (open):**
+1. Is the rendered early part meant to have no scattered energy (X)?
+2. Is E_target meant to be independent of s?
+3. Does the Annex air table agree with the ISO 9613-1 values AX4 uses? 50 % RH falls between rows that differ ≈ 1.5× at 4–8 kHz.
+4. Should t_mix,e also require a realised k_eff ≥ 19?
+5. If a ray-traced decay is adopted, room-averaged T60_b (cache stays position-independent) or receiver-specific?
+
+## docs/phases/phase-04.md — 2026-11-05 (expert consultation, rounds 2–4: Kuttruff added, advocate, rebuttal; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Corpus c1b171f adds `kuttruff-room-acoustics.md` (Kuttruff, *Room Acoustics*, 6th ed., 2017). The other
+13 files are byte-identical to 22dc9dd (git diff), so earlier citations stand.
+
+The four reports are kept verbatim in `docs/review/phase-04-consult/`:
+1. SME consult, 22dc9dd
+2. SME re-consult with Kuttruff
+3. advocate cross-examination
+4. SME rebuttal
+
+The advocate was given the SME reports as written, without the main session's summary. The SME answered the advocate's questions in one rebuttal round.
+
+**Main-session spot checks:**
+- Kuttruff Table 5.2 (Eyring and iteration columns) and Table 6.1 (m of air at 20 °C) match the values used.
+- phase-12 expects slap echoes in `courtyard`.
+- Izhaki "Early reflections (ERs)": ER level indicates room size; ERs carry most of the spatial information.
+- Not independently re-derived by the main session: the open_field scattering integral, the q_d flat-room value, γ²-Eyring. The SME and the advocate each computed these and agree.
+
+**Corrections the SME made to its own earlier reports:**
+- Its proposed Eyring check (s = 1, uniform α, ±5 %) would fail. Kuttruff Table 5.2 puts Lambert rooms 5–10 % above Eyring.
+- Its ray-tracing cost was understated (Kuttruff §9.8: 10⁵–10⁶ particles).
+- Millington–Sette is rejected (Kuttruff §5.4).
+- Eyring with arithmetic ᾱ is the correct diffuse-field result. The error comes from lost diffuseness, not uneven α as such (§5.2, §5.4).
+- In the rebuttal it withdrew three things: the a* tail decay (item 3), the specular-share t_mix (item 4) and q_d (item 5). It also accepted that its check C3 was circular.
+
+| id | final position (SME and advocate) | agree? | status |
+|---|---|---|---|
+| X-a | The hybrid IR has no scattered energy before t_mix. The step is ≈ 0.9 / 1.8 / 4.9 / 8.7 dB for s = 0.05 / 0.1 / 0.25 / 0.4 in the AQ10 room. The EDC gate cannot see it (Eq. 6.4). Add a reported-only 10 ms envelope-step metric. | yes | open: needs Maisara's decision (Q1) |
+| X-b | AX16 energy accounting is exact for uniform α (Kuttruff §5.2). A bias of unbounded sign and size appears with uneven α (§4.5, §4.6 Gilbert, Table 5.2). Phase 05 groups errors by absorption contrast. | partly | disputed: an unquantified per-path hit-count residual even with uniform α |
+| 1 | Keep Eyring in 04. Add radiosity a* (§5.7) as a Phase 05 reference in `tools/acoustics`; promote on BRAS evidence only. γ²-Eyring for information only: it moves T away from the iteration in Table 5.2 cases 2 and 4. | yes | resolved (to adopt via /fix-plan: phase-05 scope line) |
+| 2 | Keep AX4. Report a humidity bound in Phase 05: 8 kHz −11.6 % / +17.2 % at 40 / 70 % RH in a 10 000 m³ room (Kuttruff Table 6.1, Eq. 5.24). Add a validation-only render_cli override and an `AirAbsorption` test against Kuttruff Table 6.1. No UI display. | yes | resolved (to adopt); Q3 answered by that test |
+| 3 | Inject early scattered energy (Lambert, Eq. 4.24, Gilbert §4.6) as a Phase 05 Python reference hybrid. Promote to `src/sim` in a later phase only if EDT/C80 errors drop. The tail decay source is decided by item 1's evidence, not a*. | yes | resolved (direction); open: Maisara's Q1 |
+| 4 | Keep the k_eff ≥ 19 rule and add a realised-k condition. No specular-share re-derivation (0.7–1.4 s, up to 8·10⁴ images). Compare 80 / 140 ms handovers in Phase 05. | yes | resolved (to adopt); the rule itself remains an Expert question |
+| 5 | Realised k plus capped ISM extension (§4.1, Eq. 4.3). Report per-axis energy shares, not q_d (q_d ≈ 0.85 for a 1-D flat-room field). No diffusion-equation fallback (§4.6). | partly | disputed: per-axis shares are also only necessary (they miss three-axis flutter); no threshold; cap to be measured against AQ10 |
+| OF | Keep E_b = 0 for open_field. Recast "< −60 dB after 50 ms" as an AX16 consistency check, not physics. Lambert floor scattering with the fixture geometry gives −23 to −43 dB per band (exact integral). AX17's broadband s overstates LF ground scattering. | yes | resolved (to adopt via /fix-plan) |
+| C1 | The a* test reproduces Table 5.2 by calling the solver directly (α = 0 is forbidden in scenes by AQ3). | yes | resolved |
+| C3 | The s = 1 hybrid test is circular. Mixed-s reference: an independent Kuttruff §9.8 ray tracer, plus Vorländer Table 4.1 (plot-read). | yes | resolved |
+| C5 | Flat-room (Eq. 4.3) and 1/t (Eq. 4.16) tests with α ≥ 0.01, air absorption and the ISM cap. | yes | resolved |
+
+**Remaining for Maisara:**
+1. Is the early part meant to have no scattered energy (X-a, items 3 and 4)?
+2. Is E_target meant to be independent of s?
+
+**Remaining for the Expert:**
+- the mixing-time rule;
+- a diffuseness criterion with a threshold (none in the corpus);
+- the X-b residual;
+- the gain of early scattering in real rooms (Phase 05).
+
+**Caveat:** the SME and the advocate run on the same underlying model. Their convergence is a useful sign but not independent verification.
+
+## docs/phases/phase-04.md (with phase-05, phase-06, phase-10, BUILD_PLAN) — 2026-11-05 (/fix-plan, consultation applied; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+This run applied the resolved items of the fresh pass (B1–B4, AX5 wording) and of the expert consultation (rounds 1–4 above).
+- Plan-editor: 3 rounds. Interrogator: one decision round and 3 science-check rounds, the maximum.
+- Commits: a016d0a (round 1, D1–D14 pending), then the round-2 commit, 380ef01 (cap counting, flat-room sum tolerance), and 048edf0 (FQ corrections).
+- Change-log row: BUILD_PLAN §6, 2026-11-05, "Phase 04 expert consultation applied".
+- New assumptions: AX21 (specular-only early part is a known deficit; Maisara decided on 2026-11-05 that it should contain scattered energy) and AX22 (realised-k switch and image-count cap). New backlog: B11, B12.
+- No contract change and no golden changed.
+
+**Decisions**
+
+| D | decision | how decided |
+|---|---|---|
+| D4 (air) | 4mV in the denominator; equivalent to exp(−mR) in the a* kernel, and factors out for γ²-Eyring | **verified** by the interrogator (Kuttruff §4.5, Eq. 5.55, Eq. 5.29) |
+| D9 (decay) | remove 60·0.010/T60_b dB between the envelope-step bins | **verified** (Vorländer Eq. 11.13) |
+| D6 | switch rule: expected-k t_mix; ISM-only fallback to the cap if k_real < 19 at 500 Hz–2 kHz; a single jump point, with the crossfade dip measured in Phase 10 | Maisara. Options (a)–(c) had CONDITIONS VIOLATED or PRODUCT MATTER verdicts. Only (d) was continuous, and it dropped the sparse-room fallback. |
+| D1–D3, D4 (γ²), D5, D7, D8, D9 (bins, R), D10–D14, cap counting, flat-room sum tolerance, FQ-01 (96 cube elements), FQ-03 (gate bins with ≥ 19 expected images) | as listed in the §6 row | Maisara (no corpus answer: PRODUCT MATTER or NOT CHECKABLE), mostly following the interrogator's lean |
+
+The main session computed one fact from the code: the repository's ISO 9613-1 implementation (`src/sim/AirAbsorption.cpp`) matches Kuttruff Table 6.1 within 0.7 % at 0.5–8 kHz and 40/50/70 % RH (6.83 against 6.84·10⁻³ m⁻¹ at 4 kHz / 50 %). So the code is consistent with Kuttruff, and the coarse Vorländer Annex bins account for the disagreement between the two books. This also corrects the builder answers B1 (0.028 dB/m should be ≈ 0.0297) and B2 (T at 125 Hz ≈ 160 s, so the original "160 s" was right for that band).
+
+**Science checks**
+- Round 1: FP-01–FP-15. Three major CONDITIONS VIOLATED: the flat-room conditions, rigid walls for Eq. 4.16, and the all-Lambert Eq. 4.28. All fixed.
+- Round 2: FQ-01–FQ-10. Three major: the 88-element cube layout, the γ² "≤ 0.3 %", and the early 1/t bins. All fixed.
+- Round 3: nothing WRONG. Remaining findings:
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| FQ-11 | NUMBER | γ² "≤ 0.3 % in case 4, 0.38 against 0.40" | IMPRECISE | Kuttruff Eqs. 5.33–5.34: 0.34 %. 0.38 is interpolated, not a Table 5.1 row. | minor | open |
+| FQ-12 | NUMBER | one-absorbing-wall gate ±1 dB on bins with ≥ 19 expected images, "expected scatter ≤ 1 dB" | CONDITIONS VIOLATED | Vorländer Eqs. 11.7–11.9/11.17: σ ≈ 1 dB at 19 counts, so ±1 dB is a 1σ bound and about a third of bins would fail under that model (AX11 uses tol/3). Lattice counts are deterministic, so the corpus doesn't settle it. The main session's own recommendation caused this. | major | open: needs Maisara (e.g. ≥ 171 images for 3σ, or ±3 dB) |
+| FQ-13 | NUMBER | crossfade "≈ 4.4 dB at 10:1" | IMPRECISE | the mid-fade dip is 3 dB at any ratio; 4.4 dB is the largest dip (g ≈ 0.24) relative to power-linear interpolation, which the text should name | minor | open |
+| FQ-14 | FACT | "Table 6.1 prints 2–3 significant figures" | IMPRECISE | it prints two decimals (2–4 significant figures); the ±0.8 % is unaffected | minor | open |
+
+**Still open:**
+- FQ-11 to FQ-14 (FQ-12 needs Maisara's choice; the other three are wording).
+- Expert questions: the mixing-time rule, a diffuseness threshold, the X-b residual, and the size of early scattering in real rooms (Phase 05).
+- Follow-up: AQ10 and phase-13 still state the rebuild budget "order 30".
+
+## docs/phases/phase-04.md (with phase-05, phase-10, BUILD_PLAN) — 2026-11-05 (/fix-plan, FQ-11–FQ-15; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+**FQ-12: decided by the `decider` agent.** It was run under `.claude/agents/decider.md` as a general-purpose agent, before that agent type had loaded. Maisara accepted the proposal by running /fix-plan on it.
+- The decision: gate the one-absorbing-wall test at ±1 dB per **100 ms** bin. The bins start at t_on = max(t₁₉, (2L − z_s − z_r)/c, |z_s − z_r|/c) and end at the AX22 cap. The level is analytic, from the two image planes (Kuttruff §4.3, Eqs. 4.14–4.16), with no fitted constant. A partial final bin is gated if it holds ≥ 171 images. At least 3 gated bins are asserted.
+- Rejected:
+  - ±1 dB per 10 ms bin (1σ; 1.3 % of geometries pass);
+  - ≥ 171 images per 10 ms bin (vacuous: reached only after the cap);
+  - ±3 dB (12–18 % of correct geometries fail, and the tolerance is the size of a real bug).
+- The lattice statistics were computed by the decider (not corpus).
+
+**Interrogator verification** (round 1, nothing WRONG):
+- t₁₉ = 0.257 s.
+- The first 100 ms bin holds 227 images, which is ≥ 190.
+- σ = 0.315 dB, so 3σ = 0.94 dB.
+- The partial-bin threshold of 171 gives 3σ = 0.996 dB.
+- The image-plane onset terms and the absolute level are consistent with Kuttruff §4.1, §4.3 and Eq. 9.24 (derived).
+- 8 full bins plus a gated partial bin fit before the 37 880-image cap (t = 1.104 s).
+- FQ-13 and FQ-14 are fixed.
+- FQ-11: one minor finding.
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| FQ-15 | NUMBER | γ² sensitivity "≈ 0.34 % (0.38 interpolated)" | IMPRECISE | linear interpolation gives γ² = 0.376, and Kuttruff Eqs. 5.33–5.34 then give ≈ 0.40 % | minor | resolved (main session: "≈ 0.4 %, γ² ≈ 0.376" in phase-05 and the §6 row) |
+
+**Status:** FQ-11–FQ-15 resolved. Commits: b9309b1, plus the FQ-15 commit.
+
+**Still open:**
+- Expert questions: the mixing-time rule, a diffuseness threshold, the X-b residual, and the size of early scattering in real rooms (Phase 05).
+- Follow-up: AQ10 and phase-13 still state the rebuild budget as "order 30".
+
+## docs/phases/phase-04.md (with phase-05, BUILD_PLAN) — 2026-11-05 (/fix-plan, former Expert questions closed; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+**Decisions.** All are product choices by the `decider` agent, accepted by Maisara on 2026-11-05. Its reports are in `docs/review/phase-04-consult/`: report 5 (D1–D4) and report 7 (gate details).
+
+- **D1 (mixing time).** The "Expert may revise" clause is closed. Phase 05 arbitrates by running the three handovers on the Phase 04 IR and on the reference-hybrid IR; the hybrid run is the arbiter.
+- **D2 (diffuseness threshold).** Closed: no code path or gate needs a threshold, and Kuttruff §8.5 gives none. Eyring's diffuse-field presumption is measured in B12.
+- **D3 (X-b).** Bounded by ΔL_b in Phase 05, read against a 1 dB rule.
+- **D4 (B11 promotion).** Two checks:
+  - (A) an independent ray-tracer gate;
+  - (B) the BRAS paired comparison must be "not worse". This was relaxed from "better" on the decider's challenge, accepted by Maisara.
+- **Report 7 (gate details):**
+  - δ = 0.25 jnd, with SE ≤ threshold/3;
+  - a paired pilot of n ≥ 51 runs, then R ≥ max(144·σ₁,Δ², 9·σ₁,Δ,room², 9·σ₁,Δ,pair²);
+  - ray-tracer gate k ≥ 684 (tracer 3σ = 0.498 dB, 0.5 dB systematic budget);
+  - N₀ = ⌈254·V⌉ (Vorländer Eq. 11.12), doubled up to 16·N₀ and then fail;
+  - α = 0.15 for the s-cases.
+- **Verified by the interrogator:**
+  - DN3: Table 5.2 layouts 4–6 run at s = 0.1, 0.25 and 0.4 plus the s = 1 anchor (s = 1 alone is circular, ledger C3);
+  - DN4: the 10×20×30 m room, in Table 5.2's notation.
+
+**Science checks.**
+
+- **Round 1** (report 6), nothing WRONG:
+  - FE-01, major: zero-margin "not worse"/"lowers" can be decided by residual paired tail noise. Fixed by δ and the SE rule.
+  - FE-02, major: k = 171 left no systematic budget. Fixed by k ≥ 684.
+  - FE-03 to FE-07, minor or none. Fixed.
+- **Round 2**, nothing WRONG:
+  - all FE items confirmed fixed, with the arithmetic redone (144σ², 0.135 %, 0.498 dB, N₀ = 253.9·V, the false-failure figures);
+  - two minor items, below.
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| FG-01 | NUMBER | "0.135 % … at a true Δ on the wrong side of zero" | IMPRECISE | 0.135 % is the false failure at Δ = 0 for "not worse"; for "lowers" it is the false pass at Δ = 0 and the false failure at Δ = −2δ; the two-sided rule passes falsely with 0.27 % | minor | resolved (main session: error rates stated per rule, phase-05) |
+| FG-02 | FACT | "residual tail noise survives the pairing (Vorländer §11.2.5)" | IMPRECISE | §11.2.5 concerns ray-tracing fluctuations; survival follows from the tail starting before 80 ms and the EDC integral (Vorländer Eq. 6.4; derived) | minor | resolved (main session: reason restated, §11.2.5 cited by analogy) |
+
+**Status:** all former Expert questions are closed in the plan; FE-01 to FE-07, FG-01 and FG-02 are resolved.
+
+**Remaining:**
+- Empirical, to be settled by Phase 05 or the B11 phase: BRAS room coverage, σ₁,Δ, ΔL_b, and the ray-tracer bias. Each has a decision rule in the plan.
+- Old follow-up: AQ10 and phase-13 still state the rebuild budget as "order 30".
+
+## docs/phases (phase-04, 05, 05b, 08, 10, 13) and BUILD_PLAN — 2026-11-05 (/fix-plan, open items closed; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d; external sources: researcher report 9)
+
+Sources, kept verbatim in `docs/review/phase-04-consult/`:
+
+| report | what it is |
+|---|---|
+| 8 | decider, open items |
+| 9 | researcher, BRAS and priors; external, cited by DOI |
+| 10 | interrogator, check of the report-8 diff |
+| 11 | decider, DN-1, FR-01–05 and the researcher findings |
+| 12 | interrogator, pre-check of report 11 |
+
+The researcher's second-dataset search was still running when this entry was written.
+
+**Decisions, all accepted by Maisara on 2026-11-05**
+
+*Report 8*
+- **AQ10:** the budget is a position-only rebuild, measured as workloads W1 (no fallback) and W2 (AX22 fallback at N_cap). Order 30 now applies only to omni-early.
+- **N_cap:** ν_r(i₀) for the largest i₀ ≥ 10 that meets W2. Frozen, with a sensitivity report at ν_r(2i₀).
+- **Measurement-rule repairs:**
+  - room selection is committed before any result is seen;
+  - zero suitable rooms: Phase 05 is done without BRAS, and the measured part moves to 05c;
+  - R > 2 000: run if ≤ 24 h, otherwise δ goes to Maisara;
+  - branches for an (A) failure and for tracer bias.
+- **New v1 phase 05b**, early scattered energy (B11), placed before 08.
+- **B12 and B10:** decision rules added.
+- **AQ9 failures:** go to Maisara.
+- **Switch-point dip:** gated ≤ 1 dB (decider challenge, accepted).
+
+*Report 11*
+- **DN-1, rendering:** equivalent-reflection pulses at the Kuttruff Eq. 4.6 density, with a floor of one pulse per 1 ms step.
+- **DN-1, patches:** a frozen absolute patch size, floor 0.343 m.
+- **FR-01:** the exact Phase 10 dip gate.
+- **FR-02 to FR-05:** applied.
+- **BRAS:** results are evidence, not validation; G is not evaluable; B12 uses the initial α set only.
+- **C1 and C2:** |ΔL_b,tr| trigger; BRAS-only B12 results labelled "input-limited".
+- **Second measured dataset:** required before the Phase 13 beta.
+
+*DN-A*
+- **Window:** the padded whole early part, verified by the interrogator.
+- **Tolerance:** 3σ of the exact random-sign scatter, gated where ≤ 1 dB (the interrogator's proposal, adopted by Maisara).
+
+**Verification**
+- **Report-8 diff (report 10):** nothing WRONG.
+  - FR-01, major: the f ≤ 0.41 bound assumed equal segment powers; fixed by report 11.
+  - FR-02 to FR-05: minor.
+  - DN-1 rendering option (c), envelope only: rejected as WRONG for audio.
+- **Report-11 pre-check (report 12):** two WRONG items, both corrected before applying:
+  - the energy-exactness claim was valid only in the tap domain;
+  - the continuity threshold: 0.79 gives a 0.48 dB dip, and 0.59 gives 1 dB.
+- **Report-11 diff:** nothing WRONG. FS-01 (signed trigger) and FS-02 (2.6×, not 3×) are fixed. DN-A tolerance option (b) was rejected as the wrong fluctuation model.
+- **Main session:** re-ran the FR-01 bounds (0.411 / 0.324 / 0.206) and the density figures (1 300 s⁻¹; t_floor 109 / 17 ms).
+
+**Deliberately left to the phase sessions (low stakes)**
+- DN-B: the room set for the t_mp context.
+- DN-C: which of the two Phase 10 self-test forms to use.
+
+**Status:** no open plan decisions.
+
+**Waiting on data**
+- BRAS material files (Phase 05).
+- Paired-comparison noise (Phase 05).
+- Tracer results (05b).
+- The second dataset, which Maisara will choose from the researcher's candidates.
+
+## docs/phases/phase-05d.md (new), phase-05, 05b, 13, BUILD_PLAN, THIRD_PARTY — 2026-11-05 (second measured dataset; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d; external sources: researcher reports 13, 14, 16, 17)
+
+Sources, verbatim in `docs/review/phase-04-consult/`:
+
+| file | agent | content |
+|---|---|---|
+| 13 | researcher | candidate datasets |
+| 14 | researcher | Arni, Bologna and May et al. verified |
+| 15 | decider | dataset choice |
+| 16 | researcher | BRAS CR2–CR4 materials and priors |
+| 17 | researcher | citations and licences verified |
+| 18 | decider (report 16) | 05d D1–D7 |
+| 19 | interrogator | 05d check |
+| 20 | decider (report 17) | follow-ups |
+| 21 | interrogator | final 05d check |
+
+Draft email for the DELTA panel report: `docs/review/drafts/delta-report-request.md`. Not sent; Maisara sends it.
+
+**Decisions (all accepted by Maisara, 2026-11-05)**
+
+*Datasets and phase structure*
+- Second source: Arni and dEchorate (CC BY 4.0, verified on the live records).
+- New phase 05d, after 05. Phase 05b is independent of it; Phase 13 depends on it.
+- Labels: "evidence, not validation", plus the input-matched distribution test.
+- The measured-α bar is kept for the word "validated". Commissioning a measured room is decided after 05/05d.
+- Wording: "compared with measured rooms (evidence)".
+- §1 BRAS row corrected (decider challenge).
+
+*Phase 05d rules*
+- D1–D7:
+  - seeded per-n sample and configuration-disjoint pairs;
+  - log-ratio d with the a* orientation;
+  - signed 500 Hz–2 kHz mean;
+  - Annex scattering and α rules, with an s/2 sensitivity run;
+  - Arni atmosphere rule;
+  - dEchorate reflection rules;
+  - descriptive output when too few pairs.
+- Mean |d̄| and the hybrid-IR EDT/C80 are printed.
+- Follow-ups:
+  - noise-model d = 0 reference, and RMS of the measured placement spread;
+  - selector at a common atmosphere;
+  - "α-limited" ΔL above α 0.48;
+  - 20 dB per-band amplitude-sum isolation.
+- Last choices:
+  - dEchorate pairs need equal perimeter against perpendicular rigid surfaces; panel gaps are reported;
+  - the noise model matches each measured IR;
+  - the level window is centred on the predicted arrival.
+
+**Verification**
+- **Check 19:** nothing WRONG in the plan text.
+  - Major findings: B1 (atmosphere vs. selector), B2 (edges against perpendicular surfaces), B3 (2 dB bound only for α ≤ 0.48), B4 (coherent leakage 2.4/3.3 dB at 10 dB isolation). All fixed.
+  - Minor findings: B5–B9, all fixed.
+  - It also corrected the main session: the recomputed humidity effect of 0.89 % was wrong (air counted twice). The decider's 0.95 % stands.
+- **Check 21:** B1–B9 confirmed fixed; arithmetic confirmed: 0.480 / 0.594; +0.828 / −0.915 dB; 1.752 dB; 0.0181. Nothing WRONG.
+  - N1 (major): leakage outside the counted window. Fixed by Maisara's choice: the level window is centred on the predicted arrival and neighbours are counted over ±(2.5 ms + h_b).
+  - N2 (major): the perimeter rule must count only rigid surfaces (Kuttruff §8.7). Fixed.
+  - N3 (minor): Eyring cancellation is exact only at a common atmosphere. Fixed.
+- This was the third check round, the /fix-plan limit. The N1–N3 fixes follow the interrogator's stated readings and Maisara's choice, and were not re-checked.
+
+**Status:** phase-05d has no open items.
+
+**Remaining**
+- Empirical: which dEchorate configurations include the omni source (in the dataset metadata, read by the 05d session), the BRAS areas, and all measured numbers.
+- Maisara: send the DELTA request.

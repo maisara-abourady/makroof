@@ -16,7 +16,8 @@ crossfade. Phase 10 builds movement on top of that swap.
 - **AX18**: the crossfade law is chosen per request: **equal-gain** (linear complementary ramps) for
   position updates, where consecutive IRs are highly correlated; **equal-power** (sin/cos ramps) for
   switches between unrelated IRs (Phase 09 mode switch, Phase 10 large jumps), because equal-gain on
-  uncorrelated outputs dips ≈3 dB mid-fade (Vorländer §9.2.1, §15.1.1). The swap API must support both laws.
+  uncorrelated outputs dips ≈3 dB mid-fade (uncorrelated broadband signals add in power, Vorländer §4.3
+  Eq. 4.14–4.16; cf. §9.2.1, §15.1.1). The swap API must support both laws.
 - **AX1**: pre-roll from Phase 03 (`kAlignPreRollSamples`) is part of the reported latency.
 
 ## Scope

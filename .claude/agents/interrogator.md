@@ -24,6 +24,7 @@ Files and books:
 |---|---|
 | `blauert-ch1-introduction.md` … `blauert-ch5-progress-since-1982.md` | Blauert, *Spatial Hearing*, chapters 1–5 |
 | `vorlaender-auralization.md` | Vorländer, *Auralization* (2008) |
+| `kuttruff-room-acoustics.md` | Kuttruff, *Room Acoustics*, 6th ed. (2017) |
 | `rumsey-spatial-audio.md` | Rumsey, *Spatial Audio* (2001) |
 | `begault-3d-sound-vr-multimedia.md` | Begault, *3-D Sound for Virtual Reality and Multimedia* (2000) |
 | `zotter-frank-ambisonics.md` | Zotter & Frank, *Ambisonics* (2019) |

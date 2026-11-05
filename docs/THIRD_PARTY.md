@@ -40,3 +40,12 @@ checksum in a script. Python requirements are pinned by version and SHA-256 (`to
 
 PFFFT (FFT), an HRTF dataset and the BRAS measured-IR dataset arrive
 in later phases. Add their rows when they are pinned.
+
+Validation datasets for phase 05d (decider report 15, accepted by Maisara, 2026-11-05; facts from
+researcher reports 13/14, external). The 05d session pins them, confirms the licence on the live record
+and stores it in the manifest:
+
+| Dataset | Version / pin | Licence | How it is pulled in | Notes |
+|---|---|---|---|---|
+| Arni (Aalto variable-acoustics room): Prawda, Schlecht, Välimäki, "Calibrating the Sabine and Eyring formulas", JASA 152(2):1158–1169 (2022), DOI [10.1121/10.0013575](https://doi.org/10.1121/10.0013575) | Zenodo [10.5281/zenodo.6985104](https://doi.org/10.5281/zenodo.6985104) (omni LS01 campaign); SHA-256 manifest set in phase 05d | CC BY 4.0, validation only, not shipped, not committed, changes: shoebox mapping. **Licence to be confirmed on the live record by the 05d session.** | `tools/validation/fetch_arni.py`, by checksum, cache `~/.cache/makroof/arni` | Each committed report derived from it carries the same attribution. |
+| dEchorate: Di Carlo, Tandeitnik, Foy, Bertin, Deleforge, Gannot, "dEchorate: a calibrated room impulse response dataset for echo-aware signal processing", EURASIP J. Audio Speech Music Process. 2021:39 (CC BY 4.0; citation and Zenodo CC BY 4.0 licence verified, researcher report 17), DOI [10.1186/s13636-021-00229-0](https://doi.org/10.1186/s13636-021-00229-0) | Zenodo [10.5281/zenodo.6576203](https://doi.org/10.5281/zenodo.6576203) v2.0 (omni sources only, AQ8); SHA-256 manifest set in phase 05d | CC BY 4.0, validation only, not shipped, not committed, changes: shoebox mapping. **Licence to be confirmed on the live record by the 05d session.** | `tools/validation/fetch_dechorate.py`, by checksum, cache `~/.cache/makroof/dechorate` | Each committed report derived from it carries the same attribution. |

@@ -10,18 +10,20 @@ instructions: `docs/phases/phase-XX.md`.
 
 1. Read, in order: this file → `docs/BUILD_PLAN.md` (§0 status, §2 assumptions, §3 flags) → the
    phase file you were asked to execute → the PRD sections the phase file cites.
-2. Check that every phase this one depends on is `done` in the status table. If one isn't, stop and
+2. If the phase file has a **"Raise with Maisara"** section, raise every item in it in your first
+   message and again in the PR description. Maisara does not track these herself.
+3. Check that every phase this one depends on is `done` in the status table. If one isn't, stop and
    report it. Don't build on unfinished phases.
-3. Set the phase to `in progress` in `docs/BUILD_PLAN.md` §0 and commit that first.
-4. Do the phase's scope and nothing outside it. If you find work that belongs to another phase,
+4. Set the phase to `in progress` in `docs/BUILD_PLAN.md` §0 and commit that first.
+5. Do the phase's scope and nothing outside it. If you find work that belongs to another phase,
    write it under "Follow-ups" in your PR description. Don't do it.
-5. When every **automated** acceptance criterion passes in CI on Linux, macOS and Windows:
+6. When every **automated** acceptance criterion passes in CI on Linux, macOS and Windows:
    - set the status to `done` (or `blocked (reason)`), fill in the PR link, date and short notes;
    - add a row to the change log (§6) if you changed an assumption, a threshold or a golden file;
    - put the phase's **listening checklist** in the PR description for Maisara, with where to
      find the listening-pack artifact;
    - put the phase's **contractor review focus** in the PR description.
-6. Stop. Don't start the next phase.
+7. Stop. Don't start the next phase.
 
 If a phase can't be finished in two sessions, split the remainder into `phase-XXb.md`, add it to
 the status table, and stop.
