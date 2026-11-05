@@ -11,8 +11,15 @@ hand-tuned.
 
 ## Assumptions in force
 
-- **AQ9** thresholds against measured IRs: **T30 and EDT within ±10%, C80 within ±2 dB**, each averaged
-  over the 500 Hz, 1 kHz and 2 kHz bands. Also reported per band, without gating.
+- **AQ9** thresholds against measured IRs: **T30 and EDT within ±10 %, C80 within ±2 dB, on the mean of
+  the absolute per-band errors over 500 Hz, 1 kHz and 2 kHz** (absolute deviations, as in the
+  round-robin rating of Vorländer §11.5, which averages |sim − meas|/jnd over source/receiver pairs;
+  here per pair over bands). EDT and C80 limits are 2 jnd (Table 6.1: 5 %, 1 dB, stated for
+  500–1000 Hz, so the report also prints the 500–1000 Hz mean); T30 ±10 % is a chosen tolerance (no T
+  jnd in the corpus); it is 2 × a working T jnd of 5 % (expert recommendation, Seraphim 1958; to verify
+  against ISO 3382-1) and above single-position measurement scatter of T30, ≈ 2–3.5 % at 500 Hz–2 kHz
+  for T = 0.8 s (ISO 3382-2 estimate; constants to verify). Signed per-band deltas are reported without gating (their sign shows bias). The
+  report also gives the mean over the source/receiver pairs of each room.
 - **AQ2** method under test. **NFR-8**: no per-scene factors. If a room fails, report it.
 
 ## Data
@@ -28,9 +35,29 @@ hand-tuned.
 - Before writing code, the session must read the BRAS documentation and record in
   `docs/validation/bras_mapping.md` which scenes were chosen and why. Pick the rooms whose geometry is
   closest to a rectangular box (likely the small seminar room and similar). State how each real room was
-  reduced to a shoebox: dimensions so that the shoebox **volume and total surface area** match the
-  documented room as closely as possible; materials mapped surface-by-surface with area-weighted
-  averaging; and which BRAS material set is used. Use the **initial/as-documented** absorption data as
+  reduced to a shoebox, by these generic rules, and which BRAS material set is used:
+  - **Dimensions:** keep the mean floor-to-ceiling height h, always defined as h = V / documented floor
+    area; solve the floor from a·b = V/h and a + b = (S − 2V/h)/(2h), the longer side
+    along x (AQ1 axes). A real solution exists iff S ≥ 2V/h + 4√(V·h); otherwise use the square floor
+    a = b = √(V/h) (the smallest S for that V and h) and report the S error. With this h the box keeps
+    the room's floor and ceiling areas, total wall area and plan perimeter exactly; only the split
+    between x- and y-walls is approximate, and the floor and ceiling keep their documented α under the
+    face rule (expert recommendation, outside the corpus). Near-square plans sit close to the existence
+    bound, so the square-floor fallback may trigger on small errors in the documented S (harmless, S
+    error < 1 %; report it). Choosing to keep h is a
+    product choice (the corpus statistics, Vorländer Eq. 4.22, 4.23, 4.28, depend only on V, S and ᾱ;
+    individual dimensions enter through the image lattice, §11.3.3).
+  - **Absorption:** assign each documented surface to exactly one box face, the one whose outward
+    normal is closest to its own; per band, α_face = ΣSᵢαᵢ / S_face over the assigned surfaces, so the
+    absorption area A (Eq. 4.30) is conserved per face and in total and, with S matched, ᾱ and the
+    Eyring T (Eq. 4.28, 4.32) are preserved; clamp α_face ≤ 1 and report every clamp and the A it
+    loses. (An area-weighted mean ΣSᵢαᵢ/ΣSᵢ does not conserve A unless face areas equal mapped areas.)
+  - **Scattering:** per band, s_face = ΣSᵢ(1−αᵢ)sᵢ / ΣSᵢ(1−αᵢ) over the assigned surfaces (weighted by
+    reflected energy, Vorländer Eq. 3.23–3.24), then reduced to one broadband s per face by AX17 (mean
+    of 500 Hz, 1 kHz, 2 kHz). Running without scattering is not an option (Vorländer §11.5
+    Round-robin II/III, §11.6).
+
+  Use the **initial/as-documented** absorption data as
   the primary run. If the dataset also provides absorption values fitted to the measurements, run them as a
   secondary, clearly labelled run. Fitted data partly includes the answer, so it isn't proof of accuracy.
 - If no BRAS room can be reasonably reduced to a shoebox, the phase is `blocked`. Report it. That's
@@ -40,15 +67,88 @@ hand-tuned.
 
 1. `tools/validation/fetch_bras.py`, `bras_manifest.json`, `docs/validation/bras_mapping.md`.
 2. `tests/scenes/validation/bras_<room>_<src>_<rcv>.json` — contract scenes for the chosen pairs
-   (source and receiver positions mapped into the shoebox frame).
+   (source and receiver positions mapped into the shoebox frame so that the real source–receiver
+   distance r and the source and receiver heights above the floor are kept; r enters C80 through the
+   direct sound, Vorländer Eq. 6.20, and the heights fix the floor/ceiling reflection delays).
 3. `tools/validation/run_validation.py` — renders each scene with `render_cli --mode omni --ir`,
    computes ISO 3382 metrics for simulated and measured IRs with `tools/acoustics`, and writes:
    - `docs/validation/report-phase05.md`: a table per scene with band metrics, deltas and an AQ9
      pass/fail summary, plus EDC overlay plots saved as PNG next to the report (matplotlib, pinned).
-   - `tests/golden/validation_baseline.json`: the current deltas, used for regression tracking.
+   - `tests/golden/validation_baseline.json`: the baseline simulated metrics for the nightly gate
+     (item 4) and the recorded sim–meas errors.
+
+   Comparison conditions, applied identically to simulated and measured IRs with the same
+   `tools/acoustics` octave filter bank:
+   - **Time origin:** the direct-sound arrival of each IR (Vorländer §6.4.2 Eq. 6.5 t₀), detected the
+     same way in both: first sample within 20 dB of the broadband peak (ISO 3382-1 practice, outside
+     the corpus). Not file t = 0, not the peak sample. C80 (Eq. 6.7) and EDT are taken from it.
+     t₀ is detected on the squared broadband IR (|h|², threshold max − 20 dB) before band filtering, and
+     the same t₀ is used for all bands of that IR. Band filtering is applied to the full IR (keep a few
+     ms of lead-in), with zero-phase (forward–backward) filters or compensated group delay, before the
+     80 ms window and the EDT reference. Check the measured lead-in: nothing before the first arrival
+     (sweep distortion images, converter pre-ringing) may reach −20 dB (expert recommendation, outside
+     the corpus; ISO 3382-1 practice).
+   - **Measured EDC:** backward integration (Eq. 6.4) from the band's noise-floor intersection, with
+     noise-energy compensation (ISO 3382-1 practice; the corpus gives no procedure). Integrating to
+     file end without compensation biases T30 (e.g. ≈ +40 % by −5…−35 dB regression at noise −50 dB re the initial band
+     envelope energy, T = 1 s, 3 s file). Noise per band: the mean square of the band-filtered IR over
+     the last ≈ 10 % of the file, only if that segment is verified to be noise (not a fade or
+     truncation; flag otherwise); iterative crossing-point search (Lundeby et al. 1995); compensation
+     energy (A/k)·e^(−k·t_c) with k from the late slope near the crossing t_c; one correction only (no
+     additional noise subtraction); the same truncated and compensated energy is used in the late
+     integral of C80 (Eq. 6.7) (expert recommendation, outside the corpus; window and iteration
+     constants are implementation choices recorded in the report).
+   - **Simulated EDC:** integrated to the end of the IR (the noise-free decay at a −90 dB end leaves
+     ≈10⁻⁵ dB error at −35 dB, Eq. 6.4). A band whose IR ends (12 s cap) before the decay has fallen
+     62 dB is flagged (keeps the −35 dB point within 0.01 dB).
+   - **Usable range:** T30 is evaluated only if the band EDC reaches −35 dB at least 10 dB above the
+     band noise level (margin outside the corpus; it limits the noise in the squared band IR at the
+     −35 dB time to 0.4 dB; the effect on the integrated EDC is larger, ≈ 0.9 dB uncompensated). Otherwise T20 (−5 to −25 dB) is reported for that band, flagged; a 500 Hz–2 kHz band
+     without T30 is "not evaluable" and is excluded from the AQ9 T30 mean, never counted as a pass.
+     The noise level is referred to the decay line's intercept at t₀, not to the direct-sound peak. A
+     band that falls back to T20 is compared measured T20 with simulated T20, never with simulated
+     T30. If T20 also fails (−25 dB point less than 10 dB above noise) the band is "not evaluable" for
+     T and excluded from every T mean (T15 may be shown for information only); EDT and C80 stay
+     evaluable. If all three AQ9 bands are not evaluable for T, the pair's T30 result is "not
+     evaluable", not a pass.
+
+   The report also states:
+   - In Round-robin I (one band, PTB auditorium) simulated T was generally too long when users
+     estimated absorption themselves, traced to underestimated absorption; with measured absorption
+     agreement was much better (Vorländer §11.5). The corpus does not predict the sign for
+     as-documented data, so the report states the sign of the T30 bias per band.
+   - For each room the report states the Schroeder frequency under both constants: Vorländer Eq. 4.13,
+     ≈1200√(T/V), which f_S must greatly exceed; and Toole §4.3.1, 2000√(T/V), the middle of the
+     transition zone in large rooms and likely too low in small rooms. Deltas in bands below or within
+     the transition zone are read as evidence on the method's validity, not on the input data. Where
+     the two estimates differ, the report names the band it treats as the upper edge.
+   - Loudness matching (BS.1770) removes overall level, so listeners cannot judge strength G
+     (Vorländer Table 6.1, jnd 1 dB). The report gives the offset removed per pair (dB) as a property
+     of the playback; it is not a G error unless both IRs are calibrated to the same free-field
+     reference (Eq. 6.5). Where the data permit, G deltas are reported per band from the IRs.
+   - BRAS scattering data enter the scenes through AX17: one broadband s per surface. For a material
+     whose s rises from 500 Hz to 2 kHz (many Annex scattering rows do; some are flat or falling),
+     this overstates s at 500 Hz and understates it at 2 kHz, so per-band deltas in the AQ9 bands include an AX17 input
+     error, flagged next to them.
+   - Non-diffuseness indicators per room: the absorption contrast ᾱ(floor + ceiling) / ᾱ(walls), and
+     the decay curvature C = 100·(T30/T20 − 1) % for both IRs (a curvature above ≈ 10 % marks a
+     markedly non-straight decay; threshold to verify against ISO 3382-2). With absorbing floor and
+     ceiling and hard walls, expect T_sim < T_meas from this mechanism (Vorländer §4.4.2, Table 4.1;
+     expert recommendation, outside the corpus).
+   - Low-band filter bias: 63 Hz and 125 Hz values with B·T < 16 (B ≈ 0.71·f_c; Jacobsen's rule,
+     relaxed to ≈ 4 with time-reversed filtering) are flagged; EDT is affected sooner (expert
+     recommendation, outside the corpus).
 4. CI: a **nightly** workflow (`.github/workflows/nightly.yml`, `schedule` + `workflow_dispatch`) on
-   Linux. It runs the validation, uploads the report as an artifact, and **fails only on regression**
-   (any metric delta worsening by > 2 % relative to the baseline). Also run it once on the phase PR.
+   Linux. It runs the validation, uploads the report as an artifact, and **fails on any change of the
+   simulated metrics against the baseline simulation**, in either direction: any band's simulated T30
+   or EDT by more than ±2 % relative, or simulated C80 by more than ±0.2 dB (0.4 and 0.2 of the
+   Table 6.1 jnd; T30 has no corpus jnd and the jnds are stated for 500–1000 Hz, so these are
+   change-detection limits, not perceptual ones). The sim–meas errors (jnd-normalised,
+   |sim − meas|/jnd) are recorded in `validation_baseline.json` and reported, never gating. An
+   intended change, improvements included, updates the baseline only through
+   `tools/ci/update_goldens.py` with a reason. The render is deterministic (fixed `tailSeed`), so the
+   limits only absorb floating-point drift; a change that alters the tail's random draw sequence gives
+   a new realisation and needs a baseline update. Also run it once on the phase PR.
 5. An A/B listening pack: dry test material convolved with the measured IR and with the simulated IR,
    loudness-matched (BS.1770), named `A_*.wav`/`B_*.wav` with the key in a separate `key.txt`. Use
    public-domain or self-generated dry material only.
@@ -63,14 +163,26 @@ Expert**. It doesn't implement them.
 
 - [ ] `fetch_bras.py` verifies checksums. A corrupted file is detected (unit test with a tampered cached file).
 - [ ] The report generates reproducibly (two runs give identical numbers).
-- [ ] The nightly workflow runs green on the baseline and **fails** when a deliberate +5% T60 bias is injected
-      via an environment variable test hook (`MAKROOF_TEST_BIAS_T60=1.05`; the hook exists only in debug builds).
+- [ ] The nightly workflow runs green on the baseline. With the environment variable test hook
+      `MAKROOF_TEST_BIAS_T60=1.05` (scales the tail's per-band T60 only; the hook exists only in debug
+      builds) the gate **fails** on T30, and the simulated T30 in each of the 500 Hz, 1 kHz and 2 kHz
+      bands with T30 ≥ 3·(t_mix,e − t_dir,e) has risen by between +3 % and +5.5 % (the full +5 % when
+      the EDC's −5 dB point lies after t_mix,e; less when the early part covers part of the fit range,
+      e.g. ≈ +4.7 % at T = 0.5 s, t_mix 80 ms; below T ≈ 2.9·(t_mix,e − t_dir,e) the rise can fall
+      under +3 %, e.g. +2.5 % at T = 0.2 s, so shorter bands are reported only). At least one of the
+      three bands must meet the condition, else the test scene is unsuitable. The test does not assert on C80 or EDT (C80 moves only ≈ −0.21 dB at
+      t_mix = 80 ms, at the 0.2 dB limit).
 - [ ] Each chosen scene's AQ9 pass/fail is printed and stated in the report summary.
 
 Failing AQ9 thresholds does **not** fail CI. It goes in the BUILD_PLAN status notes as "AQ9 met in
 x/y scenes" and is escalated.
 
 ## Listening / manual checklist (Maisara)
+
+Note: the A/B pack uses the omni IRs, so only monaural attributes can be compared: reverberance,
+clarity and coloration. Level is removed by loudness matching. Coloration is heard under monaural
+conditions, which exaggerate reflection coloration compared with binaural listening (Blauert §4.4.2).
+Spaciousness (ASW, LEV) cannot be compared.
 
 Headphones, A/B pack, without looking at `key.txt` first:
 - [ ] For each pair, can you tell which is real? Note what differs: brightness, decay length, early
@@ -86,7 +198,11 @@ comparison method, and whether the conclusions in the report follow from the num
 
 - The documentation may be ambiguous about geometry or material assignment. Record each choice in
   `bras_mapping.md`; a reviewer can then challenge it.
-- Real rooms aren't shoeboxes, so expect misses. This phase exists to surface that early (F2, F3).
+- Expect misses. Geometrical acoustics is exact only in idealised cases, and a small room breaks its
+  large-room and broadband conditions at low frequencies (Vorländer §11.5). The round robins name the
+  absorption input data, the presence of a scattering model, and the chosen absorption and scattering
+  coefficients as decisive. The shoebox reduction adds a geometry error the corpus does not quantify.
+  This phase exists to surface that early (F2, F3).
 
 ## Definition of done
 

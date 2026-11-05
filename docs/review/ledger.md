@@ -504,6 +504,151 @@ Expert: the mixing-time rule itself (Vorländer §11.7 gives none); the E4 spars
 Open follow-up: AQ10 and `phase-13.md` still state the rebuild budget at "order 30", which no longer sets
 the hybrid IR's workload (AX20).
 
+## docs/phases/phase-05.md — 2026-11-05 (corpus 22dc9dd59cf2f4ced36440b3b3f4cc23576e56f0)
+
+`/interrogate` run on the Phase 05 plan (validation against measured BRAS IRs). The interrogator returned
+no WRONG item and so no blocker; by the `/interrogate` rule (re-run only for open blockers) no verification
+round was run on the builder answers below. Those answers are proposals: the target document is unchanged,
+and every row they touch stays **open** until Maisara decides and `/fix-plan` applies a change. Corpus note:
+the Schroeder-frequency constant differs between books (Vorländer §4.2.1 Eq. 4.13 ≈ 1200√(T/V) as a
+lower bound, "f_S ≫"; Toole §4.3.1 2000√(T/V)); cite the book whose constant is used.
+
+SOFTWARE (not rated): fetch_bras.py, SHA-256 manifest, cache under ~/.cache, DepositOnce download, CC BY-SA
+attribution, scene fixtures, run_validation.py, matplotlib pin, nightly.yml, artifact upload, tampered-cache
+test, two-run reproducibility, debug-only `MAKROOF_TEST_BIAS_T60` hook, A_/B_ naming with key.txt, AQ9
+failure not failing CI, BUILD_PLAN status note.
+
+### Issue ledger
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| V5-1 | NUMBER | AQ9: EDT within ±10 % | CORRECT | Vorländer §6.4.4 Table 6.1: EDT jnd 5 %, so ±10 % = 2 jnd; §11.5 Round-robin III: 1–2 jnd achievable. | none | — | resolved |
+| V5-2 | NUMBER | AQ9: C80 within ±2 dB | CORRECT | Vorländer Table 6.1: C80 jnd 1 dB; Fig. 11.33 caption: older 0.5 dB jnd replaced by 1 dB. | none | — | resolved |
+| V5-3 | NUMBER | AQ9: T30 within ±10 % | NOT CHECKABLE | Vorländer Table 6.1 lists no jnd for T/T30, nor does any other corpus book; ISO 3382-1 or a T-jnd study would settle it. | none | — | resolved (no defect) |
+| V5-4 | NUMBER | AQ9 metrics "averaged over the 500 Hz, 1 kHz and 2 kHz bands" | IMPRECISE | Vorländer Table 6.1: jnd frequency range 500–1000 Hz, so 2 kHz is outside it. §11.5 Round-robin I rates accuracy as the mean of \|sim−meas\| / jnd; a signed mean can cancel (+12 % and −12 % → 0). | minor | Q3 | open |
+| V5-5 | FACT | Matching shoebox V and S preserves the diffuse-field quantities | CORRECT | Vorländer §4.4 Eq. 4.22–4.23: n̄ = cS/4V, l̄ = 4V/S; with ᾱ fixed, Eq. 4.28 and 4.32 give the same T. | none | — | resolved |
+| V5-6 | FACT | Shoebox dimensions "so that volume and total surface area match as closely as possible" as a generic rule | IMPRECISE | Working: V = abc and S = 2(ab+bc+ca) leave one free dimension (aspect ratio); an exact match needs S ≥ 6V^(2/3) (AM–GM, equality for a cube). Vorländer §11.3.3: the image lattice, so early timing behind EDT/C80, depends on the individual dimensions. | major (scenes and baseline are built on it) | Q4 | open |
+| V5-7 | FACT | Area-weighted averaging of absorption | CORRECT | Vorländer §4.4.1 Eq. 4.30 ᾱ = (1/S)ΣSᵢαᵢ, Eq. 4.38 for Eyring; diffuse-field assumption, which §4.4 says fails for concentrated absorption. | none | — | resolved |
+| V5-8 | FACT | Per-surface mapping onto the 6 faces keeps the room's absorption | IMPRECISE | Vorländer Eq. 4.30: A = ΣSᵢαᵢ is conserved only if each box face's area equals the real area mapped onto it; matching total S does not guarantee this. | minor | Q4 | open |
+| V5-9 | FACT | Fitted absorption "partly includes the answer, so it isn't proof of accuracy" | CORRECT | Vorländer §11.5 Round-robin I (agreement improved with measured absorption data); Round-robin III (operator's choice of α and s has crucial influence). | none | — | resolved |
+| V5-10 | DECISION | Initial/as-documented absorption is the primary run | CONSEQUENCE | Vorländer §11.5 Round-robin I: with users' own absorption guesses simulated T was generally too large; expect worse agreement than with fitted data. | minor | — | open |
+| V5-11 | DECISION | Prefer the room closest to a box ("likely the small seminar room") | CONSEQUENCE | Vorländer §11.5 (GA exact for large rooms, low absorption, broadband); Round-robin III (small room with modal effects needs a good scattering model); §11.3.3 (50–200 m³ below 200 Hz at GA's limit); Toole §4.3.1 transition region. | minor | — | open |
+| V5-12 | DECISION | Per-band reporting "without gating" includes 63–250 Hz | CONSEQUENCE | Vorländer §4.2.1 Eq. 4.13; Toole §4.3.1: small rooms are mode-dominated below the transition, so low-band deltas measure method validity, not input accuracy. | minor | — | open |
+| V5-13 | DECISION | Method under test stays ISM + tail; use of BRAS scattering data not stated | CONSEQUENCE | Vorländer §11.5 Round-robin II/III (a scattering module is needed, essential in small rooms); §11.1.1 (above ≈ 700 Hz surfaces partly scattering, covering the 1 and 2 kHz AQ9 bands). | minor | — | open |
+| V5-14 | FACT | "Real rooms aren't shoeboxes, so expect misses" | IMPRECISE | Vorländer §11.5: misses expected (GA exact only in mostly academic cases), but Round-robins I–III name absorption input and scattering as the main error sources, not shape. | minor | — | open |
+| V5-15 | FACT | Comparing ISO 3382 T30/EDT/C80 of simulated and measured IRs | CONDITIONS VIOLATED | Vorländer §6.4.1 Eq. 6.4 (backward integral; T from −5 to −35 dB regression; EDT 6 × the 0 to −10 dB time), Eq. 6.7 (C80 from the direct sound). Needs ≥ 35 dB usable decay above measured noise, a common time origin, and an untruncated simulated IR (§11.3.3 Eq. 11.39); none is stated. | major | Q5 | open |
+| V5-16 | FACT | EDC overlay plots | CORRECT | Vorländer §6.4.1 Eq. 6.4, Fig. 6.9: EDC is the backward-integrated h²(t). | none | — | resolved |
+| V5-17 | NUMBER | Regression gate: "any metric delta worsening by > 2 % relative to the baseline" | CONDITIONS VIOLATED | Meaningful only for \|baseline delta\| ≫ 0: a 0.1 dB C80 delta gives a 0.002 dB gate (1/500 of the 1 dB jnd, Table 6.1); a zero delta trips on any change. §11.5 normalises errors by the jnd instead. | major (CI gate is built on it) | Q2 | open |
+| V5-18 | FACT | The nightly gate "fails when a deliberate +5 % T60 bias is injected" | CONDITIONS VIOLATED | Vorländer Eq. 4.27: T scales by 1.05. With d = T_sim/T_meas − 1, d′ = 1.05(1+d) − 1; \|d\| worsens only if d > −0.05/2.05 ≈ −2.4 % (d = −3 % → d′ = +1.85 %, an improvement). By Eq. 6.20 C80 falls as T rises, so a positive C80 delta also improves. | major (acceptance test is built on it) | Q1 | open |
+| V5-19 | FACT | BS.1770 loudness-matching of the A/B renders | CORRECT | Immersive Sound Ch. 8 Fig. 8.14 (BS.1770-4: K-filter, mean square, gating); Izhaki Ch. 4 (the louder version is judged better). | none | — | resolved |
+| V5-20 | DECISION | Loudness-matching removes level differences from the A/B pack | CONSEQUENCE | Vorländer Table 6.1: strength G is its own attribute (jnd 1 dB); after matching, listeners cannot judge G errors. | minor | — | open |
+| V5-21 | DECISION | Omni (monaural) IRs auditioned on headphones | CONSEQUENCE | Vorländer §6.4.4 Eq. 6.11–6.13: ASW/LEV depend on lateral energy and IACC, absent from an omni IR; only monaural attributes can be judged, as the checklist asks. | minor | — | open |
+| V5-22 | FACT | BRAS holds geometry, absorption/scattering data and measured omni and binaural IRs | NOT CHECKABLE | Not in the corpus; the BRAS documentation (DepositOnce) settles it. | none | — | resolved (no defect) |
+
+Interrogator's worked threshold in V5-18, rechecked by the builder: d′ > −d ⇔ d > −0.05/2.05 = −2.44 % (the
+report's "2.07" is a typo; the −2.4 % figure stands).
+
+### Questions (interrogator)
+
+- **Q1 (V5-18):** Is "metric delta" the signed relative error, its absolute value, or a difference in seconds?
+  Must the gate fire under `MAKROOF_TEST_BIAS_T60=1.05` even when the baseline T30/EDT delta is below
+  ≈ −2.4 % or the C80 delta is positive?
+- **Q2 (V5-17):** What threshold is meant for C80 (dB) and for a baseline delta near 0: 2 % of the delta,
+  or a fixed fraction of the Table 6.1 jnd?
+- **Q3 (V5-4):** Is the 500/1k/2k average a signed mean or a mean of absolute deltas (Vorländer §11.5)? Should
+  2 kHz be in it, given Table 6.1's 500–1000 Hz range?
+- **Q4 (V5-6, V5-8):** Which rule fixes the free aspect ratio? Must each face's area equal the real area
+  mapped onto it, so that A = ΣSᵢαᵢ (Eq. 4.30) is conserved?
+- **Q5 (V5-15):** Which time origin for EDT/C80, which upper integration limit and noise handling for the
+  Eq. 6.4 EDC, and what minimum usable decay range above noise for T30?
+
+### Builder answers (proposals; not verified by a further round, not applied)
+
+| q | rows | proposed answer | corpus basis | outside the corpus | status |
+|---|---|---|---|---|---|
+| Q1 | V5-18 | Split the nightly check in two. (a) **Accuracy record:** per band and metric, the jnd-normalised error e = \|sim − meas\| / jnd (EDT 5 %, C80 1 dB; T30 given the EDT 5 % as a stand-in, labelled as chosen), stored in `validation_baseline.json` and reported, never gating. (b) **Regression gate on the simulated metrics alone:** fail when any simulated T30/EDT moves by more than ±2 % relative to the baseline simulation, or any simulated C80 by more than ±0.2 dB, in either direction; an intended change is accepted only through `update_goldens.py` with a reason. The +5 % T60 hook then moves simulated T30 by 5 % whatever the sign of the measured delta, so the acceptance test always fires. Note: the hook scales the tail only, so EDT and C80 move less than T30; the acceptance test should assert on T30. This reverses the phase text's "fails only on regression" (worsening), which is Maisara's call. | Vorländer Eq. 4.27 (T ∝ 1/slope, so the bias is a 5 % shift of simulated T); §11.5 Fig. 11.33 (jnd-normalised mean absolute error). | ±2 % / ±0.2 dB are change-detection limits, chosen as 0.4 × and 0.2 × the Table 6.1 jnd; not a corpus value. | open (needs plan decision) |
+| Q2 | V5-17 | Covered by Q1(b): absolute limits on the simulated metric (2 % for T30/EDT, 0.2 dB for C80), never a fraction of the sim–meas delta, so a near-zero delta cannot trip the gate on noise. The run is deterministic (fixed `tailSeed`, CLAUDE.md), so any change above zero is real; the limits only stop platform-level floating-point drift from failing the nightly. | Vorländer Table 6.1 (C80 jnd 1 dB, EDT 5 %). | The 0.2 dB / 2 % choice. | open (needs plan decision) |
+| Q3 | V5-4 | Mean of **absolute** per-band errors over 500 Hz, 1 kHz, 2 kHz, each divided by its jnd (§11.5 rating); pass if the mean ≤ 2 jnd, i.e. mean\|ΔEDT\| ≤ 10 %, mean\|ΔC80\| ≤ 2 dB, mean\|ΔT30\| ≤ 10 %. Keep 2 kHz (AQ9 already says the jnd equivalence is not stated there) and also print the 500–1000 Hz mean, where Table 6.1 states the jnd. Signed per-band deltas stay in the per-band table, because their sign shows bias (V5-10: T too large with guessed absorption). | Vorländer §11.5 Round-robin I rating; Table 6.1 range. | — | open (needs plan decision; AQ9 wording) |
+| Q4 | V5-6, V5-8 | **Aspect ratio:** keep the documented mean floor-to-ceiling height h; solve the floor a·b = V/h and a + b = (S − 2V/h)/(2h); if no real solution (S below the box minimum for that h), match V exactly and take the square floor nearest to S, and report the S error. The rule is generic (no per-room choice) and fixes the floor–ceiling reflection timing, which the image lattice depends on (§11.3.3). **Faces:** assign each documented surface to the box face whose outward normal is closest to its own; set α_face = ΣSᵢαᵢ / S_face over the surfaces assigned, so A per face and in total equals the room's A (Eq. 4.30) and, with S matched, ᾱ and the Eyring T are preserved (Eq. 4.28, 4.32); clamp α_face to ≤ 1 and report any clamp. Scattering faces use the same area weighting, then AX17's broadband mean. | Vorländer §4.4 Eq. 4.22–4.23, 4.28, 4.30, 4.32; §11.3.3. | Keeping h (rather than the floor-plan ratio) is a choice; the corpus gives no shoebox-reduction rule. | open (needs plan decision; `bras_mapping.md` content) |
+| Q5 | V5-15 | Same `tools/acoustics` octave filter bank for both IRs. **Origin:** for each IR the direct-sound onset, detected the same way in both (first sample within 20 dB of the broadband peak, the ISO 3382-1 convention); C80 per Eq. 6.7 and EDT from that origin. **Measured EDC:** backward integration from the band's noise-floor intersection with the noise-energy compensation of ISO 3382-1 (no corpus method). **Simulated EDC:** Phase 04 already renders to −90 dB in the slowest band, so the Eq. 11.39 truncation energy is negligible; integrate to the end. **Range:** T30 needs the band's decay to reach −35 dB at least 10 dB above the noise floor (peak-to-noise ≥ 45 dB); otherwise report T20 for that band and flag it, and exclude it from the AQ9 mean if it is a 500 Hz–2 kHz band (counted as "not evaluable", not pass). | Vorländer §6.4.1 Eq. 6.4 (−5 to −35 dB regression), Eq. 6.7; §11.3.3 Eq. 11.39. | 20 dB onset threshold, noise-floor intersection/compensation, 10 dB margin: ISO 3382-1 practice, not in the corpus. | open (needs plan decision) |
+
+Builder notes on the CONSEQUENCE rows (no answer needed, to state in `report-phase05.md`): V5-10 expect
+T_sim > T_meas on the primary run; V5-11/V5-12 report the band of the transition frequency for each room
+(stating which constant, Vorländer Eq. 4.13 or Toole §4.3.1) and read bands below it as method validity;
+V5-13 state whether the BRAS scattering data enters through AX17 (it should, under Q4); V5-14 report
+absorption input and scattering as the corpus's main error sources alongside shape; V5-20 report the
+level offset removed by loudness matching (dB, per pair) so G errors stay visible; V5-21 the A/B pack
+judges monaural attributes only.
+
+**Status after round 0 (no blocker, no verification round run):** 9 rows resolved (CORRECT / NOT CHECKABLE),
+13 open: 4 major (V5-6, V5-15, V5-17, V5-18) and 9 minor. None disputed. Every open major row has a
+proposed answer that needs a plan decision (Maisara) and then `/fix-plan`; the numeric choices in the
+answers (±2 % / ±0.2 dB, held height, 20 dB onset, 10 dB noise margin) are outside the corpus and should
+go to the interrogator when `/fix-plan` applies them.
+
+### docs/phases/phase-05.md — verification batches and final check (2026-11-05, corpus 22dc9dd)
+
+On Maisara's instruction, the open rows were batched by topic and each batch verified by its own interrogator;
+the plan-editor then applied the verified options (PR maisara-abourady/makroof#9), and a final interrogator
+checked the applied text.
+
+| batch | rows | decision | verdict | chosen | basis |
+|---|---|---|---|---|---|
+| A | V5-17, V5-18 | gate quantity | (a) two-sided gate on simulated metrics vs baseline simulation CORRECT; (b) one-sided jnd-error gate WRONG (misses the +5 % hook for baseline d ≤ −2.2 %); (c) original CONDITIONS VIOLATED | (a), ±2 % T30/EDT, ±0.2 dB C80 (0.4 / 0.2 jnd; T30 limit NOT CHECKABLE) | only verified option |
+| A | V5-18 | bias-test assertion | T30 rise CORRECT with a stated tolerance (Eq. 6.4 working: +5.0 % when the −5 dB point is after t_mix; less otherwise); C80 only −0.21 dB at t_mix 80 ms | assert on T30, +3 % … +5.5 % | derivable from Eq. 6.4 |
+| B | V5-15 | time origin | direct sound CORRECT (Eq. 6.5 t₀); file t = 0 CONDITIONS VIOLATED (≈1.4 dB C80 bias at 15 ms lead); peak WRONG | direct sound, 20 dB onset rule (ISO practice) | only verified option |
+| B | V5-15 | EDC / noise | measured: compensated integration consistent, uncompensated CONDITIONS VIOLATED; simulated: to end CORRECT by Eq. 6.4 (Eq. 11.39 the wrong citation) | compensated; simulated to end, 62 dB flag | only verified option |
+| B | V5-15 | usable range | T30 with ≥ 10 dB margin else T20 CORRECT in substance; 35 dB-only and always-T30 CONDITIONS VIOLATED | (a), "peak-to-noise ≥ 45 dB" wording dropped (IMPRECISE) | only consistent option |
+| B | V5-4 | AQ9 mean | absolute mean CORRECT (§11.5); signed mean WRONG; dropping 2 kHz valid | absolute mean, keep 2 kHz, also print 500–1000 Hz mean | (a) contains (c) |
+| C | V5-6 | free dimension | keep height and keep floor ratio both valid closures (product choice); uniform scaling CONDITIONS VIOLATED | keep height | main session: single well-defined closure (floor-ratio closure has two roots) |
+| C | V5-8 | face absorption | α_face = ΣSᵢαᵢ/S_face CORRECT (Eq. 4.30); area-weighted mean CONDITIONS VIOLATED | (a) with clamp report | only verified option |
+| C | V5-13 | scattering | area-weighted s IMPRECISE (weight should be Sᵢ(1−αᵢ), Eq. 3.23); s = 0 CONDITIONS VIOLATED | Sᵢ(1−αᵢ)-weighted, then AX17 | corrected per verdict |
+| D | V5-10..14, V5-20, V5-21 | report / risk / listening wording | S6 CORRECT; S1, S4 CONDITIONS VIOLATED; S5 INCONSISTENT; S2, S3 IMPRECISE | interrogator's corrected wording | verdicts |
+
+Status after PR #9: V5-4, V5-6, V5-8, V5-10, V5-11, V5-12, V5-13, V5-14, V5-15, V5-17, V5-18, V5-20, V5-21
+**resolved** in the plan text. V5-6's height closure stays a recorded product choice.
+
+#### Final check of the applied text
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| F5-1 | NUMBER | "+12 % at noise −50 dB, T = 1 s, 3 s file" (uncompensated EDC) | WRONG | Vorländer Eq. 4.25 + Eq. 6.4: EDC = e^(−kt)/k + 10⁻⁵(3 − t); −35 dB reached only at ≈ 0.81 s, ≈ +40 % by regression, +45 % two-point. | major | — | resolved (≈ +40 %, reference stated) |
+| F5-2 | NUMBER | bias test: T30 rises +3 % … +5.5 % in every 500 Hz–2 kHz band | CONDITIONS VIOLATED | Same model, t_mix 80 ms: +3.9 % at 0.3 s, +2.5 % at 0.2 s; bound holds for T ≳ 2.9·(t_mix,e − t_dir,e). | major | — | resolved (assertion limited to bands with T30 ≥ 3·(t_mix,e − t_dir,e), inside the verified bound; at least one band required) |
+| F5-3 | NUMBER | "≈ +4.3 % at T = 0.5 s, t_mix 80 ms" | IMPRECISE | Eq. 6.4 two-point: 0.5236 s, +4.7 %. | minor | — | resolved (+4.7 %) |
+| F5-4 | NUMBER | 10 dB margin "limits the noise contribution at −35 dB to 0.4 dB" | IMPRECISE | 0.41 dB is the instantaneous ratio; integrated uncompensated EDC ≈ 0.9 dB. | minor | — | resolved (both stated) |
+| F5-5 | FACT | AX17 over/understatement because s rises with frequency | IMPRECISE | Fig. 3.11 spans 80–630 Hz only; several Annex rows flat or falling over 500 Hz–2 kHz. | minor | — | resolved (made conditional per material) |
+| F5-6 | FACT | AQ9 rationale "best achievable agreement" | IMPRECISE | §11.5 Round-robin III: 1–2 jnd achievable, not stated as a limit. | minor | — | resolved ("achievable") |
+| F5-7 | NUMBER | 20 dB onset rule, T20 range, noise compensation | NOT CHECKABLE | Marked outside the corpus in the text; ISO 3382-1/-2 settle them. | none | — | resolved (no defect) |
+
+Confirmed CORRECT in the final check: AQ9 wording agrees across phase-05 and BUILD_PLAN; gate limits and
+their jnd fractions; shoebox formulas and existence bound; A conservation; Sᵢ(1−αᵢ) weighting; −90 dB and
+62 dB end-of-IR numbers; all cited sections and equations exist and say what is claimed.
+F5-1, F5-3–F5-6 fixed with the interrogator's own values; the F5-2 condition (factor 3) lies inside the bound
+the interrogator derived (2.9), so no further round was run.
+
+**Remaining for Maisara / the Expert:** the height-keeping shoebox closure (V5-6, product choice); the T30
+limits (±10 % AQ9, ±2 % gate) have no corpus jnd; the onset rule, noise compensation and 10 dB margin rest on
+ISO 3382-1, outside the corpus.
+
+### docs/phases/phase-05.md — consultant answers (2026-11-05, corpus 22dc9dd)
+
+Maisara asked the interrogator, as a consultant and subject-matter expert (outside its usual audit role), the
+three questions left open after the final check. Answers label each point [corpus] or [expert]; expert points
+that rest on ISO 3382-1/-2 or the literature are applied to the plan marked "expert recommendation" or "to
+verify".
+
+| q | question | recommendation | basis | confidence | status |
+|---|---|---|---|---|---|
+| C1 | Shoebox closure (V5-6) | Keep h, defined as V / floor area: floor and ceiling areas, total wall area and perimeter then exact, only the x/y wall split approximate; floor-ratio closure valid but moves floor/ceiling α and the 2h/c series; keep r and source/receiver heights when mapping; report absorption contrast and decay curvature as non-diffuseness indicators | expert, using Vorländer Eq. 4.22, 4.23, 4.28, 4.30, §11.3.3, §4.4, Table 4.1; Toole §21.4, §4.1 | medium (second-order next to absorption and scattering input, Vorländer §11.5) | resolved (applied) |
+| C2 | T30 tolerances | Working T jnd 5 % (Seraphim 1958); keep ±10 % AQ9 (2 working jnd, above single-position σ(T30) ≈ 2–3.5 %); keep ±2 % gate (0.5 % also valid, product choice) | Vorländer §11.5, Table 6.1, Immersive Sound Ch. 1 Fig. 1.14; expert (ISO 3382-2 σ formula, from memory) | medium / high | resolved (applied; 0.5 % option not taken) |
+| C3a | Onset detection | Broadband \|h\|², max − 20 dB, before band filtering, one t₀ for all bands; zero-phase or delay-compensated filters on the full IR; check measured lead-in | expert (ISO 3382-1); Immersive Sound Fig. 1.14 (peak ≠ first arrival) | high | resolved (applied) |
+| C3b | Measured-EDC noise | Lundeby-style crossing with compensation (A/k)e^(−k·t_c) from the late slope; noise from a verified noise tail; one correction only; same energy in C80's late integral | expert (ISO 3382-1 practice; Lundeby 1995); Vorländer Eq. 6.4 | high (method), medium (constants) | resolved (applied) |
+| C3c | 10 dB margin | Keep; noise referred to the decay-line intercept; T20 vs T20 fallback; "not evaluable" rules; curvature report; low-band B·T > 16 flag | expert (ISO 3382-1/-2; Jacobsen); Immersive Sound Fig. 1.14 | high (margin), medium (curvature threshold, B·T rule) | resolved (applied) |
+
+**To verify against the standards before they are cited as fact:** the ISO 3382-2 constants in σ(T20/T30) and
+its "integrated IR ≈ 10 averaged decays" equivalence; the ISO 3382-2 curvature threshold (≈ 10 %); whether the
+ISO 3382-1 jnd table lists T. These are marked "to verify" in the plan text.
+
 ## BUILD_PLAN AX21 (Phase 04 session) — 2026-11-05
 
 Interrogator on the proposed AX21 row (signal and meter of the Phase 04 decay-time gates), corpus
