@@ -106,7 +106,12 @@ Binaural tail coherence (08); validation against real rooms (05); any per-scene 
       bands 125 Hz–8 kHz: compared between **two independent AX11 ensembles** (disjoint `tailSeed`
       sets), each of R realisations from the rule with tol/√2 (see below). Single-realisation
       differences are reported, not gated.
-- [ ] 44.1 kHz and 96 kHz renders of the same scene give the same T30/EDT/C80 within ±2% (bands up to 8 kHz).
+- [ ] 44.1 kHz and 96 kHz renders of the same scene give the same **T30** within ±2%, compared
+      between **two per-rate AX11 ensembles** (one at 44.1 kHz, one at 96 kHz, disjoint `tailSeed`
+      sets), each of R realisations per band from the seed-gate row below (R ≥ 4.5·σ₁², tol/√2),
+      in the bands of that table (125 Hz–8 kHz). Single-render T30/EDT/C80 differences are reported,
+      not gated. **EDT and C80 in this gate: pending decision** (review ledger V26, V27: AX11 has no
+      EDT σ₁, and C80 needs a tolerance in dB, not %); 63 Hz likewise pending.
 - [ ] `open_field` gives no tail: E_b = 0 in every band, and the energy later than 50 ms after the
       direct sound's arrival is < −60 dB relative to the direct sound. Checked on the fixture (floor
       s = 0.4) **and** on a test-local variant with floor scattering s = 0.5: in both, bin 0 holds no
@@ -115,9 +120,10 @@ Binaural tail coherence (08); validation against real rooms (05); any per-scene 
 **Ensemble sizes (AX11).** R ≥ (σ₁ / (tol/3))² per band, rounded up; one ensemble per room uses the
 largest R over its gated bands (more is allowed). σ₁ is AX11's measured single-realisation T30 scatter
 (48 kHz); use the column of the tabulated T60 (0.3, 1.0, 6 s) at or just below the band's Eyring
-T60_b, since σ₁ shrinks as T grows. For T60_b < 0.3 s scale the 0.3 s value by 0.3 s / T60_b
-(σ₁² ∝ 1/T, AX11's 0.5/√(B·T)). The seed gate compares two ensemble means, whose difference has
-√2 times the scatter of one, so it uses tol/√2: R ≥ (σ₁ / (2 % / (3·√2)))² = 4.5·σ₁² (σ₁ in %).
+T60_b, since σ₁ shrinks as T grows. For T60_b < 0.3 s it is **R** that scales: multiply the 0.3 s
+R by 0.3 s / T60_b (equivalently, σ₁ scales by √(0.3 s / T60_b), since σ₁² ∝ 1/T by AX11's
+0.5/√(B·T)); do not scale σ₁ itself by 0.3 s / T60_b. The seed gate compares two ensemble means,
+whose difference has √2 times the scatter of one, so it uses tol/√2: R ≥ (σ₁ / (2 % / (3·√2)))² = 4.5·σ₁² (σ₁ in %).
 
 | band | 125 | 250 | 500 | 1k | 2k | 4k | 8k |
 |---|---|---|---|---|---|---|---|
