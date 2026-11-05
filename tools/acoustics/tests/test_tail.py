@@ -332,6 +332,13 @@ def test_seam_edc_has_no_step_at_t_mix(render_cli_path, name):
     steps = seam_steps(render_cli_path, name, irs, float(fs))
     single = seam_steps(render_cli_path, name, irs[:1], float(fs))
     gated = name in SEAM_FIXTURES
+    # AX21: the hybrid IR's own T30 (octave meter, R = SEAM_R) is reported here, not gated.
+    t60 = diag(str(render_cli_path), name)["t60"]
+    full = metrics.room_metrics_ensemble(list(irs[:, 0]), float(fs))
+    report = {bands.band_key(fc): (None if full["bands"][bands.band_key(fc)]["T30"] is None
+                                   else round(rel_pct(full["bands"][bands.band_key(fc)]["T30"], t60[i]), 1))
+              for i, fc in enumerate(bands.OCTAVE_BANDS_HZ)}
+    print(f"{name}: hybrid-IR T30 vs Eyring (octave meter, R = {SEAM_R}, reported only): {report} %")
     print(f"{name}{'' if gated else ' (reported only)'}: EDC step beyond the expected decay across the "
           f"crossfade, R = {SEAM_R}, [emitter][63 Hz..8 kHz]: {np.round(steps, 2).tolist()} dB; "
           f"one realisation: {np.round(single, 2).tolist()} dB")

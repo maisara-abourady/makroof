@@ -246,3 +246,49 @@ TEST_CASE("per-output seed offset for Phase 08", "[sim][tail]")
     CHECK(sim::tail::tailSeedForOutput(12345u, 0) == 12345u);
     CHECK(sim::tail::tailSeedForOutput(12345u, 1) == (12345u ^ 0x9E3779B9u));
 }
+
+TEST_CASE("energy entries: an image's band energy is a_b^2 times the band filter's energy", "[sim][tail]")
+{
+    // The units of the matching (phase-04 scope 3): render one image with per-band amplitudes,
+    // band-filter the result with the filterbank's own band filter, and compare its energy with the
+    // specular entry of energyEntries().
+    const double fs = 48000.0;
+    const sim::ism::OctaveFilterbank fb(fs);
+    const auto g = sim::tail::bandImpulseEnergies(fb);
+    sim::ism::ImageSourceSet set;
+    sim::ism::ImageSource image;
+    image.arrivalTimeS = 0.05 + 0.3 / fs; // a fractional delay
+    image.bandsAmplitude = {0.1, 0.2, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05};
+    set.images.push_back(image);
+    sim::ism::ScatteredEnergy scattered;
+    scattered.arrivalTimeS = image.arrivalTimeS;
+    scattered.bandsEnergy.fill(0.01);
+    set.scattered.push_back(scattered);
+    const auto entries = sim::tail::energyEntries(set, g);
+    REQUIRE(entries.size() == 2);
+    const auto ir = sim::ism::renderImageSources(set.images, 0.0, fb);
+    for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+    {
+        const auto h = fb.bandImpulseResponse(b);
+        const std::size_t half = h.size() / 2;
+        double e = 0.0;
+        for (std::size_t n = 0; n < ir.size(); ++n)
+        {
+            double s = 0.0;
+            for (std::size_t k = 0; k < h.size(); ++k)
+            {
+                const auto i = static_cast<std::ptrdiff_t>(n + half) - static_cast<std::ptrdiff_t>(k);
+                if (i >= 0 && i < static_cast<std::ptrdiff_t>(ir.size()))
+                    s += h[k] * ir[static_cast<std::size_t>(i)];
+            }
+            e += s * s;
+        }
+        INFO("band " << b);
+        // Neighbouring bands' amplitudes leak a little through the crossovers.
+        CHECK_THAT(e, WithinRel(entries[0].bandsEnergy[b], 0.05));
+        CHECK_THAT(entries[0].bandsEnergy[b],
+                   WithinRel(image.bandsAmplitude[b] * image.bandsAmplitude[b] * g[b], 1e-12));
+        CHECK_THAT(entries[1].bandsEnergy[b], WithinRel(0.01 * g[b], 1e-12));
+        CHECK(entries[1].timeS == image.arrivalTimeS);
+    }
+}

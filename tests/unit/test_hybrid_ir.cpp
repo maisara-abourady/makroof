@@ -56,20 +56,26 @@ double energy(const std::vector<float>& x, std::size_t from = 0)
 
 } // namespace
 
-TEST_CASE("hybrid IR: no NaN, Inf or denormals in any sample of any valid fixture", "[sim][hybrid]")
+TEST_CASE("omni IRs: no NaN, Inf or denormals in any sample of any valid fixture at 44.1, 48 and 96 kHz",
+          "[sim][hybrid]")
 {
     for (const auto& path : contract_fixtures::list("valid"))
     {
         INFO(path.filename().string());
         const auto parsed = contract::parseScene(contract_fixtures::read(path));
         REQUIRE(parsed.ok());
-        const auto ir = sim::buildRoomIR(*parsed.scene, kOmni48);
-        std::size_t bad = 0;
-        for (const auto& taps : ir.taps)
-            for (const float v : taps)
-                bad += (std::isfinite(v) && (v == 0.0f || std::fpclassify(v) == FP_NORMAL)) ? 0u : 1u;
-        CHECK(bad == 0);
-        CHECK(energy(ir.ir(0, 0)) > 0.0);
+        for (const double rate : {44100.0, 48000.0, 96000.0})
+            for (const auto kind : {sim::BuildOptions::Kind::Omni, sim::BuildOptions::Kind::OmniEarly})
+            {
+                INFO(rate << " Hz, kind " << static_cast<int>(kind));
+                const auto ir = sim::buildRoomIR(*parsed.scene, {rate, kind});
+                std::size_t bad = 0;
+                for (const auto& taps : ir.taps)
+                    for (const float v : taps)
+                        bad += (std::isfinite(v) && (v == 0.0f || std::fpclassify(v) == FP_NORMAL)) ? 0u : 1u;
+                CHECK(bad == 0);
+                CHECK(energy(ir.ir(0, 0)) > 0.0);
+            }
     }
 }
 
@@ -310,4 +316,52 @@ TEST_CASE("buildRoomIREnsemble: member k equals buildRoomIR with tailSeed = seed
     }
     CHECK_THROWS_AS(sim::buildRoomIREnsemble(scene, {48000.0, sim::BuildOptions::Kind::OmniEarly}, seeds),
                     std::invalid_argument);
+}
+
+TEST_CASE("hybrid IR: the rendered tail's band energy at t_mix equals E_target (end-to-end level)",
+          "[sim][hybrid]")
+{
+    // Seed-averaged band energy of the tail-only IR in the 10 ms centred on t_mix,e, measured with
+    // the filterbank's band filter, against the matching target E_target,b (band energy per 10 ms):
+    // this ties the entries, E_b, the unit decay and its placement on the IR's time axis together.
+    const auto scene = loadScene("classroom.json");
+    auto options = kOmni48;
+    options.tailOnly = true;
+    options.onlyEmitterChannel = 0;
+    sim::HybridDiagnostics d;
+    (void)sim::buildRoomIR(scene, kOmni48, &d);
+    std::vector<std::uint32_t> seeds(48);
+    for (std::uint32_t k = 0; k < seeds.size(); ++k)
+        seeds[k] = 500u + k;
+    const auto irs = sim::buildRoomIREnsemble(scene, options, seeds);
+    const sim::ism::OctaveFilterbank fb(48000.0);
+    const double centre = (d.emitters[0].match.mixing.mixS - d.alignmentShiftS) * 48000.0;
+    const auto from = static_cast<std::size_t>(std::llround(centre - 240.0));
+    const auto to = static_cast<std::size_t>(std::llround(centre + 240.0));
+    for (const std::size_t b : {2u, 4u, 6u}) // 250 Hz, 1 kHz, 4 kHz
+    {
+        const auto h = fb.bandImpulseResponse(b);
+        const std::size_t half = h.size() / 2;
+        double mean = 0.0;
+        for (const auto& ir : irs)
+        {
+            const auto& x = ir.ir(0, 0);
+            for (std::size_t n = from; n < to; ++n)
+            {
+                double s = 0.0;
+                for (std::size_t k = 0; k < h.size(); ++k)
+                {
+                    const auto i = static_cast<std::ptrdiff_t>(n + half) - static_cast<std::ptrdiff_t>(k);
+                    if (i >= 0 && i < static_cast<std::ptrdiff_t>(x.size()))
+                        s += h[k] * static_cast<double>(x[static_cast<std::size_t>(i)]);
+                }
+                mean += s * s;
+            }
+        }
+        mean /= static_cast<double>(irs.size());
+        const double target = d.emitters[0].match.bandsTargetEnergy[b];
+        INFO("band " << b << ": realised " << mean << ", E_target " << target);
+        // 48 realisations of a 10 ms band excerpt: ~10 % scatter at 250 Hz, less above.
+        CHECK(std::abs(10.0 * std::log10(mean / target)) < 1.0);
+    }
 }
