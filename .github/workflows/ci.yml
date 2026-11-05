@@ -36,7 +36,7 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-24.04, name: linux }
-          - { os: macos-14, name: macos }
+          - { os: macos-15, name: macos }
           - { os: windows-2022, name: windows }
     steps:
       - uses: actions/checkout@v7.0.1
@@ -64,7 +64,7 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-24.04, name: linux }
-          - { os: macos-14, name: macos }
+          - { os: macos-15, name: macos }
           - { os: windows-2022, name: windows }
     env:
       SPATIAL_REQUIRE_RENDER_CLI: "1"
@@ -130,11 +130,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-14, windows-2022]
+        os: [ubuntu-24.04, macos-15, windows-2022]
         room: [dead_booth, living_room, classroom, club, concert_hall_box, stone_box]
         include:
           - { os: ubuntu-24.04, name: linux }
-          - { os: macos-14, name: macos }
+          - { os: macos-15, name: macos }
           - { os: windows-2022, name: windows }
     env:
       SPATIAL_REQUIRE_RENDER_CLI: "1"
@@ -182,7 +182,7 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-24.04, name: linux }
-          - { os: macos-14, name: macos }
+          - { os: macos-15, name: macos }
           - { os: windows-2022, name: windows }
     steps:
       - uses: actions/checkout@v7.0.1
