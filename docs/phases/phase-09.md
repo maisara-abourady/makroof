@@ -33,7 +33,8 @@ room calibration) and let the user switch between this mode and binaural.
    The normalization is a fixed constant derived once from the diffuse-field gain of the mic pair, not a
    per-scene auto-gain (AX2).
 5. Plugin: `output_mode` parameter now switches `Kind`. The switch triggers an IR rebuild and the Phase 06
-   crossfade, so it's smooth.
+   crossfade, so it's smooth. The two modes' IRs are unrelated, so this switch uses the **equal-power**
+   crossfade (AX18: equal-gain would dip ≈3 dB mid-fade on uncorrelated outputs).
 6. `render_cli --mode stereoSpeakers`, listening pack, goldens.
 
 ## Out of scope
@@ -42,9 +43,13 @@ Crosstalk cancellation, speaker calibration, multichannel output (PRD out of sco
 
 ## Acceptance criteria — automated
 
-- [ ] Anechoic scene: an emitter at +55° (toward the left capsule's axis) gives the maximum L−R level
-      difference with the correct sign, mirrored at −55°. A centre emitter gives |L−R| < 0.1 dB and
-      inter-channel delay of 0 samples.
+- [ ] Anechoic scene, point source at 5 m: the measured L−R level difference equals the value computed
+      from exact geometry (each capsule's own angle to the source in the cardioid 0.5(1+cos ϑ) and its
+      own distance in 1/r) within ±0.5 dB at φ ∈ {0°, ±30°, ±55°, ±90°}, positive for positive φ
+      (toward the left capsule) and mirrored for negative φ. The left channel's level as a function of φ
+      peaks within ±3° of the geometric prediction (≈+56.7° at 5 m). Plane-wave sanity values: 9.7 dB at
+      55° and 20.1 dB at 90° (±0.5 dB).
+- [ ] A centre emitter gives |L−R| < 0.1 dB and inter-channel delay of 0 samples.
 - [ ] Inter-channel time difference for an emitter at 90° equals 17 cm / c (±1 sample at 48 kHz).
 - [ ] Tail inter-channel coherence per band within ±0.1 of the analytic ORTF diffuse-field target.
 - [ ] Loudness: |LUFS(stereoSpeakers) − LUFS(binaural)| ≤ 1 dB for the reference scene and for 3 other fixtures.

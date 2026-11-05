@@ -50,7 +50,7 @@ These 20 decisions were settled in the discovery interview and are the baseline 
 | Validation | Measured match against real impulse responses + listening tests |
 | Scene storage | Saved inside the DAW project only; no export or sharing |
 | Module coupling | 3D Module and Simulator logically separate, built and shipped as one |
-| Atmosphere | Not modeled |
+| Atmosphere | Not user-controlled; a fixed standard atmosphere (air absorption) is always applied (see BUILD_PLAN AX4) |
 | Audience/crowd | Not modeled; spaces are always empty |
 | Team | Maisara + contracted DSP and 3D engineers; no fixed deadline |
 
@@ -129,7 +129,7 @@ Open question: since rendering never stops, the trial's conversion pressure come
 These were explicitly excluded during discovery:
 
 - Multichannel or immersive output (5.1, Dolby Atmos); output is stereo or binaural only.
-- Atmospheric conditions: temperature, humidity, wind.
+- User control of atmospheric conditions (temperature, humidity, wind). A fixed standard atmosphere (air absorption) is always applied (see BUILD_PLAN AX4).
 - Audience or crowd presence; all spaces are empty.
 - Listener head orientation control and headphone head tracking.
 - Calibration to the user's own room or speakers.

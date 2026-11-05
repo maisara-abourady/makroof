@@ -9,8 +9,12 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
 
 ## Assumptions in force
 
-- **AQ4**: rebuilds at most once per 20 ms, coalesced; 30 ms equal-gain crossfade; tail cached when only
-  positions change; synchronous rebuild in non-realtime mode.
+- **AQ4**: rebuilds at most once per 20 ms, coalesced; 30 ms crossfade; tail cached when only
+  positions change; synchronous rebuild in non-realtime mode. Since a crossfade runs uninterrupted, the
+  effective update interval is max(20 ms cap, 30 ms crossfade, rebuild time): at most one new IR per
+  30 ms while rebuilds stay under 30 ms, one per rebuild time otherwise (reference: Vorländer Table 15.1).
+- **AX18**: equal-gain crossfade for position updates; **equal-power** for large jumps (e.g. the
+  corner-to-corner step scenarios) and output-mode toggles, where the IRs are unrelated.
 - **AX1**: no Doppler. Movement is a sequence of crossfaded static IRs. Fast moves sound slightly
   smeared rather than pitch-shifted. That's intended, and the PR must describe it.
 

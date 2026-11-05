@@ -30,3 +30,6 @@ tools/ci/.pluginval/
 
 # Your own listening material for tools/ci/listening_pack.py (never committed)
 tools/ci/listening_inputs/
+
+# Reference corpus (copyrighted book texts): local only, never committed
+docs/corpus/

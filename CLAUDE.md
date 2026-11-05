@@ -97,6 +97,10 @@ pip install -r tools/ci/requirements.txt -r tools/acoustics/requirements.txt   #
 pytest tools                         # tools/ci + tools/acoustics, as the python CI job runs it
 python -m tools.acoustics metrics ir.wav          # ISO 3382 metrics as JSON (also: compare a.wav b.wav, clicks out.wav)
 
+# reference corpus for the interrogator subagent / /interrogate (private repo audio-resources -> docs/corpus/,
+# git-ignored; never commit it)
+tools/ci/fetch_corpus.sh
+
 # listening pack (CI artifact `listening-pack`): build/listening-pack/<phase>/
 python tools/ci/listening_pack.py --phase phase-03
 
