@@ -1,6 +1,6 @@
 # Phase 10 — Artifact-free movement under automation
 
-Size: **M** · Depends on: 06, 07, 08, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ4, AQ10, AX1, AX20), PRD FR-SIM-6, NFR-3, Q4
+Size: **M** · Depends on: 06, 07, 08, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ4, AQ10, AX1, AX18, AX20, AX22), PRD FR-SIM-6, NFR-3, Q4
 
 ## Goal
 
@@ -15,6 +15,11 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
   30 ms while rebuilds stay under 30 ms, one per rebuild time otherwise (reference: Vorländer Table 15.1).
 - **AX18**: equal-gain crossfade for position updates; **equal-power** for large jumps (e.g. the
   corner-to-corner step scenarios) and output-mode toggles, where the IRs are unrelated.
+- **AX22**: Phase 04's realised-k switch. t_mix,e is continuous in position, but the fallback to
+  ISM-only up to the image-count cap is a single jump point in source position. Across it the IR segment
+  between t_mix,e and t_cap,e is ISM in one IR and noise in the other, so AX18's equal-gain premise
+  (correlated consecutive IRs) does not hold there, and the 30 ms position crossfade can dip by up to
+  ≈ 3 dB in that segment (Vorländer Eq. 4.14).
 - **AX1**: no Doppler. Movement is a sequence of crossfaded static IRs. Fast moves sound slightly
   smeared rather than pitch-shifted. That's intended, and the PR must describe it.
 
@@ -69,6 +74,10 @@ image list while moving (it would change AX20; needs an AX entry if introduced).
 - [ ] Offline render of every scenario is **bit-identical** across two runs.
 - [ ] A static scene renders identically (within −120 dB) in offline and realtime-sim modes.
 - [ ] Tail-cache result equals a full rebuild within −120 dB.
+- [ ] **AX22 switch point:** a test scene and a position move that cross a realised-k switch point
+      (ISM-only fallback on one side, tail from t_mix,e on the other). Measure and report the level dip
+      of the 30 ms position crossfade in the segment between t_mix,e and t_cap,e, per band (up to
+      ≈ 3 dB expected, Vorländer Eq. 4.14). Reported, not gated (no threshold has been set).
 - [ ] Worst-case IR staleness in realtime-sim ≤ **100 ms** in all scenarios (recorded in the CI log;
       failing it fails the job). The hybrid IR's image list is time-bounded (AX20), so its size follows
       t_mix,e and the room, not `maxReflectionOrder`.

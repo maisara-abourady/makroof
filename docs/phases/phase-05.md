@@ -165,32 +165,42 @@ hand-tuned.
      Table 5.1), the latter for information only: on Kuttruff Table 5.2 cases 2 and 4 it moves T away
      from the iteration result. a* assumes s = 1 on all walls; with low s the true T can fall on the
      other side of Eyring (Kuttruff §9.4). The report gives the mean |T30 error| at 500 Hz–2 kHz (AQ9)
-     for Eyring, a* and γ²-Eyring against BRAS, split by uniform and uneven absorption using the
-     absorption-contrast indicator of scope 3. Patch size or count of the a* solver, how air absorption
-     enters a* and γ²-Eyring, the split rule on the indicator, and the γ² value for room shapes not in
-     Table 5.1: **pending decision**. Promotion
-     to the simulator's T60_b source happens only on this evidence, in a later phase, through an AQ2
+     for Eyring, a* and γ²-Eyring against BRAS, with the rooms listed sorted by the absorption-contrast
+     indicator of scope 3 **and** by the largest single-face share of the total absorption. No
+     threshold splits them: the contrast ratio alone cannot separate Kuttruff Table 5.2 cases 5 and 6
+     (+2.3 % against +28.6 % vs Eyring). Air absorption enters both as 4mV added to the denominator;
+     for a* this is equivalent to an exp(−mR) factor in the kernel (a* = a₀ + 4mV/S, Kuttruff §4.5 with
+     Eq. 5.55), for γ²-Eyring it factors out of Eq. 5.29. γ² is the Table 5.1 row where the room's shape
+     is tabulated, else 0.4 (Kuttruff §5.5); the choice changes T by ≤ 0.3 %. a* solver patches: 88
+     equal elements as in Miles' 1:2:3 example (Kuttruff §5.7) for the Table 5.2 test; for BRAS rooms,
+     halve the patch size until a* changes by < 1 %. Promotion to the simulator's T60_b source happens only on this evidence, in a later phase, through an AQ2
      change (BUILD_PLAN §5 B12).
    - **Reference hybrid (AX21):** at each specular hit, inject s(1−α) of the incident energy into the
-     Lambert boundary patch hit, at the hit time (Kuttruff Eq. 4.24; Gilbert, §4.6); propagate it with
-     time-dependent radiosity (Eq. 4.28); gather it at the listener (Eq. 4.29); add it to the early part
-     before t_mix,e. The report gives the EDT and C80 errors against BRAS with and without it. The tail
-     decay source is **not** a*; it is decided by the decay-predictor evidence above. Patch size and
-     time step, and how the gathered energy enters the IR whose metrics are computed: **pending
-     decision**. Promotion into `src/sim` happens in a later phase only if the EDT/C80 errors drop, and
-     only after validation against an independent mixed-s reference (a Lambert-scattering ray tracer
-     per Kuttruff §9.8 at s = 0.1–0.4, or Vorländer Table 4.1 read off its plot); a check at s = 1
-     alone is circular (BUILD_PLAN §5 B11).
+     Lambert boundary patch hit, at the hit time (Kuttruff Eq. 4.24; Gilbert, §4.6). Propagate it with
+     the **mixed specular/diffuse** form, not the all-Lambert Eq. 4.28: at every later hit, split the
+     energy into s (re-radiated per Lambert) and 1−s (continuing specularly), as in Gilbert's
+     formulation and Joyce's reflection matrix (Kuttruff §4.6, Eq. 4.35). Gather the diffuse part at the
+     listener with Eq. 4.29, and add it to the early part before t_mix,e. Patches as for a* (above),
+     time step 1 ms (Kuttruff §9.8 typical class width). The gathered energy is added as a per-band
+     energy envelope to the squared band IR before the Schroeder integral and C80 (EDT and C80 are
+     energy integrals, Vorländer Eqs. 6.4, 6.7). The report gives the EDT and C80 errors against BRAS
+     with and without it. The tail decay source is **not** a*; it is decided by the decay-predictor
+     evidence above. Promotion into `src/sim` happens in a later phase only if the EDT/C80 errors drop,
+     and only after validation against an independent mixed-s reference, the Lambert-scattering ray
+     tracer of Kuttruff §9.8 at s = 0.1–0.4; a check at s = 1 alone is circular (BUILD_PLAN §5 B11).
    - **Mixing-time handover:** EDT and C80 with t_mix,e from the Phase 04 rule against the same with
-     floors at t_dir,e + 80 ms and t_dir,e + 140 ms (Vorländer §6.4, §15.3; Begault Ch. 3). Whether a
-     floor replaces t_mix,e or raises the rule's lower bound: **pending decision**. Report per band
-     whether they differ by more than 1 jnd (Vorländer Table 6.1: EDT 5 %, C80 1 dB). This needs a
-     validation-only `render_cli` override of the handover (not in the contract).
+     floors at t_dir,e + 80 ms and t_dir,e + 140 ms (Vorländer §6.4, §15.3; Begault Ch. 3). A floor
+     raises the rule's lower bound (t_mix,e ≥ t_dir,e + floor); it does not fix t_mix,e. Report per band
+     whether they differ by more than 1 jnd (Vorländer Table 6.1: EDT 5 %, C80 1 dB; Table 6.1 states
+     these jnds for 500–1000 Hz only). This needs a validation-only `render_cli` override of that lower
+     bound (not in the contract).
    - **Humidity bound (AX4):** per band, the Eyring T60 at 40 % and 70 % RH, 20 °C (Kuttruff Table 6.1
-     rows, Eq. 5.24) relative to the AX4 atmosphere, for each room; for example 8 kHz in a 10 000 m³
-     room gives −11.6 % / +17.2 %. Where BRAS documents its measurement conditions, render once more
-     with the AX4 override set to them, to separate model error from atmosphere mismatch. The source of
-     m below 500 Hz (Table 6.1 starts at 0.5 kHz): **pending decision**. Not shown in the UI.
+     rows, Eq. 5.24) relative to the AX4 atmosphere, for each room; for example 8 kHz in a room with
+     V = 10 000 m³, S = 4725 m², ᾱ = 0.15 gives −11.6 % / +17.2 % (an air-dominated room would differ
+     more). m comes from Kuttruff Table 6.1 at 500 Hz–8 kHz and from the code's `AirAbsorption` below
+     500 Hz (the humidity effect there is negligible: the Vorländer Annex 20 °C rows are identical at
+     125–500 Hz). Where BRAS documents its measurement conditions, render once more with the AX4
+     override set to them, to separate model error from atmosphere mismatch. Not shown in the UI.
 
 ## Out of scope
 
@@ -214,8 +224,10 @@ and do not change the simulator.
       t_mix = 80 ms, at the 0.2 dB limit).
 - [ ] Each chosen scene's AQ9 pass/fail is printed and stated in the report summary.
 - [ ] The a* solver reproduces the iteration column of Kuttruff Table 5.2 (all six cases), called
-      directly (the α = 0 walls of those cases are forbidden in scenes by AQ3). Tolerance: **pending
-      decision**.
+      directly (the α = 0 walls of those cases are forbidden in scenes by AQ3), within **±1 %**, with 88 equal
+      elements as in Miles' example (Kuttruff §5.7). The corpus's own two methods agree to ≈ 0.5 %
+      (Fig. 5.10's slope of −1.57 dB per mean free path, with n̄ = cS/4V, gives 1.216 s against
+      case 4's 1.21 s).
 - [ ] The report contains the scope 6 comparisons (decay predictors, reference hybrid, handover,
       humidity bound); they are reported, not gated.
 
