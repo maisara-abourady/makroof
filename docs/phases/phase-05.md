@@ -30,7 +30,11 @@ hand-tuned.
 
 - **BRAS** — *Benchmark for Room Acoustical Simulation* (TU Berlin; licence CC BY-SA 4.0). It contains
   room scenes with geometry descriptions, material absorption/scattering data and measured omni and
-  binaural IRs.
+  binaural IRs. The comparison rooms are the CR rooms, CR1 excluded as coupled. Their α and s are
+  estimated, and the dataset authors state the CRs "cannot serve as a direct reference", so the errors
+  measure method plus input data, not a validation of NFR-1: Phase 05 calls them evidence (researcher
+  findings F1–F3, F6, F7 from the BRAS documentation, researcher report 9, `docs/review/phase-04-consult/9-researcher-measurements.md`; outside the corpus)
+  (decider report 11, accepted by Maisara, 2026-11-05).
 - Write `tools/validation/fetch_bras.py`. It downloads only the files needed (scene documentation,
   material tables, omni RIRs for the selected source/receiver pairs) from the official repository
   (DepositOnce), verifies SHA-256 checksums stored in `tools/validation/bras_manifest.json`, and caches
@@ -65,7 +69,9 @@ hand-tuned.
 
   Use the **initial/as-documented** absorption data as
   the primary run. If the dataset also provides absorption values fitted to the measurements, run them as a
-  secondary, clearly labelled run. Fitted data partly includes the answer, so it isn't proof of accuracy.
+  secondary, clearly labelled run. Fitted data partly includes the answer, so it isn't proof of accuracy:
+  on the fitted set T30 is circular, because the fitted α were scaled so that Eyring matches the
+  measured T (researcher finding F6, outside the corpus); label it that way.
 - If no room qualifies, Phase 05 still completes every part that does not need BRAS (a* Table 5.2
   test, ΔL_b on the test rooms, Table 5.2 and the s-cases, humidity bound). It is `done` with the note
   'NFR-1 not validated against measurement'. The measured remainder becomes `phase-05c` (created only if
@@ -136,11 +142,20 @@ hand-tuned.
    - Loudness matching (BS.1770) removes overall level, so listeners cannot judge strength G
      (Vorländer Table 6.1, jnd 1 dB). The report gives the offset removed per pair (dB) as a property
      of the playback; it is not a G error unless both IRs are calibrated to the same free-field
-     reference (Eq. 6.5). Where the data permit, G deltas are reported per band from the IRs.
+     reference (Eq. 6.5). On the BRAS CRs: "G not evaluable: levels manually corrected by 6 dB"
+     (researcher finding F3, outside the corpus); T30, EDT and C80 do not depend on absolute level.
+     Position-to-position level differences inside a room may be shown for information, only if the
+     documentation confirms that the correction is uniform (decider report 11, accepted by Maisara, 2026-11-05).
+   - Context: where published, the round-robin errors for the same rooms and input set (RR19:
+     Brinkmann et al. 2019, JASA 145(4), DOI 10.1121/1.5096178; external source) are printed next to ours, the use the dataset authors endorse
+     (comparing simulations on identical input).
    - BRAS scattering data enter the scenes through AX17: one broadband s per surface. For a material
      whose s rises from 500 Hz to 2 kHz (many Annex scattering rows do; some are flat or falling),
      this overstates s at 500 Hz and understates it at 2 kHz, so per-band deltas in the AQ9 bands include an AX17 input
-     error, flagged next to them.
+     error, flagged next to them. BRAS s rises as √f (s = 0.5·√(d_char·f/c), clamped to [0.05, 0.99];
+     researcher finding F7, BRAS documentation, outside the corpus): for unclamped materials the AX17
+     mean is (1 + √2 + 2)/3 = 1.471 × s(500), which overstates s by +47 % at 500 Hz and +4 % at 1 kHz
+     and understates it by −26 % at 2 kHz, whatever d_char is (decider report 11, accepted by Maisara, 2026-11-05).
    - Non-diffuseness indicators per room: the absorption contrast ᾱ(floor + ceiling) / ᾱ(walls), and
      the decay curvature C = 100·(T30/T20 − 1) % for both IRs (a curvature above ≈ 10 % marks a
      markedly non-straight decay; outside the corpus, not verified; product choice, stands (AQ9); the
@@ -187,11 +202,11 @@ hand-tuned.
      high ᾱ. a* solver patches for the Table 5.2 test: 88 equal elements for the 1:2:3 room (cases 3–6,
      Miles' example, Kuttruff §5.7) and 96 equal elements (6 × 4²) for the cube (cases 1–2); for BRAS rooms,
      halve the patch size until a* changes by < 1 %. **Decision rule (B12)** (decider report 8, accepted by Maisara, 2026-11-05): Phase 05
-     compares predicted T₆₀ (deterministic, so no seed noise) with measured T30 at 500 Hz–2 kHz,
+     compares predicted T₆₀ (deterministic, so no seed noise, but not error-free: a* is converged to < 1 % per patch halving and the γ² choice moves γ²-Eyring by ≈ 0.4–3.6 % (Kuttruff Eqs. 5.33–5.34), both the size of the 1.25-point margin) with measured T30 at 500 Hz–2 kHz,
      room-averaged. A predictor replaces Eyring for all scenes (NFR-8: one predictor, no per-room
      choice) only if it lowers the mean |error| by ≥ 0.25 working jnd (1.25 % points) and makes no room
-     worse by > 1 jnd (5 %). Otherwise Eyring stays. Shown separately for uniform and uneven α. The
-     replacement is implemented in a later phase, through an AQ2 change (BUILD_PLAN §5 B12).
+     worse by > 1 jnd (5 %). Otherwise Eyring stays. Shown separately for uniform and uneven α.
+     Conditions (decider report 11, accepted by Maisara, 2026-11-05): (i) a predictor counts as lowering the error only if it does so with a* converged to < 0.4 % per halving (margin/3, by analogy with AX11); (ii) a predictor with a free modelling input (γ²) must meet the rule at every admissible value: the Table 5.1 row and 0.4; (iii) the 5 % T jnd is a working value from outside the corpus (Vorländer Table 6.1 gives 5 % for EDT, not for T); (iv) only the initial-estimate α set counts: the fitted set is circular in Eyring's favour by construction (its α were scaled so that Eyring matches the measured T; researcher finding F6, BRAS documentation, outside the corpus) and is reported only. An outcome from BRAS alone is labelled "input-limited" in the AQ2 change request, and Maisara decides on it (C2). The replacement is implemented in a later phase, through an AQ2 change (BUILD_PLAN §5 B12).
    - **Reference hybrid (AX21):** at each specular hit, inject s(1−α) of the incident energy into the
      Lambert boundary patch hit, at the hit time (Kuttruff Eq. 4.24; Gilbert, §4.6). Propagate it with
      the **mixed specular/diffuse** form, not the all-Lambert Eq. 4.28: at every later hit, split the
@@ -249,7 +264,10 @@ hand-tuned.
      room-averaged mean |error|/jnd falls by at least δ = 0.25 jnd for both EDT and C80 (Δ̂ ≤ −δ);
      (c) no room's Δ̂ exceeds +1 jnd on either. Each comparison requires SE ≤ threshold/3 (AX11).
      Otherwise the current rule stands (decider D1, accepted by Maisara, 2026-11-05; margin: decider
-     report 7, FE-01).
+     report 7, FE-01). As context, report per room the perceptual mixing times t_mp50 and t_mp95 of
+     Lindau, Kosanke & Weinzierl 2012 (JAES 60(11), Eqs. 12–14; external source, DOI
+     10.14279/depositonce-15236, researcher finding F20; scope: binaural, near-shoebox rooms, V up to
+     about 10 000 m³) next to t_mix,e; no t_mp95 floor arm is added (decider report 11, accepted by Maisara, 2026-11-05).
    - **Paired comparisons: margin and ensemble size** (decider report 7, FE-01 and DN5, accepted by
      Maisara, 2026-11-05). Δ̂_X = (room-averaged AQ9 error of metric X with the change) − (same, base),
      X ∈ {EDT, C80}, on seed-paired ensembles; δ = 0.25 jnd. "Not worse" means Δ̂_X ≤ +δ; "lowers"
@@ -303,7 +321,10 @@ and do not change the simulator.
       under +3 %, e.g. +2.5 % at T = 0.2 s, so shorter bands are reported only). At least one of the
       three bands must meet the condition, else the test scene is unsuitable. The test does not assert on C80 or EDT (C80 moves only ≈ −0.21 dB at
       t_mix = 80 ms, at the 0.2 dB limit).
-- [ ] Each chosen scene's AQ9 pass/fail is printed and stated in the report summary.
+- [ ] AQ9 pass/fail is printed per room (mean over pairs) and per pair, with the α set of each, and
+      stated in the report summary; a per-pair pass/fail mostly reflects noise in position-specific
+      details (RR19 found the per-position structure mostly not reproduced; external source)
+      (decider report 11, accepted by Maisara, 2026-11-05).
 - [ ] The a* solver reproduces the iteration column of Kuttruff Table 5.2 (all six cases), called
       directly (the α = 0 walls of those cases are forbidden in scenes by AQ3), within **±1 %**, with 88 equal
       elements for the 1:2:3 room (cases 3–6, Miles' example, Kuttruff §5.7) and 96 equal elements
@@ -345,8 +366,16 @@ a* against Table 5.2), and whether the conclusions in the report follow from the
   absorption input data, the presence of a scattering model, and the chosen absorption and scattering
   coefficients as decisive. The shoebox reduction adds a geometry error the corpus does not quantify.
   This phase exists to surface that early (F2, F3).
+- On BRAS initial data, blind mature hybrids stayed above 1 jnd at 500 Hz–2 kHz in most cases, driven
+  by the input data (RR19: Brinkmann et al. 2019, JASA 145(4), DOI 10.1121/1.5096178; external source); the corpus reports 1–2 jnd
+  achievable with carefully chosen coefficients (Vorländer §11.5, RR-III). An AQ9 miss on initial data
+  is therefore expected and is read against the RR19 spread before it is escalated (decider report 11, accepted by Maisara, 2026-11-05).
+- BRAS gives at most three usable rooms with estimated inputs: results are evidence, not validation. A
+  second measured dataset is required before the Phase 13 beta decision (BUILD_PLAN §3 F2); Maisara
+  decides, the researcher agent searches. It does not block this phase (decider report 11, accepted by Maisara, 2026-11-05).
 
 ## Definition of done
 
-Automated criteria green; report committed; status row 05 `done` with an "AQ9 met in x/y scenes" note;
+Automated criteria green; report committed; status row 05 `done` with an "AQ9 met in x/y" note per room
+and per pair, by α set (BRAS: evidence, not validation);
 the PR summarizes findings for the Spatial Audio Expert.

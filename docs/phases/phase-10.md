@@ -77,15 +77,26 @@ image list while moving (it would change AX20; needs an AX entry if introduced).
 - [ ] A static scene renders identically (within −120 dB) in offline and realtime-sim modes.
 - [ ] Tail-cache result equals a full rebuild within −120 dB.
 - [ ] **AX22 switch point:** a test scene and a position move that cross a realised-k switch point
-      (ISM-only fallback on one side, tail from t_mix,e on the other). In the segment between t_mix,e
-      and t_cap,e of the 30 ms position crossfade, per band, report the largest level dip, the
-      reference it is measured against (the power-linear interpolation of the two segments), and the
-      power ratio of the two segments (3 dB at mid-fade for any ratio; largest dip ≈ 4.4 dB at 10:1, at
-      g ≈ 0.24 of the fade; Vorländer Eq. 4.14). **Gated:** the total output band-energy dip against
-      the power-linear interpolation is ≤ 1 dB at 500 Hz–2 kHz. Total dip = 10·log10(1 − 0.5·f), f the
-      segment's energy share, so the gate holds for f ≤ 0.41 (Vorländer Eq. 4.14); the 1 dB is G's jnd
-      (Table 6.1, stated for 500–1000 Hz), applied to a 30 ms dip by extension. If it fails, this phase
-      proposes a time-segment-split crossfade as a new AX (decider report 8, accepted by Maisara, 2026-11-05).
+      (ISM-only fallback on one side, tail from t_mix,e on the other). Measured per output channel and
+      octave band (500 Hz, 1 kHz, 2 kHz; AX14 rule if adjacent bands differ > 15 dB) as the expected
+      instantaneous output power for a stationary input, computed from the two IRs:
+      P(g) = (1−g)²E₁ + g²E₂ + 2g(1−g)C₁₂ (E full-IR band energies, C₁₂ their band cross-energy),
+      against R(g) = (1−g)E₁ + gE₂, at every sample of the 30 ms ramp (instantaneous, no averaging
+      window; valid because Phase 06 gates the crossfade to the analytic one within −100 dB).
+      **Gate:** max_g of −10·log10(P/R) ≤ 1 dB. Reported: the dip at each g, the fade-averaged dip, ρ,
+      f (the segment's share of R(g*)), and the predicted worst case 10·log10(1 − f(1+ρ)/(1+√ρ)²) at
+      g* = 1/(1+√ρ). That prediction is for the segment only; the equal-gain dip of the correlated rest
+      when E₁ ≠ E₂ comes on top, and the gate, computed from P(g) with C₁₂, includes it. The predicted
+      worst case is ≤ 1 dB when f ≤ 0.2057(1+√ρ)²/(1+ρ): 0.41 at ρ = 1, 0.32 at ρ = 10, 0.21 for any ρ.
+      Instrument self-test: two independent seeded noise IRs at ρ = 10, f = 1 give 4.37 ± 0.1 dB at
+      g = 0.24 ± 0.01. This holds only with residual normalised cross-energy |ρ_c| ≤ 0.023 at 3σ, so use
+      noise IRs with 2BT ≥ 1.7·10⁴ per band (≈ 24 s at 500 Hz), or set the tolerance from 3/√(2BT) for
+      the chosen length (derived, not corpus). With a transient input the segment's own dip (up to
+      4.4 dB at 10:1) is reported, not gated (Vorländer Eq. 4.14, §1.7). The 1 dB is G's jnd (Table 6.1,
+      stated for 500–1000 Hz), applied to a 30 ms dip by extension. If the gate fails, this phase
+      proposes a time-segment-split crossfade as a new AX (decider report 8; measurement and formula:
+      decider report 11, FR-01, with the interrogator's corrections, report 12; accepted by Maisara,
+      2026-11-05).
 - [ ] Worst-case IR staleness in realtime-sim ≤ **100 ms** in all scenarios (recorded in the CI log;
       failing it fails the job). The hybrid IR's image list is time-bounded (AX20), so its size follows
       t_mix,e and the room, not `maxReflectionOrder`. If the ≤ 100 ms staleness gate fails only because

@@ -26,13 +26,41 @@ t_mix,e. This phase promotes the Phase 05 reference hybrid's early Lambert-scatt
 
 ## Scope
 
+0. **Patch size and time step (DN-1; set before any gate result is seen)** (decider report 11, accepted by Maisara, 2026-11-05; corrections from the interrogator pre-check, report 12). Patches are
+   defined by one absolute edge length ℓ in metres: each face is split into ⌈L/ℓ⌉ equal strips per
+   edge. ℓ is a constant in `src/sim`, changed only as an intended output change, like N_cap. The time
+   step Δt is 1 ms, also frozen. ℓ is the coarsest value at which, in every selected BRAS room and every
+   (A) case, halving ℓ changes all of these by < 1 %: a*, the window energy E_target per band from
+   500 Hz to 2 kHz, and each bin that (A) gates. Halving stops at ℓ = c·Δt = 0.343 m, because a finer
+   patch is not resolved by the 1 ms step; if that floor is reached, the residual is recorded. ℓ is
+   absolute, not relative to room size (with a relative split, a 100 m room's patches would smear
+   delays by tens of ms). The Table 15.1 option (the scattering part updated every 3 s or 1 m) is not
+   adopted; if W1 with the diffuse part goes above 700 ms, it is the first remedy Phase 10 may propose
+   as an AX. A coarser ℓ is not a remedy.
 1. **Port the reference hybrid into `src/sim`** (generic, NFR-8). At each specular hit, s(1−α) of the
    incident energy goes into the Lambert boundary patch hit, at the hit time (Kuttruff Eq. 4.24). It is
    propagated with the mixed specular/diffuse form: at each later hit, s is re-radiated per Lambert and
    1−s continues specularly (Joyce's reflection matrix, Kuttruff §4.6 Eq. 4.35, with the §5.2 split
    s(1−α) / (1−s)(1−α); Gilbert, §4.6, splits the boundary into specular and non-specular portions).
-   The diffuse part is gathered at the listener (Eq. 4.29) and added before t_mix,e. Patch size, time
-   step, and how the gathered energy is rendered into the IR waveform: **pending decision**.
+   The diffuse part is gathered at the listener (Eq. 4.29) and added before t_mix,e, on the scope 0
+   patches and time step.
+   **Rendering (DN-1, variant (d): equivalent-reflection pulses under the gathered envelope)**
+   (decider report 11, accepted by Maisara, 2026-11-05; corrections from the interrogator pre-check, report 12). Per emitter and per 1 ms step k on the emission time axis, the gathered diffuse
+   energy E_k,b (all patches, Eq. 4.29, each with its own delay R′/c) is rendered as
+   n_k = max(1, ⌈ν(t_k)·Δt⌉) pulses, ν(t) = 4πc³t²/V (Kuttruff Eq. 4.6; Blauert Ch. 3 §3.3), Δt = 1 ms
+   (Kuttruff §9.8 class width): equivalent reflections with density n_j matching the reflection
+   statistics (Vorländer Eq. 11.51). Below t_floor = √(V/(4πc³Δt)) (≈ 109 ms at 6 000 m³, ≈ 17 ms at
+   145 m³) n_k exceeds Eq. 4.6; up to t_mix in 6 000 m³ the count is ≈ 3× the diffuse-field count.
+   This is a departure from Eq. 4.6, low confidence. Pulse offsets within the step and signs come from
+   a counter-based RNG keyed by (tailSeed, emitter, step, pulse), independent of positions and patch
+   layout (AX5). Each pulse is a broadband equivalent reflection with per-band amplitude √(E_k,b/n_k),
+   rendered through the Phase 03 filterbank path like an image source, so the per-band tap energy per
+   step equals E_k,b exactly (the ISM-equivalent tap domain). In the rendered band IR it holds in
+   expectation over the random signs: band-filter ringing (AX15), band overlap (AX14) and coherent
+   addition of pulses closer than a filter length (Vorländer §1.7) move energy between steps and bands.
+   Per step, the per-patch contributions are kept so that Phase 08 can assign directions (Kuttruff
+   §4.5; Vorländer Fig. 15.5); how it does so is Phase 08's decision. Diffuse pulses inside the
+   ISM→tail crossfade take the ISM window (AX18).
 2. **Independent reference** in `tools/acoustics`: a seeded Kuttruff §9.8 partially diffuse ray
    tracer, energy multiplication (§9.8 step 3a; Vorländer Eqs. 11.14–11.18), with its seed independent
    of the rendered side. Receiver radius r_d = 0.5 m, N₀ = ⌈254·V⌉, doubling and cap as in B11.
@@ -48,12 +76,13 @@ t_mix,e. This phase promotes the Phase 05 reference hybrid's early Lambert-scatt
    band 500 Hz–2 kHz, ΔL_b,tr = 10·log10(E_target(AX16)/E_target(tracer)), and the hybrid's E_target
    against the tracer's within ±1 dB, in the same Hann window, with tracer k ≥ 684 over the window.
    - (i) If the hybrid's window level passes, tail-level matching switches to the hybrid whenever
-     ΔL_b,tr > 1 dB anywhere, even if the per-bin render gate fails and early rendering is not promoted.
+     |ΔL_b,tr| > 1 dB anywhere, even if the per-bin render gate fails and early rendering is not promoted.
    - (ii) If it fails, nothing switches: AX16 records ΔL_b,tr per case as a known deficit, and the
      diagnosis goes to Maisara.
-   - (iii) If Phase 05 accepted X-b (≤ 1 dB) but ΔL_b,tr > 1 dB anywhere, the acceptance is reversed and
+   - (iii) If Phase 05 accepted X-b (≤ 1 dB) but |ΔL_b,tr| > 1 dB anywhere, the acceptance is reversed and
      (i)/(ii) apply.
-   - Independently of these, if Phase 05's ΔL_b exceeded 1 dB anywhere, tail-level matching switches
+   - The switch is valid only with SE(ΔL_b,tr) = 4.34/√k_tr ≤ 1/3 dB (threshold/3, AX11); k ≥ 684 gives ≤ 0.17 dB. Realised k and SE are printed. The tracer seed is fixed, so the decision reproduces on re-run. Near 1 dB either branch leaves the level error within about 1 dB + 3·SE (decider report 11, FR-04; the trigger uses |ΔL_b,tr|, C1, accepted by Maisara, 2026-11-05).
+   - Independently of these, if Phase 05's |ΔL_b| exceeded 1 dB anywhere, tail-level matching switches
      to the hybrid's propagated diffuse energy (AX16), under the same validation.
 5. **Tracer-bias diagnosis** (BUILD_PLAN §5 B11, decider report 8, item 2e). If the per-bin difference
    converges to a bias above 0.3 dB, diagnose with two tracer self-checks against independent anchors:
@@ -81,6 +110,16 @@ decay source (B12); changes to the mixing-time rule, AX22 or N_cap; any per-scen
 ## Acceptance criteria — automated
 
 - [ ] Gate (A) passes on every case listed in scope 3 (or the outcome is "not promoted").
+- [ ] **Rendering checks (DN-1), deterministic** (decider report 11, accepted by Maisara, 2026-11-05; corrections from the interrogator pre-check, report 12):
+      - (i) taps: the rendered tap energy per step and band equals E_k,b within 1e-9 relative;
+      - (ii) continuity: per band from 500 Hz to 2 kHz, the normalised cross-energy of the diffuse
+        parts is ≥ 0.59 for a source move of 50 cm/s (Vorländer §15.3) × the AQ4 update interval
+        max(30 ms, measured rebuild time), i.e. 1.5 cm at 30 ms, and for a 1 cm room-dimension change
+        that crosses a patch boundary; so the equal-gain mid-fade dip of that part alone is
+        ≤ 10·log10((1+0.59)/2) = −1.0 dB (Vorländer Eq. 4.14), the Phase 10 bound;
+      - (iii) rendered domain: the per-band energy of the rendered diffuse part, measured with the AX14
+        half-octave meter over windows longer than the band filter's length, matches Σ E_k,b over the
+        same window. Tolerance and window choice: **pending decision**.
 - [ ] The window-level check of scope 4 is run and its branch is recorded.
 - [ ] Any tracer bias above 0.3 dB is diagnosed as in scope 5, and the result is recorded.
 - [ ] Gate (B) is evaluated on the Phase 05 numbers, and Δ̂, SE, R and pass/fail are printed per
@@ -99,7 +138,8 @@ sign-off on (A) alone.
 Listening pack: clicks and pink bursts through the six Phase 04 test rooms, Phase 04 IR against the
 05b IR (if promoted).
 - [ ] The early part sounds less sparse or "dry-then-reverb"; no audible jump into the tail.
-- [ ] No new graininess or colouration in the first ~100 ms.
+- [ ] No new graininess or colouration in the first ~100 ms (if it fails, DN-1's rendering is revisited:
+      decider report 11 reversal condition).
 - [ ] `open_field` still sounds nearly dry with a ground reflection.
 
 ## Contractor review focus

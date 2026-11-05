@@ -78,8 +78,9 @@ Licensing/trial (B1), auto-update, anything listed in BUILD_PLAN §5.
 - [ ] A final listening pass through all presets in both modes on the Adam monitors and headphones,
       plus a real session with 10 instances on stems. Note CPU in your DAW's meter.
 - [ ] Decide: is this build good enough to give to 3–5 beta users? The decision lists 'AQ9 met in x/y'
-      and every recorded known deficit (AX16, AX21, AX22, AQ10 misses) (decider report 8, accepted by Maisara, 2026-11-05). Your decision goes
-      in BUILD_PLAN §6.
+      and every recorded known deficit (AX16, AX21, AX22, AQ10 misses) (decider report 8, accepted by Maisara, 2026-11-05). It also
+      states whether a second measured dataset beyond BRAS was found and used (BUILD_PLAN §3 F2; BRAS
+      results are evidence, not validation) (decider report 11, accepted by Maisara, 2026-11-05). Your decision goes in BUILD_PLAN §6.
 
 ## Contractor review focus
 

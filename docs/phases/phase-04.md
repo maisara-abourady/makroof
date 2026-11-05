@@ -79,8 +79,10 @@ IR for every valid shoebox scene.
    11.9/11.17.) The corpus gives no rule for the transition time (Vorländer §11.7). This rule is
    chosen for accuracy (PRD NFR-1: more of the response is deterministic ISM) and for **1 dB expected
    level precision**: σ = 4.34/√19 ≈ 1.0 dB (Vorländer Eqs. 11.9/11.17), against the 1 dB jnd of G
-   (Vorländer Table 6.1, stated for 500–1000 Hz). The earlier √V-milliseconds term (the widely used estimate of perceptual
-   mixing time, cite the source in a comment) and the 20 ms are kept as a lower bound, counted from the
+   (Vorländer Table 6.1, stated for 500–1000 Hz). The earlier √V-milliseconds term (cite in a comment: "√V ms, the popular
+   estimate attributed to Cremer & Müller (1978), reported in Lindau, Kosanke & Weinzierl 2012, JAES
+   60(11), §1.1; their Eq. 1 at 400 s⁻¹ gives 0.89·√V ms"; external source, DOI
+   10.14279/depositonce-15236, researcher report 9, F20) and the 20 ms are kept as a lower bound, counted from the
    emitter's direct sound, not from emission. No corpus rule exists (Vorländer §11.7); the rule is
    revised only on the Phase 05 handover evidence (phase-05 scope 6). For t_dir,e → 0 the k_eff
    criterion alone gives roughly 6.8·V^(1/3) ms (≈ 53 expected arrivals) (approximate, from
@@ -369,9 +371,7 @@ filterbank reuse, and IR truncation.
   IRs) does not hold there, and the 30 ms position crossfade dips in that segment: 3 dB at mid-fade
   for any power ratio of the two uncorrelated segments; the largest dip relative to the power-linear
   interpolation of the two segments grows with their power ratio, ≈ 4.4 dB at 10:1, at g ≈ 0.24 of
-  the fade (Vorländer Eq. 4.14). In the whole output the dip is 10·log10(1 − 0.5·f), f the segment's
-  energy share, so Phase 10 gates the total output band-energy dip at ≤ 1 dB against the power-linear
-  interpolation, 500 Hz–2 kHz (holds for f ≤ 0.41) (decider report 8, accepted by Maisara, 2026-11-05).
+  the fade (Vorländer Eq. 4.14). Phase 10 gates the maximum dip of the expected instantaneous output power P(g) = (1−g)²E₁ + g²E₂ + 2g(1−g)C₁₂, computed from the two IRs at every sample of the 30 ms ramp, against R(g) = (1−g)E₁ + gE₂, at ≤ 1 dB per output channel and octave band 500 Hz–2 kHz; the predicted worst case 10·log10(1 − f(1+ρ)/(1+√ρ)²) at g* = 1/(1+√ρ) (segment only) is ≤ 1 dB for f ≤ 0.41 at ρ = 1, 0.32 at ρ = 10, 0.21 for any ρ (full statement in phase-10) (decider report 11, accepted by Maisara, 2026-11-05).
 - AX20 makes the image list grow with t_mix,e, not with `maxReflectionOrder` (large rooms need high
   orders to reach t_mix,e), and the realised-k fallback extends it up to the AX22 cap. Measure the
   AQ10 workloads W1 and W2 and record them (acceptance criteria); the AX22 cap is the only bound on
