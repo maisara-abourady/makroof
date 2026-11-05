@@ -19,9 +19,9 @@ struct ContractVersion
 };
 
 inline constexpr int kContractVersionMajor = 1;
-inline constexpr int kContractVersionMinor = 0;
+inline constexpr int kContractVersionMinor = 1;
 inline constexpr ContractVersion kCurrentContractVersion{kContractVersionMajor, kContractVersionMinor};
-inline constexpr const char* kContractVersion = "1.0";
+inline constexpr const char* kContractVersion = "1.1";
 
 // Returns kContractVersion. Exists so the library has a translation unit and so callers that
 // cannot see the constexpr (e.g. a C ABI later) can still query it.

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 
 namespace sim::ism {
 
@@ -51,6 +52,32 @@ std::vector<AxisImage> axisImages(double size, double source, int maxOrder)
     return out;
 }
 
+// Time-bounded variant (AX20): every axis image within `radius` of the listener coordinate, of any
+// order, sorted by distance along the axis so the combining loops can stop early.
+std::vector<AxisImage> axisImagesWithin(double size, double source, double listener, double radius)
+{
+    std::vector<AxisImage> out;
+    // |2 n L +- s - l| <= radius needs |n| <= (radius + 2 L) / (2 L).
+    const auto nMax = static_cast<int>(std::ceil((radius + 2.0 * size) / (2.0 * size)));
+    for (int n = -nMax; n <= nMax; ++n)
+    {
+        for (int p = 0; p <= 1; ++p)
+        {
+            AxisImage image;
+            image.coordinate = 2.0 * n * size + (p == 0 ? source : -source);
+            image.emissionSign = p == 0 ? 1.0 : -1.0;
+            image.hitsMin = std::abs(n - p);
+            image.hitsMax = std::abs(n);
+            if (std::abs(image.coordinate - listener) <= radius)
+                out.push_back(image);
+        }
+    }
+    std::stable_sort(out.begin(), out.end(), [&](const AxisImage& a, const AxisImage& b) {
+        return std::abs(a.coordinate - listener) < std::abs(b.coordinate - listener);
+    });
+    return out;
+}
+
 Vec3 normalized(const Vec3& v) noexcept
 {
     const double length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -80,11 +107,21 @@ std::size_t imageCount(int maxOrder) noexcept
 ImageSourceSet computeImageSources(const contract::Room& room, const Vec3& source, const Vec3& listener,
                                    const ImageSourceOptions& options)
 {
-    const int maxOrder = std::max(options.maxOrder, 0);
+    const bool timeBounded = options.maxArrivalTimeS > 0.0;
+    const int maxOrder = timeBounded ? std::numeric_limits<int>::max() : std::max(options.maxOrder, 0);
+    const double radius = timeBounded ? options.maxArrivalTimeS * kSpeedOfSoundMps : 0.0;
     const Vec3& size = room.geometry.dimensions;
-    const auto xs = axisImages(size.x, source.x, maxOrder);
-    const auto ys = axisImages(size.y, source.y, maxOrder);
-    const auto zs = axisImages(size.z, source.z, maxOrder);
+    const auto xs = timeBounded ? axisImagesWithin(size.x, source.x, listener.x, radius)
+                                : axisImages(size.x, source.x, maxOrder);
+    const auto ys = timeBounded ? axisImagesWithin(size.y, source.y, listener.y, radius)
+                                : axisImages(size.y, source.y, maxOrder);
+    const auto zs = timeBounded ? axisImagesWithin(size.z, source.z, listener.z, radius)
+                                : axisImages(size.z, source.z, maxOrder);
+    const auto axisDistanceSquared = [](const AxisImage& image, double l) {
+        const double d = image.coordinate - l;
+        return d * d;
+    };
+    const double radiusSquared = radius * radius;
 
     // Per surface and band: specular pressure factor sqrt(1 - a) * sqrt(1 - s), the energy factor
     // (1 - a) without scattering, and the energy factor (1 - s) of scattering.
@@ -107,20 +144,24 @@ ImageSourceSet computeImageSources(const contract::Room& room, const Vec3& sourc
         airDbPerMetre = bandsAirAttenuationDbPerMetre();
 
     ImageSourceSet set;
-    set.images.reserve(imageCount(maxOrder));
+    if (!timeBounded)
+        set.images.reserve(imageCount(maxOrder));
 
     for (const auto& ix : xs)
     {
-        if (ix.order() > maxOrder)
+        const double dx2 = axisDistanceSquared(ix, listener.x);
+        if (timeBounded ? dx2 > radiusSquared : ix.order() > maxOrder)
             break;
         for (const auto& iy : ys)
         {
-            if (ix.order() + iy.order() > maxOrder)
+            const double dxy2 = dx2 + axisDistanceSquared(iy, listener.y);
+            if (timeBounded ? dxy2 > radiusSquared : ix.order() + iy.order() > maxOrder)
                 break;
             for (const auto& iz : zs)
             {
                 const int order = ix.order() + iy.order() + iz.order();
-                if (order > maxOrder)
+                if (timeBounded ? dxy2 + axisDistanceSquared(iz, listener.z) > radiusSquared
+                                : order > maxOrder)
                     break;
 
                 ImageSource image;
@@ -138,6 +179,8 @@ ImageSourceSet computeImageSources(const contract::Room& room, const Vec3& sourc
                 image.distanceM = std::sqrt(toImage.x * toImage.x + toImage.y * toImage.y
                                             + toImage.z * toImage.z);
                 image.arrivalTimeS = image.distanceM / kSpeedOfSoundMps;
+                if (timeBounded && !(image.arrivalTimeS < options.maxArrivalTimeS))
+                    continue; // AX20: strictly before the end of the crossfade
                 image.arrivalDirection = normalized(toImage);
                 // The path leaves the image towards the listener; mirrored back into the real
                 // source's frame on every axis reflected an odd number of times.

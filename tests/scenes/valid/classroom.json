@@ -1,0 +1,132 @@
+{
+  "contractVersion": "1.1",
+  "units": "meters",
+  "room": {
+    "geometry": {
+      "kind": "shoebox",
+      "dimensions": [
+        9.0,
+        7.0,
+        3.2
+      ]
+    },
+    "surfaces": {
+      "floor": {
+        "absorption": [
+          0.02,
+          0.03,
+          0.04,
+          0.05,
+          0.06,
+          0.06,
+          0.07,
+          0.07
+        ],
+        "scattering": 0.2
+      },
+      "ceiling": {
+        "absorption": [
+          0.25,
+          0.35,
+          0.5,
+          0.6,
+          0.65,
+          0.65,
+          0.6,
+          0.55
+        ],
+        "scattering": 0.2
+      },
+      "xMin": {
+        "absorption": [
+          0.04,
+          0.05,
+          0.05,
+          0.06,
+          0.07,
+          0.08,
+          0.08,
+          0.08
+        ],
+        "scattering": 0.15
+      },
+      "xMax": {
+        "absorption": [
+          0.04,
+          0.05,
+          0.05,
+          0.06,
+          0.07,
+          0.08,
+          0.08,
+          0.08
+        ],
+        "scattering": 0.15
+      },
+      "yMin": {
+        "absorption": [
+          0.04,
+          0.05,
+          0.05,
+          0.06,
+          0.07,
+          0.08,
+          0.08,
+          0.08
+        ],
+        "scattering": 0.15
+      },
+      "yMax": {
+        "absorption": [
+          0.04,
+          0.05,
+          0.05,
+          0.06,
+          0.07,
+          0.08,
+          0.08,
+          0.08
+        ],
+        "scattering": 0.15
+      }
+    }
+  },
+  "listener": {
+    "position": [
+      4.5,
+      4.5,
+      1.2
+    ]
+  },
+  "emitters": [
+    {
+      "id": "L",
+      "channel": 0,
+      "position": [
+        3.5,
+        1.2,
+        1.6
+      ],
+      "gainDb": 0.0
+    },
+    {
+      "id": "R",
+      "channel": 1,
+      "position": [
+        5.5,
+        1.2,
+        1.6
+      ],
+      "gainDb": 0.0
+    }
+  ],
+  "render": {
+    "outputMode": "binaural",
+    "hrtfId": "generic-v1",
+    "maxReflectionOrder": 20,
+    "tailSeed": 103
+  },
+  "extensions": {
+    "notes": "Phase 04 test room: classroom with an absorbent ceiling (T60 about 0.8 s)"
+  }
+}

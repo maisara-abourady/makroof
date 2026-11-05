@@ -58,7 +58,10 @@ struct ImageSourceSet
 
 struct ImageSourceOptions
 {
-    int maxOrder = 0;                          // reflection orders 0..maxOrder
+    int maxOrder = 0; // reflection orders 0..maxOrder (if maxArrivalTimeS <= 0)
+    // AX20 (Phase 04 hybrid IR): when > 0, the list is time-bounded instead: every image of any
+    // order whose arrival time is < maxArrivalTimeS, and maxOrder is ignored.
+    double maxArrivalTimeS = 0.0;
     double gain = 1.0;                         // linear emitter gain (10^(gainDb / 20))
     bool airAbsorption = true;                 // AX4; false only for validation against references
     Directivity directivity = omniDirectivity; // AQ8
@@ -67,7 +70,8 @@ struct ImageSourceOptions
 // Number of images of order <= maxOrder in a shoebox: (2N + 1)(2N^2 + 2N + 3) / 3.
 std::size_t imageCount(int maxOrder) noexcept;
 
-// All images of `source` seen from `listener` up to options.maxOrder. Images whose specular
+// All images of `source` seen from `listener` up to options.maxOrder (or, with
+// options.maxArrivalTimeS > 0, every image arriving before that time, AX20). Images whose specular
 // amplitude and scattered energy are zero in every band (a reflection off an a = 1 surface) are
 // dropped, except the direct path, which is always images[0]. Deterministic: ties in arrival time
 // keep the enumeration order. Requires a validated scene (positions inside the room).

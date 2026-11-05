@@ -4,10 +4,15 @@
 // body of buildRoomIR() (ISM in Phase 03, tail in Phase 04, binaural in Phase 08, stereo speakers in
 // Phase 09); the types and the signature stay.
 //
-// Phase 03: Kind::Omni renders the early reflections (image-source method). Binaural and
+// Phase 04: Kind::Omni renders the hybrid room IR (image-source early part + stochastic late tail);
+// Kind::OmniEarly is the Phase 03 early-reflection-only IR, kept unchanged. Binaural and
 // StereoSpeakers are still the Phase 02 dry pass-through stub (Phases 08 and 09).
 #include "contract/SceneDescription.h"
 #include "sim/ism/ImageSources.h"
+#include "sim/tail/Decay.h"
+#include "sim/tail/NoiseTail.h"
+
+#include <array>
 
 #include <cstddef>
 #include <vector>
@@ -44,17 +49,24 @@ struct RoomIR
 struct BuildOptions
 {
     double sampleRate = 48000.0;
-    // Omni: one omnidirectional receiver per output (validation, Phases 03-05). Binaural and
-    // StereoSpeakers correspond to contract::OutputMode.
+    // Omni: the hybrid IR (ISM + tail) at one omnidirectional receiver per output (validation,
+    // Phases 04-05). OmniEarly: the Phase 03 early-reflection-only (ISM) IR to maxReflectionOrder.
+    // Binaural and StereoSpeakers correspond to contract::OutputMode.
     enum class Kind
     {
         Omni,
+        OmniEarly,
         Binaural,
         StereoSpeakers
     } kind = Kind::Binaural;
     // AX4: air absorption is always on in the product. false only for validation against
     // references that don't model it (render_cli --no-air-absorption).
     bool airAbsorption = true;
+    // Kind::Omni, validation only (render_cli --tail-only): the IR holds only the matched tail
+    // sum_b E_b u_b, from emission time 0 on the IR's time axis, without the early part and without
+    // the crossfade. The T30 ensembles of Phase 04 measure the tail generator's decay on these
+    // ("tail-only renders", phase-04.md, "Ensemble sizes").
+    bool tailOnly = false;
 };
 
 // AX1: the earliest direct arrival (over all emitters) lands at this sample, so the
@@ -68,28 +80,67 @@ double earliestDirectArrivalS(const contract::SceneDescription& scene) noexcept;
 // The time that maps to sample 0 of the omni IR: earliestDirectArrivalS - kAlignPreRollSamples / fs.
 double alignmentShiftS(const contract::SceneDescription& scene, double sampleRate) noexcept;
 
-// The image sources of each emitter as the omni build uses them, indexed by emitter channel
-// (AX10), with the emitter's gainDb applied. For tests and render_cli --images.
+// The image sources of each emitter as the omni builds use them, indexed by emitter channel
+// (AX10), with the emitter's gainDb applied. For tests and render_cli --images. Kind::Omni: the
+// AX20 time-bounded list (every image arriving before t_mix,e + 2.5 ms, any order); any other kind:
+// orders 0..maxReflectionOrder (the Phase 03 list).
 std::vector<ism::ImageSourceSet> imageSourcesByChannel(const contract::SceneDescription& scene,
                                                        const BuildOptions& options);
 
 // The kind that corresponds to the scene's render.outputMode.
 BuildOptions::Kind kindForOutputMode(contract::OutputMode mode) noexcept;
 
+// Diagnostics of the hybrid omni build, per emitter channel (phase-04 spec: T60_b, t_mix,e, the
+// matching results with sigma_dB and the realised non-zero entry count). For tests, render_cli
+// --diagnostics and later UI display.
+struct HybridEmitterDiagnostics
+{
+    int channel = 0;
+    std::size_t imageCount = 0;     // images in the AX20 list (non-zero ones; the direct path always)
+    std::size_t scatteredCount = 0; // AX16 scattered-energy records in it
+    tail::TailMatch match;
+    // Measured check (not used by the matching): the realised tail energy E_b^2 * sum u_b^2 in the
+    // 10 ms centred on t_mix,e over E_target,b, in dB (0 dB = the realisation is at its expected
+    // level; the band-filter ringing of the ISM is not in it).
+    contract::BandArray bandsRealisedOverTargetDb{};
+};
+
+struct HybridDiagnostics
+{
+    double sampleRate = 48000.0;
+    tail::RoomDecay decay;
+    double tailLengthS = 0.0; // L_IR from emission
+    double alignmentShiftS = 0.0;
+    std::size_t irLength = 0;                       // samples
+    std::vector<HybridEmitterDiagnostics> emitters; // by channel
+};
+
 // Builds the room IR of a scene. The scene must have passed contract::validate(); the result for
 // an invalid scene is unspecified (but never undefined behaviour). Throws std::invalid_argument
 // for an unsupported sample rate. Deterministic: the same scene and options give the same taps.
 //
-// Kind::Omni (Phase 03): for each emitter, the image-source IR (orders 0..maxReflectionOrder) at
-// an omnidirectional receiver at the listener, built per octave band and summed through the
-// linear-phase filterbank (ism/BandRenderer.h). Both outputs of an emitter get the same IR (mono
-// room preview). Time-aligned per AX1, level per AX2 (direct path at 1 m = emitter gain), air
-// absorption per AX4. All taps have the length of the longest emitter IR: last arrival + kernel +
-// filterbank ringing. No late tail yet (Phase 04).
+// Kind::OmniEarly (Phase 03, unchanged): for each emitter, the image-source IR (orders
+// 0..maxReflectionOrder) at an omnidirectional receiver at the listener, built per octave band and
+// summed through the linear-phase filterbank (ism/BandRenderer.h). Both outputs of an emitter get
+// the same IR (mono room preview). Time-aligned per AX1, level per AX2 (direct path at 1 m =
+// emitter gain), air absorption per AX4. All taps have the length of the longest emitter IR: last
+// arrival + kernel + filterbank ringing (AX15).
+//
+// Kind::Omni (Phase 04): the hybrid IR. Per emitter, the AX20 time-bounded image list (every image
+// arriving before t_mix,e + 2.5 ms; maxReflectionOrder has no effect) rendered as above, joined by
+// an equal-power crossfade at t_mix,e (AX18) to a seeded stochastic tail (sim/tail/NoiseTail.h)
+// whose per-band decay is Eyring with air absorption and whose level is energy-matched to the image
+// list at t_mix,e. The tail noise is seeded with render.tailSeed (output index 0, see
+// tail::tailSeedForOutput) and the emitter channel as the PCG32 stream; both outputs of an emitter
+// get the same IR. Length: the tail's L_IR (1.5 T60_max from emission, capped at 12 s) or the early
+// part, whichever is longer. Sub-normal float values are flushed to zero.
+//
+// Kind::Omni with `diagnostics` != nullptr also fills in the diagnostics.
 //
 // PHASE 02 STUB (Binaural, StereoSpeakers): a dry pass-through. The emitter with id "L" goes to
 // output 0 and the emitter with id "R" to output 1, each as a unit delta at t = 0 (length 1
 // sample); the other two pairs are a single 0. Positions, materials and gains are ignored.
-RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& options);
+RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& options,
+                   HybridDiagnostics* diagnostics = nullptr);
 
 } // namespace sim

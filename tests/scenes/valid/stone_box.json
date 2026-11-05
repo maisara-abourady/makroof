@@ -1,0 +1,132 @@
+{
+  "contractVersion": "1.1",
+  "units": "meters",
+  "room": {
+    "geometry": {
+      "kind": "shoebox",
+      "dimensions": [
+        20.0,
+        12.0,
+        10.0
+      ]
+    },
+    "surfaces": {
+      "floor": {
+        "absorption": [
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.06,
+          0.07,
+          0.08
+        ],
+        "scattering": 0.1
+      },
+      "ceiling": {
+        "absorption": [
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.06,
+          0.07,
+          0.08
+        ],
+        "scattering": 0.1
+      },
+      "xMin": {
+        "absorption": [
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.06,
+          0.07,
+          0.08
+        ],
+        "scattering": 0.1
+      },
+      "xMax": {
+        "absorption": [
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.06,
+          0.07,
+          0.08
+        ],
+        "scattering": 0.1
+      },
+      "yMin": {
+        "absorption": [
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.06,
+          0.07,
+          0.08
+        ],
+        "scattering": 0.1
+      },
+      "yMax": {
+        "absorption": [
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.06,
+          0.07,
+          0.08
+        ],
+        "scattering": 0.1
+      }
+    }
+  },
+  "listener": {
+    "position": [
+      10.0,
+      8.0,
+      1.7
+    ]
+  },
+  "emitters": [
+    {
+      "id": "L",
+      "channel": 0,
+      "position": [
+        8.0,
+        3.0,
+        1.7
+      ],
+      "gainDb": 0.0
+    },
+    {
+      "id": "R",
+      "channel": 1,
+      "position": [
+        12.0,
+        3.0,
+        1.7
+      ],
+      "gainDb": 0.0
+    }
+  ],
+  "render": {
+    "outputMode": "binaural",
+    "hrtfId": "generic-v1",
+    "maxReflectionOrder": 20,
+    "tailSeed": 106
+  },
+  "extensions": {
+    "notes": "Phase 04 test room: hard stone box (T60 about 6 s)"
+  }
+}

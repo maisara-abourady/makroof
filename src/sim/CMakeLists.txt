@@ -9,6 +9,15 @@ add_library(spatial_sim STATIC
             OfflineRender.cpp
             AirAbsorption.h
             AirAbsorption.cpp
+            Rng.h
+            Fft.h
+            Fft.cpp
+            tail/Decay.h
+            tail/Decay.cpp
+            tail/MixingTime.h
+            tail/MixingTime.cpp
+            tail/NoiseTail.h
+            tail/NoiseTail.cpp
             ism/ImageSources.h
             ism/ImageSources.cpp
             ism/BandRenderer.h

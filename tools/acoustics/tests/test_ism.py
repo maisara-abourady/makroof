@@ -58,7 +58,7 @@ def render(binary, tmp_path: pathlib.Path, scene: dict, name: str, *extra: str):
     path = tmp_path / f"{name}.json"
     path.write_text(json.dumps(scene), encoding="utf-8")
     result = render_cli.run(
-        binary, "--scene", path, "--mode", "omni", "--rate", str(FS),
+        binary, "--scene", path, "--mode", "omni-early", "--rate", str(FS),
         "--ir", tmp_path / f"{name}.wav", "--images", tmp_path / f"{name}.images.json", *extra,
     )
     assert result.returncode == 0, result.stderr

@@ -22,10 +22,11 @@ std::string mediumRoomWithVersion(const std::string& version)
 
 } // namespace
 
-TEST_CASE("the current version is 1.0", "[contract][version]")
+TEST_CASE("the current version is 1.1", "[contract][version]")
 {
+    // 1.1 (Phase 04, AX20): render.maxReflectionOrder has no effect on the hybrid IR.
     CHECK(contract::kContractVersionMajor == 1);
-    CHECK(contract::kContractVersionMinor == 0);
+    CHECK(contract::kContractVersionMinor == 1);
     CHECK(contract::toString(contract::kCurrentContractVersion) == contract::kContractVersion);
 }
 
@@ -50,6 +51,28 @@ TEST_CASE("version 1.0 loads without issues", "[contract][version]")
     CHECK(result.scene->contractVersion == contract::kCurrentContractVersion);
 }
 
+TEST_CASE("version 1.1 loads without issues", "[contract][version]")
+{
+    const auto result = contract::parseScene(mediumRoomWithVersion("1.1"));
+    REQUIRE(result.ok());
+    CHECK(result.issues.empty());
+    CHECK(result.scene->contractVersion == contract::ContractVersion{1, 1});
+}
+
+TEST_CASE("migration 1.0 -> 1.1: a 1.0 document loads unchanged and is written back as 1.1",
+          "[contract][version]")
+{
+    // 1.1 changed only the meaning of render.maxReflectionOrder (AX20), so every 1.0 field reads the
+    // same; the value keeps its range and is preserved.
+    const auto old = contract::parseScene(mediumRoomWithVersion("1.0"));
+    const auto current = contract::parseScene(mediumRoomWithVersion("1.1"));
+    REQUIRE(old.ok());
+    REQUIRE(current.ok());
+    CHECK(*old.scene == *current.scene);
+    CHECK(old.scene->render.maxReflectionOrder == 20);
+    CHECK(contract::toJson(*old.scene).find("\"contractVersion\": \"1.1\"") != std::string::npos);
+}
+
 TEST_CASE("version 1.7 loads with a warning and ignores unknown fields", "[contract][version]")
 {
     std::string json = mediumRoomWithVersion("1.7");
@@ -65,7 +88,7 @@ TEST_CASE("version 1.7 loads with a warning and ignores unknown fields", "[contr
     CHECK(result.issues[0].code == contract::IssueCode::W_VERSION_MINOR_NEWER);
     CHECK(result.issues[0].severity() == contract::Severity::warning);
     CHECK(result.issues[0].path == "contractVersion");
-    // The loaded value is a 1.0 scene: the unknown fields are gone.
+    // The loaded value is a 1.1 scene: the unknown fields are gone.
     CHECK(result.scene->contractVersion == contract::kCurrentContractVersion);
     CHECK(contract::toJson(*result.scene).find("directivity") == std::string::npos);
 }

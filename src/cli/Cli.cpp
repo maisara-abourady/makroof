@@ -10,6 +10,7 @@
 #include <array>
 #include <charconv>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -31,7 +32,10 @@ struct Options
     std::string irPath;
     std::string automationPath;
     std::string imagesPath;
+    std::string diagnosticsPath;
+    std::optional<std::uint32_t> tailSeed;
     bool noAirAbsorption = false;
+    bool tailOnly = false;
     std::optional<double> rate;
     std::optional<sim::BuildOptions::Kind> mode;
     bool help = false;
@@ -42,6 +46,8 @@ std::optional<sim::BuildOptions::Kind> parseMode(const std::string& text)
 {
     if (text == "omni")
         return sim::BuildOptions::Kind::Omni;
+    if (text == "omni-early")
+        return sim::BuildOptions::Kind::OmniEarly;
     if (text == "binaural")
         return sim::BuildOptions::Kind::Binaural;
     if (text == "stereoSpeakers")
@@ -57,6 +63,16 @@ std::optional<double> parseRate(const std::string& text)
     if (ec != std::errc{} || ptr != end || value <= 0)
         return std::nullopt;
     return static_cast<double>(value);
+}
+
+std::optional<std::uint32_t> parseSeed(const std::string& text)
+{
+    std::uint32_t value = 0;
+    const char* end = text.data() + text.size();
+    const auto [ptr, ec] = std::from_chars(text.data(), end, value);
+    if (ec != std::errc{} || ptr != end || text.empty())
+        return std::nullopt;
+    return value;
 }
 
 // Returns an error message, or an empty string on success.
@@ -80,6 +96,11 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             options.noAirAbsorption = true;
             continue;
         }
+        if (arg == "--tail-only")
+        {
+            options.tailOnly = true;
+            continue;
+        }
 
         std::string* target = nullptr;
         if (arg == "--scene")
@@ -94,7 +115,9 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             target = &options.automationPath;
         else if (arg == "--images")
             target = &options.imagesPath;
-        else if (arg != "--rate" && arg != "--mode")
+        else if (arg == "--diagnostics")
+            target = &options.diagnosticsPath;
+        else if (arg != "--rate" && arg != "--mode" && arg != "--tail-seed")
             return "unknown argument '" + arg + "'";
 
         if (i + 1 >= args.size())
@@ -111,7 +134,13 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         {
             options.mode = parseMode(value);
             if (!options.mode)
-                return "--mode must be omni, binaural or stereoSpeakers, got '" + value + "'";
+                return "--mode must be omni, omni-early, binaural or stereoSpeakers, got '" + value + "'";
+        }
+        else if (arg == "--tail-seed")
+        {
+            options.tailSeed = parseSeed(value);
+            if (!options.tailSeed)
+                return "--tail-seed must be an integer in [0, 4294967295], got '" + value + "'";
         }
         else
         {
@@ -129,8 +158,13 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         return "--scene is required";
     if (options.inPath.empty() != options.outPath.empty())
         return "--in and --out must be given together";
-    if (options.inPath.empty() && options.irPath.empty() && options.imagesPath.empty())
-        return "nothing to do: give --in and --out, --ir or --images";
+    if (options.inPath.empty() && options.irPath.empty() && options.imagesPath.empty()
+        && options.diagnosticsPath.empty())
+        return "nothing to do: give --in and --out, --ir, --images or --diagnostics";
+    if (!options.diagnosticsPath.empty() && options.mode && *options.mode != sim::BuildOptions::Kind::Omni)
+        return "--diagnostics needs --mode omni (the hybrid IR)";
+    if (options.tailOnly && (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni))
+        return "--tail-only needs --mode omni (the hybrid IR)";
     if (options.rate && !sim::isSupportedSampleRate(*options.rate))
         return "--rate must be one of 44100, 48000, 88200, 96000 (AX6)";
     return {};
@@ -241,15 +275,100 @@ bool writeImages(const std::filesystem::path& path, const contract::SceneDescrip
     return static_cast<bool>(os);
 }
 
+// Diagnostics of the hybrid omni build as JSON (format in usage()). NaN becomes null.
+bool writeDiagnostics(const std::filesystem::path& path, const contract::SceneDescription& scene,
+                      const sim::HybridDiagnostics& d)
+{
+    std::ofstream os(path, std::ios::binary);
+    if (!os)
+        return false;
+    const auto num = [&](double v) {
+        if (std::isfinite(v))
+            writeNumber(os, v);
+        else
+            os << "null";
+    };
+    const auto arr = [&](const auto& values) {
+        os << '[';
+        bool first = true;
+        for (const auto v : values)
+        {
+            os << (first ? "" : ",");
+            first = false;
+            num(static_cast<double>(v));
+        }
+        os << ']';
+    };
+    os << "{\"sampleRate\":";
+    num(d.sampleRate);
+    os << ",\"bandsHz\":";
+    arr(contract::kOctaveBandsHz);
+    os << ",\"tailSeed\":" << scene.render.tailSeed;
+    os << ",\"volume\":";
+    num(d.decay.volumeM3);
+    os << ",\"surface\":";
+    num(d.decay.surfaceM2);
+    os << ",\"meanAbsorption\":";
+    arr(d.decay.bandsMeanAbsorption);
+    os << ",\"airEnergyPerMetre\":";
+    arr(d.decay.bandsAirEnergyPerMetre);
+    os << ",\"t60\":";
+    arr(d.decay.bandsT60S);
+    os << ",\"tailLengthS\":";
+    num(d.tailLengthS);
+    os << ",\"alignmentShiftS\":";
+    num(d.alignmentShiftS);
+    os << ",\"irLength\":" << d.irLength << ",\"emitters\":[";
+    bool first = true;
+    for (const auto& e : d.emitters)
+    {
+        const auto it = std::find_if(scene.emitters.begin(), scene.emitters.end(),
+                                     [&](const auto& em) { return em.channel == e.channel; });
+        os << (first ? "" : ",") << "{\"channel\":" << e.channel << ",\"id\":\""
+           << (it != scene.emitters.end() ? it->id : "") << "\"";
+        first = false;
+        const auto& m = e.match;
+        os << ",\"imageCount\":" << e.imageCount << ",\"scatteredCount\":" << e.scatteredCount;
+        os << ",\"directS\":";
+        num(m.mixing.directS);
+        os << ",\"mixLowerBoundS\":";
+        num(m.mixing.lowerBoundS);
+        os << ",\"windowStartS\":";
+        num(m.mixing.windowStartS);
+        os << ",\"mixS\":";
+        num(m.mixing.mixS);
+        os << ",\"expectedKeff\":";
+        num(m.mixing.expectedKeff);
+        os << ",\"expectedSigmaDb\":";
+        num(m.expectedSigmaDb);
+        os << ",\"targetEnergy\":";
+        arr(m.bandsTargetEnergy);
+        os << ",\"expectedUnitEnergy\":";
+        arr(m.bandsExpectedUnitEnergy);
+        os << ",\"amplitude\":";
+        arr(m.bandsAmplitude);
+        os << ",\"nonZeroEntries\":";
+        arr(m.bandsNonZeroEntries);
+        os << ",\"realisedKeff\":";
+        arr(m.bandsRealisedKeff);
+        os << ",\"realisedOverTargetDb\":";
+        arr(e.bandsRealisedOverTargetDb);
+        os << '}';
+    }
+    os << "]}\n";
+    return static_cast<bool>(os);
+}
+
 } // namespace
 
 std::string usage()
 {
     return "usage:\n"
            "  render_cli --scene <json> --in <wav> --out <wav> [--rate <hz>] "
-           "[--mode omni|binaural|stereoSpeakers]\n"
-           "  render_cli --scene <json> --ir <wav> [--rate <hz>] [--mode ...]\n"
+           "[--mode omni|omni-early|binaural|stereoSpeakers]\n"
+           "  render_cli --scene <json> --ir <wav> [--rate <hz>] [--mode ...] [--tail-seed <n>]\n"
            "  render_cli --scene <json> --images <json> [--rate <hz>]\n"
+           "  render_cli --scene <json> --mode omni --diagnostics <json> [--rate <hz>]\n"
            "  render_cli --help | --version\n"
            "\n"
            "  --in/--out   render a stereo WAV through the scene (output: float32 WAV, length input + IR - "
@@ -257,13 +376,23 @@ std::string usage()
            "  --ir         write the room IR (float32 WAV, channel = emitter * outputs + output)\n"
            "  --rate       sample rate in Hz; must match the input WAV when --in is given (default: the\n"
            "               input's rate, or 48000 for --ir alone). Supported: 44100, 48000, 88200, 96000\n"
-           "  --mode       output kind (default: the scene's render.outputMode). omni = early\n"
-           "               reflections (Phase 03); binaural/stereoSpeakers are still a dry stub\n"
+           "  --mode       output kind (default: the scene's render.outputMode). omni = hybrid room IR\n"
+           "               (early reflections + late tail, Phase 04); omni-early = early reflections\n"
+           "               only, to maxReflectionOrder (Phase 03); binaural/stereoSpeakers are still a\n"
+           "               dry stub\n"
+           "  --tail-seed  override render.tailSeed (0..4294967295) for this run (ensembles, AX11)\n"
            "  --images     write the image sources of each emitter as JSON: per image order,\n"
            "               position, distance (m), time (s, unaligned), sample (aligned, fractional),\n"
            "               hits per surface (xMin xMax yMin yMax floor ceiling), direction of\n"
-           "               arrival, amplitude per band; plus the scattered energy per path\n"
+           "               arrival, amplitude per band; plus the scattered energy per path. With --mode\n"
+           "               omni: the AX20 list (every image before t_mix + 2.5 ms, any order)\n"
+           "  --diagnostics  hybrid omni IR only: write T60 per band (Eyring), tail length, and per\n"
+           "               emitter t_mix, the matching window, expected k_eff and sigma_dB, E_target,\n"
+           "               expected unit-decay energy, tail amplitude E_b, non-zero entry count and\n"
+           "               realised k_eff per band\n"
            "  --no-air-absorption  validation only: switch off air absorption (AX4 keeps it on)\n"
+           "  --tail-only  validation only, --mode omni: write just the matched late tail (no early part,\n"
+           "               no crossfade), for decay-time ensembles\n"
            "  --automation not implemented until Phase 10\n"
            "\n"
            "exit codes: 0 ok, 1 usage error, 2 invalid scene, 3 I/O error, 4 internal error\n";
@@ -306,7 +435,9 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
         err << "render_cli: invalid scene '" << options.scenePath << "'\n";
         return kExitInvalidScene;
     }
-    const contract::SceneDescription& scene = *parsed.scene;
+    contract::SceneDescription scene = *parsed.scene;
+    if (options.tailSeed)
+        scene.render.tailSeed = *options.tailSeed;
 
     // ---- Input ----
     Audio input;
@@ -343,6 +474,7 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
                                                                     : static_cast<double>(input.sampleRate));
     build.kind = options.mode.value_or(sim::kindForOutputMode(scene.render.outputMode));
     build.airAbsorption = !options.noAirAbsorption;
+    build.tailOnly = options.tailOnly;
 
     if (!options.imagesPath.empty())
     {
@@ -352,11 +484,27 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
             return kExitIo;
         }
         out << "wrote image sources " << options.imagesPath << "\n";
-        if (options.irPath.empty() && options.inPath.empty())
+        if (options.irPath.empty() && options.inPath.empty() && options.diagnosticsPath.empty())
             return kExitOk;
     }
 
-    const sim::RoomIR ir = sim::buildRoomIR(scene, build);
+    if (!options.diagnosticsPath.empty() && build.kind != sim::BuildOptions::Kind::Omni)
+    {
+        err << "render_cli: --diagnostics needs --mode omni (the hybrid IR)\n\n" << usage();
+        return kExitUsage;
+    }
+    sim::HybridDiagnostics diagnostics;
+    const sim::RoomIR ir = sim::buildRoomIR(scene, build, &diagnostics);
+
+    if (!options.diagnosticsPath.empty())
+    {
+        if (!writeDiagnostics(options.diagnosticsPath, scene, diagnostics))
+        {
+            err << "render_cli: cannot write '" << options.diagnosticsPath << "'\n";
+            return kExitIo;
+        }
+        out << "wrote diagnostics " << options.diagnosticsPath << "\n";
+    }
 
     // ---- IR ----
     if (!options.irPath.empty())

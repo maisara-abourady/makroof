@@ -89,7 +89,8 @@ SIGNALS = {
 
 # render_cli --mode per phase (default: the scene's own outputMode).
 PHASE_MODES = {
-    "phase-03": "omni",
+    "phase-03": "omni-early",
+    "phase-04": "omni",
 }
 
 PHASE_NOTES = {

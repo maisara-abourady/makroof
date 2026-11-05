@@ -1,0 +1,132 @@
+{
+  "contractVersion": "1.1",
+  "units": "meters",
+  "room": {
+    "geometry": {
+      "kind": "shoebox",
+      "dimensions": [
+        40.0,
+        25.0,
+        16.0
+      ]
+    },
+    "surfaces": {
+      "floor": {
+        "absorption": [
+          0.4,
+          0.45,
+          0.55,
+          0.62,
+          0.65,
+          0.68,
+          0.68,
+          0.66
+        ],
+        "scattering": 0.6
+      },
+      "ceiling": {
+        "absorption": [
+          0.08,
+          0.08,
+          0.06,
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.05
+        ],
+        "scattering": 0.4
+      },
+      "xMin": {
+        "absorption": [
+          0.1,
+          0.1,
+          0.08,
+          0.07,
+          0.06,
+          0.06,
+          0.07,
+          0.08
+        ],
+        "scattering": 0.4
+      },
+      "xMax": {
+        "absorption": [
+          0.1,
+          0.1,
+          0.08,
+          0.07,
+          0.06,
+          0.06,
+          0.07,
+          0.08
+        ],
+        "scattering": 0.4
+      },
+      "yMin": {
+        "absorption": [
+          0.1,
+          0.1,
+          0.08,
+          0.07,
+          0.06,
+          0.06,
+          0.07,
+          0.08
+        ],
+        "scattering": 0.4
+      },
+      "yMax": {
+        "absorption": [
+          0.1,
+          0.1,
+          0.08,
+          0.07,
+          0.06,
+          0.06,
+          0.07,
+          0.08
+        ],
+        "scattering": 0.4
+      }
+    }
+  },
+  "listener": {
+    "position": [
+      20.0,
+      15.0,
+      1.7
+    ]
+  },
+  "emitters": [
+    {
+      "id": "L",
+      "channel": 0,
+      "position": [
+        17.0,
+        4.0,
+        1.5
+      ],
+      "gainDb": 0.0
+    },
+    {
+      "id": "R",
+      "channel": 1,
+      "position": [
+        23.0,
+        4.0,
+        1.5
+      ],
+      "gainDb": 0.0
+    }
+  ],
+  "render": {
+    "outputMode": "binaural",
+    "hrtfId": "generic-v1",
+    "maxReflectionOrder": 20,
+    "tailSeed": 105
+  },
+  "extensions": {
+    "notes": "Phase 04 test room: shoebox concert hall with an audience floor (T60 about 2 s)"
+  }
+}

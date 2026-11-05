@@ -134,11 +134,11 @@ TEST_CASE("render_cli --ir writes emitter x output channels", "[cli]")
     CHECK(ir.sampleRate == 96000u);
 }
 
-TEST_CASE("render_cli --mode omni writes the early-reflection IR, the same on both outputs", "[cli]")
+TEST_CASE("render_cli --mode omni-early writes the early-reflection IR, the same on both outputs", "[cli]")
 {
     TempDir dir;
-    const Run r = run(
-        {"--scene", scene("medium_room.json"), "--ir", (dir.path / "ir.wav").string(), "--mode", "omni"});
+    const Run r = run({"--scene", scene("medium_room.json"), "--ir", (dir.path / "ir.wav").string(), "--mode",
+                       "omni-early"});
     INFO(r.err);
     REQUIRE(r.exitCode == cli::kExitOk);
     cli::Audio ir;
