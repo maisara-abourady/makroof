@@ -1,6 +1,6 @@
 # Phase 13 — v1 hardening: performance, DAW matrix, signing
 
-Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
+Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12, including 05b (with 05c, if it exists, `blocked` only on Maisara's recorded decision) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
 
 ## Goal
 
@@ -11,7 +11,8 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
 ## Assumptions in force
 
 - **AQ10** budget (latency ≤ 512 samples at 48 kHz; ≤ 15% of one core per instance for a 3 s tail;
-  IR rebuild ≤ 50 ms at order 30). **AX5**: the definition of "exactly as saved" across machines.
+  IR rebuild ≤ 50 ms for the AQ10 workloads W1 and W2 (position-only), in every output mode
+  (decider report 8, accepted by Maisara, 2026-11-05)). **AX5**: the definition of "exactly as saved" across machines.
 
 ## Scope
 
@@ -59,7 +60,10 @@ Licensing/trial (B1), auto-update, anything listed in BUILD_PLAN §5.
 
 - [ ] Full CI matrix green; nightly validation green (no regression).
 - [ ] Benchmarks: AQ10 met on the macOS runner and Windows runner, or the miss is quantified in the status
-      notes with a proposal.
+      notes, with the effective update interval max(30 ms, rebuild) and the worst staleness, together
+      with a proposal that does not change the output beyond −100 dB. Raising N_cap with time freed by
+      optimisation is an intended output change, proposed through /fix-plan (decider report 8, accepted by Maisara, 2026-11-05). Re-derive the
+      AX22 i₀ after optimisation if AX22 records 'cap limits accuracy'.
 - [ ] Robustness tests above pass, including cross-architecture ≤ −100 dBFS residual.
 - [ ] pluginval strictness 10 on the **release** build, 3 OSes (both macOS slices). auval passes.
 - [ ] Release workflow on a test tag produces: notarized and stapled pkg (`spctl -a -vv -t install` says
@@ -73,7 +77,9 @@ Licensing/trial (B1), auto-update, anything listed in BUILD_PLAN §5.
 - [ ] Fill in `docs/compat/v1.md` completely.
 - [ ] A final listening pass through all presets in both modes on the Adam monitors and headphones,
       plus a real session with 10 instances on stems. Note CPU in your DAW's meter.
-- [ ] Decide: is this build good enough to give to 3–5 beta users? Your decision goes in BUILD_PLAN §6.
+- [ ] Decide: is this build good enough to give to 3–5 beta users? The decision lists 'AQ9 met in x/y'
+      and every recorded known deficit (AX16, AX21, AX22, AQ10 misses) (decider report 8, accepted by Maisara, 2026-11-05). Your decision goes
+      in BUILD_PLAN §6.
 
 ## Contractor review focus
 

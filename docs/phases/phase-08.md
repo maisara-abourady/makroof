@@ -1,6 +1,6 @@
 # Phase 08 — Binaural output with a generic HRTF
 
-Size: **L** (plan for two sessions; split into 08 and 08b if needed) · Depends on: 04, 07 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ6, AX3, AX5) and §3 (F7, F8), PRD FR-SIM-3, FR-SIM-4, FR-3D-9, A1
+Size: **L** (plan for two sessions; split into 08 and 08b if needed) · Depends on: 04, 05b, 07 (05b `done` in either outcome; with "not promoted", this phase builds on the specular-only early part, AX21) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ6, AX3, AX5) and §3 (F7, F8), PRD FR-SIM-3, FR-SIM-4, FR-3D-9, A1
 
 ## Goal
 

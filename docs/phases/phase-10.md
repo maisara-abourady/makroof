@@ -20,7 +20,8 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
   between t_mix,e and t_cap,e is ISM in one IR and noise in the other, so AX18's equal-gain premise
   (correlated consecutive IRs) does not hold there, and the 30 ms position crossfade dips in that segment: 3 dB at mid-fade for any power ratio of the two
   uncorrelated segments; the largest dip relative to the power-linear interpolation of the two segments
-  grows with their power ratio, ≈ 4.4 dB at 10:1, at g ≈ 0.24 of the fade (Vorländer Eq. 4.14).
+  grows with their power ratio, ≈ 4.4 dB at 10:1, at g ≈ 0.24 of the fade (Vorländer Eq. 4.14). The total output dip is gated in this
+  phase (acceptance criteria) (decider report 8, accepted by Maisara, 2026-11-05).
 - **AX1**: no Doppler. Movement is a sequence of crossfaded static IRs. Fast moves sound slightly
   smeared rather than pitch-shifted. That's intended, and the PR must describe it.
 
@@ -80,10 +81,19 @@ image list while moving (it would change AX20; needs an AX entry if introduced).
       and t_cap,e of the 30 ms position crossfade, per band, report the largest level dip, the
       reference it is measured against (the power-linear interpolation of the two segments), and the
       power ratio of the two segments (3 dB at mid-fade for any ratio; largest dip ≈ 4.4 dB at 10:1, at
-      g ≈ 0.24 of the fade; Vorländer Eq. 4.14). Reported, not gated (no threshold has been set).
+      g ≈ 0.24 of the fade; Vorländer Eq. 4.14). **Gated:** the total output band-energy dip against
+      the power-linear interpolation is ≤ 1 dB at 500 Hz–2 kHz. Total dip = 10·log10(1 − 0.5·f), f the
+      segment's energy share, so the gate holds for f ≤ 0.41 (Vorländer Eq. 4.14); the 1 dB is G's jnd
+      (Table 6.1, stated for 500–1000 Hz), applied to a 30 ms dip by extension. If it fails, this phase
+      proposes a time-segment-split crossfade as a new AX (decider report 8, accepted by Maisara, 2026-11-05).
 - [ ] Worst-case IR staleness in realtime-sim ≤ **100 ms** in all scenarios (recorded in the CI log;
       failing it fails the job). The hybrid IR's image list is time-bounded (AX20), so its size follows
-      t_mix,e and the room, not `maxReflectionOrder`.
+      t_mix,e and the room, not `maxReflectionOrder`. If the ≤ 100 ms staleness gate fails only because
+      of a recorded AQ10 miss, this phase may apply the phase-13 scope 1 optimisations (output unchanged
+      beyond −100 dB). If it still fails, the phase is `blocked (AQ10 miss)` and Maisara chooses between
+      (a) a smaller N_cap (an output change; the AX22 sensitivity report shows the accuracy cost) and
+      (b) for fallback scenes only, a staleness bound taken from Vorländer Table 15.1 (700 ms,
+      translation > 0.25 m). The gate is not loosened otherwise (decider report 8, accepted by Maisara, 2026-11-05).
 - [ ] No allocation in `processBlock` during the automation scenarios (AllocationTracker through the plugin processor).
 - [ ] pluginval strictness 10 passes (its automation test exercises this path too).
 

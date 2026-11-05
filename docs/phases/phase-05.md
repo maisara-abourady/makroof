@@ -16,9 +16,9 @@ hand-tuned.
   round-robin rating of Vorländer §11.5, which averages |sim − meas|/jnd over source/receiver pairs;
   here per pair over bands). EDT and C80 limits are 2 jnd (Table 6.1: 5 %, 1 dB, stated for
   500–1000 Hz, so the report also prints the 500–1000 Hz mean); T30 ±10 % is a chosen tolerance (no T
-  jnd in the corpus); it is 2 × a working T jnd of 5 % (expert recommendation, Seraphim 1958; to verify
-  against ISO 3382-1) and above single-position measurement scatter of T30, ≈ 2–3.5 % at 500 Hz–2 kHz
-  for T = 0.8 s (ISO 3382-2 estimate; constants to verify). Signed per-band deltas are reported without gating (their sign shows bias). The
+  jnd in the corpus); it is 2 × a working T jnd of 5 % (expert recommendation, Seraphim 1958; outside the corpus, not
+  verified; product choice, stands (AQ9)) and above single-position measurement scatter of T30, ≈ 2–3.5 % at 500 Hz–2 kHz
+  for T = 0.8 s (ISO 3382-2 estimate; outside the corpus, not verified; product choice, stands (AQ9)). Signed per-band deltas are reported without gating (their sign shows bias). The
   report also gives the mean over the source/receiver pairs of each room.
 - **AQ2** method under test. **NFR-8**: no per-scene factors. If a room fails, report it.
 - **AX4**: fixed atmosphere in the simulator; a validation-only `render_cli` atmosphere override (not
@@ -39,7 +39,9 @@ hand-tuned.
 - Before writing code, the session must read the BRAS documentation and record in
   `docs/validation/bras_mapping.md` which scenes were chosen and why. Pick the rooms whose geometry is
   closest to a rectangular box (likely the small seminar room and similar). State how each real room was
-  reduced to a shoebox, by these generic rules, and which BRAS material set is used:
+  reduced to a shoebox, by these generic rules, and which BRAS material set is used. The room
+  selection and its reasons are committed to `bras_mapping.md` before any simulated-vs-measured number
+  is computed; no room is dropped after results are seen (decider report 8, accepted by Maisara, 2026-11-05):
   - **Dimensions:** keep the mean floor-to-ceiling height h, always defined as h = V / documented floor
     area; solve the floor from a·b = V/h and a + b = (S − 2V/h)/(2h), the longer side
     along x (AQ1 axes). A real solution exists iff S ≥ 2V/h + 4√(V·h); otherwise use the square floor
@@ -64,8 +66,13 @@ hand-tuned.
   Use the **initial/as-documented** absorption data as
   the primary run. If the dataset also provides absorption values fitted to the measurements, run them as a
   secondary, clearly labelled run. Fitted data partly includes the answer, so it isn't proof of accuracy.
-- If no BRAS room can be reasonably reduced to a shoebox, the phase is `blocked`. Report it. That's
-  evidence for F3 and Q2.
+- If no room qualifies, Phase 05 still completes every part that does not need BRAS (a* Table 5.2
+  test, ΔL_b on the test rooms, Table 5.2 and the s-cases, humidity bound). It is `done` with the note
+  'NFR-1 not validated against measurement'. The measured remainder becomes `phase-05c` (created only if
+  this case arises), `blocked` until Maisara picks a measured data source (PRD Q9 asks which reference
+  IRs). Meanwhile: B11 (B) uses the 'no evaluable pair' branch; the handover rule stands (D1); Eyring
+  stays (B12). Phase 13 may start with 05c blocked only on Maisara's recorded decision (decider report 8, accepted by Maisara, 2026-11-05).
+  That case is also evidence for F3 and Q2.
 
 ## Scope
 
@@ -136,7 +143,8 @@ hand-tuned.
      error, flagged next to them.
    - Non-diffuseness indicators per room: the absorption contrast ᾱ(floor + ceiling) / ᾱ(walls), and
      the decay curvature C = 100·(T30/T20 − 1) % for both IRs (a curvature above ≈ 10 % marks a
-     markedly non-straight decay; threshold to verify against ISO 3382-2). With absorbing floor and
+     markedly non-straight decay; outside the corpus, not verified; product choice, stands (AQ9); the
+     curvature is reported only). With absorbing floor and
      ceiling and hard walls, expect T_sim < T_meas from this mechanism (Vorländer §4.4.2, Table 4.1;
      expert recommendation, outside the corpus). Next to them, per pair, the Phase 04 render's
      per-axis energy shares and k_real (Phase 04 scope 3), reported only: there is no diffuseness
@@ -178,8 +186,12 @@ hand-tuned.
      Eqs. 5.33–5.34), e.g. ≈ 1 % for case 3 with 0.342 against 0.4, and a few % in elongated rooms with
      high ᾱ. a* solver patches for the Table 5.2 test: 88 equal elements for the 1:2:3 room (cases 3–6,
      Miles' example, Kuttruff §5.7) and 96 equal elements (6 × 4²) for the cube (cases 1–2); for BRAS rooms,
-     halve the patch size until a* changes by < 1 %. Promotion to the simulator's T60_b source happens only on this evidence, in a later phase, through an AQ2
-     change (BUILD_PLAN §5 B12).
+     halve the patch size until a* changes by < 1 %. **Decision rule (B12)** (decider report 8, accepted by Maisara, 2026-11-05): Phase 05
+     compares predicted T₆₀ (deterministic, so no seed noise) with measured T30 at 500 Hz–2 kHz,
+     room-averaged. A predictor replaces Eyring for all scenes (NFR-8: one predictor, no per-room
+     choice) only if it lowers the mean |error| by ≥ 0.25 working jnd (1.25 % points) and makes no room
+     worse by > 1 jnd (5 %). Otherwise Eyring stays. Shown separately for uniform and uneven α. The
+     replacement is implemented in a later phase, through an AQ2 change (BUILD_PLAN §5 B12).
    - **Reference hybrid (AX21):** at each specular hit, inject s(1−α) of the incident energy into the
      Lambert boundary patch hit, at the hit time (Kuttruff Eq. 4.24; Gilbert, §4.6). Propagate it with
      the **mixed specular/diffuse** form, not the all-Lambert Eq. 4.28: at every later hit, split the
@@ -190,7 +202,10 @@ hand-tuned.
      time step 1 ms (Kuttruff §9.8 typical class width). The gathered energy is added as a per-band
      energy envelope to the squared band IR before the Schroeder integral and C80 (EDT and C80 are
      energy integrals, Vorländer Eqs. 6.4, 6.7). The report gives the EDT and C80 errors against BRAS
-     with and without it. The tail decay source is **not** a*; it is decided by the decay-predictor
+     with and without it. **Per-band s (B10)** (decider report 8, accepted by Maisara, 2026-11-05): the reference hybrid also runs with BRAS
+     per-band s (tools only, no contract change). If that changes the room-averaged AQ9 EDT or C80
+     error by ≥ δ, or any room's by > 1 jnd, B10 moves ahead of phase-05b, so B11 is validated only
+     once; otherwise it stays after 12. The tail decay source is **not** a*; it is decided by the decay-predictor
      evidence above.
      **X-b bound (AX16):** report per band (500 Hz–2 kHz; other bands for information)
      ΔL_b = 10·log10(E_target,b(AX16) / E_target,b(hybrid)), both in the same Hann window
@@ -204,7 +219,7 @@ hand-tuned.
      500–1000 Hz, applied by extension to 2 kHz); other bands are reported. Both E_target values are
      deterministic, so ΔL_b needs no statistical margin. Reading: if |ΔL_b| ≤ 1 dB
      everywhere, X-b is accepted as is and the measured bound is recorded in AX16; if |ΔL_b| > 1 dB
-     anywhere, the B11 phase switches tail-level matching to the hybrid's propagated diffuse energy
+     anywhere, phase-05b (B11) switches tail-level matching to the hybrid's propagated diffuse energy
      (even if rendering early scattering is not promoted), under the same independent-reference
      validation. This is model against model: it bounds what B11 would change, not a measured truth.
      **Promotion evidence (BUILD_PLAN §5 B11, check (B)):** the AQ9 metric for EDT and C80 (mean
@@ -255,8 +270,11 @@ hand-tuned.
      the handover (a) only). Then R ≥ max(144·σ₁,Δ², 9·σ₁,Δ,room², 9·σ₁,Δ,pair²), σ in jnd, rounded up
      ((σ₁/(tol/3))² with tol = δ or 1 jnd). Pilot seeds may count towards R. One R per comparison, used
      in both arms with the same seeds. After the run, check that σ₁,Δ/√R meets the bound; if not,
-     increase R. If the pilot makes R impractical (more than about 2 000 per arm), δ goes back to
-     Maisara. The report prints Δ̂, SE, R and pass/fail for each comparison.
+     increase R. If R > 2 000 per arm, run it outside CI when the projected time is ≤ 24 h on one
+     CI-class machine (validation compute is not user CPU, so this does not touch NFR-2). Beyond that,
+     δ goes to Maisara, with the δ that 2 000 per arm would support, δ·√(R/2000), and the projected
+     time. Until she decides, the comparison counts as 'no evaluable pair': B11 promotion needs her
+     sign-off on (A) alone, and no handover floor is adopted (decider report 8, accepted by Maisara, 2026-11-05). The report prints Δ̂, SE, R and pass/fail for each comparison.
    - **Humidity bound (AX4):** per band, the Eyring T60 at 40 % and 70 % RH, 20 °C (Kuttruff Table 6.1
      rows, Eq. 5.24) relative to the AX4 atmosphere, for each room; for example 8 kHz in a room with
      V = 10 000 m³, S = 4725 m², ᾱ = 0.15 gives −11.6 % / +17.2 % (an air-dominated room would differ
@@ -296,7 +314,9 @@ and do not change the simulator.
       humidity bound); they are reported, not gated.
 
 Failing AQ9 thresholds does **not** fail CI. It goes in the BUILD_PLAN status notes as "AQ9 met in
-x/y scenes" and is escalated.
+x/y scenes". Maisara decides at the Phase 05 review (via /fix-plan) whether to schedule
+B10/B11/B12/B2 inside v1. Phase 13's beta decision lists 'AQ9 met in x/y' and every recorded known
+deficit (AX16, AX21, AX22, AQ10 misses) (decider report 8, accepted by Maisara, 2026-11-05).
 
 ## Listening / manual checklist (Maisara)
 

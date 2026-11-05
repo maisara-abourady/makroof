@@ -92,9 +92,10 @@ IR for every valid shoebox scene.
    k_real = (Σ w_i E'_i)² / Σ (w_i E'_i)², the sums running over the specular and scattered entries in
    the window of scope 3, w_i = w(t_i), and E'_i entry i referred to t_mix,e (scope 3, step 3). If
    k_real < 19 in **any** of the bands 500 Hz, 1 kHz and 2 kHz (AQ9's bands), the emitter falls back to
-   **ISM-only up to the AX22 cap**: the cap is an image count N_cap, measured in this phase against
-   AQ10 and recorded in AX22 (for scale: the order-30 budget is ν_r(30) = 37 880 images, Kuttruff
-   Eq. 9.23). The handover then moves to t_cap,e, the arrival time of the N_cap-th image in arrival
+   **ISM-only up to the AX22 cap**: the cap is an image count N_cap = ν_r(i₀) (Kuttruff Eq. 9.23), for
+   the largest integer i₀ ≥ 10 at which the AQ10 workload W2 meets 50 ms in this phase's benchmark on
+   the Linux CI runner (N_cap = ν_r(10) = 1 560 if even i₀ = 10 misses); it is a frozen constant in
+   `src/sim`, recorded in AX22, with the sensitivity report there (decider report 8, accepted by Maisara, 2026-11-05). The handover then moves to t_cap,e, the arrival time of the N_cap-th image in arrival
    order, and the tail is matched there (scope 3, window [t_dir,e + 2.5 ms, t_cap,e]) only if the
    window holds non-zero energy (else E_b = 0). N_cap counts every enumerated lattice image,
    pruned or not (as Kuttruff Eq. 9.23 does), so the cap bounds the enumeration cost; if
@@ -240,7 +241,8 @@ Binaural tail coherence (08); validation against real rooms (05); any per-scene 
       - **Measuring σ₁(EDT) and σ₁(C80) (AX19):** on the six test rooms at both 44.1 kHz and 96 kHz
         (σ₁,44 and σ₁,96 per band), with n ≥ 51 realisations per room and rate, so the relative
         standard error of each σ₁ estimate, ≈ 1/√(2(n−1)), is ≤ 10 % (standard sampling statistics,
-        not from the corpus).
+        not from the corpus). If the measured σ₁ makes R impractical in CI, the gate moves to the
+        nightly job with the same R; the tolerance is unchanged (decider report 8, accepted by Maisara, 2026-11-05).
 - [ ] `open_field` gives no tail: E_b = 0 in every band (the physical criterion). Checked on the
       fixture (floor s = 0.4) **and** on a test-local variant with floor scattering s = 0.5: in both,
       every specular and scattered entry in the matching window is zero (the floor reflection arrives
@@ -304,6 +306,11 @@ bands. Example: `dead_booth` at T60_b ≈ 0.2 s needs
 R = 24 · 1.5 = 36 for the Eyring gate and 450 · 1.5 = 675 per ensemble for the seed gate (tail-only
 renders of ≈ 0.3 s, so this is cheap).
 - [ ] No NaN, Inf or denormals in any IR (check every sample of every fixture).
+- [ ] **AQ10 benchmark (recorded, not a pass/fail on time):** the position-only rebuild workloads W1
+      and W2 of AQ10, in the 20×30×10 m room, 2 emitters, 48 kHz, release build, median of 10 runs, on
+      the Linux CI runner; the W2 benchmark asserts that the AX22 fallback triggered (otherwise the
+      scene is unsuitable). N_cap is set and recorded per AX22, and the AX22 sensitivity report (each
+      fallback case at N_cap and at ν_r(2i₀), same tailSeed) is produced (decider report 8, accepted by Maisara, 2026-11-05).
 - [ ] Goldens updated, with the reason recorded in `tests/golden/CHANGELOG.md`.
 
 ## Listening / manual checklist (Maisara)
@@ -359,13 +366,16 @@ filterbank reuse, and IR truncation.
 - **Switch point (AX22, NFR-3, FR-SIM-6):** t_mix,e stays continuous in position, but the realised-k
   fallback is a single jump point in source position. Across it, the IR segment between t_mix,e and
   t_cap,e is ISM in one IR and noise in the other, so AX18's equal-gain premise (correlated consecutive
-  IRs) does not hold there, and the 30 ms position crossfade dips in that segment: 3 dB at mid-fade for any power ratio of the two
-  uncorrelated segments; the largest dip relative to the power-linear interpolation of the two segments
-  grows with their power ratio, ≈ 4.4 dB at 10:1, at g ≈ 0.24 of the fade (Vorländer Eq. 4.14). Phase 10 adds a test that measures the
-  dip at a switch point.
+  IRs) does not hold there, and the 30 ms position crossfade dips in that segment: 3 dB at mid-fade
+  for any power ratio of the two uncorrelated segments; the largest dip relative to the power-linear
+  interpolation of the two segments grows with their power ratio, ≈ 4.4 dB at 10:1, at g ≈ 0.24 of
+  the fade (Vorländer Eq. 4.14). In the whole output the dip is 10·log10(1 − 0.5·f), f the segment's
+  energy share, so Phase 10 gates the total output band-energy dip at ≤ 1 dB against the power-linear
+  interpolation, 500 Hz–2 kHz (holds for f ≤ 0.41) (decider report 8, accepted by Maisara, 2026-11-05).
 - AX20 makes the image list grow with t_mix,e, not with `maxReflectionOrder` (large rooms need high
-  orders to reach t_mix,e), and the realised-k fallback extends it up to the AX22 cap. Measure
-  rebuild time against AQ10 and record it; the AX22 cap is the only bound on the list.
+  orders to reach t_mix,e), and the realised-k fallback extends it up to the AX22 cap. Measure the
+  AQ10 workloads W1 and W2 and record them (acceptance criteria); the AX22 cap is the only bound on
+  the list, and a miss is never met by shortening the list or N_cap.
 
 ## Definition of done
 
