@@ -10,13 +10,17 @@ data only. The engine must have no idea presets exist (PRD core principle, NFR-8
 ## Assumptions in force
 
 - **AQ3**: materials are per-band α (8 bands, 63 Hz–8 kHz) + scattering.
+- **AX14**: the contract (AQ1, frozen) has one broadband scattering coefficient per surface. Where a
+  source gives s per octave band, the library stores the per-band values and the scene gets their
+  arithmetic mean over the 500 Hz, 1 kHz and 2 kHz bands. Per-band scattering is post-v1 (BUILD_PLAN §5 B10).
 - **F3**: v1 is shoebox-only, so every preset is a shoebox approximation. The preset descriptions say so
   honestly (e.g. "Chapel (simplified box shape)").
 
 ## Scope
 
 1. `resources/materials.json` — 25–40 materials, each with `id`, display name, category (hard, soft,
-   wood, glass, ground, …), 8-band α, scattering, and a **source citation** (published absorption tables
+   wood, glass, ground, …), 8-band α, scattering (per-band where the source gives it, plus the broadband
+   value derived per AX14), and a **source citation** (published absorption tables
    from standard room-acoustics textbooks or open datasets; where a source gives only 125 Hz–4 kHz,
    document the extrapolation rule for 63 Hz and 8 kHz once, in the file header). Include outdoor
    "surfaces": `open_air` (α = 1.0, s = 0), grass, soil, asphalt, snow.

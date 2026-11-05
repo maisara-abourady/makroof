@@ -77,7 +77,8 @@ golden metrics for 3 fixtures (`small_room`, `medium_room`, `large_hall`) at ord
 - [ ] **Filterbank:** flat band gains (all 1.0) reproduce a delta within −100 dB. A single band at gain 1
       and the others at 0 gives a response whose octave-band energy is ≥ 20 dB above the neighbouring bands.
 - [ ] **Per-band check:** a room with α = 0.9 above 1 kHz and α = 0.1 below gives reflections whose
-      measured per-band levels (via `bands.py`) match the expected Π√(1−α) within ±1 dB for orders 1–3.
+      measured per-band levels (via `bands.py`) match the expected Π√(1−α) within ±1 dB for orders 1–3
+      (scattering 0; air absorption off, or its 4.34·m·r dB per band included in the expected value).
 - [ ] Air-absorption table test passes (within ±5% of ISO 9613-1 table values at band centres).
 - [ ] Golden metrics committed. Benchmark result printed in CI.
 
