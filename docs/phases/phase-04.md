@@ -81,7 +81,8 @@ IR for every valid shoebox scene.
    level precision**: σ = 4.34/√19 ≈ 1.0 dB (Vorländer Eqs. 11.9/11.17), against the 1 dB jnd of G
    (Vorländer Table 6.1, stated for 500–1000 Hz). The earlier √V-milliseconds term (the widely used estimate of perceptual
    mixing time, cite the source in a comment) and the 20 ms are kept as a lower bound, counted from the
-   emitter's direct sound, not from emission. The Expert may revise the rule. For t_dir,e → 0 the k_eff
+   emitter's direct sound, not from emission. No corpus rule exists (Vorländer §11.7); the rule is
+   revised only on the Phase 05 handover evidence (phase-05 scope 6). For t_dir,e → 0 the k_eff
    criterion alone gives roughly 6.8·V^(1/3) ms (≈ 53 expected arrivals) (approximate, from
    N(t) = (4π/3)(ct)³/V). Each emitter gets its own t_mix,e, as it gets its own tail; the matching window
    and the crossfade use t_mix,e. There is no clamp to the requested ISM order: the image list is
@@ -338,11 +339,10 @@ filterbank reuse, and IR truncation.
   metric); this affects EDT,
   C80 and D50. Maisara decided on 2026-11-05 that the early part should contain scattered energy; the
   fix is planned on Phase 05 evidence (BUILD_PLAN §5 B11), not in this phase.
-- **Expert question (mixing time):** the corpus gives no rule for the transition time (Vorländer
-  §11.7). Scope 2's k_eff ≥ 19 rule, with t_dir,e + max(20 ms, √V ms) as a lower bound, is chosen for
-  accuracy (NFR-1) and a well-conditioned level estimate; the Expert may revise it. t_mix,e stays as in
-  scope 2 until the Expert answers.
-- **Limitation / Expert question (sparse or non-diffuse fields):** where the window holds far fewer
+- **Mixing time** (former Expert question, closed on 2026-11-05: decider, accepted by Maisara): no
+  corpus rule exists (Vorländer §11.7); the rule is revised only on the Phase 05 handover evidence
+  (phase-05 scope 6).
+- **Limitation (sparse or non-diffuse fields):** where the window holds far fewer
   non-zero arrivals than expected (non-diffuse or sparse fields, e.g. one floor reflection in a box with
   five α = 1 faces), E_target has no stated accuracy and Eyring T60 does not apply (Vorländer §4.4.1).
   The realised-k switch (scope 2, AX22) falls back to ISM-only up to the AX22 image-count cap in such
@@ -350,8 +350,9 @@ filterbank reuse, and IR truncation.
   the image concept is exact only for boundary specific impedance +1 or −1 (Kuttruff §4.1), otherwise
   approximate. Beyond the cap the tail is
   matched only if the window holds non-zero energy. The reported k_real, realised σ and per-axis energy shares
-  are necessary conditions only; the corpus gives no diffuseness criterion with a threshold (Kuttruff
-  §8.5, §9.5), so that stays an Expert question. No diffusion-equation fallback (Kuttruff §4.6: valid
+  are necessary conditions only. No diffuseness threshold: no code path or gate needs one (AX22 uses
+  realised k, a precision criterion), and the corpus gives none (Kuttruff §8.5). (Former Expert
+  question, closed on 2026-11-05: decider, accepted by Maisara.) No diffusion-equation fallback (Kuttruff §4.6: valid
   only for nearly diffuse fields).
 - **Switch point (AX22, NFR-3, FR-SIM-6):** t_mix,e stays continuous in position, but the realised-k
   fallback is a single jump point in source position. Across it, the IR segment between t_mix,e and

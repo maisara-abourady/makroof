@@ -138,7 +138,9 @@ hand-tuned.
      the decay curvature C = 100·(T30/T20 − 1) % for both IRs (a curvature above ≈ 10 % marks a
      markedly non-straight decay; threshold to verify against ISO 3382-2). With absorbing floor and
      ceiling and hard walls, expect T_sim < T_meas from this mechanism (Vorländer §4.4.2, Table 4.1;
-     expert recommendation, outside the corpus).
+     expert recommendation, outside the corpus). Next to them, per pair, the Phase 04 render's
+     per-axis energy shares and k_real (Phase 04 scope 3), reported only: there is no diffuseness
+     threshold (Kuttruff §8.5).
    - Low-band filter bias: 63 Hz and 125 Hz values with B·T < 16 (B ≈ 0.71·f_c; Jacobsen's rule,
      relaxed to ≈ 4 with time-reversed filtering) are flagged; EDT is affected sooner (expert
      recommendation, outside the corpus).
@@ -189,15 +191,38 @@ hand-tuned.
      energy envelope to the squared band IR before the Schroeder integral and C80 (EDT and C80 are
      energy integrals, Vorländer Eqs. 6.4, 6.7). The report gives the EDT and C80 errors against BRAS
      with and without it. The tail decay source is **not** a*; it is decided by the decay-predictor
-     evidence above. Promotion into `src/sim` happens in a later phase only if the EDT/C80 errors drop,
-     and only after validation against an independent mixed-s reference, the Lambert-scattering ray
-     tracer of Kuttruff §9.8 at s = 0.1–0.4; a check at s = 1 alone is circular (BUILD_PLAN §5 B11).
+     evidence above.
+     **X-b bound (AX16):** report per band (500 Hz–2 kHz; other bands for information)
+     ΔL_b = 10·log10(E_target,b(AX16) / E_target,b(hybrid)), both in the same Hann window
+     [t_dir,e + 2.5 ms, t_mix,e] and both referred to t_mix,e. Compute it for every BRAS pair and for the
+     six Phase 04 test rooms (uniform α per face set, so they isolate the hit-count residual), and for
+     Kuttruff Table 5.2 layouts 2, 4, 5 and 6 with the solver called directly. Reading: if |ΔL_b| ≤ 1 dB
+     everywhere, X-b is accepted as is and the measured bound is recorded in AX16; if |ΔL_b| > 1 dB
+     anywhere, the B11 phase switches tail-level matching to the hybrid's propagated diffuse energy
+     (even if rendering early scattering is not promoted), under the same independent-reference
+     validation. This is model against model: it bounds what B11 would change, not a measured truth.
+     **Promotion evidence (BUILD_PLAN §5 B11, check (B)):** the AQ9 metric for EDT and C80 (mean
+     |sim − meas|/jnd over 500 Hz, 1 kHz, 2 kHz per pair, averaged over pairs per room, then over rooms
+     with equal room weight; 500–1000 Hz mean also printed), with and without the hybrid, from AX11/AX19
+     ensembles with the same seeds in both arms; and the per-room gain sorted by absorption contrast,
+     largest single-face absorption share and broadband s, with no threshold. If BRAS has too few
+     uneven-α or low-s rooms, no minimum count applies: the report and `bras_mapping.md` state "B11 not
+     validated against measurement for uneven-α / low-s rooms" (F2). Promotion into `src/sim` follows
+     the B11 rule only; a check at s = 1 alone is circular.
    - **Mixing-time handover:** EDT and C80 with t_mix,e from the Phase 04 rule against the same with
      floors at t_dir,e + 80 ms and t_dir,e + 140 ms (Vorländer §6.4, §15.3; Begault Ch. 3). A floor
      raises the rule's lower bound (t_mix,e ≥ t_dir,e + floor); it does not fix t_mix,e. Report per band
      whether they differ by more than 1 jnd (Vorländer Table 6.1: EDT 5 %, C80 1 dB; Table 6.1 states
      these jnds for 500–1000 Hz only). This needs a validation-only `render_cli` override of that lower
-     bound (not in the contract).
+     bound (not in the contract). Run the three handovers (Phase 04 rule, floors t_dir,e + 80 ms and
+     + 140 ms) on both the Phase 04 IR and the reference-hybrid IR. The reference-hybrid run is the
+     arbiter (on the Phase 04 IR a later floor mostly measures the AX21 deficit). For each, report the
+     AQ9 error metric (mean |sim − meas|/jnd at 500 Hz, 1 kHz, 2 kHz; 500–1000 Hz mean also printed) for
+     EDT and C80. A floor replaces the current lower bound (through an AX change, raising the lower bound
+     only) only if, on the reference-hybrid IR, all three hold: (a) it moves EDT or C80 by more than
+     1 jnd (EDT 5 %, C80 1 dB, Table 6.1) in at least one evaluable pair; (b) it lowers the
+     room-averaged mean |error|/jnd of both EDT and C80; (c) it makes no room worse by more than 1 jnd.
+     Otherwise the current rule stands (decider D1, accepted by Maisara, 2026-11-05).
    - **Humidity bound (AX4):** per band, the Eyring T60 at 40 % and 70 % RH, 20 °C (Kuttruff Table 6.1
      rows, Eq. 5.24) relative to the AX4 atmosphere, for each room; for example 8 kHz in a room with
      V = 10 000 m³, S = 4725 m², ᾱ = 0.15 gives −11.6 % / +17.2 % (an air-dominated room would differ
