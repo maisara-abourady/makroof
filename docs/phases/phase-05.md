@@ -171,8 +171,8 @@ hand-tuned.
      (+2.3 % against +28.6 % vs Eyring). Air absorption enters both as 4mV added to the denominator;
      for a* this is equivalent to an exp(−mR) factor in the kernel (a* = a₀ + 4mV/S, Kuttruff §4.5 with
      Eq. 5.55), for γ²-Eyring it factors out of Eq. 5.29. γ² is the Table 5.1 row where the room's shape
-     is tabulated, else 0.4 (Kuttruff §5.5). The choice changes T by ≈ 0.34 % in Table 5.2 case 4
-     (0.38, interpolated between Table 5.1's 1:2:2 = 0.363 and 1:2:5 = 0.403 rows, against 0.40); in general ΔT/T ≈ (Δγ²·a/2)/(1 − γ²a/2) with a = −ln(1−ᾱ) (Kuttruff
+     is tabulated, else 0.4 (Kuttruff §5.5). The choice changes T by ≈ 0.4 % in Table 5.2 case 4
+     (γ² ≈ 0.376, linearly interpolated between Table 5.1's 1:2:2 = 0.363 and 1:2:5 = 0.403 rows, against 0.40); in general ΔT/T ≈ (Δγ²·a/2)/(1 − γ²a/2) with a = −ln(1−ᾱ) (Kuttruff
      Eqs. 5.33–5.34), e.g. ≈ 1 % for case 3 with 0.342 against 0.4, and a few % in elongated rooms with
      high ᾱ. a* solver patches for the Table 5.2 test: 88 equal elements for the 1:2:3 room (cases 3–6,
      Miles' example, Kuttruff §5.7) and 96 equal elements (6 × 4²) for the cube (cases 1–2); for BRAS rooms,

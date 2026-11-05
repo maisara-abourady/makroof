@@ -864,3 +864,33 @@ The main session computed one fact from the code: the repository's ISO 9613-1 im
 - FQ-11 to FQ-14 (FQ-12 needs Maisara's choice; the other three are wording).
 - Expert questions: the mixing-time rule, a diffuseness threshold, the X-b residual, and the size of early scattering in real rooms (Phase 05).
 - Follow-up: AQ10 and phase-13 still state the rebuild budget "order 30".
+
+## docs/phases/phase-04.md (with phase-05, phase-10, BUILD_PLAN) — 2026-11-05 (/fix-plan, FQ-11–FQ-15; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+**FQ-12: decided by the `decider` agent.** It was run under `.claude/agents/decider.md` as a general-purpose agent, before that agent type had loaded. Maisara accepted the proposal by running /fix-plan on it.
+- The decision: gate the one-absorbing-wall test at ±1 dB per **100 ms** bin. The bins start at t_on = max(t₁₉, (2L − z_s − z_r)/c, |z_s − z_r|/c) and end at the AX22 cap. The level is analytic, from the two image planes (Kuttruff §4.3, Eqs. 4.14–4.16), with no fitted constant. A partial final bin is gated if it holds ≥ 171 images. At least 3 gated bins are asserted.
+- Rejected:
+  - ±1 dB per 10 ms bin (1σ; 1.3 % of geometries pass);
+  - ≥ 171 images per 10 ms bin (vacuous: reached only after the cap);
+  - ±3 dB (12–18 % of correct geometries fail, and the tolerance is the size of a real bug).
+- The lattice statistics were computed by the decider (not corpus).
+
+**Interrogator verification** (round 1, nothing WRONG):
+- t₁₉ = 0.257 s.
+- The first 100 ms bin holds 227 images, which is ≥ 190.
+- σ = 0.315 dB, so 3σ = 0.94 dB.
+- The partial-bin threshold of 171 gives 3σ = 0.996 dB.
+- The image-plane onset terms and the absolute level are consistent with Kuttruff §4.1, §4.3 and Eq. 9.24 (derived).
+- 8 full bins plus a gated partial bin fit before the 37 880-image cap (t = 1.104 s).
+- FQ-13 and FQ-14 are fixed.
+- FQ-11: one minor finding.
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| FQ-15 | NUMBER | γ² sensitivity "≈ 0.34 % (0.38 interpolated)" | IMPRECISE | linear interpolation gives γ² = 0.376, and Kuttruff Eqs. 5.33–5.34 then give ≈ 0.40 % | minor | resolved (main session: "≈ 0.4 %, γ² ≈ 0.376" in phase-05 and the §6 row) |
+
+**Status:** FQ-11–FQ-15 resolved. Commits: b9309b1, plus the FQ-15 commit.
+
+**Still open:**
+- Expert questions: the mixing-time rule, a diffuseness threshold, the X-b residual, and the size of early scattering in real rooms (Phase 05).
+- Follow-up: AQ10 and phase-13 still state the rebuild budget as "order 30".
