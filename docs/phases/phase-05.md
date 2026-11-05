@@ -1,6 +1,6 @@
 # Phase 05 — Validation against measured impulse responses + accuracy report
 
-Size: **M** · Depends on: 04 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ9) and §3 (F2, F3), PRD NFR-1, NFR-8, Q2, Q9
+Size: **M** · Depends on: 04 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ9, AX4, AX16, AX21, AX22) and §3 (F2, F3), PRD NFR-1, NFR-8, Q2, Q9
 
 ## Goal
 
@@ -21,6 +21,10 @@ hand-tuned.
   for T = 0.8 s (ISO 3382-2 estimate; constants to verify). Signed per-band deltas are reported without gating (their sign shows bias). The
   report also gives the mean over the source/receiver pairs of each room.
 - **AQ2** method under test. **NFR-8**: no per-scene factors. If a room fails, report it.
+- **AX4**: fixed atmosphere in the simulator; a validation-only `render_cli` atmosphere override (not
+  user-facing, not in the contract) separates model error from atmosphere mismatch (scope 6).
+- **AX21**: the Phase 04 hybrid IR has no scattered energy before t_mix,e (known deficit); scope 6
+  measures what adding it would change, without changing the simulator.
 
 ## Data
 
@@ -153,11 +157,47 @@ hand-tuned.
    loudness-matched (BS.1770), named `A_*.wav`/`B_*.wav` with the key in a separate `key.txt`. Use
    public-domain or self-generated dry material only.
 
+6. **Reference comparisons** in `tools/acoustics` (Python, not `src/sim`; they add comparisons and
+   report lines, not a method change). Results go into the report, per room and pair, next to the AQ9
+   errors.
+   - **Decay predictors:** beside Eyring, the radiosity effective absorption exponent a* for Lambert
+     walls (Kuttruff §5.7 Eqs. 5.53–5.56, T = 0.161·V/(S·a*)) and γ²-Eyring (Kuttruff Eq. 5.34 with
+     Table 5.1), the latter for information only: on Kuttruff Table 5.2 cases 2 and 4 it moves T away
+     from the iteration result. a* assumes s = 1 on all walls; with low s the true T can fall on the
+     other side of Eyring (Kuttruff §9.4). The report gives the mean |T30 error| at 500 Hz–2 kHz (AQ9)
+     for Eyring, a* and γ²-Eyring against BRAS, split by uniform and uneven absorption using the
+     absorption-contrast indicator of scope 3. Patch size or count of the a* solver, how air absorption
+     enters a* and γ²-Eyring, the split rule on the indicator, and the γ² value for room shapes not in
+     Table 5.1: **pending decision**. Promotion
+     to the simulator's T60_b source happens only on this evidence, in a later phase, through an AQ2
+     change (BUILD_PLAN §5 B12).
+   - **Reference hybrid (AX21):** at each specular hit, inject s(1−α) of the incident energy into the
+     Lambert boundary patch hit, at the hit time (Kuttruff Eq. 4.24; Gilbert, §4.6); propagate it with
+     time-dependent radiosity (Eq. 4.28); gather it at the listener (Eq. 4.29); add it to the early part
+     before t_mix,e. The report gives the EDT and C80 errors against BRAS with and without it. The tail
+     decay source is **not** a*; it is decided by the decay-predictor evidence above. Patch size and
+     time step, and how the gathered energy enters the IR whose metrics are computed: **pending
+     decision**. Promotion into `src/sim` happens in a later phase only if the EDT/C80 errors drop, and
+     only after validation against an independent mixed-s reference (a Lambert-scattering ray tracer
+     per Kuttruff §9.8 at s = 0.1–0.4, or Vorländer Table 4.1 read off its plot); a check at s = 1
+     alone is circular (BUILD_PLAN §5 B11).
+   - **Mixing-time handover:** EDT and C80 with t_mix,e from the Phase 04 rule against the same with
+     floors at t_dir,e + 80 ms and t_dir,e + 140 ms (Vorländer §6.4, §15.3; Begault Ch. 3). Whether a
+     floor replaces t_mix,e or raises the rule's lower bound: **pending decision**. Report per band
+     whether they differ by more than 1 jnd (Vorländer Table 6.1: EDT 5 %, C80 1 dB). This needs a
+     validation-only `render_cli` override of the handover (not in the contract).
+   - **Humidity bound (AX4):** per band, the Eyring T60 at 40 % and 70 % RH, 20 °C (Kuttruff Table 6.1
+     rows, Eq. 5.24) relative to the AX4 atmosphere, for each room; for example 8 kHz in a 10 000 m³
+     room gives −11.6 % / +17.2 %. Where BRAS documents its measurement conditions, render once more
+     with the AX4 override set to them, to separate model error from atmosphere mismatch. The source of
+     m below 500 Hz (Table 6.1 starts at 0.5 kHz): **pending decision**. Not shown in the UI.
+
 ## Out of scope
 
 Changing the simulation method. If results are poor, the PR proposes options (e.g. ray tracing for the
 tail, better absorption mapping, a Sabine/Eyring/Arau-Puchades comparison) as **follow-ups for the
-Expert**. It doesn't implement them.
+Expert**. It doesn't implement them. The reference comparisons of scope 6 live in `tools/acoustics`
+and do not change the simulator.
 
 ## Acceptance criteria — automated
 
@@ -173,6 +213,11 @@ Expert**. It doesn't implement them.
       three bands must meet the condition, else the test scene is unsuitable. The test does not assert on C80 or EDT (C80 moves only ≈ −0.21 dB at
       t_mix = 80 ms, at the 0.2 dB limit).
 - [ ] Each chosen scene's AQ9 pass/fail is printed and stated in the report summary.
+- [ ] The a* solver reproduces the iteration column of Kuttruff Table 5.2 (all six cases), called
+      directly (the α = 0 walls of those cases are forbidden in scenes by AQ3). Tolerance: **pending
+      decision**.
+- [ ] The report contains the scope 6 comparisons (decay predictors, reference hybrid, handover,
+      humidity bound); they are reported, not gated.
 
 Failing AQ9 thresholds does **not** fail CI. It goes in the BUILD_PLAN status notes as "AQ9 met in
 x/y scenes" and is escalated.
@@ -192,7 +237,8 @@ Headphones, A/B pack, without looking at `key.txt` first:
 ## Contractor review focus
 
 The shoebox reduction rules (are they generic, not per-room tweaks?), the material mapping, the metric
-comparison method, and whether the conclusions in the report follow from the numbers.
+comparison method, the scope 6 reference predictors and reference hybrid (independent of `src/sim`,
+a* against Table 5.2), and whether the conclusions in the report follow from the numbers.
 
 ## Risks
 
