@@ -196,8 +196,8 @@ Worked examples use c = 343.2 m/s (Vorländer Eq. 1.20, 20 °C) and the Vorländ
 |---|---|---|---|---|---|---|---|
 | B1 | NUMBER | Phase 09 gate: an emitter at +55° gives the maximum L/R level difference (ORTF cardioids at ±55°) | WRONG | Spatial Audio §6.2.1 cardioid 0.5(1+cos ϑ). Working: at +55° L=1, R=0.5(1+cos 110°)=0.329 → 9.7 dB; at +90° L=0.910, R=0.090 → 20.1 dB; at +125° R=0 → unbounded. The maximum is at 125° (90° on the front half), not 55°. | minor (was blocker) | Q1 | resolved |
 | B2 | NUMBER | Phase 03: "scattering removing (1−s) of specular energy" | WRONG (as written) | Vorländer §3.3.2 Eq. 3.23, Fig. 3.10: specular (1−α)(1−s), scattered (1−α)s, so scattering removes s and keeps (1−s); read literally the text leaves s. | minor (was blocker) | Q2 | resolved |
-| B3 | FACT/NUMBER | F3 + AQ2: "outdoor field" = ground plane only (5 surfaces α=1.0) with the Eyring + air tail | CONDITIONS VIOLATED | Vorländer §4.4, §4.4.1 Eq. 4.32 assume a diffuse field and homogeneous absorption. Working (e.g. 100×100×10 m, ground α=0.1): mean α 0.625 (Eq. 4.30), T ≈ 0.67 s at 1 kHz — a reverberant tail for a scene expected to be nearly dry. | major | Q3 | open |
-| B4 | FACT | AQ4/Phase 10: late tail cached when only positions change (AQ2: tail energy-matched to ISM at the mixing time) | CONDITIONS VIOLATED | Vorländer §15.3 Table 15.1: moves > 1 m need the scattering part updated; only after ≈140 ms can the receiver-specific reverberation be replaced by a statistical decay. Blauert Ch.5 "Real-time demands": translation needs full recalculation. | major | Q4 | open |
+| B3 | FACT/NUMBER | F3 + AQ2: "outdoor field" = ground plane only (5 surfaces α=1.0) with the Eyring + air tail | CONDITIONS VIOLATED | Vorländer §4.4, §4.4.1 Eq. 4.32 assume a diffuse field and homogeneous absorption. Working (e.g. 100×100×10 m, ground α=0.1): mean α 0.625 (Eq. 4.30), T ≈ 0.67 s at 1 kHz — a reverberant tail for a scene expected to be nearly dry. | major | Q3 | disputed |
+| B4 | FACT | AQ4/Phase 10: late tail cached when only positions change (AQ2: tail energy-matched to ISM at the mixing time) | CONDITIONS VIOLATED | Vorländer §15.3 Table 15.1: moves > 1 m need the scattering part updated; only after ≈140 ms can the receiver-specific reverberation be replaced by a statistical decay. Blauert Ch.5 "Real-time demands": translation needs full recalculation. | minor (was major) | Q4 | resolved |
 | B5 | NUMBER | AX6: emitter ≥ 0.3 m from listener, rendered with a generic far-field HRTF (Phase 08) | CONDITIONS VIOLATED | Vorländer §9.5: standard HRTFs are distance-independent only beyond 1 m; Fig. 9.7 shows ILD growing below 1 m. Blauert Ch.2 §2.3.2: below 3 m head and pinna filtering depend on distance. | major | Q5 | open |
 | B6 | FACT | AQ2: "ISM is exact for specular shoebox reflections" | CONDITIONS VIOLATED | Vorländer §11.3: exact only for \|R\|=1; with absorbing walls an approximation for non-grazing incidence. §11.3.3: errors > 1 dB at grazing angles > 60° within about one wavelength of a wall. Working: at the 0.1 m AX6 clearance, d ≤ λ in every band up to 2 kHz. | major | — | resolved |
 | B7 | FACT | AQ2 hybrid ISM + Eyring for small rooms (Phase 12 living room, car-sized room; Phase 04 gate down to 250 Hz) | CONDITIONS VIOLATED | Toole §4.3.4: small rooms are not Sabine spaces. Vorländer §11.5, §10.1.3: energetic geometric methods hold above f_S. Working (Toole §4.3.1, f_c=2000√(T/V)): 60 m³ at 0.5 s → ≈183 Hz; 3.4 m³ at 0.1 s → ≈344 Hz, so 63–250 Hz are modal there. | major | — | open |
@@ -363,3 +363,35 @@ B34, B40, B46 and PRD row P1; those rows are now **resolved**. Phase 04's open-f
 corrected along with B3, which stays open until the interrogator re-checks it. Not changed, still open:
 the ±2.5 ms DRR window (B11), the minimum binaural distance (B5), small-room validity (B7), the cached
 tail (B4), and the phase-07 / phase-10 lines that still mention only the 20 ms cap.
+
+### Round 2 (interrogator on B3, B4 against the current `phase-04.md`, `phase-10.md`, BUILD_PLAN on main)
+
+Corpus revision 22dc9dd. Target: `docs/phases/phase-04.md` (whole), BUILD_PLAN §2 (AQ1–AQ10, AX1–AX18)
+and §4 Phases 04–10, `docs/phases/phase-10.md` (tail cache).
+
+| id | verdict | severity now | citation/arithmetic check | reason | follow-up |
+|---|---|---|---|---|---|
+| B3 | DISPUTED | major | Vorländer §4.4.1 (diffuse field, homogeneous absorption) confirms Eyring does not apply. But under AX16 the floor path's scattered energy is E_noScatter·s, non-zero for any s_floor > 0. Working (100×100×10 m, ground α=0.1, s=0.5, both 1.5 m high, 10 m apart): direct 0.0100, floor E_noScatter 0.00826, scattered 0.00413 = −3.8 dB re direct, 1.3 ms after it. Phase 04 adds scattered energy "up to that time", so E_b ≈ −3.8 dB re direct and the < −60 dB open-field gate fails by ≈56 dB. | The builder's round-1 claim that the scattered energy is also zero with five α=1 faces was **wrong**: the ground face has α < 1 and s ≥ 0. The tail is zero only when s_floor = 0. | Over which interval is scattered energy summed for E_b (all AX16 entries before t_mix, or only [t_mix−10 ms, t_mix]), and what E_b follows for s_floor = 0.5? |
+| B4 | RESOLVED | minor | Vorländer §15.3 Table 15.1: moves > 1 m need the specular and scattering parts updated; Phase 10 rebuilds the early part and re-runs the energy matching, and AX16 is recomputed from the new image list. Every input to the Eyring decay (V, S, ᾱ_b, m_b) is independent of position and is in the cache key, so the cached tail equals a full rebuild; the −120 dB equivalence gate is stricter than A4's ±0.5 dB. | The corpus condition is met. Remaining gap: the t_mix clamp to the ISM order's coverage depends on positions and `maxReflectionOrder`, which are not in the cache key. The early t_mix (√V ms vs §15.3's ≈140 ms) is B35, not a cache issue. | Is the cached tail stored before any t_mix-dependent gating or crossfade, so a move that changes the clamp still gives the −120 dB match? |
+
+New rows (phase-04 acoustic content):
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| B52 | NUMBER | Phase 04 energy matching: tail energy in a 10 ms window after t_mix = extrapolated ISM energy **plus** scattered energy "up to that time" | INCONSISTENT | Vorländer §11.6 Eq. 11.51 matches the envelope per time interval; §4.4.1 Eq. 4.25 is an energy density. A sum over [0, t_mix] is not a 10 ms quantity; at a steady arrival rate the ratio is t_mix/10 ms (7.7, +8.9 dB, for V = 6000 m³). B3 is the extreme case. | major | Is the scattered term an energy per 10 ms at t_mix, in the same units as the ISM window term? | open |
+| B53 | NUMBER | Phase 04 gates: "a different seed gives the same T30 within ±2 %"; T30 within ±5 % of Eyring on one realisation | INCONSISTENT | Not set by the corpus; conflicts with BUILD_PLAN AX11's measured single-realisation scatter σ₁ = 8 % at 250 Hz, T60 0.3 s, so two seeds differ by ≈ 8·√2 ≈ 11 %. AX11 requires the ±5 % gate on an ensemble (R ≥ 23); phase-04 doesn't say so. | major | Are both T30 gates evaluated on AX11 ensemble-averaged decays, and with which R per band? | open |
+| B54 | NUMBER | Phase 04: "m_b = air attenuation coefficient in nepers/m" in 4·m_b·V | IMPRECISE | Vorländer §3.6 Eq. 3.31–3.34, §4.4.1 Eq. 4.32: m is the energy coefficient (I = I₀e^(−mx), D = 4.34·m dB/m); a pressure-neper value (D/8.686) would halve the 4mV term, biasing T by ≈8 % at 4 kHz in a 20×30×10 m room (B20 working). The 0.161 constant (24 ln10/c at 343.2 m/s) is correct. | minor | Is m_b the energy coefficient D/4.34 or the pressure attenuation D/8.686? | open |
+
+Checked and CORRECT (no rows): "≈9 dB low with s = 0.5 after 3 hits" ((1−s)³ = −9.0 dB); the 12 s cap vs
+T30 (needs T ≤ 60·12/35 = 20.6 s). Noted, not filed (row cap): phase-04's ISM→tail crossfade uses
+complementary cos² windows, which is equal-gain on uncorrelated signals and dips up to 3 dB mid-fade,
+against Vorländer §9.2.1 and AX18 (≈0.3 dB EDC effect at T60 0.2 s, below the seam gate).
+
+### Status after round 2
+
+| id | severity | status |
+|---|---|---|
+| B3 | major | disputed: the open-field tail is not zero as specified; needs B52's fix and a defined summation interval |
+| B4 | minor | resolved (follow-up on the t_mix clamp vs the cache key) |
+| B52, B53 | major | open |
+| B54 | minor | open |
