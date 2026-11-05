@@ -54,7 +54,7 @@ IR for every valid shoebox scene.
      Kuttruff Table 6.1 at 40 / 50 / 70 % RH and 0.5–8 kHz, within **±1 %** (e.g. 50 % RH, m in
      10⁻³ m⁻¹: 2.28 / 6.84 / 24.29 at 2 / 4 / 8 kHz). This checks the code against Kuttruff Table 6.1
      (Bass 1995); the Vorländer Annex gives only humidity bins, with 50 % on a bin boundary, so it is not
-     a point reference. Table 6.1 prints 2–3 significant figures, so its rounding alone is up to
+     a point reference. Table 6.1 prints two decimals, so its rounding alone is up to
      ≈ ±0.8 % at 0.5 kHz; the ±1 % tolerance stays. On failure, fix the code. (The current ISO 9613-1
      code agrees within 0.7 %,
      e.g. 6.83 against 6.84·10⁻³ m⁻¹ at 4 kHz / 50 % RH; main-session check, 2026-11-05.)
@@ -261,11 +261,25 @@ Binaural tail coherence (08); validation against real rooms (05); any per-scene 
       as the render (Eq. 4.3 sums n from −∞ to ∞; the render stops at the end of the ISM part).
 - [ ] **One absorbing wall:** a box with one wall at α = 1 and the **other walls rigid** (α = 0,
       s = 0), so Kuttruff Eq. 4.16 applies. AQ3 forbids α = 0 in scenes, so the test calls the solver
-      directly. The energy decay follows Eq. 4.16 (∝ 1/t, times the air factor exp(−m·c·t)) within
-      **±1 dB per 10 ms bin**, up to the AX22 cap, in each bin whose expected image count is ≥ 19, so
-      the expected scatter is ≤ 1 dB (σ = 4.34/√19, Vorländer Eqs. 11.9/11.17, the same basis as the
-      mixing-time rule). Earlier bins, from t ≥ L/c, are reported only. Eq. 4.16 is a mean over
-      irregular arrivals (Kuttruff §4.2) (Maisara, 2026-11-05).
+      directly. The energy decay follows Kuttruff Eq. 4.16 (∝ 1/t, times the air factor exp(−m·c·t)).
+      The absolute level comes from the image density of the two image planes left by the absorbing
+      wall (Kuttruff §4.3, Eqs. 4.14–4.16), with no fitted constant. It must hold within **±1 dB per
+      100 ms bin**. The bins start at t_on = max(t₁₉, (2L − z_s − z_r)/c, |z_s − z_r|/c), where t₁₉ is
+      the first time the expected image count per 10 ms is ≥ 19 (Maisara, 2026-11-05) and the other two
+      terms are when the sphere reaches both image planes (before that the expected level is up to 3 dB
+      lower); z_s, z_r are measured from the absorbing wall along its normal and L is the room length
+      along that normal. They end at the AX22 cap. Each full bin then holds ≥ 190 expected images, so
+      ±1 dB is ≥ 3σ (σ = 4.34/√190 ≈ 0.31 dB, Vorländer Eqs. 11.9/11.17, the AX11 tol/3 convention). A
+      final partial bin is gated only if its expected count is ≥ 171. The test sums the solver's
+      per-band image energies incoherently (Eq. 4.16 is an energy result), not a band-filtered render.
+      It asserts at least 3 gated bins, using a 10×20×30 m box with the 10×20 m face absorbing and
+      generic (non-symmetric) source and receiver positions. Reported only: 10 ms bins from t ≥ L/c,
+      the energy over the gated range against the Eq. 4.16 integral, and the fitted exponent of t.
+      Rationale for 100 ms bins: lattice image counts per 10 ms bin scatter about as Poisson counts do
+      (computed, not from the corpus: 400 random geometries gave 0.88 dB at 19–40 images and only
+      1.3 % passed ±1 dB in every 10 ms bin, while all ≈ 1 300 geometries tested passed ±1 dB on
+      100 ms bins, worst 0.71 dB). Eq. 4.16 is a mean over irregular arrivals (Kuttruff §4.2) (decider
+      proposal, accepted by Maisara, 2026-11-05; ledger FQ-12).
 
 **Ensemble sizes (AX11).** R ≥ (σ₁ / (tol/3))² per band, rounded up; one ensemble per room uses the
 largest R over its gated bands and metrics (more is allowed). σ₁ is AX11's measured single-realisation T30 scatter
@@ -342,9 +356,10 @@ filterbank reuse, and IR truncation.
 - **Switch point (AX22, NFR-3, FR-SIM-6):** t_mix,e stays continuous in position, but the realised-k
   fallback is a single jump point in source position. Across it, the IR segment between t_mix,e and
   t_cap,e is ISM in one IR and noise in the other, so AX18's equal-gain premise (correlated consecutive
-  IRs) does not hold there, and the 30 ms position crossfade dips in that segment: ≈ 3 dB mid-fade when
-  the two uncorrelated segments have equal power, more when they differ (e.g. ≈ 4.4 dB at a 10:1 power
-  ratio; Vorländer Eq. 4.14). Phase 10 adds a test that measures the dip at a switch point.
+  IRs) does not hold there, and the 30 ms position crossfade dips in that segment: 3 dB at mid-fade for any power ratio of the two
+  uncorrelated segments; the largest dip relative to the power-linear interpolation of the two segments
+  grows with their power ratio, ≈ 4.4 dB at 10:1, at g ≈ 0.24 of the fade (Vorländer Eq. 4.14). Phase 10 adds a test that measures the
+  dip at a switch point.
 - AX20 makes the image list grow with t_mix,e, not with `maxReflectionOrder` (large rooms need high
   orders to reach t_mix,e), and the realised-k fallback extends it up to the AX22 cap. Measure
   rebuild time against AQ10 and record it; the AX22 cap is the only bound on the list.
