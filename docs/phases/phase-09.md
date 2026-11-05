@@ -34,7 +34,7 @@ room calibration) and let the user switch between this mode and binaural.
    per-scene auto-gain (AX2).
 5. Plugin: `output_mode` parameter now switches `Kind`. The switch triggers an IR rebuild and the Phase 06
    crossfade, so it's smooth. The two modes' IRs are unrelated, so this switch uses the **equal-power**
-   crossfade (AX15: equal-gain would dip ≈3 dB mid-fade on uncorrelated outputs).
+   crossfade (AX18: equal-gain would dip ≈3 dB mid-fade on uncorrelated outputs).
 6. `render_cli --mode stereoSpeakers`, listening pack, goldens.
 
 ## Out of scope

@@ -358,7 +358,7 @@ No blocker remains, so no round 2 was run.
 ### Plan fixes applied (2026-11-05)
 
 Commit "plan: apply corpus-review corrections" on `claude/modest-turing-afvz7v` fixed the plan text for
-B1, B2, B6, B8 (AX14; per-band s moved to backlog B10), B9, B10, B12, B13, B15, B16, B20, B32 (AX15),
+B1, B2, B6, B8 (AX17; per-band s moved to backlog B10), B9, B10, B12, B13, B15, B16, B20, B32 (AX18),
 B34, B40, B46 and PRD row P1; those rows are now **resolved**. Phase 04's open-field wording was
 corrected along with B3, which stays open until the interrogator re-checks it. Not changed, still open:
 the ±2.5 ms DRR window (B11), the minimum binaural distance (B5), small-room validity (B7), the cached

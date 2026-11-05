@@ -13,7 +13,7 @@ crossfade. Phase 10 builds movement on top of that swap.
 - **AQ10**: latency ≤ 512 samples at 48 kHz; CPU ≤ 15% of one core per 2×2 instance with a 3 s IR at
   48 kHz/512-sample buffer.
 - **AQ4**: IR change = crossfade between two convolver states over **30 ms**.
-- **AX15**: the crossfade law is chosen per request: **equal-gain** (linear complementary ramps) for
+- **AX18**: the crossfade law is chosen per request: **equal-gain** (linear complementary ramps) for
   position updates, where consecutive IRs are highly correlated; **equal-power** (sin/cos ramps) for
   switches between unrelated IRs (Phase 09 mode switch, Phase 10 large jumps), because equal-gain on
   uncorrelated outputs dips ≈3 dB mid-fade (Vorländer §9.2.1, §15.1.1). The swap API must support both laws.
