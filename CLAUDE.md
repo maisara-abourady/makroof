@@ -33,6 +33,11 @@ the status table, and stop.
   (e.g. `// AQ4: 30 ms equal-gain crossfade`).
 - Never invent an answer quietly. If you need a decision that isn't covered, add a new `AX<n>` row
   (assumption, one-line rationale, phases that break), mention it in the PR, and keep the change small.
+- **Acoustic decisions are verified, not invented.** Changes to the PRD, BUILD_PLAN or phase files go
+  through `/fix-plan` (the `plan-editor` subagent applies them; any acoustic or numeric choice it would
+  have to make goes to the `interrogator` first). In a phase session, a new or changed AX/AQ value gets
+  an interrogator check against `docs/corpus/` before it is committed, and the PR links the ledger rows.
+  The main session runs these steps itself; Maisara doesn't have to ask for them.
 - Never add preset-specific or scene-specific logic to `src/sim/` (PRD NFR-8). If accuracy falls
   short for a scene, report it. Don't tune for it.
 
