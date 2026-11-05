@@ -12,16 +12,20 @@ on record pages".
 **Settled before the session.** The choices formerly marked *(open)* (D1–D7) were settled by decider
 report 16 (`docs/review/phase-04-consult/18-decider-05d-choices.md`), accepted by Maisara with both of
 its challenges, 2026-11-05, and are written below in its wording. The session does not change them.
-One item is still marked *(open)* (scope 5, mean |d̄|); it needs a decision through /fix-plan before
-this phase is executed, and the session does not choose it.
+The last *(open)* item (scope 5, mean |d̄|) and the follow-ups B1, B3 and B4 were settled by
+decider report 17 (`docs/review/phase-04-consult/20-decider-05d-followups.md`), accepted by Maisara,
+2026-11-05, with the corrections of interrogator check 19
+(`docs/review/phase-04-consult/19-interrogator-05d-check.md`). This phase has no open items.
 
 ## Goal
 
 Add a second measured source beside BRAS (BUILD_PLAN §3 F2), with the same comparison chain as
 Phase 05 and nothing hand-tuned. Neither set has measured α for all surfaces, so every absolute
 comparison is **evidence, not validation**. The only claim stronger than evidence is the
-**input-matched distribution test**, stated as: "method evidence with the input bias cancelled to
-first order; not an NFR-1 validation". No method change.
+**input-matched distribution test**, stated as: "method evidence with the input bias cancelled
+exactly for Eyring (equal ᾱ, Vorländer Eq. 4.32); for distribution-sensitive models a common α error
+ε leaves a residual ε·(∂lnX_a/∂α − ∂lnX_b/∂α); not an NFR-1 validation" (wording corrected by
+interrogator check 19, B5). No method change.
 
 ## Assumptions in force
 
@@ -32,13 +36,19 @@ first order; not an NFR-1 validation". No method change.
   documented as omnidirectional**.
 - **AQ9** thresholds and conditions as in Phase 05 (500 Hz, 1 kHz, 2 kHz; T30/EDT ±10 %, C80 ±2 dB),
   reported per configuration and per room, by α set; all evidence.
-- **AX4**: the validation-only atmosphere override. Arni: documented, 19–20 °C, RH 28–50 % (researcher
-  report 14 V4, external, DOI 10.1121/10.0013575). **Arni atmosphere rule** (D5, decider report 16,
+- **AX4**: the validation-only atmosphere override. Arni: documented, 19.3–20.3 °C and RH 28.5–50 %
+  (researcher report 14 V4, external, DOI 10.1121/10.0013575). **Arni atmosphere rule** (D5, decider report 16,
   accepted by Maisara, 2026-11-05): If the record gives temperature and RH per IR or per combination,
   render each scene at its own logged values. Otherwise render at the campaign mid-range, 19.8 °C and
   39 % RH (midpoints of 19.3–20.3 °C and 28.5–50 %, researcher report 14 V4), and print per band Phase 05's
   Eyring humidity bound between the two ends (19.3 °C/28.5 % and 20.3 °C/50 %). Where that bound on d̄
   exceeds 1/3 jnd, d̄ is labelled "atmosphere-limited". It is a systematic term, not reduced by K.
+  Under the per-IR branch, the atmosphere difference within a pair is corrected in the render: each
+  member's simulated IR carries its own 4mV, so it cancels in d to the accuracy of the air-absorption
+  model, and no label applies. The report prints per set and band the mean and largest |Eyring Δln T
+  at the rendered atmospheres|/0.05, as the size of that correction. Under the mid-range branch, the
+  "atmosphere-limited" rule applies as written (decider report 17, `…/20-decider-05d-followups.md`, B1, accepted
+  by Maisara, 2026-11-05).
   dEchorate: 24 °C, 80 % RH (researcher report 13 D3, external, DOI 10.1186/s13636-021-00229-0);
   dEchorate stays at these values.
 - **AX11** convention for the statistics (SE ≤ threshold/3).
@@ -106,7 +116,8 @@ first order; not an NFR-1 validation". No method change.
     - **AQ9 sample:** for every n = 0…55 present in `combinations_setup.csv`, one configuration is drawn
       uniformly by a fixed integer seed. The seed is written in `arni_mapping.md` before the draw. All
       5 receivers are used.
-    - **Pair list:** take all matched candidates (same n, equal open–open shared-edge length). Draw an
+    - **Pair list:** take all matched candidates (same n, equal open–open shared-edge length, and equal
+      open-panel edge length against perpendicular walls and the ceiling; interrogator check 19, B2). Draw an
       ordered list of configuration-disjoint pairs: cycle through the n values in increasing order and,
       at each n that still has candidates, draw one unused pair per cycle with the same seed, until no
       candidates remain. No configuration appears in two pairs. Each pair gets one receiver, assigned
@@ -128,13 +139,13 @@ Use these labels verbatim in the report and the beta decision (decider report 15
 | Question | Arni | dEchorate |
 |---|---|---|
 | Absolute T30/EDT/C80 vs AQ9 | **Evidence, not validation.** Panel α come from one unretrievable "exploratory" report; walls and floor use textbook α (V1–V3). Vorländer §11.5: the operator's absorption choice has "crucial influence". | **Evidence, not validation.** No α at all, so α come from a published table chosen by a rule committed before results. |
-| Effect of absorption distribution with the input bias held fixed (T30, EDT, C80) | **Yes**, on matched pairs: same receiver, same number of open panels, equal open–open shared-edge length. Position effects cancel too (EDT "varies considerably within a hall", Kuttruff §8). | **Yes, if** two configurations have equal absorbing area on different faces (e.g. two 6 × 2.4 m walls). The 05d session checks this. |
+| Effect of absorption distribution with the input bias held fixed (T30, EDT, C80) | **Yes**, on matched pairs: same receiver, same number of open panels, equal open–open shared-edge length, and equal open-panel edge length against perpendicular walls and the ceiling (Kuttruff §8.7, Eq. 8.57). Position effects cancel too (EDT "varies considerably within a hall", Kuttruff §8). | **Yes, if** two configurations have equal absorbing area on different faces (e.g. two 6 × 2.4 m walls). The 05d session checks this. |
 | Early reflection **timing** per wall | Not useful (protruding panels). | Sanity check only. The authors refined positions against echo times (0.4 cm), so agreement is nearly circular, and Phase 03 already gates timing analytically. Compare arrival times scaled by c_meas/c_sim = 346.98/343 (1.16 %, ≈ 16 samples at 48 kHz over 10 m), analysis-side, no code change. |
-| Early reflection **level** per wall (reflective vs absorbing state) | No. | Reported. It depends on the table α, and random-incidence α can misstate a specific-angle reflection by up to 2 dB (Vorländer §11.1.2). |
+| Early reflection **level** per wall (reflective vs absorbing state) | No. | Reported, descriptive. It depends on the table α. Vorländer §11.1.2: random-incidence α keeps a reflection's level error below 2 dB while the specific-angle loss is within 40 % of the random-incidence loss; as a level bound (reflected energy 1 − α) this holds only for α ≤ 0.48. Per face and band where either state's committed α exceeds 0.48, ΔL is labelled "α-limited: no corpus bound"; elsewhere it carries "≤ 2 dB per level if the angle loss is within 40 % (§11.1.2)". The measured ΔL is evidence on the absorbing panels' table α, not a method test. |
 | Small room under 100 m³ | No (201.9 m³, V5). | Yes, at 500 Hz–4 kHz only. |
 | Below about 250 Hz | Transition zone, evidence on method validity only. | Not evaluable. |
-| B12 (decay predictor) | The matched-pair spread directly measures what Eyring cannot see; it is shown by the mean \|d̄\| and SD(Δln T30_meas) (scope 5). Reported as "input-matched", not counted in B12 rule (iv). | Same. |
-| Atmosphere | Documented, 19–20 °C, RH 28–50 % (V4). Use the AX4 override. | 24 °C, 80 % RH. Use the AX4 override. |
+| B12 (decay predictor) | The matched-pair spread measures what Eyring cannot see plus measurement noise; the noise reference is printed beside it (scope 5). It is shown by the mean \|d̄\| and RMS(Δln T30_meas) (scope 5). Reported as "input-matched", not counted in B12 rule (iv). | Same. |
+| Atmosphere | Documented, 19.3–20.3 °C and RH 28.5–50 % (V4). Use the AX4 override. | 24 °C, 80 % RH. Use the AX4 override. |
 
 ## Scope
 
@@ -161,14 +172,33 @@ Use these labels verbatim in the report and the beta decision (decider report 15
    - Per-face reflection level changes (dEchorate, reflective vs absorbing state), and the arrival-time
      sanity check scaled by c_meas/c_sim = 346.98/343, analysis-side, no code change. **Isolation,
      timing and level** (D6, decider report 16, accepted by Maisara, 2026-11-05):
-     - A reflection is evaluated only if, by the simulated image list, no other arrival within ±2.5 ms
-       of it has predicted broadband energy within 10 dB of its own.
+     - **Isolation** (decider report 17, `…/20-decider-05d-followups.md`, B4, accepted by Maisara, 2026-11-05;
+       it replaces D6's broadband 10 dB rule): A reflection is evaluated only if, by the simulated image
+       list, in each reported band and in both the reflective and the absorbing scene, the other arrivals
+       within ±2.5 ms of it satisfy Σᵢ √(Eᵢ/E₀) ≤ 0.1, where E₀ is the reflection's own predicted energy.
+       Stronger arrivals, including the direct sound, count. Coherent addition then bounds the leakage to
+       20·log10(1 ± 0.1) = +0.83 / −0.92 dB per level, and ±1.75 dB worst case on ΔL. A single neighbour
+       meets it at ≥ 20 dB below. The report prints the number of evaluable reflections per face; a face
+       with none is "not evaluable".
+       Unit tests:
+       - (i) The rule accepts one neighbour at amplitude ratio 0.10 and rejects 0.11, and rejects two
+         neighbours at 0.06 each.
+       - (ii) Two band-filtered pulses at amplitude ratio 0.1, with the delay swept over ±2.5 ms, give a
+         windowed band level within 20·log10(1 ± 0.1/√0.99) of the single pulse's windowed level. The
+         √0.99 allows for AX13's ≥ 99 % window rule.
      - **Timing:** the largest broadband |h| within ±2.5 ms of the predicted arrival. Delays are taken
        relative to each IR's t₀ (Phase 05 rule), and the simulated delay is scaled by
        c_sim/c_meas = 343/346.98 before comparison.
      - **Level:** band energy in a ±2.5 ms window centred on each IR's own detected peak, with bands
        reported per AX13 (≥ 99 % rule: 1 kHz and up). Reported per face as
-       ΔL = L_absorbing − L_reflective, simulated against measured, in dB.
+       ΔL = L_absorbing − L_reflective, simulated against measured, in dB. Reported, descriptive. It
+       depends on the table α. Vorländer §11.1.2: random-incidence α keeps a reflection's level error
+       below 2 dB while the specific-angle loss is within 40 % of the random-incidence loss; as a level
+       bound (reflected energy 1 − α) this holds only for α ≤ 0.48. Per face and band where either
+       state's committed α exceeds 0.48, ΔL is labelled "α-limited: no corpus bound"; elsewhere it
+       carries "≤ 2 dB per level if the angle loss is within 40 % (§11.1.2)". The measured ΔL is evidence
+       on the absorbing panels' table α, not a method test (decider report 17, `…/20-decider-05d-followups.md`, B3,
+       accepted by Maisara, 2026-11-05).
    - Coverage by FR-3D-3 category (clubs & warehouses; halls, chapels & churches; outdoor; domestic).
    - Low frequencies: the Schroeder frequency under both constants per room, as in Phase 05 (Kuttruff
      Eq. 3.44, Vorländer Eq. 4.13). Arni bands at 63–250 Hz fall under Phase 05's Schroeder rule
@@ -176,14 +206,20 @@ Use these labels verbatim in the report and the beta decision (decider report 15
    - Each committed report carries the attribution of `docs/THIRD_PARTY.md`.
 4. **Matched pairs (input-matched distribution test).** Eyring depends on α only through ᾱ
    (Vorländer Eq. 4.30, 4.32), so a common error in a material's α cancels exactly from the Eyring ΔT
-   of two configurations with the same area of each material, and to first order for models that
-   respond to where the absorption sits. Placement alone changes the effective α at free edges
+   of two configurations with the same area of each material: the input bias is cancelled exactly for
+   Eyring (equal ᾱ, Vorländer Eq. 4.32); for distribution-sensitive models a common α error ε leaves a
+   residual ε·(∂lnX_a/∂α − ∂lnX_b/∂α) (interrogator check 19, B5). Placement alone changes the effective α at free edges
    (Kuttruff §8.7 Eq. 8.56, α_eff = βL′ + α_∞), so an Arni pair must have:
    - the same receiver;
    - the same number of open panels;
-   - equal open–open shared-edge length, computed from the panel drawing.
-   For dEchorate (whole-face switching) the edge problem does not arise (Kuttruff §8.7); a pair needs
-   equal absorbing area on different faces, which the session checks. The slope across different
+   - equal open–open shared-edge length, computed from the panel drawing;
+   - equal open-panel edge length against perpendicular walls and the ceiling, computed from the panel
+     drawing (Kuttruff §8.7: free edges are those not adjacent to a perpendicular rigid wall; Eq. 8.57;
+     interrogator check 19, B2).
+   For dEchorate (whole-face switching), covering a whole face removes free edges (Kuttruff §8.7); the
+   Eq. 8.57 term along perimeters next to perpendicular surfaces cancels only for equal adjoining
+   perimeters, and documented panel gaps create edges (interrogator check 19, B6). A pair needs equal
+   absorbing area on different faces, which the session checks. The slope across different
    numbers of open panels (dT/dn) is **not** input-independent and is not used for this test.
    **Orientation** (D2, decider report 16, accepted by Maisara, 2026-11-05): a is the configuration with
    the longer a* T at 1 kHz (phase-05 solver, same committed α and s, converged < 0.4 %). Where |ΔT_a*|
@@ -202,9 +238,29 @@ Use these labels verbatim in the report and the beta decision (decider report 15
    evaluable pair". Sets are never pooled.
    **Mean |d̄|** (decider report 16, Challenge 1, accepted by Maisara, 2026-11-05): the report also
    prints the mean |d̄| per metric and set, descriptive only, next to its expected value at d = 0.
-   SD-2's "spread" (B12 row of the table above) is shown by that figure and by SD(Δln T30_meas). How
-   that expected value at d = 0 is computed, and the bands SD(Δln T30_meas) is taken over, are
-   *(open)*.
+   SD-2's "spread" (B12 row of the table above) is shown by that figure and by RMS(Δln T30_meas).
+   **Expected value at d = 0** (decider report 17, `…/20-decider-05d-followups.md`, accepted by Maisara, 2026-11-05):
+   E|d̄|₀ = √(2/π)·(1/K)·Σₖ σ₀,ₖ, with σ₀,ₖ² = σ²_seed,ₖ + σ²_meas,noise,ₖ, per metric, in jnd on the D3
+   band mean. The observed σ_d is never used for σ₀.
+   - σ_seed: the SD of the simulated term over ≥ 51 seed-paired renders (AX19 sampling rule). It may be
+     estimated on the 51 pilot pairs, with their mean square applied to all pairs.
+   - σ_meas,noise,ₖ² = σ²(a) + σ²(b). Each member's σ comes from the AX11 single-realisation model
+     (outside the corpus): R ≥ 51 seeded white-noise sequences, split by the `tools/acoustics` octave
+     filters, each band given an exponential decay at that member's measured band T30. The metric is
+     computed per band, then the D3 band mean is taken.
+   - The report prints E|d̄|₀ with its sampling range ±3·√((1−2/π)·Σₖσ₀,ₖ²)/K, descriptive only,
+     labelled "noise-model reference (AX11 model, outside the corpus); for EDT and C80 probably an upper
+     value, since a measured IR's early reflections are deterministic".
+   - If the record holds repeated measurements of one configuration and receiver, their SD is printed
+     as a lower value (additive noise only). It is not used for σ₀.
+   - Unit test: over 10 000 seeded N(0, 1) draws, mean |x| lies within 3·√(1−2/π)/100 = 0.018 of
+     √(2/π) = 0.798.
+
+   **RMS(Δln T30_meas)**: rₖ = [Δln T30_meas,ₖ − Δln T_Eyring,ₖ]/0.05 on the D3 band mean.
+   Δln T_Eyring,ₖ is the pair's Eyring Δln T at the rendered atmospheres; it is 0 at a common
+   atmosphere by selection. The figure is √(meanₖ rₖ²), taken about zero so that it does not depend on
+   the D2 orientation, in jnd (T at the working 5 %, AQ9). It is printed beside its value with no
+   placement effect, √(meanₖ σ²_meas,noise,ₖ), from the same noise model.
 6. CI: the nightly workflow of Phase 05 includes the 05d scenes, with the same change limits
    (±2 % T30/EDT, ±0.2 dB C80) against the baseline simulation; sim–meas errors are recorded and
    reported, never gating. If the projected nightly runtime is too long, the run moves outside CI under
@@ -223,9 +279,12 @@ numbers as context. The dT/dn slope as an input-independent test. Motus, May et 
 - [ ] The report reproduces exactly (two runs give identical numbers).
 - [ ] The nightly baseline includes the 05d scenes (the same ±2 % T30/EDT and ±0.2 dB C80 change
       limits) and runs green on it.
-- [ ] Matched-pair selector unit test: every selected pair gives an Eyring ΔT of exactly 0 and equal
-      shared-edge length, and a deliberately unmatched pair is rejected. This is the negative control,
-      so the test is not vacuous.
+- [ ] Matched-pair selector unit test: every selected pair has equal per-material area totals and
+      equal edge lengths (scope 4). At one common atmosphere (AX4 standard, 20 °C/50 % RH), with ᾱ
+      summed from the per-material area totals in a fixed material order, it gives an Eyring ΔT of
+      exactly 0. A deliberately unmatched pair is rejected; this is the negative control, so the test is
+      not vacuous (decider report 17, `…/20-decider-05d-followups.md`, B1, accepted by Maisara, 2026-11-05).
+- [ ] The isolation-rule unit tests (i) and (ii) of scope 3 and the mean |x| unit test of scope 5 pass.
 - [ ] The mapping files are committed before any sim–meas number (git history shows it).
 - [ ] AQ9 pass/fail is printed per configuration and per room, by α set, with the labels of the table
       above.
@@ -244,7 +303,8 @@ status notes and to Maisara's commissioning decision (BUILD_PLAN §3 F2).
 ## Contractor review focus
 
 The mapping files (generic Phase 05 rules, α source rule committed before results, no per-room
-tweaks), the matched-pair selector and its shared-edge computation from the panel drawing, the
+tweaks), the matched-pair selector and its edge-length computations from the panel drawing (open–open and against
+perpendicular surfaces), the
 c_meas/c_sim scaling (analysis-side only), the pilot and K computation, and whether the report's labels
 follow the table above.
 
@@ -257,8 +317,9 @@ follow the table above.
 - Arni dimensions conflict (8.9 × 6.3 × 3.6 m against an unexplained 5.75 × 7.87 × 2.91 m drawing;
   researcher reports 13 C1 and 14 V5, external); record the choice in `arni_mapping.md`. Positions are
   read off a drawing (about ±cm).
-- Geometrical acoustics is limited to large rooms (Vorländer §11.5), so dEchorate small-room misses are
-  expected; they are the evidence that was missing (FR-3D-3 domestic).
+- Vorländer §11.5 lists large rooms among the limits of geometrical acoustics; Round-robin III, a
+  smaller room with expected modal effects, still reports 1–2 jnd achievable (Vorländer §11.5).
+  dEchorate small-room misses may occur; they are the evidence that was missing (FR-3D-3 domestic).
 - Data access: if a set cannot be fetched, the phase is `blocked (reason)`; 05b proceeds and Phase 13
   may start.
 
