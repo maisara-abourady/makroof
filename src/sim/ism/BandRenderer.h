@@ -54,7 +54,8 @@ public:
     double sampleRate() const noexcept { return sampleRate_; }
     // Crossover between band k and k + 1: 1000 * 2^(k - 4) * sqrt(2) Hz (88.4 Hz ... 5657 Hz).
     static double crossoverHz(std::size_t k) noexcept;
-    // Exact base-2 centre of band b (62.5, 125, ..., 8000 Hz; "63" is the nominal label).
+    // Exact base-2 centre of band b (62.5, 125, ..., 8000 Hz; "63" is the nominal label), derived
+    // from contract::kOctaveBandsHz. Air absorption (AX4) is evaluated at the nominal values.
     static double bandCentreHz(std::size_t b) noexcept;
 
     // Low-pass k, centred: length 2 * halfLength(k) + 1, centre tap at index halfLength(k).
@@ -75,7 +76,7 @@ private:
 
 // Renders images into a broadband IR. An image arriving at time t lands at the (fractional)
 // sample (t - timeShiftS) * sampleRate; it must be >= kKernelHalfLength (the caller's pre-roll,
-// AX1). The output is long enough for the last arrival, its kernel and the filterbank ringing:
+// AX1). The output is long enough for the last arrival, its kernel and the filterbank ringing (AX15):
 // ceil(last sample) + kKernelHalfLength + filterbank.maxHalfLength() + 1 samples. Accumulated in
 // double. Deterministic.
 std::vector<double> renderImageSources(std::span<const ImageSource> images, double timeShiftS,

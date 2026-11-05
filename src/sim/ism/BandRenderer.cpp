@@ -119,7 +119,9 @@ std::array<double, 2 * kKernelHalfLength + 1> fractionalDelayKernel(double frac)
 
 double OctaveFilterbank::bandCentreHz(std::size_t b) noexcept
 {
-    return 1000.0 * std::pow(2.0, static_cast<double>(b) - 4.0);
+    // The exact base-2 centre of the nominal band contract::kOctaveBandsHz[b] (the one place the
+    // band set is defined): 1000 * 2^round(log2(nominal / 1000)), so 63 -> 62.5.
+    return 1000.0 * std::pow(2.0, std::round(std::log2(contract::kOctaveBandsHz.at(b) / 1000.0)));
 }
 
 double OctaveFilterbank::crossoverHz(std::size_t k) noexcept
@@ -290,6 +292,7 @@ std::vector<double> renderImageSources(std::span<const ImageSource> images, doub
     double last = 0.0;
     for (const auto& image : images)
         last = std::max(last, (image.arrivalTimeS - timeShiftS) * filterbank.sampleRate());
+    // AX15: last arrival + kernel + the filterbank ringing, so low bands do not end in a step.
     const auto length = static_cast<std::size_t>(std::ceil(last))
                         + static_cast<std::size_t>(kKernelHalfLength) + filterbank.maxHalfLength() + 1;
     return synthesizeBands(accumulateBandTrains(images, timeShiftS, filterbank.sampleRate(), length),

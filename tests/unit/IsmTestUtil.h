@@ -12,7 +12,11 @@ namespace ism_test {
 
 inline double uniform(std::mt19937_64& rng, double lo, double hi)
 {
-    return std::uniform_real_distribution<double>(lo, hi)(rng);
+    // Not std::uniform_real_distribution: its algorithm is unspecified and differs between
+    // standard libraries, so the "random" scenes would differ per OS. mt19937_64's output is
+    // fully specified; its top 53 bits give the same double everywhere.
+    const double unit = static_cast<double>(rng() >> 11) * 0x1.0p-53; // [0, 1)
+    return lo + (hi - lo) * unit;
 }
 
 // A random shoebox (AX6 limits) with random per-band absorption and scattering.

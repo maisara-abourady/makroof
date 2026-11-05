@@ -168,6 +168,7 @@ ImageSourceSet computeImageSources(const contract::Room& room, const Vec3& sourc
                         energy *= std::pow(reflectedEnergy[s][b], image.hits[s]);
                     }
                     image.bandsAmplitude[b] = pressure;
+                    // AX16: per path, at the specular arrival time, after all of its (1 - a).
                     scattered.bandsEnergy[b] = energy * (1.0 - specularShare);
                     audible = audible || pressure != 0.0;
                     scatters = scatters || scattered.bandsEnergy[b] > 0.0;

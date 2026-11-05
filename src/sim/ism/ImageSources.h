@@ -41,7 +41,7 @@ struct ImageSource
 };
 
 // Energy that scattering removed from one specular path (sum over its reflections), per band, at
-// the arrival time of that path. Same units as bandsAmplitude squared. Phase 04 feeds it into the
+// the arrival time of that path (AX16). Same units as bandsAmplitude squared. Phase 04 feeds it into the
 // tail; Phase 03 doesn't render it.
 struct ScatteredEnergy
 {

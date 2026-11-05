@@ -102,7 +102,7 @@ std::size_t peakIndex(const std::vector<float>& x)
 TEST_CASE("omni IR: both outputs of an emitter are the same; the earliest direct path is at the pre-roll",
           "[sim][engine][omni]")
 {
-    for (const char* name : {"small_room.json", "medium_room.json", "open_field.json"})
+    for (const char* name : {"small_room.json", "medium_room.json", "open_field.json", "large_hall.json"})
     {
         INFO(name);
         const auto scene = loadScene(name);
@@ -118,12 +118,16 @@ TEST_CASE("omni IR: both outputs of an emitter are the same; the earliest direct
             CHECK(peakIndex(ir.ir(1, 0)) == static_cast<std::size_t>(sim::kAlignPreRollSamples));
             // Before the first arrival's kernel there is only the filterbank's linear-phase
             // pre-ringing of later reflections whose per-band gains differ. Measured worst case over
-            // the fixtures: -51 dB (open_field, whose floor reflection is strongly low-passed).
-            // Bound: 40 dB below the direct peak.
-            const auto& taps = ir.ir(0, 0);
-            const float peak = std::abs(taps[peakIndex(taps)]);
-            for (std::size_t n = 0; n + 16 < static_cast<std::size_t>(sim::kAlignPreRollSamples); ++n)
-                CHECK(std::abs(taps[n]) < 1e-2f * peak);
+            // the fixtures at their own orders (48 kHz): -46.7 dB (large_hall), -49.1 dB
+            // (open_field). The cut at sample 0 leaves a step of at most -52 dB. Bound for both,
+            // on both emitters: 40 dB below the direct peak.
+            for (int e = 0; e < 2; ++e)
+            {
+                const auto& taps = ir.ir(e, 0);
+                const float peak = std::abs(taps[peakIndex(taps)]);
+                for (std::size_t n = 0; n + 16 < static_cast<std::size_t>(sim::kAlignPreRollSamples); ++n)
+                    CHECK(std::abs(taps[n]) < 1e-2f * peak);
+            }
         }
     }
 }
@@ -232,6 +236,16 @@ TEST_CASE("benchmark: omni IR, order 30, 20 x 30 x 10 m, 48 kHz, 2 emitters", "[
               << ir.length() << " samples, one build "
               << std::chrono::duration<double, std::milli>(stop - start).count()
               << " ms (AQ10 target 50 ms)\n";
+
+    // Contract maximum (phase-03 Risks): one build at order 60, timed once.
+    auto order60 = scene;
+    order60.render.maxReflectionOrder = 60;
+    const auto start60 = std::chrono::steady_clock::now();
+    const auto ir60 = sim::buildRoomIR(order60, options);
+    const auto stop60 = std::chrono::steady_clock::now();
+    std::cout << "phase-03 benchmark, order 60 (contract maximum): " << 2 * sim::ism::imageCount(60)
+              << " images, IR " << ir60.length() << " samples, one build "
+              << std::chrono::duration<double, std::milli>(stop60 - start60).count() << " ms\n";
 
     BENCHMARK("image sources only (2 emitters)")
     {
