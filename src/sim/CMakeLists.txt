@@ -6,7 +6,13 @@ add_library(spatial_sim STATIC
             Engine.h
             Engine.cpp
             OfflineRender.h
-            OfflineRender.cpp)
+            OfflineRender.cpp
+            AirAbsorption.h
+            AirAbsorption.cpp
+            ism/ImageSources.h
+            ism/ImageSources.cpp
+            ism/BandRenderer.h
+            ism/BandRenderer.cpp)
 add_library(spatial::sim ALIAS spatial_sim)
 
 target_include_directories(spatial_sim PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")

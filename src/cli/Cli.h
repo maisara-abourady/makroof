@@ -4,7 +4,8 @@
 //
 //   render_cli --scene <json> --in <wav> --out <wav> [--rate <hz>] [--mode omni|binaural|stereoSpeakers]
 //   render_cli --scene <json> --ir <wav> [--rate <hz>] [--mode ...]
-//   (--in/--out and --ir can be combined in one call)
+//   render_cli --scene <json> --images <json> [--rate <hz>] [--no-air-absorption]
+//   (--in/--out, --ir and --images can be combined in one call)
 //
 // Exit codes (kExit*, BUILD_PLAN AX12): 0 ok, 1 usage error, 2 invalid scene (validation errors
 // printed), 3 I/O error, 4 internal error (an unexpected exception, e.g. out of memory).

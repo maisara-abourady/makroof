@@ -90,7 +90,8 @@ def test_update_script_rewrites_and_logs(tmp_path):
         "def test_it():\n"
         "    golden.assert_golden('example', {'bands': {'63': {'T30': 1.5, 'C80': 2.1, 'new': 1},"
         " '1000': {'T30': 1.0, 'label': 'x', 'none': None}}})\n"
-        "    golden.assert_golden('brand_new', {'x': 1.0}, default_tolerance={'rel': 0.01})\n",
+        "    golden.assert_golden('brand_new', {'x': 1.0}, default_tolerance={'rel': 0.01})\n"
+        "    golden.assert_golden('with_tolerances', {'x': 1.0}, tolerances={'default': {'abs': 0.0}, 'x': {'abs': 0.5}})\n",
         encoding="utf-8",
     )
     result = _run_update(tmp_path, "Phase 99: intended change for the test", test_file)
@@ -101,6 +102,8 @@ def test_update_script_rewrites_and_logs(tmp_path):
     assert updated["metrics"]["bands"]["63"] == {"T30": 1.5, "C80": 2.1}  # scope kept, value updated
     created = json.loads((golden_dir / "brand_new.json").read_text(encoding="utf-8"))
     assert created["tolerances"] == {"default": {"rel": 0.01}}
+    with_tolerances = json.loads((golden_dir / "with_tolerances.json").read_text(encoding="utf-8"))
+    assert with_tolerances["tolerances"] == {"default": {"abs": 0.0}, "x": {"abs": 0.5}}
 
     log = (golden_dir / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "Reason: Phase 99: intended change for the test" in log

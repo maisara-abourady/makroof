@@ -6,10 +6,14 @@
 #include "sim/Engine.h"
 #include "sim/OfflineRender.h"
 
+#include <algorithm>
+#include <array>
 #include <charconv>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
+#include <locale>
 #include <optional>
 #include <ostream>
 #include <sstream>
@@ -26,6 +30,8 @@ struct Options
     std::string outPath;
     std::string irPath;
     std::string automationPath;
+    std::string imagesPath;
+    bool noAirAbsorption = false;
     std::optional<double> rate;
     std::optional<sim::BuildOptions::Kind> mode;
     bool help = false;
@@ -69,6 +75,11 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             options.version = true;
             continue;
         }
+        if (arg == "--no-air-absorption")
+        {
+            options.noAirAbsorption = true;
+            continue;
+        }
 
         std::string* target = nullptr;
         if (arg == "--scene")
@@ -81,6 +92,8 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             target = &options.irPath;
         else if (arg == "--automation")
             target = &options.automationPath;
+        else if (arg == "--images")
+            target = &options.imagesPath;
         else if (arg != "--rate" && arg != "--mode")
             return "unknown argument '" + arg + "'";
 
@@ -116,8 +129,8 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         return "--scene is required";
     if (options.inPath.empty() != options.outPath.empty())
         return "--in and --out must be given together";
-    if (options.inPath.empty() && options.irPath.empty())
-        return "nothing to do: give --in and --out, or --ir";
+    if (options.inPath.empty() && options.irPath.empty() && options.imagesPath.empty())
+        return "nothing to do: give --in and --out, --ir or --images";
     if (options.rate && !sim::isSupportedSampleRate(*options.rate))
         return "--rate must be one of 44100, 48000, 88200, 96000 (AX6)";
     return {};
@@ -136,6 +149,98 @@ bool readTextFile(const std::filesystem::path& path, std::string& text)
     return true;
 }
 
+void writeNumber(std::ostream& os, double v)
+{
+    // 17 significant digits round-trip a double exactly. (Floating-point std::to_chars isn't
+    // available on every macOS deployment target.)
+    std::ostringstream text;
+    text.imbue(std::locale::classic());
+    text << std::setprecision(17) << v;
+    os << text.str();
+}
+
+template <typename Range>
+void writeArray(std::ostream& os, const Range& values)
+{
+    os << '[';
+    bool first = true;
+    for (const auto v : values)
+    {
+        if (!first)
+            os << ',';
+        first = false;
+        writeNumber(os, static_cast<double>(v));
+    }
+    os << ']';
+}
+
+void writeVec(std::ostream& os, const contract::Vec3& v)
+{
+    writeArray(os, std::array<double, 3>{v.x, v.y, v.z});
+}
+
+// The image-source list of every emitter as JSON (format in usage()).
+bool writeImages(const std::filesystem::path& path, const contract::SceneDescription& scene,
+                 const sim::BuildOptions& build)
+{
+    std::ofstream os(path, std::ios::binary);
+    if (!os)
+        return false;
+    const auto sets = sim::imageSourcesByChannel(scene, build);
+    const double shift = sim::alignmentShiftS(scene, build.sampleRate);
+    os << "{\"sampleRate\":";
+    writeNumber(os, build.sampleRate);
+    os << ",\"speedOfSound\":";
+    writeNumber(os, sim::ism::kSpeedOfSoundMps);
+    os << ",\"alignPreRollSamples\":" << sim::kAlignPreRollSamples << ",\"alignmentShiftS\":";
+    writeNumber(os, shift);
+    os << ",\"airAbsorption\":" << (build.airAbsorption ? "true" : "false");
+    os << ",\"bandsHz\":";
+    writeArray(os, contract::kOctaveBandsHz);
+    os << ",\"emitters\":[";
+    for (std::size_t ch = 0; ch < sets.size(); ++ch)
+    {
+        const auto it = std::find_if(scene.emitters.begin(), scene.emitters.end(),
+                                     [&](const auto& e) { return e.channel == static_cast<int>(ch); });
+        os << (ch ? "," : "") << "{\"channel\":" << ch << ",\"id\":\""
+           << (it != scene.emitters.end() ? it->id : "") << "\",\"images\":[";
+        bool first = true;
+        for (const auto& image : sets[ch].images)
+        {
+            os << (first ? "" : ",") << "{\"order\":" << image.order << ",\"position\":";
+            first = false;
+            writeVec(os, image.position);
+            os << ",\"distance\":";
+            writeNumber(os, image.distanceM);
+            os << ",\"time\":";
+            writeNumber(os, image.arrivalTimeS);
+            os << ",\"sample\":";
+            writeNumber(os, (image.arrivalTimeS - shift) * build.sampleRate);
+            os << ",\"hits\":";
+            writeArray(os, image.hits);
+            os << ",\"direction\":";
+            writeVec(os, image.arrivalDirection);
+            os << ",\"amplitude\":";
+            writeArray(os, image.bandsAmplitude);
+            os << '}';
+        }
+        os << "],\"scattered\":[";
+        first = true;
+        for (const auto& s : sets[ch].scattered)
+        {
+            os << (first ? "" : ",") << "{\"order\":" << s.order << ",\"time\":";
+            first = false;
+            writeNumber(os, s.arrivalTimeS);
+            os << ",\"energy\":";
+            writeArray(os, s.bandsEnergy);
+            os << '}';
+        }
+        os << "]}";
+    }
+    os << "]}\n";
+    return static_cast<bool>(os);
+}
+
 } // namespace
 
 std::string usage()
@@ -144,6 +249,7 @@ std::string usage()
            "  render_cli --scene <json> --in <wav> --out <wav> [--rate <hz>] "
            "[--mode omni|binaural|stereoSpeakers]\n"
            "  render_cli --scene <json> --ir <wav> [--rate <hz>] [--mode ...]\n"
+           "  render_cli --scene <json> --images <json> [--rate <hz>]\n"
            "  render_cli --help | --version\n"
            "\n"
            "  --in/--out   render a stereo WAV through the scene (output: float32 WAV, length input + IR - "
@@ -151,7 +257,13 @@ std::string usage()
            "  --ir         write the room IR (float32 WAV, channel = emitter * outputs + output)\n"
            "  --rate       sample rate in Hz; must match the input WAV when --in is given (default: the\n"
            "               input's rate, or 48000 for --ir alone). Supported: 44100, 48000, 88200, 96000\n"
-           "  --mode       output kind (default: the scene's render.outputMode)\n"
+           "  --mode       output kind (default: the scene's render.outputMode). omni = early\n"
+           "               reflections (Phase 03); binaural/stereoSpeakers are still a dry stub\n"
+           "  --images     write the image sources of each emitter as JSON: per image order,\n"
+           "               position, distance (m), time (s, unaligned), sample (aligned, fractional),\n"
+           "               hits per surface (xMin xMax yMin yMax floor ceiling), direction of\n"
+           "               arrival, amplitude per band; plus the scattered energy per path\n"
+           "  --no-air-absorption  validation only: switch off air absorption (AX4 keeps it on)\n"
            "  --automation not implemented until Phase 10\n"
            "\n"
            "exit codes: 0 ok, 1 usage error, 2 invalid scene, 3 I/O error, 4 internal error\n";
@@ -230,6 +342,19 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
     build.sampleRate = options.rate.value_or(options.inPath.empty() ? kDefaultIrSampleRateHz
                                                                     : static_cast<double>(input.sampleRate));
     build.kind = options.mode.value_or(sim::kindForOutputMode(scene.render.outputMode));
+    build.airAbsorption = !options.noAirAbsorption;
+
+    if (!options.imagesPath.empty())
+    {
+        if (!writeImages(options.imagesPath, scene, build))
+        {
+            err << "render_cli: cannot write '" << options.imagesPath << "'\n";
+            return kExitIo;
+        }
+        out << "wrote image sources " << options.imagesPath << "\n";
+        if (options.irPath.empty() && options.inPath.empty())
+            return kExitOk;
+    }
 
     const sim::RoomIR ir = sim::buildRoomIR(scene, build);
 

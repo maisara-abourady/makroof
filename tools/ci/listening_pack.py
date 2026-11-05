@@ -10,7 +10,8 @@ Output: <out>/<phase>/dry/<signal>.wav (the inputs), <out>/<phase>/<scene>/<sign
 Your own material: put stereo (or mono, duplicated to both sides) WAVs at 44.1/48/88.2/96 kHz in
 tools/ci/listening_inputs/ (gitignored, never committed) and rerun locally.
 
-Later phases: add the phase's expectations to PHASE_NOTES (and signals to SIGNALS if needed).
+Later phases: add the phase's expectations to PHASE_NOTES, its render_cli mode to PHASE_MODES if
+it isn't the scene's own outputMode (and signals to SIGNALS if needed).
 """
 
 from __future__ import annotations
@@ -31,6 +32,8 @@ FS = 48000
 SCENES_DIR = REPO / "tests" / "scenes" / "valid"
 INPUTS_DIR = REPO / "tools" / "ci" / "listening_inputs"
 SUPPORTED_RATES = (44100, 48000, 88200, 96000)
+# Renders that peak above this are scaled down to it, and the README says so.
+PEAK_LIMIT_DBFS = -1.0
 
 
 def _pink_bursts() -> np.ndarray:
@@ -84,12 +87,29 @@ SIGNALS = {
     ),
 }
 
+# render_cli --mode per phase (default: the scene's own outputMode).
+PHASE_MODES = {
+    "phase-03": "omni",
+}
+
 PHASE_NOTES = {
     "phase-02": (
         "Phase 02: the engine is a STUB (dry pass-through). Every rendered file must sound IDENTICAL "
         "to its dry version in dry/, for every scene: no room, no echo, no level change, left stays "
         "left and right stays right. The table at the end lists the measured difference (it should "
         "say 'bit-identical' everywhere)."
+    ),
+    "phase-03": (
+        "Phase 03: EARLY REFLECTIONS ONLY (image-source model, omni receiver). Both ears get the same "
+        "signal (a mono room preview): left and right inputs are rendered from where the L and R "
+        "emitters stand, but you hear them through one omni microphone, so the stereo image "
+        "collapses to the centre. There is no reverberant tail yet (Phase 04), so every sound "
+        "stops abruptly after its last echo; that is expected. What to listen for: on the clicks, a "
+        "dense cluster of echoes right after each click in small_room, spreading out and arriving "
+        "later in medium_room and large_hall; asymmetric_materials duller than medium_room; "
+        "open_field a dry click with a single ground reflection right after it; on pink_bursts no "
+        "pitched ringing, except a flutter (a rapid repeating echo) between hard parallel walls, "
+        "which is physically correct. Level follows distance (AX2): far scenes are quieter."
     ),
 }
 
@@ -134,10 +154,21 @@ def build(out_root: pathlib.Path, phase: str, binary: pathlib.Path, log=print) -
         for scene in scenes:
             out_path = pack / scene.stem / f"{name}.wav"
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            result = render_cli.run(binary, "--scene", scene, "--in", dry_path, "--out", out_path)
+            mode = ("--mode", PHASE_MODES[phase]) if phase in PHASE_MODES else ()
+            result = render_cli.run(binary, "--scene", scene, "--in", dry_path, "--out", out_path, *mode)
             if result.returncode != 0:
                 raise RuntimeError(f"render_cli failed for {scene.name} / {name}:\n{result.stderr}")
             rendered, _ = wav.read_float32(out_path)
+            # Playback safety, not part of the render: a file peaking above PEAK_LIMIT_DBFS is scaled
+            # down to it (AX2 keeps the engine's level physical, and a reflective room can sum
+            # well above 0 dBFS). The table says how much.
+            peak = float(np.max(np.abs(rendered))) if rendered.size else 0.0
+            scaled = ""
+            if peak > 10 ** (PEAK_LIMIT_DBFS / 20):
+                gain_db = PEAK_LIMIT_DBFS - 20 * np.log10(peak)
+                rendered = (rendered.astype(np.float64) * 10 ** (gain_db / 20)).astype(np.float32)
+                wav.write_float32(out_path, rendered, fs)
+                scaled = f"; SCALED by {gain_db:.1f} dB for playback (render peaked at {20 * np.log10(peak):+.1f} dBFS)"
             if rendered.shape == dry.shape and rendered.tobytes() == dry.tobytes():
                 diff = "bit-identical"
             else:
@@ -145,6 +176,7 @@ def build(out_root: pathlib.Path, phase: str, binary: pathlib.Path, log=print) -
                 residual = np.max(np.abs(rendered[:n].astype(np.float64) - dry[:n])) if n else 0.0
                 level = 20 * np.log10(residual) if residual > 0 else -np.inf
                 diff = f"differs: max |render - dry| = {level:.1f} dBFS, length {len(rendered)} vs {len(dry)}"
+            diff += scaled
             rows.append((scene.stem, name, diff))
             log(f"{scene.stem}/{name}.wav: {diff}")
 
@@ -158,6 +190,8 @@ def build(out_root: pathlib.Path, phase: str, binary: pathlib.Path, log=print) -
         "tests/scenes/valid/ and holds the same signals rendered through that scene.",
         "All files are 32-bit float WAV. Listen on headphones at a moderate level",
         "(the clicks are loud and sharp; the sweep's top end is inaudible).",
+        f"A render that would peak above {PEAK_LIMIT_DBFS:g} dBFS is scaled down to that peak, so",
+        "nothing clips; the table at the end lists each such file and the gain applied.",
         "",
         "SIGNALS",
         "-------",

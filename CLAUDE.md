@@ -98,7 +98,7 @@ pytest tools                         # tools/ci + tools/acoustics, as the python
 python -m tools.acoustics metrics ir.wav          # ISO 3382 metrics as JSON (also: compare a.wav b.wav, clicks out.wav)
 
 # listening pack (CI artifact `listening-pack`): build/listening-pack/<phase>/
-python tools/ci/listening_pack.py --phase phase-02
+python tools/ci/listening_pack.py --phase phase-03
 
 # golden files: the ONLY way to update them (appends the reason to tests/golden/CHANGELOG.md)
 python tools/ci/update_goldens.py --reason "<why>" -- <pytest args selecting the tests>
@@ -112,6 +112,12 @@ auval -v aufx Spsc Mkrf
 # offline render (Phase 02+); exit codes 0 ok, 1 usage, 2 invalid scene, 3 I/O, 4 internal (AX12)
 build/debug/render_cli --scene tests/scenes/valid/medium_room.json --in in.wav --out out.wav
 build/debug/render_cli --scene tests/scenes/valid/medium_room.json --ir ir.wav
+# Phase 03+: --mode omni = early-reflection IR (binaural/stereoSpeakers stay a dry stub until 08/09);
+# --images writes the image-source list as JSON; --no-air-absorption is for validation only (AX4)
+build/debug/render_cli --scene tests/scenes/valid/medium_room.json --mode omni --ir ir.wav --images images.json
+
+# ISM benchmark (hidden Catch2 test, CI runs it from the release build)
+build/release/tests/unit/spatial_tests "[benchmark]" --benchmark-samples 10
 ```
 
 Binary dirs are `build/<preset>/`. Plugin bundles land in

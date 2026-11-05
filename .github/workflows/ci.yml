@@ -110,7 +110,7 @@ jobs:
 
       - name: Listening pack
         if: runner.os == 'Linux'
-        run: python tools/ci/listening_pack.py --phase phase-02 --render-cli build/cli/render_cli
+        run: python tools/ci/listening_pack.py --phase phase-03 --render-cli build/cli/render_cli
 
       - name: Upload listening pack
         if: runner.os == 'Linux'
@@ -192,6 +192,19 @@ jobs:
         run: cmake --preset release
       - name: Build (release)
         run: cmake --build --preset release
+
+      # Phase 03: ISM benchmark (AQ10 target: IR rebuild <= 50 ms at order 30, 20 x 30 x 10 m).
+      # Hidden test case, run from the Release build so the number means something; printed to the log.
+      - name: Benchmark (release)
+        shell: bash
+        run: |
+          BIN=build/release/tests/unit/spatial_tests
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then BIN="$BIN.exe"; fi
+          if [[ "${RUNNER_OS}" == "Linux" ]]; then
+            xvfb-run -a "$BIN" "[benchmark]" --benchmark-samples 10
+          else
+            "$BIN" "[benchmark]" --benchmark-samples 10
+          fi
 
       - name: Install AU for validation (macOS)
         if: runner.os == 'macOS'

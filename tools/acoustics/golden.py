@@ -167,12 +167,19 @@ def _prune_like(template, actual, path: str = "", missing: list[str] | None = No
     return actual
 
 
-def check_golden(name: str, actual: dict, description: str = "", default_tolerance: dict | None = None) -> GoldenReport:
+def check_golden(
+    name: str,
+    actual: dict,
+    description: str = "",
+    default_tolerance: dict | None = None,
+    tolerances: dict | None = None,
+) -> GoldenReport:
     """What tests call. Normally compares and returns the report (assert ``report.ok``).
 
     In update mode (only via tools/ci/update_goldens.py) it rewrites ``metrics`` of the golden
     (keeping its tolerances, description and the set of keys it pins; a new golden pins
-    everything) and records the change in the update log, then returns an OK report.
+    everything and gets ``tolerances``, or ``{"default": default_tolerance}``) and records the
+    change in the update log, then returns an OK report.
     """
     reason = update_mode()
     if reason is None:
@@ -192,7 +199,9 @@ def check_golden(name: str, actual: dict, description: str = "", default_toleran
     new = {
         "name": name,
         "description": (old or {}).get("description", description),
-        "tolerances": (old or {}).get("tolerances", {"default": default_tolerance or {"abs": 0.0, "rel": 0.0}}),
+        "tolerances": (old or {}).get(
+            "tolerances", tolerances or {"default": default_tolerance or {"abs": 0.0, "rel": 0.0}}
+        ),
         "metrics": pruned,
     }
     path.parent.mkdir(parents=True, exist_ok=True)

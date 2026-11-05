@@ -8,6 +8,10 @@ add_executable(spatial_tests
                test_contract_validation.cpp
                test_contract_version.cpp
                test_engine.cpp
+               IsmTestUtil.h
+               test_air_absorption.cpp
+               test_image_sources.cpp
+               test_band_renderer.cpp
                test_offline_render.cpp
                test_cli.cpp)
 
