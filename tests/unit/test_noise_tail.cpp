@@ -9,6 +9,13 @@
 #include <numbers>
 #include <vector>
 
+// Exact floating-point comparisons are intended here (determinism, exact zeros, values copied
+// unchanged), so -Wfloat-equal (part of JUCE's recommended warnings, which the tests compile with
+// when the plugin is built) is silenced for this file, as in contract/SceneDescription.h.
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#endif
+
 using Catch::Matchers::WithinAbs;
 using Catch::Matchers::WithinRel;
 

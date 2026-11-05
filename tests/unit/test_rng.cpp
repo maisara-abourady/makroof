@@ -8,6 +8,13 @@
 #include <cmath>
 #include <cstdint>
 
+// Exact floating-point comparisons are intended here (determinism, exact zeros, values copied
+// unchanged), so -Wfloat-equal (part of JUCE's recommended warnings, which the tests compile with
+// when the plugin is built) is silenced for this file, as in contract/SceneDescription.h.
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#endif
+
 TEST_CASE("Pcg32 reproduces the reference implementation's pcg32 sequence", "[sim][rng]")
 {
     // pcg-c-basic pcg32-demo: pcg32_srandom_r(&rng, 42u, 54u), first six pcg32_random_r values.

@@ -20,6 +20,13 @@
 #include <tuple>
 #include <vector>
 
+// Exact floating-point comparisons are intended here (determinism, exact zeros, values copied
+// unchanged), so -Wfloat-equal (part of JUCE's recommended warnings, which the tests compile with
+// when the plugin is built) is silenced for this file, as in contract/SceneDescription.h.
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#endif
+
 using Catch::Matchers::WithinAbs;
 
 namespace {
@@ -60,7 +67,7 @@ TEST_CASE("hybrid IR: no NaN, Inf or denormals in any sample of any valid fixtur
         std::size_t bad = 0;
         for (const auto& taps : ir.taps)
             for (const float v : taps)
-                bad += (std::isfinite(v) && (v == 0.0f || std::fpclassify(v) == FP_NORMAL)) ? 0 : 1;
+                bad += (std::isfinite(v) && (v == 0.0f || std::fpclassify(v) == FP_NORMAL)) ? 0u : 1u;
         CHECK(bad == 0);
         CHECK(energy(ir.ir(0, 0)) > 0.0);
     }
@@ -276,8 +283,8 @@ TEST_CASE("benchmark: hybrid omni IR, 20 x 30 x 10 m, 48 kHz, 2 emitters", "[.][
     const auto stop = std::chrono::steady_clock::now();
     std::cout << "phase-04 benchmark: " << d.emitters[0].imageCount + d.emitters[1].imageCount
               << " images (AX20), t_mix " << d.emitters[0].match.mixing.mixS * 1000.0 << " ms, IR "
-              << ir.length() << " samples (" << ir.length() / 48000.0 << " s), one build "
-              << std::chrono::duration<double, std::milli>(stop - start).count()
+              << ir.length() << " samples (" << static_cast<double>(ir.length()) / 48000.0
+              << " s), one build " << std::chrono::duration<double, std::milli>(stop - start).count()
               << " ms (AQ10 target 50 ms)\n";
     BENCHMARK("buildRoomIR omni (hybrid)")
     {
