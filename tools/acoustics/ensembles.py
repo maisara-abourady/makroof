@@ -1,11 +1,11 @@
-"""Phase 04: ensembles of hybrid IRs and the rules that size them (BUILD_PLAN AX11, AX19, AX21).
+"""Phase 04: ensembles of hybrid IRs and the rules that size them (BUILD_PLAN AX11, AX19, AX23).
 
 - ``render_ensemble``: R realisations of a scene's omni hybrid IR (or of its tail alone) with
   consecutive ``tailSeed``s, from one ``render_cli --ensemble`` call.
 - ``r_t30``: AX11's ensemble size R >= (sigma1 / (tol / 3))^2 with sigma1 from AX11's measured
   single-realisation T30 scatter of noise x exp (48 kHz), as phase-04.md "Ensemble sizes" applies it.
 - ``r_two_ensembles``: R >= 9 (sigma_a^2 + sigma_b^2) / tol^2 for comparing two ensemble means (AX19).
-- ``t30_half_octave_ensemble``: the AX21 meter for the Eyring gate at 1-8 kHz: each realisation's
+- ``t30_half_octave_ensemble``: the AX23 meter for the Eyring gate at 1-8 kHz: each realisation's
   pressure IR, aligned at its onset, is filtered by a linear-phase Kaiser FIR that passes the band's
   central half octave (base-2 centre * 2^+-1/4) and stops from 2^+-3/8 (80 dB); the squared outputs
   are averaged over the ensemble, then Lundeby + Schroeder as in ``metrics``.
@@ -37,7 +37,7 @@ AX11_SIGMA1_PCT = {
     8000.0: (1.3, 1.0, 0.3),
 }
 
-# AX21: bands read in the central half octave in the Eyring gate (63-500 Hz: bands.py octaves).
+# AX23: bands read in the central half octave in the Eyring gate (63-500 Hz: bands.py octaves).
 HALF_OCTAVE_BANDS_HZ = (1000.0, 2000.0, 4000.0, 8000.0)
 
 
@@ -120,7 +120,7 @@ def diagnostics(binary: pathlib.Path, scene: dict | pathlib.Path, rate: int = 48
 
 
 def half_octave_fir(nominal_hz: float, fs: float) -> np.ndarray:
-    """AX21: linear-phase Kaiser band-pass, pass band base-2 centre * 2^+-1/4, stop band from
+    """AX23: linear-phase Kaiser band-pass, pass band base-2 centre * 2^+-1/4, stop band from
     2^+-3/8 (or 0.999 Nyquist), 80 dB; odd length, centred."""
     fc = bands.exact_centre_hz(nominal_hz)
     lo, hi = fc * 2.0**-0.25, fc * 2.0**0.25
@@ -134,7 +134,7 @@ def half_octave_fir(nominal_hz: float, fs: float) -> np.ndarray:
 
 
 def band_metrics_half_octave_ensemble(irs: np.ndarray, fs: float, nominal_hz: float) -> dict:
-    """AX21 meter: metrics (``metrics._band_metrics`` format) of the ensemble-averaged energy of the
+    """AX23 meter: metrics (``metrics._band_metrics`` format) of the ensemble-averaged energy of the
     onset-aligned IRs, each filtered by ``half_octave_fir`` before squaring."""
     taps = half_octave_fir(nominal_hz, fs)
     half = taps.size // 2
@@ -148,7 +148,7 @@ def band_metrics_half_octave_ensemble(irs: np.ndarray, fs: float, nominal_hz: fl
 
 
 def eyring_t30_readings(irs: np.ndarray, fs: float, bands_hz=bands.OCTAVE_BANDS_HZ) -> dict:
-    """T30 per band for the Eyring gate (AX21): half octave for 1-8 kHz, bands.py octaves below.
+    """T30 per band for the Eyring gate (AX23): half octave for 1-8 kHz, bands.py octaves below.
     Returns {band_key: {"T30": value, "meter": "half-octave" | "octave", "octave_T30": value}}."""
     octave = metrics.room_metrics_ensemble(list(irs), fs, tuple(bands_hz))
     out = {}
@@ -178,7 +178,7 @@ def cache_dir() -> pathlib.Path | None:
 
 
 class EnsembleAccumulator:
-    """Streaming form of ``metrics.room_metrics_ensemble`` (and of the AX21 half-octave meter) for
+    """Streaming form of ``metrics.room_metrics_ensemble`` (and of the AX23 half-octave meter) for
     ensembles too large to hold in memory: add IRs in chunks, then read the metrics of the
     ensemble-averaged band energies. Same method: each IR aligned at its own onset, band-filtered
     (``bands.filter_band_with_lead``, or ``half_octave_fir``), squared and averaged; the direct index

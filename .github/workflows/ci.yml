@@ -121,7 +121,7 @@ jobs:
           path: build/listening-pack
           if-no-files-found: error
 
-  # Phase 04: the AX11 / AX19 / AX21 ensemble gates of the late tail (Eyring, seed and sample-rate
+  # Phase 04: the AX11 / AX19 / AX23 ensemble gates of the late tail (Eyring, seed and sample-rate
   # gates; up to ~4200 realisations per rate), one test room per job so they run in parallel.
   tail-gates:
     name: tail gates (${{ matrix.name }}, ${{ matrix.room }})

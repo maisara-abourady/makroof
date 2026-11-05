@@ -1,10 +1,10 @@
 """Phase 04: the late tail and the hybrid omni IR through the real render_cli binary.
 
-Gates (docs/phases/phase-04.md, BUILD_PLAN AX11, AX19, AX21):
+Gates (docs/phases/phase-04.md, BUILD_PLAN AX11, AX19, AX23):
 - independent Python Eyring (with ISO 9613-1 air, m = D / 4.343) and mixing-time rule agree with
   the C++ diagnostics;
 - Eyring gate: tail-only T30 within +-5 % (250 Hz-4 kHz) / +-10 % (125 Hz, 8 kHz) of Eyring T60_b on
-  AX11 ensembles; 1-8 kHz read in the central half octave, 63-500 Hz in octaves (AX21);
+  AX11 ensembles; 1-8 kHz read in the central half octave, 63-500 Hz in octaves (AX23);
 - seed gate: two disjoint ensembles agree within +-2 % (125 Hz-8 kHz);
 - sample-rate gate: 44.1 vs 96 kHz ensembles agree in T30 (+-2 %, 63 Hz-8 kHz, tail-only), EDT
   (+-2 %, 63 Hz-8 kHz) and C80 (+-0.5 dB, 125 Hz-8 kHz) of the hybrid IR, R from the measured
@@ -136,7 +136,7 @@ def test_open_field_has_no_tail(render_cli_path):
 
 
 # ---------------------------------------------------------------------------------------------
-# Eyring gate (AX11 ensembles, AX21 meter)
+# Eyring gate (AX11 ensembles, AX23 meter)
 # ---------------------------------------------------------------------------------------------
 
 def eyring_r(t60: list[float]) -> dict[float, int]:
@@ -145,7 +145,7 @@ def eyring_r(t60: list[float]) -> dict[float, int]:
         if fc not in EYRING_TOL_PCT:
             continue
         r = ensembles.r_t30(fc, t60[i], EYRING_TOL_PCT[fc])
-        out[fc] = 2 * r if fc in ensembles.HALF_OCTAVE_BANDS_HZ else r  # AX21: half octave, half the bandwidth
+        out[fc] = 2 * r if fc in ensembles.HALF_OCTAVE_BANDS_HZ else r  # AX23: half octave, half the bandwidth
     return out
 
 
@@ -332,7 +332,7 @@ def test_seam_edc_has_no_step_at_t_mix(render_cli_path, name):
     steps = seam_steps(render_cli_path, name, irs, float(fs))
     single = seam_steps(render_cli_path, name, irs[:1], float(fs))
     gated = name in SEAM_FIXTURES
-    # AX21: the hybrid IR's own T30 (octave meter, R = SEAM_R) is reported here, not gated.
+    # AX23: the hybrid IR's own T30 (octave meter, R = SEAM_R) is reported here, not gated.
     t60 = diag(str(render_cli_path), name)["t60"]
     full = metrics.room_metrics_ensemble(list(irs[:, 0]), float(fs))
     report = {bands.band_key(fc): (None if full["bands"][bands.band_key(fc)]["T30"] is None
