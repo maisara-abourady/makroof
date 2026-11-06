@@ -121,6 +121,28 @@ def _inside(x, y, poly) -> bool:
     return inside
 
 
+def convex_hull_xy(points) -> list:
+    """Convex hull (counter-clockwise, Andrew's monotone chain) of 2-D points; AX26 needs only the
+    hull, because the minimum-area oriented bounding rectangle of a point set is that of its hull."""
+    pts = sorted({(round(float(x), 9), round(float(y), 9)) for x, y in points})
+    if len(pts) <= 2:
+        return [list(q) for q in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower, upper = [], []
+    for q in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], q) <= 0:
+            lower.pop()
+        lower.append(q)
+    for q in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], q) <= 0:
+            upper.pop()
+        upper.append(q)
+    return [list(q) for q in lower[:-1] + upper[:-1]]
+
+
 def sofa_positions(path):
     import h5py  # extraction only (tools/validation/requirements-extract.txt)
 
@@ -132,18 +154,10 @@ def sofa_positions(path):
     return {f"LS{e}": em[i].tolist() for i, e in enumerate(eid)}, {f"MP{r}": rc[i].tolist() for i, r in enumerate(rid)}
 
 
-def extract_room(room: str, cache: pathlib.Path, log=print) -> dict:
-    skp_path = cache / room / "geometry" / f"{room}.skp"
-    data = skp_path.read_bytes()
-    doc = documented_materials((cache / "materials" / "descr" / f"mat_{room}.txt").read_text(encoding="utf-8", errors="replace"))
-    model = skp_reader.read(data, log=log)
-    polys = skp_reader.world_polygons(model)
-    acc: dict = {}
-    for p in polys:
-        acc[p.material] = acc.get(p.material, 0.0) + p.area_m2
-    unpainted = acc.pop(None, 0.0)
-    names = match_materials(acc, doc["areas"])
-    off_plane = max(p.off_plane_m for p in polys)
+def reduce_polygons(room: str, polys, names: dict, emitters: dict, receivers: dict) -> dict:
+    """Rule 1 (rotation, face assignment) and the per-room reduction inputs from world-frame
+    polygons (``skp_reader.Polygon``-like: material, normal, area_m2, loops); separate from the
+    reader so a synthetic room can be tested (AX26 unit test)."""
     theta = rotation_angle([p for p in polys if p.material in names])
     c, s = math.cos(-theta), math.sin(-theta)
     Rz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1.0]])
@@ -172,7 +186,6 @@ def extract_room(room: str, cache: pathlib.Path, log=print) -> dict:
     fl = np.concatenate([L for p in floor_polys for L in p.loops[:1]])
     floor_area = sum(p.area_m2 for p in floor_polys)
     zbar = sum(p.area_m2 * float(np.mean(p.loops[0][:, 2])) for p in floor_polys) / floor_area
-    emitters, receivers = sofa_positions(cache / room / "geometry" / f"{room}_RIRs_Dodecahedron.sofa")
     pos = {k: {"xyz": (Rz @ np.asarray(v)).tolist()} for k, v in {**emitters, **receivers}.items()}
     # AX24: the floor plane of a pair = the floor face under the pair's horizontal midpoint.
     pair_floor = {}
@@ -181,6 +194,34 @@ def extract_room(room: str, cache: pathlib.Path, log=print) -> dict:
             m = 0.5 * (np.asarray(pos[s]["xyz"]) + np.asarray(pos[r]["xyz"]))
             zf = floor_below(m, floor_polys)
             pair_floor[f"{s}_{r}"] = {"z_floor": zf if zf is not None else zbar, "floor_found": zf is not None}
+    return {
+        "rotation_deg": math.degrees(theta),
+        "assigned_area_m2": {f"{m}|{f}": a for (m, f), a in sorted(assigned.items())},
+        "floor_area_m2": floor_area,
+        "floor_bbox_xy": [fl[:, 0].min(), fl[:, 1].min(), fl[:, 0].max(), fl[:, 1].max()],
+        "floor_mean_z": zbar,
+        # AX26: hull of the floor-assigned faces' horizontal projection (rotated frame)
+        "floor_hull_xy": convex_hull_xy(fl[:, :2]),
+        "positions": pos,
+        "pair_floor": pair_floor,
+    }
+
+
+def extract_room(room: str, cache: pathlib.Path, log=print) -> dict:
+    skp_path = cache / room / "geometry" / f"{room}.skp"
+    data = skp_path.read_bytes()
+    doc = documented_materials((cache / "materials" / "descr" / f"mat_{room}.txt").read_text(encoding="utf-8", errors="replace"))
+    model = skp_reader.read(data, log=log)
+    polys = skp_reader.world_polygons(model)
+    acc: dict = {}
+    for p in polys:
+        acc[p.material] = acc.get(p.material, 0.0) + p.area_m2
+    unpainted = acc.pop(None, 0.0)
+    names = match_materials(acc, doc["areas"])
+    off_plane = max(p.off_plane_m for p in polys)
+    emitters, receivers = sofa_positions(cache / room / "geometry" / f"{room}_RIRs_Dodecahedron.sofa")
+    red = reduce_polygons(room, polys, names, emitters, receivers)
+    theta, floor_area = math.radians(red["rotation_deg"]), red["floor_area_m2"]
     model_area = sum(acc.values())
     log(f"{room}: θ = {math.degrees(theta):.3f}°, A_floor = {floor_area:.2f} m², S(model) = {model_area:.2f} m², "
         f"unpainted {unpainted:.3f} m², off-plane {off_plane:.2e} m")
@@ -190,13 +231,7 @@ def extract_room(room: str, cache: pathlib.Path, log=print) -> dict:
         "model_material_area_m2": {names[k]: acc[k] for k in names},
         "unpainted_area_m2": unpainted,
         "max_off_plane_m": off_plane,
-        "rotation_deg": math.degrees(theta),
-        "assigned_area_m2": {f"{m}|{f}": a for (m, f), a in sorted(assigned.items())},
-        "floor_area_m2": floor_area,
-        "floor_bbox_xy": [fl[:, 0].min(), fl[:, 1].min(), fl[:, 0].max(), fl[:, 1].max()],
-        "floor_mean_z": zbar,
-        "positions": pos,
-        "pair_floor": pair_floor,
+        **red,
     }
 
 
@@ -204,18 +239,21 @@ def main(argv=None):
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--rooms", nargs="+", default=list(ROOMS), help="rooms to (re-)extract; others are kept")
+    ap.add_argument("--out", type=pathlib.Path, default=OUT,
+                    help="output JSON (default: the committed file); use a separate file for a detached run "
+                         "and merge it, so two runs never race on one file")
     a = ap.parse_args(argv)
     cache = fetch_bras.cache_dir()
     fetch_bras.fetch(["materials", "geometry"], cache)
-    out = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {"rooms": {}}
+    out = json.loads(a.out.read_text(encoding="utf-8")) if a.out.exists() else {"rooms": {}}
     out["note"] = ("Derived from BRAS (CC BY-SA 4.0; DOI 10.14279/depositonce-6726.3) by "
                    "tools/validation/extract_bras_geometry.py; see docs/validation/bras_mapping.md.")
     for r in a.rooms:
         out["rooms"][r] = extract_room(r, cache)
         out["rooms"] = dict(sorted(out["rooms"].items()))
-    OUT.parent.mkdir(exist_ok=True)
-    OUT.write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    print("wrote", OUT)
+    a.out.parent.mkdir(parents=True, exist_ok=True)
+    a.out.write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    print("wrote", a.out)
 
 
 if __name__ == "__main__":
