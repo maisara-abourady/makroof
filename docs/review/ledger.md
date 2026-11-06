@@ -1240,3 +1240,65 @@ free path = 4V/S within 0.2 %) and an independent Lambert Monte Carlo agree with
 | AX24-7 | DECISION | mean-floor fallback | CONSEQUENCE | minor | open (reported) |
 | AX24-8 | NUMBER | 0.1 m clearance is near grazing | NOT CHECKABLE | minor | open (reported) |
 | AX24-9 | DECISION | specular box floor has no seat dip (Kuttruff §6.7) | CONSEQUENCE | minor | open (reported) |
+
+## docs/phases/phase-05.md, phase-05e.md, BUILD_PLAN — decisions D-A, D-B, D-C (2026-11-06) (/fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d; external sources: researcher report, this session)
+
+Maisara asked: "decide D-A (shoebox dimension rule), D-B (Table 5.2 test) and D-C (noise test)". Loop: the
+interrogator rated the options, the researcher looked for external evidence, the decider decided (proposals,
+vetoable by Maisara), the plan-editor applied them, and the interrogator checked the diff (two rounds).
+Main-session measurements were scratch prototypes (not committed). Results: D-A → **AX26**, D-B → a*
+gated against an independent Lambert-particle Monte Carlo, D-C → **AX27** with L_min = 51 dB.
+
+### Option verdicts (interrogator, round 1)
+
+| id | kind | item | verdict | severity | status |
+|---|---|---|---|---|---|
+| DA-1 | NUMBER | A3 "x/y wall areas equal the assigned areas" (a·b would be 76.8 ≠ 50.48 m²) | IMPRECISE | minor | closed (A3 not chosen) |
+| DA-2 | FACT | A1 (S kept) gives CR2 aspect 3.84 against a real 1.39; CR3 invalid | CONDITIONS VIOLATED | major | closed (A2 chosen, AX26) |
+| DA-3 | DECISION | A2: V, h = V/A_floor, A_floor, plan ratio from the oriented bounding rectangle; S reported | CORRECT (preferred) | none | closed (AX26) |
+| DB-1 | NUMBER | Fig. 5.10 (−1.57 dB/MFP) gives 1.215 s for case 4, agreeing with the column (1.21), ≈ 7 % above the solver and both Monte Carlos | CONDITIONS VIOLATED (for treating the MC as resolving the column) | major | open (reported "unresolved"; B12 (v) blocks a* replacing Eyring while open) |
+| DB-2 | NUMBER | B2 (Table 5.2 at ±8 %): plain Eyring would pass cases 1 and 5 | CONDITIONS VIOLATED | major | closed (not chosen) |
+| DC-1 | NUMBER | C3 margin at 55 dB without subtraction (+0.5 % predicted) | CONDITIONS VIOLATED | major | closed (AX27; fallback margin 60 dB) |
+| DC-2 | FACT | C2 noise subtraction follows from the linearity of Kuttruff Eq. 8.29; not a corpus-named method | NOT CHECKABLE (derivable) | none | closed (AX27) |
+
+### Diff check (interrogator, round 1 → fixes applied in round 2)
+
+| id | kind | item | verdict | severity | status |
+|---|---|---|---|---|---|
+| PC-1 | FACT | EDC/τ = e^(−x) + N(x_c − x); symbol order vs Kuttruff | CORRECT (form), symbols swapped | minor | resolved (wording) |
+| PC-2 | NUMBER | uncorrected bias +1.78/+0.55/+0.22/+0.08 % | IMPRECISE (≈ 1.7/0.5/0.2/0.07 %, fit convention stated) | minor | resolved |
+| PC-3 | FACT | subtraction + compensation, no double counting | CORRECT if N̂, t_c, late line come from the unsubtracted envelope | minor | resolved (condition added) |
+| PC-4 | DECISION | "EDC ≤ 0 above −35 dB → None" | CONSEQUENCE (needs precise definition) | minor | resolved (wording) |
+| PC-5 | NUMBER | residual bias | IMPRECISE (εN(x_c − x); ≈ ε × uncorrected) | minor | resolved |
+| PC-6 | NUMBER | 45 dB T30 requirement, ISO 3382-1:2009 §4.2.1 | NOT CHECKABLE (corpus; researcher read it externally) | none | open (external) |
+| PC-7 | NUMBER | L_min = 52 dB vs "lowest in 1 dB steps" (51 not measured) | INCONSISTENT | major | resolved: 51 dB measured, worst median − 3·SD 45.7 dB → L_min = 51 dB |
+| PC-8 | NUMBER | admission margin vs the test's nominal level | IMPRECISE (different quantity) | minor | resolved (estimator defined; reads ≈ 1.4 dB low, conservative) |
+| PC-9 | FACT | Begault: ideally 60 dB above the noise floor | CORRECT (stated for whole-decay capture) | none | closed |
+| AD-1 | NUMBER | AX26 formulas and CR2/CR3 boxes | CORRECT | none | closed |
+| AD-2 | FACT | "Eqs. 5.8, 4.8, 4.6" | IMPRECISE (Eq. 4.6 depends on V only; per-axis rate Eqs. 4.8–4.9) | minor | resolved |
+| AD-3 | FACT | S enters at second order (Eq. 5.35) | CORRECT | none | closed |
+| AD-4 | FACT | §7.5.2 for "early reflections depend on geometry" | IMPRECISE (§7.5.2 defines C only) | minor | resolved |
+| DB-3 | NUMBER | Fig. 5.10 → 1.215 s; ≈ 7 % gap | CORRECT | none | closed |
+| DB-4 | NUMBER | SE ≤ 0.25 % (tol/4); < 0.4 % per halving | CORRECT | none | closed |
+| DB-5 | FACT | γ²-Eyring as a ±1 % gate for cases 1, 3 (Eq. 5.30 needs ½σ_N²a² ≪ 1; 0.26–0.51 at −35 dB) | CONDITIONS VIOLATED | major | resolved: all six cases gated against the particle MC (cases 1, 3: particle 1.526 / 1.473 s, solver 1.525 / 1.472 s); γ²-Eyring reported only |
+| DB-6 | NUMBER | "fixed 2.5 m layout" for the 1:2:3 room | IMPRECISE (88 elements are 5 m) | minor | resolved (numbers restated per layout) |
+| DB-7 | NUMBER | Table 5.2 values | CORRECT | none | closed |
+| DB-8 | DECISION | B12 (v): Eyring stays e.g. for case 4 (14 % above Iteration) | CONSEQUENCE | minor | recorded in B12 |
+
+### Main-session measurements (prototype, scratch; seeds and R as `test_noise_handling.py`)
+
+- AX27 prototype, paired bias with subtraction: ≤ +0.24 % at 48 dB, ≤ +0.17 % at 50, ≤ +0.14 % at 51, ≤ +0.14 % at 52,
+  ≤ +0.08 % at 55 dB; unsuitable realisations 5/1/1 at 48 dB (Lundeby range estimate below 45 dB), 0 at ≥ 50 dB.
+  Worst median − 3·SD of the Lundeby dynamic-range estimate: 42.8 (48), 44.7 (50), 45.7 (51), 46.8 (52) dB.
+- a*: from-scratch Lambert particle simulation (survivor fraction / energy decay, 200k–400k particles): cases 1–6 =
+  1.526, 1.350, 1.473, 1.133, 2.981, 5.860 s (table 1.55, 1.35, 1.52, 1.21, 3.06, 5.93). Solver convergence: case 2
+  1.3315 / 1.3378 / 1.3393 s (2.5 / 1.25 / 0.625 m), case 6 5.667 / 5.763 / 5.787 s (5 / 2.5 / 1.25 m). Risk recorded
+  in phase-05e: the ±1 % gate may be borderline on case 6.
+
+### Decisions
+
+| decision | rule | basis | status |
+|---|---|---|---|
+| D-A | AX26 (A2) | interrogator DA-3; Brinkmann et al. 2019 §II.D (RAZR: V + main-dimension proportions; external) | applied; vetoable by Maisara |
+| D-B | a* converged, ±1 % vs independent Lambert-particle MC, all six cases; Table 5.2, Fig. 5.10, 88/96-element and γ²-Eyring results reported; B12 (v). Changes Maisara's 2026-11-05 choice to gate at 88/96 elements | DB-1, DB-2, DB-5 | applied; vetoable by Maisara |
+| D-C | AX27 noise subtraction; case A levels L_min = 51, 55, 65 dB (48 reported); admission margin ≥ L_min; reversal: margin ≥ 60 dB without AX27 | DC-1, DC-2, PC-1…PC-8 | applied; vetoable by Maisara |
