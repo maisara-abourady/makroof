@@ -412,6 +412,23 @@ def scope6_section(w, res: dict) -> None:
                 w(f"| {COMP_TITLE.get(comp, comp)} | {met} | {m['error_base_jnd']:.3f} → {m['error_with_jnd']:.3f} | "
                   f"{m['delta']:+.3f} | {m['se']:.3f} | {rooms} | {f(c['R_ok'])} | {reading if met == 'EDT' else ''} |")
         w("")
+        w("In-range figure (500–1000 Hz mean; Vorländer Table 6.1 states these jnds for 500–1000 Hz only) and per-band Δ̂ "
+          "(room-averaged; for the handover, per band whether the two handovers differ by more than 1 jnd):")
+        w("")
+        w("| comparison | metric | Δ̂ 500–1000 Hz (SE) | Δ̂ 500 Hz | Δ̂ 1 kHz | Δ̂ 2 kHz | bands with \\|Δ̂\\| > 1 jnd | pairs > 1 jnd per band (500 / 1k / 2k) |")
+        w("|---|---|---|---|---|---|---|---|")
+        for comp, c in e["comparisons"].items():
+            if "in_range_500_1000" not in c:
+                continue
+            for met in ("EDT", "C80"):
+                ir = c["in_range_500_1000"][met]
+                pb = {k: c["per_band"][k][met] for k in ("500", "1000", "2000")}
+                over = [k for k, v in pb.items() if abs(v["delta"]) > 1.0]
+                w(f"| {COMP_TITLE.get(comp, comp)} | {met} | {ir['delta']:+.3f} ({ir['se']:.3f}) | "
+                  + " | ".join(f"{pb[k]['delta']:+.3f}" for k in ("500", "1000", "2000"))
+                  + f" | {', '.join(over) if over else 'none'} | "
+                  + " / ".join(str(len(pb[k]["pairs_over_1jnd"])) for k in ("500", "1000", "2000")) + " |")
+        w("")
         big = [(n, met, p["delta"]) for comp, c in e["comparisons"].items() if comp.startswith("handover")
                for met in ("EDT", "C80") for n, p in c["metrics"][met]["pair"].items() if abs(p["delta"]) > 1.0]
         if big:

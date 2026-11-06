@@ -334,15 +334,15 @@ def pair_job(args) -> dict:
     return {"name": name, "alpha_set": alpha_set, "first": first, "count": count, "arms": res}
 
 
-def errors(arm_seeds: list, meas: dict) -> np.ndarray:
-    """Per seed AQ9 error in jnd, (R, 2) for EDT and C80: mean over admitted AQ9 bands of
-    |EDT_sim/EDT_meas - 1|·100/5 and |C80_sim - C80_meas|/1."""
+def errors(arm_seeds: list, meas: dict, bands_hz=("500", "1000", "2000")) -> np.ndarray:
+    """Per seed AQ9 error in jnd, (R, 2) for EDT and C80: mean over the admitted bands in
+    ``bands_hz`` (default the AQ9 bands) of |EDT_sim/EDT_meas - 1|·100/5 and |C80_sim - C80_meas|/1."""
     out = []
     for s in arm_seeds:
         ed, cc = [], []
         for k, (edt, c80) in s.items():
             mb = meas[k]
-            if not mb["admitted"]:
+            if k not in bands_hz or not mb["admitted"]:
                 continue
             if edt is not None and mb["EDT"]:
                 ed.append(abs(100 * (edt / mb["EDT"] - 1)) / rv.JND["EDT"])
@@ -401,6 +401,22 @@ def compare(per_pair: dict, meas: dict, alpha_set: str) -> dict:
                           and all(r["se"] <= 1 / 3 + 1e-12 for r in res["metrics"][m]["room"].values())
                           and (not pair_level or all(p["se"] <= 1 / 3 + 1e-12 for p in res["metrics"][m]["pair"].values()))
                           for m in ("EDT", "C80"))
+        # The 500-1000 Hz mean (the in-range figure: Vorländer Table 6.1 states the jnds for 500-1000 Hz)
+        # and the per-band Δ̂ (handover: per band, whether the two handovers differ by > 1 jnd).
+        def summary(bands_hz):
+            dp = {n: errors(per_pair[n][a][:R], meas[n], bands_hz) - errors(per_pair[n][b][:R], meas[n], bands_hz)
+                  for n in names}
+            dr = {rm: np.nanmean(np.stack([dp[n] for n in names if n.split("_")[1].upper() == rm]), axis=0) for rm in rooms}
+            da = np.nanmean(np.stack(list(dr.values())), axis=0)
+            out_ = {}
+            for j, met in enumerate(("EDT", "C80")):
+                pair_d = {n: float(np.nanmean(dp[n][:, j])) for n in names}
+                out_[met] = {"delta": float(np.nanmean(da[:, j])), "se": float(np.nanstd(da[:, j], ddof=1) / math.sqrt(R)),
+                             "room": {rm: float(np.nanmean(dr[rm][:, j])) for rm in rooms},
+                             "pairs_over_1jnd": sorted(n for n, d in pair_d.items() if abs(d) > 1.0)}
+            return out_
+        res["in_range_500_1000"] = summary(("500", "1000"))
+        res["per_band"] = {k: summary((k,)) for k in ("500", "1000", "2000")}
         res["readings"] = readings(comp, res)
         res["alpha_set"] = alpha_set
         out[comp] = res
@@ -458,6 +474,8 @@ def run_ensembles(alpha_sets=("initial", "fitted"), workers: int = 4) -> dict:
             log(f"{aset}: R = {have}, R needed per comparison {history[-1]['by_comparison']}")
             if need > have and need <= R_MAX_IN_SESSION:
                 target = need
+        CACHE.mkdir(parents=True, exist_ok=True)
+        (CACHE / f"ensembles_{aset}.json").write_text(json.dumps({"per_pair": per_pair, "meas": meas}, default=float))
         out[aset] = {"comparisons": comp, "R_history": history, "mix_s": mix,
                      "R_beyond_session": need > R_MAX_IN_SESSION}
     return out
