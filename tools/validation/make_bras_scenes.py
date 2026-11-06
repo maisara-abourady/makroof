@@ -171,7 +171,9 @@ def reduce_room(room: str, g: dict, cache: pathlib.Path, alpha_set: str) -> dict
     m = air_m_per_m()
     t_box = eyring_t60(doc["V"], dims["S_box"], total_A, m)
     t_doc = eyring_t60(doc["V"], doc["S"], doc_A, m)
-    return {"dims": dims, "swap_xy": swap, "faces": faces, "clamps": clamps,
+    materials = {n: {"area_m2": a, "alpha": mats[n][0].tolist(), "scattering_bands": mats[n][1].tolist(),
+                     "d_char": doc.get("d_char", {}).get(n)} for n, a in doc["areas"].items()}
+    return {"dims": dims, "swap_xy": swap, "faces": faces, "clamps": clamps, "materials": materials,
             "absorption_area_box_m2": total_A.tolist(), "absorption_area_documented_m2": doc_A.tolist(),
             "eyring_t60_box_s": t_box.tolist(), "eyring_t60_documented_s": t_doc.tolist(),
             "eyring_error_pct": (100 * (t_box / t_doc - 1)).tolist()}
@@ -354,6 +356,21 @@ def mapping_section(g_all: dict, reduction: dict) -> str:
         wl = sum(fs_[f]["alpha"][4] * fs_[f]["area_m2"] for f in FACES[:4]) / sum(fs_[f]["area_m2"] for f in FACES[:4])
         ms = sum(fs_[f]["scattering"] * fs_[f]["area_m2"] for f in FACES) / sum(fs_[f]["area_m2"] for f in FACES)
         L.append(f"| {room} | {A[top] / sum(A.values()):.2f} ({top}) | {fc / wl:.2f} | {fs_[top]['scattering']:.3f} | {ms:.3f} |")
+    L.append("")
+    L.append("Per material (documented areas from `_descr/mat_CRx.txt`, initial α and s, octave values by AX25; d_char as documented), "
+             "sorted by share of the total absorption area at 1 kHz:")
+    L.append("")
+    L.append("| room | material | area (m², % of S) | α 500 / 1k / 2k | share of A (1 kHz) | s 500 / 1k / 2k | s (AX17) | d_char (m) |")
+    L.append("|---|---|---|---|---|---|---|---|")
+    for room in sorted(reduction):
+        m = reduction[room]["initial"]["materials"]
+        S = sum(v["area_m2"] for v in m.values())
+        A1k = sum(v["area_m2"] * v["alpha"][4] for v in m.values())
+        for n, v in sorted(m.items(), key=lambda t: -t[1]["area_m2"] * t[1]["alpha"][4]):
+            al, sc = v["alpha"], v["scattering_bands"]
+            L.append(f"| {room} | {n.replace('mat_' + room + '_', '')} | {v['area_m2']:.1f} ({100 * v['area_m2'] / S:.1f} %) | "
+                     f"{al[3]:.2f} / {al[4]:.2f} / {al[5]:.2f} | {v['area_m2'] * al[4] / A1k:.2f} | {sc[3]:.2f} / {sc[4]:.2f} / {sc[5]:.2f} | "
+                     f"{sum(sc[3:6]) / 3:.2f} | {v['d_char'] if v['d_char'] is not None else '–'} |")
     L.append("")
     return "\n".join(L) + "\n"
 

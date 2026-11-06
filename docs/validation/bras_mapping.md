@@ -34,6 +34,30 @@ V = 3 330.6 m³ and S = 2 763.0 m² "based on provided 3d models", the values it
 computed with. The reduction uses the material files' V and S (they belong to the same model as
 the surface areas). The difference is printed in the report.
 
+**Volume check (phase-05e scope (a); done 2026-11-06 before any simulated-vs-measured number).**
+AX26 keeps the model volume. The documentation sheets (Aspöck et al., pp. 25–27) give CR2 145 m³,
+CR3 2 350 m³ "excluding the attic", CR4 8 650 m³; the material files give 146.1, 3 330.6 and
+8 656.5 m³ "based on provided 3d models". Two checks, neither involving a simulated IR:
+1. *Enclosed volume of the model* (divergence theorem over every face of `CRx.skp`, unpainted
+   faces included, read by `skp_reader.py`): CR2 146.09 m³, CR3 3 330.64 m³. The material files'
+   V is the enclosed volume of the model whose surface areas the reduction uses.
+2. *Which V the dataset's own Eyring fit used* (documentation Eq. (1); the fitted α were scaled so
+   that Eyring matches the measured T): Eyring on the fitted α with the material file's S and the
+   ISO 9613-1 air at the documented measurement conditions, against BRAS's own measured
+   third-octave T20 (`Evaluation_CRx_T20.txt`), 100 Hz–10 kHz, mean / max |error|:
+   CR2 V = 146.1: +0.11 % / 0.45 %; V = 145: −0.52 % / 0.95 %. CR3 V = 3 330.6: +0.02 % / 0.23 %;
+   V = 2 350: −26.7 % / 29.4 %. CR4 V = 8 656.5: +0.06 % / 0.29 %; V = 8 650: −0.00 % / 0.25 %.
+
+Cause: the sheet volumes are rounded room figures (CR4's 8 650 against the model's 8 656.5 m³ shows
+the same rounding); the fitted α, the areas and S all belong to the model volume, which the fit
+reproduces to ≤ 0.45 % in CR2 (a 145 m³ fit would be off by up to 0.95 %). CR3's sheet volume
+excludes the attic that the model (and the fit) include; the attic coupling stays a known reduction
+limit (§4). The model volume is therefore not wrong: no /fix-plan, and AX26's rule is unchanged (one
+generic rule, NFR-8). With A fixed, the model volume raises the CR2 predicted T by +0.76 %
+(146.1/145) and the CR3 one by +41.7 % (3 330.6/2 350) against the sheet volumes; the report prints
+these beside the AQ9 lines. The model also omits a few small objects (cable ducts, a pipe, a fire
+extinguisher in CR2; `CRx_ModelSimplifications.pdf`), whose volume is far below the 1.1 m³ gap.
+
 Every omni (dodecahedron) RIR the dataset provides for the selected rooms is used: 2 sources ×
 5 receivers per room, 30 source/receiver pairs (`CRx_RIR_LSi_MPj_Dodecahedron.wav`; CR3 also has a
 third source position, measured with the Genelec only, which is not omni and is not used, AQ8).
@@ -196,4 +220,21 @@ Absorption unevenness = largest single-face share of the total absorption area a
 |---|---|---|---|---|
 | CR2 | 0.30 (floor) | 0.87 | 0.056 | 0.105 |
 | CR3 | 0.33 (floor) | 0.55 | 0.207 | 0.167 |
+
+Per material (documented areas from `_descr/mat_CRx.txt`, initial α and s, octave values by AX25; d_char as documented), sorted by share of the total absorption area at 1 kHz:
+
+| room | material | area (m², % of S) | α 500 / 1k / 2k | share of A (1 kHz) | s 500 / 1k / 2k | s (AX17) | d_char (m) |
+|---|---|---|---|---|---|---|---|
+| CR2 | concrete | 56.9 (28.1 %) | 0.07 / 0.07 / 0.07 | 0.30 | 0.05 / 0.06 / 0.09 | 0.07 | 0.005 |
+| CR2 | floor | 49.3 (24.3 %) | 0.09 / 0.08 / 0.07 | 0.29 | 0.05 / 0.05 / 0.07 | 0.06 | 0.003 |
+| CR2 | ceiling | 51.6 (25.5 %) | 0.07 / 0.06 / 0.06 | 0.22 | 0.15 / 0.21 / 0.30 | 0.22 | 0.06 |
+| CR2 | plaster | 34.9 (17.2 %) | 0.05 / 0.05 / 0.06 | 0.14 | 0.05 / 0.07 / 0.09 | 0.07 | 0.006 |
+| CR2 | windows | 9.8 (4.8 %) | 0.06 / 0.07 / 0.12 | 0.05 | 0.05 / 0.05 / 0.05 | 0.05 | 0.002 |
+| CR3 | structuredPlaster | 1171.9 (42.4 %) | 0.13 / 0.17 / 0.19 | 0.49 | 0.14 / 0.19 / 0.27 | 0.20 | 0.05 |
+| CR3 | seating | 178.9 (6.5 %) | 0.32 / 0.38 / 0.58 | 0.17 | 0.43 / 0.60 / 0.87 | 0.64 | 0.5 |
+| CR3 | plaster | 450.3 (16.3 %) | 0.11 / 0.12 / 0.14 | 0.14 | 0.05 / 0.07 / 0.09 | 0.07 | 0.006 |
+| CR3 | stagePanels | 425.6 (15.4 %) | 0.07 / 0.09 / 0.10 | 0.09 | 0.05 / 0.05 / 0.05 | 0.05 | 0.001 |
+| CR3 | floor | 342.5 (12.4 %) | 0.06 / 0.06 / 0.06 | 0.05 | 0.05 / 0.07 / 0.10 | 0.08 | 0.007 |
+| CR3 | ceiling | 168.5 (6.1 %) | 0.09 / 0.12 / 0.16 | 0.05 | 0.09 / 0.12 / 0.17 | 0.13 | 0.02 |
+| CR3 | windows | 25.4 (0.9 %) | 0.06 / 0.07 / 0.12 | 0.00 | 0.05 / 0.05 / 0.05 | 0.05 | 0.002 |
 
