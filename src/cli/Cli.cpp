@@ -11,6 +11,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -38,6 +39,8 @@ struct Options
     std::optional<std::uint32_t> ensemble;
     std::optional<std::uint32_t> ensembleEmitter;
     std::optional<std::uint32_t> imageCap;
+    std::optional<sim::BuildOptions::Atmosphere> atmosphere;
+    std::optional<double> mixFloorMs;
     bool noAirAbsorption = false;
     bool tailOnly = false;
     std::optional<double> rate;
@@ -122,7 +125,8 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         else if (arg == "--diagnostics")
             target = &options.diagnosticsPath;
         else if (arg != "--rate" && arg != "--mode" && arg != "--tail-seed" && arg != "--ensemble"
-                 && arg != "--ensemble-emitter" && arg != "--image-cap")
+                 && arg != "--ensemble-emitter" && arg != "--image-cap" && arg != "--atmosphere"
+                 && arg != "--mix-floor-ms")
             return "unknown argument '" + arg + "'";
 
         if (i + 1 >= args.size())
@@ -159,6 +163,30 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             if (!options.imageCap || *options.imageCap == 0)
                 return "--image-cap must be a positive integer, got '" + value + "'";
         }
+        else if (arg == "--atmosphere")
+        {
+            // T,RH: degC and % relative humidity (AX4 validation override).
+            const auto comma = value.find(',');
+            char* end = nullptr;
+            const double t = comma == std::string::npos ? 0.0 : std::strtod(value.c_str(), &end);
+            const bool tOk = comma != std::string::npos && end == value.c_str() + comma;
+            const std::string rhText = comma == std::string::npos ? std::string{} : value.substr(comma + 1);
+            const double rh = rhText.empty() ? 0.0 : std::strtod(rhText.c_str(), &end);
+            const bool rhOk = !rhText.empty() && end == rhText.c_str() + rhText.size();
+            if (!tOk || !rhOk || !std::isfinite(t) || !std::isfinite(rh) || t < -20.0 || t > 50.0 || rh < 10.0
+                || rh > 100.0)
+                return "--atmosphere must be T,RH with -20 <= T <= 50 degC and 10 <= RH <= 100 %, got '"
+                       + value + "'";
+            options.atmosphere = sim::BuildOptions::Atmosphere{t, rh};
+        }
+        else if (arg == "--mix-floor-ms")
+        {
+            char* end = nullptr;
+            const double ms = std::strtod(value.c_str(), &end);
+            if (end != value.c_str() + value.size() || !std::isfinite(ms) || ms < 0.0 || ms > 1000.0)
+                return "--mix-floor-ms must be a number of milliseconds in [0, 1000], got '" + value + "'";
+            options.mixFloorMs = ms;
+        }
         else if (arg == "--ensemble-emitter")
         {
             options.ensembleEmitter = parseSeed(value);
@@ -194,6 +222,10 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         return "--ensemble needs --mode omni and --ir, without --in, --images or --diagnostics";
     if (options.imageCap && (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni))
         return "--image-cap needs --mode omni (the hybrid IR)";
+    if (options.mixFloorMs && (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni))
+        return "--mix-floor-ms needs --mode omni (the hybrid IR)";
+    if (options.atmosphere && options.noAirAbsorption)
+        return "--atmosphere and --no-air-absorption exclude each other";
     if (options.ensembleEmitter && !options.ensemble)
         return "--ensemble-emitter needs --ensemble";
     if (options.rate && !sim::isSupportedSampleRate(*options.rate))
@@ -445,6 +477,10 @@ std::string usage()
            "  --ensemble   validation only, --mode omni --ir: render N realisations with tail seeds\n"
            "               tailSeed, tailSeed + 1, ...; channel 2k = emitter 0 and 2k + 1 = emitter 1 of\n"
            "               seed tailSeed + k (output 0)\n"
+           "  --atmosphere T,RH  validation only: air absorption at T degC and RH % instead of the AX4\n"
+           "               atmosphere (20 degC, 50 %), in the image sources and the tail (phase-05 scope 6)\n"
+           "  --mix-floor-ms X  validation only, --mode omni: raise the mixing-time lower bound to\n"
+           "               t_dir,e + X ms (phase-05 scope 6, handover)\n"
            "  --image-cap  validation only, --mode omni: override the AX22 image-count cap N_cap (the\n"
            "               sensitivity report at nu_r(2 i0))\n"
            "  --ensemble-emitter  with --ensemble: build and write only emitter channel 0 or 1 (one\n"
@@ -533,6 +569,9 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
     build.tailOnly = options.tailOnly;
     if (options.imageCap)
         build.imageCountCapOverride = *options.imageCap;
+    build.atmosphere = options.atmosphere;
+    if (options.mixFloorMs)
+        build.mixingFloorAfterDirectS = *options.mixFloorMs * 1e-3;
     if (options.ensembleEmitter)
         build.onlyEmitterChannel = static_cast<int>(*options.ensembleEmitter);
 

@@ -36,5 +36,8 @@ struct RoomDecay
 // Eyring decay of a shoebox room. airAbsorption = false (validation only, AX4) sets m_b = 0.
 // Expose for tests and UI display.
 RoomDecay eyringDecay(const contract::Room& room, bool airAbsorption = true);
+// The same with the given air attenuation per band (dB/m), for the validation-only atmosphere
+// override (AX4, render_cli --atmosphere).
+RoomDecay eyringDecay(const contract::Room& room, const contract::BandArray& bandsAirDbPerMetre);
 
 } // namespace sim::tail

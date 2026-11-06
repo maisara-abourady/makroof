@@ -62,3 +62,31 @@ def test_io_error_exit_code(render_cli_path, tmp_path):
     assert result.returncode == 3
     result = render_cli.run(render_cli_path, "--scene", VALID[0], "--in", tmp_path / "nope.wav", "--out", tmp_path / "o.wav")
     assert result.returncode == 3
+
+
+def test_validation_overrides_atmosphere_and_mix_floor(render_cli_path, tmp_path):
+    """Phase-05 validation-only flags (AX4 atmosphere override, scope 6 handover floor)."""
+    scene = SCENES / "valid" / "medium_room.json"
+
+    def ir(name, *extra):
+        r = render_cli.run(render_cli_path, "--scene", scene, "--mode", "omni", "--ir", tmp_path / name, *extra)
+        assert r.returncode == 0, r.stderr
+        return wav.read_float32(tmp_path / name)[0]
+
+    base = ir("a.wav")
+    assert np.array_equal(base, ir("b.wav", "--atmosphere", "20,50"))  # the AX4 atmosphere itself
+    assert not np.array_equal(base, ir("c.wav", "--atmosphere", "20,70"))
+
+    def diag(name, *extra):
+        r = render_cli.run(render_cli_path, "--scene", scene, "--mode", "omni", "--diagnostics", tmp_path / name, *extra)
+        assert r.returncode == 0, r.stderr
+        return json.loads((tmp_path / name).read_text())["emitters"]
+
+    for e0, e1 in zip(diag("d0.json"), diag("d1.json", "--mix-floor-ms", "140")):
+        assert e1["mixLowerBoundS"] == pytest.approx(e0["directS"] + 0.140, abs=1e-12)
+        assert e1["handoverS"] >= e1["mixLowerBoundS"]
+
+    for bad in (["--atmosphere", "99,50"], ["--atmosphere", "20"], ["--mix-floor-ms", "-1"],
+                ["--atmosphere", "20,50", "--no-air-absorption"]):
+        r = render_cli.run(render_cli_path, "--scene", scene, "--mode", "omni", "--ir", tmp_path / "x.wav", *bad)
+        assert r.returncode == 1, bad

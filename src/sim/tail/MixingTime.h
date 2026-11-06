@@ -44,7 +44,9 @@ struct MixingTime
 };
 
 // t_mix,e for an emitter whose direct sound arrives at directS (from emission) in a room of volume
-// V. Deterministic: bisection to a fixed number of iterations.
-MixingTime mixingTime(double directS, double volumeM3);
+// V. Deterministic: bisection to a fixed number of iterations. floorAfterDirectS (validation only,
+// phase-05 scope 6 "Mixing-time handover"): raises the lower bound to at least t_dir,e + floor; it
+// does not fix t_mix,e (the k_eff rule still applies above it). 0 = the Phase 04 rule.
+MixingTime mixingTime(double directS, double volumeM3, double floorAfterDirectS = 0.0);
 
 } // namespace sim::tail

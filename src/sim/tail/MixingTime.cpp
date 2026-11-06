@@ -46,12 +46,13 @@ double expectedSigmaDb(double keff) noexcept
     return keff > 0.0 ? 10.0 / std::numbers::ln10 / std::sqrt(keff) : 0.0;
 }
 
-MixingTime mixingTime(double directS, double volumeM3)
+MixingTime mixingTime(double directS, double volumeM3, double floorAfterDirectS)
 {
     MixingTime mt;
     mt.directS = directS;
     // sqrt(V) ms: V in m^3 -> sqrt(V) * 1e-3 s.
-    mt.lowerBoundS = directS + std::max(kMixingMinAfterDirectS, std::sqrt(volumeM3) * 1e-3);
+    mt.lowerBoundS = directS
+                     + std::max({kMixingMinAfterDirectS, std::sqrt(volumeM3) * 1e-3, floorAfterDirectS});
     mt.windowStartS = directS + kMatchWindowStartAfterDirectS;
 
     const auto keff = [&](double t) { return expectedKeff(mt.windowStartS, t, volumeM3); };

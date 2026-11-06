@@ -21,6 +21,11 @@ double RoomDecay::maxT60S() const noexcept
 
 RoomDecay eyringDecay(const contract::Room& room, bool airAbsorption)
 {
+    return eyringDecay(room, airAbsorption ? bandsAirAttenuationDbPerMetre() : contract::BandArray{});
+}
+
+RoomDecay eyringDecay(const contract::Room& room, const contract::BandArray& airDb)
+{
     const auto& d = room.geometry.dimensions;
     // Surface areas by contract::surfaceIndex: xMin, xMax (D x H), yMin, yMax (W x H), floor,
     // ceiling (W x D).
@@ -31,10 +36,6 @@ RoomDecay eyringDecay(const contract::Room& room, bool airAbsorption)
     decay.surfaceM2 = 0.0;
     for (const double a : areas)
         decay.surfaceM2 += a;
-
-    contract::BandArray airDb{};
-    if (airAbsorption)
-        airDb = bandsAirAttenuationDbPerMetre();
 
     for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
     {

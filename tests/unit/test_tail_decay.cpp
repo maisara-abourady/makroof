@@ -134,3 +134,20 @@ TEST_CASE("AirAbsorption matches Kuttruff Table 6.1 (Bass 1995) at 20 degC withi
             CHECK_THAT(m * 1e3, WithinRel(row.m1e3[i], 0.01));
         }
 }
+
+TEST_CASE("Atmosphere override (AX4 validation only): the AX4 values reproduce the default exactly",
+          "[sim][tail][air]")
+{
+    const auto room = uniformRoom(20.0, 30.0, 10.0, 0.2);
+    const auto ax4 = sim::tail::eyringDecay(room, true);
+    const auto same = sim::tail::eyringDecay(
+        room, sim::bandsAirAttenuationDbPerMetre(sim::kAirTemperatureC, sim::kAirRelativeHumidityPercent));
+    for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+        CHECK(same.bandsT60S[b] == ax4.bandsT60S[b]);
+    // Drier air absorbs more at 8 kHz at 20 degC (Kuttruff Table 6.1: 40 % > 50 % > 70 % RH there).
+    const auto dry = sim::tail::eyringDecay(room, sim::bandsAirAttenuationDbPerMetre(20.0, 40.0));
+    const auto humid = sim::tail::eyringDecay(room, sim::bandsAirAttenuationDbPerMetre(20.0, 70.0));
+    const std::size_t b8k = contract::kNumOctaveBands - 1;
+    CHECK(dry.bandsT60S[b8k] < ax4.bandsT60S[b8k]);
+    CHECK(humid.bandsT60S[b8k] > ax4.bandsT60S[b8k]);
+}

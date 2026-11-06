@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -78,6 +79,18 @@ struct BuildOptions
     // Kind::Omni, validation only (render_cli --image-cap): overrides the AX22 image-count cap N_cap
     // (0 = imageCountCap()). For the AX22 sensitivity report at nu_r(2 i0).
     std::size_t imageCountCapOverride = 0;
+    // Validation only (AX4; render_cli --atmosphere): air absorption for this temperature (degC) and
+    // relative humidity (%) instead of the AX4 atmosphere, in the image sources and the Eyring tail.
+    // Not user-facing, not in the contract (phase-05 scope 6, humidity bound).
+    struct Atmosphere
+    {
+        double temperatureC = 20.0;
+        double relativeHumidityPercent = 50.0;
+    };
+    std::optional<Atmosphere> atmosphere;
+    // Kind::Omni, validation only (render_cli --mix-floor-ms): raises the lower bound of the mixing
+    // time to t_dir,e + this (phase-05 scope 6, mixing-time handover). 0 = the Phase 04 rule.
+    double mixingFloorAfterDirectS = 0.0;
     // Kind::Omni, benchmark / Phase 10 proxy only: precomputed unit decays by emitter channel
     // (tail::BandNoiseGenerator::make with the scene's seed and stream). When set and of the right
     // length, the build uses them instead of generating noise, i.e. it times a position-only rebuild

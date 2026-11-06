@@ -1,11 +1,13 @@
 #include "sim/Engine.h"
 
 #include "contract/Validate.h"
+#include "sim/AirAbsorption.h"
 #include "sim/ism/BandRenderer.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <limits>
 #include <optional>
 #include <span>
@@ -55,7 +57,33 @@ ism::ImageSourceOptions imageOptions(const contract::Emitter& emitter, const Bui
     ism::ImageSourceOptions iso;
     iso.gain = std::pow(10.0, emitter.gainDb / 20.0);
     iso.airAbsorption = options.airAbsorption;
+    if (options.atmosphere)
+        iso.airDbPerMetreOverride = bandsAirAttenuationDbPerMetre(
+            options.atmosphere->temperatureC, options.atmosphere->relativeHumidityPercent);
     return iso;
+}
+
+// The Eyring decay the hybrid IR uses: AX4 atmosphere, or the validation-only override.
+tail::RoomDecay roomDecay(const contract::SceneDescription& scene, const BuildOptions& options)
+{
+    tail::RoomDecay decay =
+        options.atmosphere && options.airAbsorption
+            ? tail::eyringDecay(scene.room,
+                                bandsAirAttenuationDbPerMetre(options.atmosphere->temperatureC,
+                                                              options.atmosphere->relativeHumidityPercent))
+            : tail::eyringDecay(scene.room, options.airAbsorption);
+#ifndef NDEBUG
+    // Phase-05 nightly-gate self-test (scope 4): MAKROOF_TEST_BIAS_T60=<factor> scales the tail's
+    // per-band T60. Debug builds only; never compiled into a release build or the plugin.
+    if (const char* bias = std::getenv("MAKROOF_TEST_BIAS_T60"))
+    {
+        const double factor = std::strtod(bias, nullptr);
+        if (factor > 0.0)
+            for (auto& t : decay.bandsT60S)
+                t *= factor;
+    }
+#endif
+    return decay;
 }
 
 double directArrivalS(const contract::SceneDescription& scene, const contract::Emitter& emitter) noexcept
@@ -82,7 +110,8 @@ EmitterPlan planEmitter(const contract::SceneDescription& scene, const contract:
 {
     EmitterPlan plan;
     // Scope 2: t_mix,e from the emitter's own direct arrival. Scope 3: the AX20 image list.
-    plan.mixing = tail::mixingTime(directArrivalS(scene, emitter), decay.volumeM3);
+    plan.mixing = tail::mixingTime(directArrivalS(scene, emitter), decay.volumeM3,
+                                   options.mixingFloorAfterDirectS);
     ism::ImageSourceOptions iso = imageOptions(emitter, options);
     iso.maxArrivalTimeS = plan.mixing.mixS + tail::kCrossfadeHalfS;
     plan.set = ism::computeImageSources(scene.room, emitter.position, scene.listener.position, iso);
@@ -128,7 +157,7 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
     // time j / fs. The tail is placed at j = n + offset, i.e. within half a sample of its emission
     // time (a level error < 0.01 dB), so the unit decay stays independent of positions (Phase 10).
     const auto offset = static_cast<std::size_t>(std::max(0.0, std::round(shift * fs)));
-    const tail::RoomDecay decay = tail::eyringDecay(scene.room, options.airAbsorption);
+    const tail::RoomDecay decay = roomDecay(scene, options);
     const double lengthS = tail::tailLengthS(decay);
     const std::size_t unitLength = tail::unitDecayLength(lengthS, fs);
     const std::size_t tailEnd = unitLength > offset ? unitLength - offset : 0;
@@ -332,7 +361,7 @@ std::vector<ism::ImageSourceSet> imageSourcesByChannel(const contract::SceneDesc
         {
             // AX20/AX22: the time-bounded list of the hybrid IR, after the realised-k decision.
             // k_real is scale-free per band, so the band energies only need the right ratios.
-            const tail::RoomDecay decay = tail::eyringDecay(scene.room, options.airAbsorption);
+            const tail::RoomDecay decay = roomDecay(scene, options);
             const ism::OctaveFilterbank filterbank(options.sampleRate);
             const std::size_t cap = options.imageCountCapOverride > 0 ? options.imageCountCapOverride
                                                                       : imageCountCap();
