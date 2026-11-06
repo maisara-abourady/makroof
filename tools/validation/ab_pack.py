@@ -60,8 +60,8 @@ def matched(x: np.ndarray) -> tuple[np.ndarray, float]:
     return x * 10 ** (g / 20), g
 
 
-def build(out: pathlib.Path, seed: int = 2026) -> None:
-    binary = render_cli.find_render_cli()
+def build(out: pathlib.Path, seed: int = 2026, binary=None) -> None:
+    binary = binary or render_cli.find_render_cli()
     if binary is None:
         raise SystemExit("render_cli not found")
     cache = fetch_bras.cache_dir()
@@ -72,7 +72,7 @@ def build(out: pathlib.Path, seed: int = 2026) -> None:
     for room, s, r in PAIRS:
         scene = rv.SCENES / f"bras_{room.lower()}_{s.lower()}_{r.lower()}.json"
         if not scene.exists():  # no valid reduction for this room yet (bras_mapping.md §5)
-            key.append(f"{room}_{s}_{r}: no scene (room not reduced to a valid shoebox yet)")
+            key.append(f"{room}_{s}_{r}: no scene yet (CR4: geometry extraction pending, phase-05f; not dropped)")
             continue
         h_sim = rv.render(binary, scene)
         h_meas = rv.measured(cache, room, s, r)
@@ -101,7 +101,7 @@ def build(out: pathlib.Path, seed: int = 2026) -> None:
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(REPO / "build" / "listening-pack" / "phase-05"))
+    ap.add_argument("--out", default=str(REPO / "build" / "listening-pack" / "phase-05e"))
     a = ap.parse_args(argv)
     build(pathlib.Path(a.out))
 

@@ -67,6 +67,16 @@ def write(res: dict, path: pathlib.Path) -> None:
     w("")
     w(f"**AQ9 met (all three metrics, room mean over pairs): initial α {met['initial'][0]}/{met['initial'][1]} rooms; "
       f"fitted α {met['fitted'][0]}/{met['fitted'][1]} rooms** (fitted: T30 circular by construction, F6).")
+    w("")
+    w("**Provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3 only); CR4 pending** (phase-05e scope (b)): "
+      "CR4 stays selected and enters in phase-05f once its geometry passes the bras_mapping.md §2 acceptance test; "
+      "it is not dropped. The B12 replacement and the B11 promotion decisions are deferred until then (pass rules "
+      "unchanged).")
+    w("")
+    w("Model volume (AX26 keeps it; bras_mapping.md §1 volume check): with A fixed, predicted T scales with V, so the "
+      "model volume raises predicted T against the BRAS sheet volumes by +0.76 % in CR2 (146.1 vs 145 m³; the sheet "
+      "value is rounded) and +41.7 % in CR3 (3 330.6 vs 2 350 m³; the sheet excludes the attic that the model includes). "
+      "BRAS's own fitted α reproduce BRAS's measured T20 with the model volumes (CR2 ≤ 0.45 %, CR3 ≤ 0.23 %).")
     pp = {"initial": [0, 0], "fitted": [0, 0]}
     for p in res["pairs"].values():
         ps = [p["aq9"]["pass"][n] for n in ("T", "EDT", "C80")]
@@ -123,6 +133,24 @@ def write(res: dict, path: pathlib.Path) -> None:
               + f"; decay curvature C = 100(T30/T20 − 1): measured {f(r['curvature_pct']['meas'])} %, simulated {f(r['curvature_pct']['sim'])} % "
               "(> ≈ 10 % marks a markedly non-straight decay). Broadband s per face (AX17): "
               + ", ".join(f"{k} {v:.3f}" for k, v in r["scattering"].items()) + ".")
+        if "box" in r:
+            bx = r["box"]
+            w("")
+            w(f"Box (AX26): V = {bx['V']:.1f} m³, S(box) = {bx['S_box']:.1f} m² vs documented {bx['S_documented']:.1f} m² "
+              f"({bx['S_error_pct']:+.1f} %); Eyring on the box vs on the documented V, S, A at 500 Hz / 1 kHz / 2 kHz: "
+              + " / ".join(f"{bx['eyring_error_pct'][i]:+.2f} %" for i in (3, 4, 5)) + " (bras_mapping.md §5).")
+        if "noise_admission" in r:
+            na = r["noise_admission"]
+            w(f"Noise-margin admission (AX27): {na['admitted']} of {na['of']} measured AQ9 bands (pairs × 3) have a "
+              f"decay-referred noise margin ≥ L_min = {na['L_min_dB']:.0f} dB and enter the gated AQ9 mean and B12; the others "
+              "are flagged 'noise not verified (margin)'.")
+        if "mixing_times_ms" in r:
+            mt = r["mixing_times_ms"]
+            tm = mt["t_mix_e_minus_t_dir_e"]
+            w(f"Mixing times (context; Lindau, Kosanke & Weinzierl 2012, Eqs. 12–14, binaural, near-shoebox rooms, "
+              f"V ≤ ≈ 10 000 m³): t_mp50 = 20·V/S + 12 = {mt['t_mp50_VS']:.0f} ms, 0.58·√V + 21.2 = {mt['t_mp50_sqrtV']:.0f} ms; "
+              f"t_mp95 = 0.0117·V + 50.1 = {mt['t_mp95']:.0f} ms; Phase 04 rule t_mix,e − t_dir,e over the pairs: "
+              + (f"{tm[0]:.0f}–{tm[1]:.0f} ms." if tm else "–."))
         if "predictors" in r:
             w("")
             w("Decay predictors for the reduced box (T60, s; AX4 air):")
@@ -180,6 +208,8 @@ def write(res: dict, path: pathlib.Path) -> None:
                 flags.append(f"{k}: meter-dependent")
             if b[k].get("noise_not_verified"):
                 flags.append(f"{k}: noise not verified")
+            if b[k].get("noise_not_verified_margin"):
+                flags.append(f"{k}: noise not verified (margin)")
         a = p["aq9"]["pass"]
         plot = p.get("edc_plot")
         w(f"| {name} | " + " / ".join(f(b[k]["T_err_pct"]) for k in AQ9) + " | " + " / ".join(f(b[k]["EDT_err_pct"]) for k in AQ9)
@@ -189,8 +219,34 @@ def write(res: dict, path: pathlib.Path) -> None:
     w("Flags: 'T20' = the T30 usable-range test failed (peak-referred dynamic range or the Lundeby late line < 45 dB); "
       "measured T20 is compared with simulated T20. 'meter-dependent' = octave and half-octave errors differ by > 5 points. "
       "'noise not verified' = the Lundeby noise estimate and the last-10 % mean square differ by more than 3·√(σ₁² + σ₂²), "
-      "σᵢ = 4.34/√(B·T_seg) dB. AX17 input error: every per-band delta in the AQ9 bands includes the broadband-s "
+      "σᵢ = 4.34/√(B·T_seg) dB. 'noise not verified (margin)' = decay-referred noise margin < L_min (AX27): excluded from "
+      "the gated AQ9 mean and B12. AX17 input error: every per-band delta in the AQ9 bands includes the broadband-s "
       "reduction (BRAS s rises as √f: +47 % at 500 Hz, −26 % at 2 kHz).")
+    # ---------------- per pair and band (detail)
+    w("")
+    w("### 4b. Per pair and band, initial α (both meters, r, usable-range margins, flags)")
+    w("")
+    w("T: the decay time compared (T30, or T20 when T30 is not usable); half: the AX23(b) half-octave Kaiser FIR reading "
+      "(1, 2 kHz), secondary; r: each IR's octave neighbour ratio T(slower neighbour)/T(band); margins of the measured "
+      "band: peak-referred dynamic range / decay-referred Lundeby line at t₀ above the noise (dB; T30 needs both ≥ 45 dB, "
+      "AQ9/B12 admission needs the line ≥ L_min).")
+    w("")
+    w("| pair | band | T meas / sim (s) | T err (%) | half T30 meas / sim (s) | half err (%) | EDT meas / sim (s) | r meas / sim | margins meas (dB) | admitted | flags |")
+    w("|---|---|---|---|---|---|---|---|---|---|---|")
+    for name in sorted(res["pairs"]):
+        p = res["pairs"][name]
+        if p["alpha_set"] != "initial":
+            continue
+        for k in AQ9:
+            b, sm, ms = p["bands"][k], p["sim"]["bands"][k], p["meas"]["bands"][k]
+            fl = [x for x, on in (("meter-dependent", b.get("meter_dependent")), ("noise not verified", b.get("noise_not_verified")),
+                                  ("noise not verified (margin)", b.get("noise_not_verified_margin")),
+                                  ("T20", b["kind"] == "T20"), ("T not evaluable", b["kind"] == "none")) if on]
+            ri = p.get("r_ir", {})
+            w(f"| {name} | {k} | {f(b['T_meas'], 3)} / {f(b['T_sim'], 3)} | {f(b['T_err_pct'])} | "
+              f"{f(ms.get('T30_half'), 3)} / {f(sm.get('T30_half'), 3)} | {f(b.get('T30_half_err_pct'))} | "
+              f"{f(b['EDT_meas'], 3)} / {f(b['EDT_sim'], 3)} | {f(ri.get('meas', {}).get(k), 3)} / {f(ri.get('sim', {}).get(k), 3)} | "
+              f"{f(ms['dynamic_range_db'])} / {f(ms['line_margin_db'])} | {f(b.get('admitted'))} | {', '.join(fl) or '–'} |")
     # ---------------- meter checks
     w("")
     w("## 5. Meter checks (scope 7)")
@@ -199,7 +255,15 @@ def write(res: dict, path: pathlib.Path) -> None:
         w("")
         w(f"Simulated EDC (N1): metrics path vs integration to the end at −35 dB: {mc['simulated_edc']['difference_dB']:.2e} dB (criterion ≤ 0.01 dB).")
         w("")
-        w("Paired noise test, case A (gate |mean paired T30 bias| ≤ 0.6 %, SE ≤ 0.15 %):")
+        lm = mc.get("ax27_l_min")
+        if lm:
+            w(f"AX27 L_min = {lm['L_min_dB']:.0f} dB: the lowest level (1 dB steps from 51 dB) with median − 3·SD ≥ 45 dB of the "
+              "peak-referred Lundeby dynamic range in every case A condition (ledger E5-1, option C); worst condition per level: "
+              + "; ".join(f"{x['level_dB']:.0f} dB: {x['worst']['dynamic_range_median_minus_3sd_dB']:.2f} dB "
+                          f"({x['worst']['f_c']:.0f} Hz, T = {x['worst']['T']} s)" for x in lm["levels"]) + ".")
+            w("")
+        w("Paired noise test, case A, with AX27 noise subtraction (gate |mean paired T30 bias| ≤ 0.6 %, SE ≤ 0.15 %, "
+          "no unsuitable realisation):")
         w("")
         w("| band | T (s) | noise below decay (dB) | R | mean bias (%) | SE (%) | EDT (%) | C80 (dB) | gate |")
         w("|---|---|---|---|---|---|---|---|---|")
@@ -207,6 +271,11 @@ def write(res: dict, path: pathlib.Path) -> None:
             ok = c["mean_bias_pct"] is not None and abs(c["mean_bias_pct"]) <= 0.6 and c["se_pct"] <= 0.15
             w(f"| {c['f_c']:.0f} | {c['T']} | {c['noise_below_dB']:.0f} | {c['R']} | {c['mean_bias_pct']:+.3f} | {c['se_pct']:.3f} | "
               f"{c['edt_mean_pct']:+.3f} | {c['c80_mean_dB']:+.4f} | {'pass' if ok else '**fail**'} |")
+        if mc.get("paired_noise_case_A_reported"):
+            w("")
+            w("Reported, not gated (the former 48 dB level): " + "; ".join(
+                f"{c['f_c']:.0f} Hz / {c['T']} s: {c['mean_bias_pct']:+.3f} % (SE {c['se_pct']:.3f}), {c['unsuitable']} of {c['R']} unsuitable"
+                for c in mc["paired_noise_case_A_reported"]) + ".")
         w("")
         w("Case B (125 Hz, T = 0.3 s, plateau regime; reported): " + "; ".join(
             f"{c['noise_below_dB']:.0f} dB: mean {c['mean_bias_pct']:+.1f} %, SD {c['sd_pct']:.0f} %, {c['unsuitable']} of {c['R']} unsuitable"
@@ -224,10 +293,10 @@ def write(res: dict, path: pathlib.Path) -> None:
     w("")
     w("## 6. Not in this report (phase remainder)")
     w("")
-    w("The reference hybrid with early Lambert-scattered energy (AX21) and its per-band-s run (B10), the X-b bound ΔL_b "
-      "(AX16), the mixing-time handover comparison against t_dir,e + 80 / 140 ms floors with seed-paired ensembles, "
-      "the perceptual mixing times t_mp50/t_mp95, and the B11 (B) promotion evidence are not computed in this session; "
-      "they are split into the remainder phase (see the PR). The validation-only render_cli overrides they need "
-      "(`--mix-floor-ms`, `--atmosphere`) exist.")
+    w("Computed in phase-05e session 2 (they all need the reference hybrid, AX21): the reference hybrid with early "
+      "Lambert-scattered energy and its per-band-s run (B10); the X-b bound ΔL_b (AX16) on the BRAS pairs, the six Phase 04 "
+      "test rooms, Kuttruff Table 5.2 layouts 2, 4, 5, 6 and the uniform-α s-cases; the mixing-time handover comparison "
+      "against t_dir,e + 80 / 140 ms floors (arbitrated on the reference-hybrid IR); the seed-paired ensembles and their "
+      "sizing; and the B11 (B) promotion evidence. CR4 and everything that needs it: phase-05f.")
     w("")
     path.write_text("\n".join(L) + "\n", encoding="utf-8")
