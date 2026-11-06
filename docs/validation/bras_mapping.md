@@ -58,6 +58,16 @@ generic rule, NFR-8). With A fixed, the model volume raises the CR2 predicted T 
 these beside the AQ9 lines. The model also omits a few small objects (cable ducts, a pipe, a fire
 extinguisher in CR2; `CRx_ModelSimplifications.pdf`), whose volume is far below the 1.1 m³ gap.
 
+**CR4 extraction (pre-committed 2026-11-06, before any simulated-vs-measured number; decider decision on
+CR4 handling, phase-05e scope (b), vetoable by Maisara).** CR4 stays selected. It enters the comparison only if
+the §2 acceptance test passes (every documented material area of `_descr/mat_CR4.txt` reproduces and every loop
+vertex lies on its face's plane, as for CR2 and CR3);
+a parse whose areas do not reproduce counts as "not extracted" and is never tuned against. Until it enters, the
+results are labelled "provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3 only); CR4 pending". If CR4 is not extracted by the end of
+phase-05e session 2, it is recorded "pending extraction (reader)", not dropped, and moves to phase-05f; no other
+reason, and no comparison result, removes CR4 from the selection. Maisara's acceptance of the two-room label
+(phase-05e scope (b), reversal) keeps CR4 selected and pending; it goes through /fix-plan as a phase-05.md change.
+
 Every omni (dodecahedron) RIR the dataset provides for the selected rooms is used: 2 sources ×
 5 receivers per room, 30 source/receiver pairs (`CRx_RIR_LSi_MPj_Dodecahedron.wav`; CR3 also has a
 third source position, measured with the Genelec only, which is not omni and is not used, AQ8).

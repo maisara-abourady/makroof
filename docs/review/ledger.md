@@ -1372,3 +1372,24 @@ fixes: D9, D10, D11, D12, D14 CORRECT (0.44 %: z = 4.79/1.83 = 2.62; L_min: 48.5
 45.75 ≥ 45). One labelling note, not an error: "≤ 0.15 %" (05e session 1) vs "≤ +0.14 %" (prototype) at 51 dB come
 from different runs. Status: applied (BUILD_PLAN AX23, AX27, §6 row; phase-05.md scope 7 and criterion; phase-05e.md
 item 6 and criterion); vetoable by Maisara.
+
+## phase-05e.md, BUILD_PLAN §6, bras_mapping.md §1 — CR4 handling (decider, 2026-11-06, at Maisara's request; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Facts: CR4 extraction unfinished in Phase 05 (> 40 min) and in 05e session 1 (a detached run died after ≥ 41 min with
+an empty log, most likely at container reclamation); CR4.skp 17.1 MB vs CR3.skp 12.7 MB (CR3 parsed in ≈ 25 s), so a
+reader pathology is suspected (re-synchronisation fallback scanning to the end of file), not measured.
+
+Decision (decider, option D; vetoable by Maisara): CR4 stays selected; exclusion criteria pre-committed in
+bras_mapping.md §1 before any simulated-vs-measured number; ≤ 1 h profile, then a generic reader fix allowed under the
+CR2/CR3 regression guard (test_skp_reader.py, area reproduction, make_bras_scenes.py --check); foreground extraction
+with progress output; main track on CR2 + CR3 labelled 'provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3
+only); CR4 pending'; the B12 replacement and B11 promotion decisions deferred (pass rules unchanged); stop rule at the
+end of 05e session 2 → 05e `done` with 'CR4 pending extraction (reader), not dropped' and phase-05f. No acoustic claim.
+
+Interrogator diff check, round 1: C1 (Maisara's two-room acceptance would drop CR4 after results are seen) INCONSISTENT,
+major; C2 (holding B11 promotion vs phase-05.md B11 (B) "no minimum count applies") INCONSISTENT, major; C3 (one room per
+α group) IMPRECISE; C4 (acceptance test is also face planarity) IMPRECISE; C5 (status at the stop rule unstated)
+INCONSISTENT, minor. Fixes: C1 the acceptance keeps CR4 selected and goes through /fix-plan as a phase-05.md change; C2
+deferral of the decision time, pass rules unchanged; C3 full label; C4 "the bras_mapping.md §2 acceptance test"; C5
+status `done` with the note. Round 2: C1, C2, C4, C5 resolved; C3 label and the reversal's acceptance wording completed
+by the main session. Status: applied; vetoable by Maisara.
