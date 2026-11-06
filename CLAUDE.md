@@ -23,10 +23,32 @@ instructions: `docs/phases/phase-XX.md`.
    - put the phase's **listening checklist** in the PR description for Maisara, with where to
      find the listening-pack artifact;
    - put the phase's **contractor review focus** in the PR description.
-7. Stop. Don't start the next phase.
+7. Validate the session's scope list (next section). Then stop. Don't start the next phase.
 
 If a phase can't be finished in two sessions, split the remainder into `phase-XXb.md`, add it to
 the status table, and stop.
+
+## Scope list: open with it, close on it (every build or execution session)
+
+A build or execution session is any session that changes code, tests, tooling, CI or plan status,
+a phase session included. Pure questions and reviews are not.
+
+1. **Open with the list.** The first message starts with the session's scope as a numbered list,
+   one short line per item: a bold label of two to four words, then the intended outcome as a
+   checkable result, not an activity (e.g. `3. **ISM unit tests** — image-source tests pass in
+   ctest on all three CI platforms`). In a phase session the items come from the phase file's scope
+   and automated acceptance criteria, plus the bookkeeping above (status `in progress`, status
+   `done`, PR description). "Raise with Maisara" items come right after the list.
+2. **The list is the contract.** It defines "done" for the session. If the scope has to change,
+   restate the whole list with the change marked and the reason. Never drop or soften an item quietly.
+3. **Validate before reporting.** At the end, go through the list item by item and check each one
+   against evidence you can point to (command output, CI run, commit, file), not memory. Mark each
+   ✅ with its evidence.
+4. **No report until every item is checked.** While any item is unchecked, keep working; don't end
+   the session or report back. If an item genuinely cannot be finished in this session (a decision
+   only Maisara can make, missing access, the two-session limit), restate the list (rule 2) with it
+   replaced by its hand-off (e.g. `phase-XXb.md` written, status `blocked (reason)` committed), check
+   that, and say so at the top of the report. The final report starts with the fully checked list.
 
 ## Assumptions and decisions
 
