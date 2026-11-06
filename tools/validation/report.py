@@ -86,6 +86,12 @@ def write(res: dict, path: pathlib.Path) -> None:
         w("")
         w(f"### {room}, {aset} α")
         w("")
+        pre = [p["meas"]["pre_onset_max_db"] for p in res["pairs"].values()
+               if f"{p['room']}|{p['alpha_set']}" == rk and p["meas"]["pre_onset_max_db"] is not None]
+        if pre:
+            w(f"Measured lead-in: the highest level before the detected onset is {max(pre):.1f} dB re the broadband "
+              "maximum (by the onset rule it is below -20 dB; a value close to -20 dB means an early component such as "
+              "a sweep distortion product sits near the threshold).")
         j = r["aq9"]["jnd"]
         w(f"Mean |error| in jnd: T30 {f(j['T'], 2)}, EDT {f(j['EDT'], 2)}, C80 {f(j['C80'], 2)}.")
         if "schroeder_hz" in r:
@@ -140,13 +146,19 @@ def write(res: dict, path: pathlib.Path) -> None:
       "points and makes no room worse by > 5 points, on both meter runs, with a* converged to < 0.4 % per halving and "
       "γ²-Eyring passing at every admissible γ² (the Table 5.1 value and 0.4). An outcome from BRAS alone is "
       "'input-limited' (C2); Maisara decides. The octave-only branch (E2) needs the leak-calibration entry condition "
-      "(section 6); until it is evaluated both runs apply.")
+      "(section 5); it is evaluated below.")
     w("")
-    w("| run | predictor | mean \\|err\\| (%) | lowers Eyring by (pts) | worst room increase (pts) | meets the rule |")
+    w("| run | predictor | mean \\|err\\| (%) | lowers Eyring by (pts) | worst room increase (pts) | meets the margin |")
     w("|---|---|---|---|---|---|")
-    for run, summ in res["b12"].items():
-        for pred, s in summ.items():
-            w(f"| {run} | {pred} | {f(s['mean_abs_err_pct'])} | {f(s['lowers_by_pts'], 2)} | {f(s['worst_room_increase_pts'], 2)} | {f(s['replaces_eyring'])} |")
+    for run in ("run1_octave", "run2_half"):
+        for pred, s in res["b12"][run].items():
+            w(f"| {run} | {pred} | {f(s.get('mean_abs_err_pct'))} | {f(s.get('lowers_by_pts'), 2)} | "
+              f"{f(s.get('worst_room_increase_pts'), 2)} | {f(s['meets_margin'])} |")
+    e2 = res["b12"]["e2_octave_only"]
+    w("")
+    w(f"Octave-only branch (E2): {'allowed' if e2['allowed'] else 'not allowed'}"
+      + (f" ({'; '.join(e2['reasons'])})" if e2["reasons"] else "") + f"; S_all = {f(e2.get('S_all_pts'), 2)} points.")
+    w("Decision: " + "; ".join(f"{k}: {v}" for k, v in res["b12"]["decision"].items()) + f" — {res['b12']['label']}.")
     # ---------------- per pair
     w("")
     w("## 4. Per pair (initial α)")

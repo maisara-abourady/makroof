@@ -30,7 +30,9 @@ GEOMETRY = HERE / "data" / "bras_geometry.json"
 REDUCTION = HERE / "data" / "bras_reduction.json"
 SCENES = REPO / "tests" / "scenes" / "validation"
 FACES = ("xMin", "xMax", "yMin", "yMax", "floor", "ceiling")
-OCTAVES = (63, 125, 250, 500, 1000, 2000, 4000, 8000)
+from tools.acoustics import bands  # noqa: E402
+
+OCTAVES = tuple(int(f) for f in bands.OCTAVE_BANDS_HZ)  # contract::kOctaveBandsHz
 THIRDS = (20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000,
           2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000)
 CLEARANCE = 0.1  # AX6

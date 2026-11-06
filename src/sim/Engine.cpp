@@ -75,7 +75,15 @@ tail::RoomDecay roomDecay(const contract::SceneDescription& scene, const BuildOp
 #ifndef NDEBUG
     // Phase-05 nightly-gate self-test (scope 4): MAKROOF_TEST_BIAS_T60=<factor> scales the tail's
     // per-band T60. Debug builds only; never compiled into a release build or the plugin.
-    if (const char* bias = std::getenv("MAKROOF_TEST_BIAS_T60"))
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4996) // getenv: read once per build, never on the audio thread
+#endif
+    const char* bias = std::getenv("MAKROOF_TEST_BIAS_T60");
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+    if (bias != nullptr)
     {
         const double factor = std::strtod(bias, nullptr);
         if (factor > 0.0)

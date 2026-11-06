@@ -10,9 +10,12 @@ before any comparison; CR2 and CR3 reductions); 20 CR2 scenes in `tests/scenes/v
 AX25; `render_cli --atmosphere`, `--mix-floor-ms` and the debug-only `MAKROOF_TEST_BIAS_T60` hook;
 `tools/acoustics/radiosity.py`; the scope 7 meter checks (recorded in AX23); `run_validation.py`,
 `report.py`, `ab_pack.py`, `loudness.py`; the nightly workflow and its tests (no baseline golden and
-no report committed). The remainder, the open plan decisions (D-A dimension rule, D-B Table 5.2
-criterion, D-C paired noise test) and the unmet acceptance criteria are in
-[`phase-05e.md`](phase-05e.md). The text below is unchanged and still holds for both phases.
+no report committed). Phase 05 is closed as part 1 with what it delivered (above); it does not meet
+this file's Definition of done. That Definition of done, the unmet acceptance criteria and the "AQ9
+met in x/y" status note are carried by [`phase-05e.md`](phase-05e.md) (its own Definition of done
+refers to them), together with the remainder and the open plan decisions (D-A dimension rule, D-B
+Table 5.2 criterion, D-C paired noise test). The rule text below is unchanged and stays
+authoritative for both phases.
 
 ## Raise with Maisara (she does not track these herself)
 

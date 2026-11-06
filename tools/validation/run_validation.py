@@ -373,13 +373,76 @@ def run(binary, cache, log=print) -> dict:
     return res
 
 
+def _e2_octave_only(res: dict) -> dict:
+    """Decider E2: B12 may run on octaves only iff (1) the leak calibration's entry condition holds,
+    (2)-(4) every room's evaluable AQ9 band has r <= 1.1, S_all <= 0.42 and every S_room <= 1.67
+    points, with b_band from the two-term model at the measured r and D(r) = D1,min - 10 log10 r."""
+    out = {"allowed": False, "reasons": []}
+    if not METER_CHECKS.exists():
+        out["reasons"].append("no leak calibration results")
+        return out
+    lc = json.loads(METER_CHECKS.read_text()).get("leak_calibration", [])
+    ok_entry = True
+    d1min = {}
+    for fc in (500.0, 1000.0, 2000.0):
+        for var in ("below", "above"):
+            rows = [r for r in lc if r["f_c"] == fc and r["variant"] == var and 1.0 < r["r"] <= 1.3]
+            if not rows:
+                continue
+            d1 = [r["D1_dB"] for r in rows]
+            d1min[(fc, var)] = min(d1)
+            if fc in (1000.0, 2000.0):
+                if any(r["D_dB"] < 13.0 for r in rows if r["r"] <= 1.1):
+                    ok_entry = False
+                if any(abs(r["residual_pct"]) > 0.6 for r in rows if r["residual_pct"] is not None):
+                    ok_entry = False
+            if max(d1) - min(d1) > 1.0:
+                ok_entry = False
+    if not ok_entry:
+        out["reasons"].append("calibration entry condition fails")
+    rooms = [k for k in res["rooms"] if k.endswith("|initial")]
+    s_rooms = {}
+    for rk in rooms:
+        r = res["rooms"][rk]
+        T = {float(k): v for k, v in r["T30_meas_mean"].items()}
+        bs = []
+        for fc in AQ9_BANDS:
+            rr = neighbour_ratio(T, fc)
+            if rr is None:
+                continue
+            if rr > 1.1:
+                out["reasons"].append(f"{rk.split('|')[0]} {fc:.0f} Hz r = {rr:.3f} > 1.1")
+            i = BANDS.index(fc)
+            nb = [BANDS[j] for j in (i - 1, i + 1) if 0 <= j < len(BANDS) and T.get(BANDS[j])]
+            slower = max(nb, key=lambda f: T[f]) if nb else None
+            var = "below" if slower is not None and slower < fc else "above"
+            d1 = d1min.get((fc, var))
+            if d1 is None or rr <= 1.0:
+                bs.append(0.0)
+                continue
+            bs.append(100 * meter_checks.two_term_bias(rr, d1 - 10 * math.log10(rr)))
+        if bs:
+            s_rooms[rk.split("|")[0]] = 2 * float(np.mean(bs))
+    s_all = float(np.mean(list(s_rooms.values()))) if s_rooms else None
+    out.update({"S_room_pts": s_rooms, "S_all_pts": s_all})
+    if s_all is None or s_all > 0.42 or any(v > 1.67 for v in s_rooms.values()):
+        out["reasons"].append(f"S_all = {s_all} / S_room = {s_rooms} above the margin/3 limits")
+    out["allowed"] = not out["reasons"]
+    return out
+
+
 def b12(res: dict) -> dict:
-    """Decay-predictor decision rule (B12) on the initial α set, octave run (run 1) and the
-    octave-500 Hz + half-octave-1/2 kHz run (run 2). Margin 1.25 points, no room worse by > 5 %."""
+    """Decay-predictor decision rule (B12) on the initial α set (condition iv), octave run (run 1)
+    and the octave-500 Hz + half-octave-1/2 kHz run (run 2). A predictor replaces Eyring only if it
+    lowers the room-averaged mean |T30 error| by >= 1.25 points and makes no room worse by > 5
+    points; a* only when converged to < 0.4 % per halving in every band used (condition i);
+    γ²-Eyring only when it passes at every admissible γ² (the Table 5.1 value and 0.4, condition
+    ii); both runs must agree, unless the E2 octave-only branch applies (then run 1 alone)."""
     rooms = [k for k in res["rooms"] if k.endswith("|initial")]
     out = {}
     for run_name, use_half in (("run1_octave", False), ("run2_half", True)):
         errs = {}
+        conv = {}
         for rk in rooms:
             r = res["rooms"][rk]
             pairs = [p for p in res["pairs"].values() if f"{p['room']}|{p['alpha_set']}" == rk]
@@ -390,6 +453,8 @@ def b12(res: dict) -> dict:
                     tp = r["predictors"]["bands"][k].get(pred)
                     if tp is None:
                         continue
+                    if pred == "a_star" and not r["predictors"]["bands"][k].get("a_star_converged_0.4pct"):
+                        conv[rk] = False
                     if use_half and fc in HALF_BANDS:
                         tm = [p["meas"]["bands"][k]["T30_half"] for p in pairs if p["meas"]["bands"][k]["T30_half"]]
                     else:
@@ -407,10 +472,31 @@ def b12(res: dict) -> dict:
             mean_p = float(np.mean([by_room[rm] for rm in common]))
             mean_e = float(np.mean([base[rm] for rm in common]))
             worst = max(by_room[rm] - base[rm] for rm in common)
+            meets = pred != "Eyring" and mean_e - mean_p >= 1.25 and worst <= 5.0
+            if pred == "a_star" and conv:
+                meets = False
             summary[pred] = {"mean_abs_err_pct": mean_p, "by_room": by_room, "lowers_by_pts": mean_e - mean_p,
-                             "worst_room_increase_pts": worst,
-                             "replaces_eyring": pred != "Eyring" and mean_e - mean_p >= 1.25 and worst <= 5.0}
+                             "worst_room_increase_pts": worst, "meets_margin": meets}
+        # condition (ii): γ²-Eyring as one predictor, at every admissible γ²
+        g = [summary[k]["meets_margin"] for k in ("gamma2_table", "gamma2_0.4") if k in summary]
+        summary["gamma2 (all admissible)"] = {"meets_margin": bool(g) and all(g)}
         out[run_name] = summary
+    e2 = _e2_octave_only(res)
+    out["e2_octave_only"] = e2
+    decision = {}
+    for pred in ("a_star", "gamma2 (all admissible)"):
+        r1 = out["run1_octave"].get(pred, {}).get("meets_margin", False)
+        r2 = out["run2_half"].get(pred, {}).get("meets_margin", False)
+        if e2["allowed"]:
+            decision[pred] = "replaces Eyring (octave-only branch)" if r1 else "Eyring stays"
+        elif r1 and r2:
+            decision[pred] = "replaces Eyring (both runs)"
+        elif r1 != r2:
+            decision[pred] = "meter-dependent, Eyring stays"
+        else:
+            decision[pred] = "Eyring stays"
+    out["decision"] = decision
+    out["label"] = "input-limited (BRAS alone; Maisara decides, C2)"
     return out
 
 

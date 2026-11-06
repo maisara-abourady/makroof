@@ -68,7 +68,7 @@ struct ImageSourceOptions
     bool airAbsorption = true; // AX4; false only for validation against references
     // Validation only (AX4 atmosphere override, render_cli --atmosphere): air attenuation per band
     // in dB/m used instead of the AX4 atmosphere when set (and airAbsorption is true).
-    std::optional<contract::BandArray> airDbPerMetreOverride;
+    std::optional<contract::BandArray> airDbPerMetreOverride{};
     Directivity directivity = omniDirectivity; // AQ8
 };
 

@@ -71,6 +71,9 @@ def build(out: pathlib.Path, seed: int = 2026) -> None:
     key = ["Phase 05 A/B key (do not open before listening). Offsets: gain applied for -23 LKFS (BS.1770-4).", ""]
     for room, s, r in PAIRS:
         scene = rv.SCENES / f"bras_{room.lower()}_{s.lower()}_{r.lower()}.json"
+        if not scene.exists():  # no valid reduction for this room yet (bras_mapping.md §5)
+            key.append(f"{room}_{s}_{r}: no scene (room not reduced to a valid shoebox yet)")
+            continue
         h_sim = rv.render(binary, scene)
         h_meas = rv.measured(cache, room, s, r)
         for mname, dry in materials(FS).items():

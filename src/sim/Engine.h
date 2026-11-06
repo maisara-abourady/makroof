@@ -87,7 +87,7 @@ struct BuildOptions
         double temperatureC = 20.0;
         double relativeHumidityPercent = 50.0;
     };
-    std::optional<Atmosphere> atmosphere;
+    std::optional<Atmosphere> atmosphere{};
     // Kind::Omni, validation only (render_cli --mix-floor-ms): raises the lower bound of the mixing
     // time to t_dir,e + this (phase-05 scope 6, mixing-time handover). 0 = the Phase 04 rule.
     double mixingFloorAfterDirectS = 0.0;

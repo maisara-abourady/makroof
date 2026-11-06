@@ -178,7 +178,9 @@ def lundeby(e: np.ndarray, fs: float, initial_block_s: float = 0.010, intervals_
          IR are not mistaken for the noise floor. On a noisy decay the hull is not the level itself:
          it lifts the block-to-block dips of the noise, so a measured IR is not left unchanged; the
          phase-05 paired noise test (tools/acoustics/tests/test_noise_handling.py) measures the
-         resulting T30 bias (case A: |bias| <= 0.6 % at 48-65 dB below the decay, 500 Hz-2 kHz);
+         paired T30 bias of the whole noise handling: about +0.07 % at 65 dB, +0.4 ... +0.6 % at
+         55 dB and +1.8 ... +2.1 % at 48 dB below the decay (500 Hz-2 kHz), against its 0.6 %
+         gate; the hull itself changes it by < 0.05 points (phase-05e decision D-C);
       2. preliminary noise level = mean of the last 10% of e;
       3. line through the smoothed decay from its peak to the first block 10 dB above the noise;
       4. crosspoint = where the line meets the noise level;

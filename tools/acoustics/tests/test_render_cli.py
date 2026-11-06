@@ -76,6 +76,19 @@ def test_validation_overrides_atmosphere_and_mix_floor(render_cli_path, tmp_path
     base = ir("a.wav")
     assert np.array_equal(base, ir("b.wav", "--atmosphere", "20,50"))  # the AX4 atmosphere itself
     assert not np.array_equal(base, ir("c.wav", "--atmosphere", "20,70"))
+    # the override reaches both parts: the image sources (--images amplitudes) and the tail (Eyring T60)
+    def imgs(name, *extra):
+        r = render_cli.run(render_cli_path, "--scene", scene, "--mode", "omni-early", "--images", tmp_path / name, *extra)
+        assert r.returncode == 0, r.stderr
+        return (tmp_path / name).read_text()
+    assert imgs("i0.json") == imgs("i1.json", "--atmosphere", "20,50")
+    assert imgs("i0.json") != imgs("i2.json", "--atmosphere", "20,70")
+    t60 = {}
+    for name, extra in (("t0.json", ()), ("t1.json", ("--atmosphere", "20,70"))):
+        r = render_cli.run(render_cli_path, "--scene", scene, "--mode", "omni", "--diagnostics", tmp_path / name, *extra)
+        assert r.returncode == 0, r.stderr
+        t60[name] = json.loads((tmp_path / name).read_text())["t60"]
+    assert t60["t1.json"][-1] > t60["t0.json"][-1]  # 8 kHz: humid air absorbs less (Kuttruff Table 6.1)
 
     def diag(name, *extra):
         r = render_cli.run(render_cli_path, "--scene", scene, "--mode", "omni", "--diagnostics", tmp_path / name, *extra)

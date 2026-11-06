@@ -39,7 +39,10 @@ go to the interrogator first, CLAUDE.md) **before the work that depends on it st
    the B12 decision rule's use of a* (scope (e)).
 6. **(D-C) Scope 7 paired noise test.** Case A fails in the 48 dB conditions (+1.8 … +2.1 % against
    the 0.6 % gate) and in 500 Hz / T = 1 s / 55 dB (+0.60 %); the cause is noise energy before the
-   crosspoint, not the hull. These are 7 strict xfails (`tools/acoustics/tests/test_noise_handling.py`).
+   crosspoint, not the hull. Besides the bias, three 48 dB conditions have "unsuitable" realisations
+   (noisy-arm T30 None): 5/51 at 500 Hz / 1 s, 1/51 at 500 Hz / 2 s, 1/51 at 1 kHz / 1 s.
+   `tools/acoustics/tests/test_noise_handling.py` checks bias and suitability separately, both as
+   strict xfails (7 bias, 3 suitability).
    phase-05.md scope 7's reversal ("measured IRs run without the hull behind a flag, through a new AX")
    concerns the hull; the decision says whether it applies or what replaces it. Waits on it: the
    paired noise criterion below, and the measured-IR noise handling that the report's numbers pass
@@ -58,7 +61,9 @@ Phase 05) and the Phase 05 leak calibration and paired noise results recorded in
 
 ## Start here
 
-What Phase 05 delivered (branch `claude/brave-maxwell-5lfm80`; details in BUILD_PLAN §0 row 05):
+What Phase 05 delivered (on `main` once PR #10 is merged; for history:
+PR [#10](https://github.com/maisara-abourady/makroof/pull/10), branch `claude/brave-maxwell-5lfm80`;
+details in BUILD_PLAN §0 row 05):
 
 - `tools/validation/fetch_bras.py`, `bras_manifest.json` (SHA-256), tamper test
   (`tools/validation/tests/test_fetch_bras.py`).
@@ -116,6 +121,12 @@ b. **CR4:** the geometry extraction is a one-off developer step, never run at ru
 c. **Baseline and nightly gate:** create `tests/golden/validation_baseline.json` through
    `tools/ci/update_goldens.py` with a reason, and make the nightly gate (phase-05.md scope 4) and the
    `MAKROOF_TEST_BIAS_T60` test green.
+   Known issue to resolve (PR #10 review; the criterion is unchanged): on `bras_cr2_ls1_mp1` (the
+   scene the test picks for CR2) the debug-build hook at 1.05 raised T30 by +5.79 % at 500 Hz, above
+   the criterion's +5.5 % upper limit. The cause is not established (a single realisation whose tail
+   noise may differ between the biased and unbiased renders, or an interaction with tail length /
+   level matching). Establish the cause before deciding whether the test design or the criterion
+   needs a `/fix-plan`.
 d. **Report:** generate and commit `docs/validation/report-phase05.md` and its EDC PNGs (phase-05.md
    scope 3).
 e. **Scope 6 remainder**, as specified in phase-05.md scope 6, unchanged: the reference hybrid
