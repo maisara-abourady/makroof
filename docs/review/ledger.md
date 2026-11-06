@@ -1302,3 +1302,12 @@ gated against an independent Lambert-particle Monte Carlo, D-C → **AX27** with
 | D-A | AX26 (A2) | interrogator DA-3; Brinkmann et al. 2019 §II.D (RAZR: V + main-dimension proportions; external) | applied; vetoable by Maisara |
 | D-B | a* converged, ±1 % vs independent Lambert-particle MC, all six cases; Table 5.2, Fig. 5.10, 88/96-element and γ²-Eyring results reported; B12 (v). Changes Maisara's 2026-11-05 choice to gate at 88/96 elements | DB-1, DB-2, DB-5 | applied; vetoable by Maisara |
 | D-C | AX27 noise subtraction; case A levels L_min = 51, 55, 65 dB (48 reported); admission margin ≥ L_min; reversal: margin ≥ 60 dB without AX27 | DC-1, DC-2, PC-1…PC-8 | applied; vetoable by Maisara |
+
+### Diff check, round 2 (interrogator; final)
+
+Every round-1 item resolved (PC-1…PC-8, AD-2, AD-4, DB-5, DB-6, DB-8; PC-6 stays open, external). R2-1 (−3.29 % at
+88 elements; converged −0.79 % case 2, −1.25 % case 6; halvings 0.47/0.11 % and 1.69/0.42 %; γ² 0.376): CORRECT.
+R2-2 ("≈ 1 % below" → "≈ 1.2 %, still converging") and R2-3 (AX23 / scope 7 "as predicted" / "matching" → "close to":
+the measured +1.8…+2.1 % at 48 dB exceeds the ≈ +1.7 % prediction by more than the condition SEs of 0.05–0.14 %):
+IMPRECISE, minor, resolved (wording). Case 5 converged: solver 2.978 s at 2.5 m vs particle 2.981 s (−0.1 %), so only
+case 6 is borderline. No round 3 needed. Status: D-A, D-B, D-C applied; vetoable by Maisara.

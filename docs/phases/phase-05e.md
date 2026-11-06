@@ -34,14 +34,14 @@ Maisara which decisions it applied, so she can veto.
    "Dimensions"). Unblocks scope (a), and through it (c), (d), (e), (f) and every acceptance
    criterion that needs scenes or a report.
 5. **(D-B) a* against Kuttruff Table 5.2: decided 2026-11-06 (§6 row; vetoable by Maisara).** a*,
-   converged to < 0.4 % per halving, is gated within ±1 % against a Lambert-particle Monte Carlo and
-   γ²-Eyring; the Table 5.2 column is reported, not gated, and a* may not replace Eyring in B12 while
+   converged to < 0.4 % per halving, is gated within ±1 % in all six Table 5.2 cases against a Lambert-particle Monte
+   Carlo; γ²-Eyring and the Table 5.2 column are reported, not gated, and a* may not replace Eyring in B12 while
    ledger DB-1 is unresolved (phase-05.md a* criterion; B12 condition (v)). The strict xfail in
    `tools/acoustics/tests/test_radiosity.py` becomes the new gate. Unblocks the a* criterion below and
    the B12 decision rule's use of a* (scope (e)).
 6. **(D-C) Scope 7 paired noise test: decided 2026-11-06 (§6 row; vetoable by Maisara).** AX27:
    Lundeby noise-power subtraction before the Schroeder integral in the validation decay path; gated
-   levels L_min = 52 dB, 55, 65 dB (48 dB reported); measured bands enter AQ9/B12 only at a noise
+   levels L_min = 51 dB, 55, 65 dB (48 dB reported); measured bands enter AQ9/B12 only at a noise
    margin ≥ L_min; the hull stays (phase-05.md scope 7). The xfails in
    `tools/acoustics/tests/test_noise_handling.py` resolve under AX27. Unblocks the paired noise
    criterion below and the measured-IR noise handling of scope (d), (e).
@@ -189,7 +189,9 @@ a* against Table 5.2), and whether the conclusions in the report follow from the
 ## Risks
 
 As phase-05.md "Risks", unchanged. Also: CR4 extraction time (scope (b)); D-A (AX26) changes the
-scenes of CR2, so nothing built on the 20 CR2 scenes from Phase 05 is final; regenerate them first.
+scenes of CR2, so nothing built on the 20 CR2 scenes from Phase 05 is final; regenerate them first. The ±1 % a* gate may be borderline on Table 5.2 case 6 (the solver at 1.25 m, 5.787 s,
+is ≈ 1.2 % below a from-scratch particle simulation, 5.860 s, and still converging: last halving 0.42 %); 05e establishes it with the project MC at
+SE ≤ 0.25 %; a failure is a finding for /fix-plan, not a reason to retune either implementation.
 
 ## Definition of done
 
