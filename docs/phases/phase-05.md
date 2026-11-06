@@ -35,22 +35,28 @@ hand-tuned.
   for T = 0.8 s (ISO 3382-2 estimate; outside the corpus, not verified; product choice, stands (AQ9)). Signed per-band deltas are reported without gating (their sign shows bias). The
   report also gives the mean over the source/receiver pairs of each room.
   **Meter (AX23, decider D2):** the AQ9 T30 and EDT figures stay on the octave filters at 500 Hz,
-  1 kHz, 2 kHz (C80 unchanged). AQ9 uses the ISO octave meter; the air-only leakage bias is ≤ 2.2 % /
-  5.7 % at 1 / 2 kHz up to T = 2 s (bound, Kuttruff Eqs. 4.12, 5.24, Table 6.1), checked per room by r.
+  1 kHz, 2 kHz (C80 unchanged). AQ9 uses the ISO octave meter. Air-only bound on the octave leakage bias (bias ≤ r − 1;
+  frequency-flat walls, 20 °C, T_w = 2 s air-free T; Kuttruff Eqs. 4.12, 5.24, Table 6.1): ≤ 2.3 % at
+  1 kHz and ≤ 7.1 % at 2 kHz, the worst case over Table 6.1's 40–70 % RH rows (at 40 % RH); 2.2 / 5.7 %
+  at 50 % RH; ≈ 2.2 / 6.9 % at CR2's documented 19.5 °C, 41.7 % RH (conditions from the BRAS
+  documentation, outside the corpus). Real wall α(f) sets the actual r, so the room check below
+  measures r directly.
   Per room, r = T(slower octave neighbour)/T(band) at 500 Hz, 1 kHz, 2 kHz is computed from the
   room-averaged measured octave T30 (mean over pairs; σ(r)/r ≈ 2–3 % per pair) and from the simulated
   IRs; if any r > 1.1 the room's AQ9 line is marked **"leakage-sensitive"** (decider E1: the octave bias at
-  r = 1.1 is b(1.1; D) from the interrogator's two-term model, Kuttruff Eqs. 3.64–3.68 basis, with the
-  leak D measured by the scope 7 calibration; until it is measured, 0.42 % at D = 15 dB and 1.2 % at
+  r = 1.1 is b(1.1; D) from the interrogator's two-term model, Kuttruff Eqs. 3.64–3.68 basis, with
+  D = D₁,min − 10·log10 1.1 at that f_c from the scope 7 calibration (decider G5-4); until it is measured, 0.42 % at D = 15 dB and 1.2 % at
   D = 10 dB (model); threshold 1.1 unchanged; if the calibration's model check fails, this reason quotes
-  the measured bias table instead). The AQ9 T30/EDT mean with the half-octave 1 and 2 kHz values is always printed beside it as
+  the measured bias table instead). The r check uses measured r, so it holds at any humidity; the
+  air-only bound is context. An unflagged room (every r ≤ 1.1) has bias ≤ b(1.1; D) (0.42–1.2 % by the
+  model) against the ±10 % AQ9 tolerance. The AQ9 T30/EDT mean with the half-octave 1 and 2 kHz values is always printed beside it as
   a secondary figure that never changes pass/fail. Reversal: the scope 7 calibration bias exceeds
   2.5 % at the measured BRAS r, or the Expert accepts the half-octave meter.
 - **AQ2** method under test. **NFR-8**: no per-scene factors. If a room fails, report it.
 - **AX4**: fixed atmosphere in the simulator; a validation-only `render_cli` atmosphere override (not
   user-facing, not in the contract) separates model error from atmosphere mismatch (scope 6).
   ISO 3382-2 §4.3.3–4.3.4 treats air as negligible only for T < 1.5 s at 2 kHz (researcher F5,
-  outside the corpus); CR2 and CR4 are near 2 s, so the 2 kHz AQ9 band is atmosphere-sensitive: the
+  outside the corpus); CR2 and CR4 are near 2 s (Brinkmann et al. 2019, Table II; outside the corpus), so the 2 kHz AQ9 band is atmosphere-sensitive: the
   override render at the documented conditions (CR2: 19.5 °C, 41.7 % RH; researcher F14, outside the
   corpus) is printed beside the AQ9 line, not only in the humidity section.
 - **AX21**: the Phase 04 hybrid IR has no scattered energy before t_mix,e (known deficit); scope 6
@@ -195,7 +201,7 @@ hand-tuned.
      above noise" rule (10 dB margin outside the corpus; it limits the noise in the squared band IR at
      the −35 dB time to 0.4 dB, ≈ 0.9 dB on the uncompensated EDC) stated on that line, not on the EDC regression
      and not on the literal EDC −35 dB point, which is laxer by 10·log10(1 + (r_c/r)²) (Kuttruff
-     Eq. 9.2 form; 2.9 dB at r = r_c). The two references coincide near 3.3 r_c; beyond that the peak
+     Eq. 9.2 form; 3.0 dB at r = r_c (10·log10 2, Kuttruff Eq. 5.45, 9.2)). The two references coincide near 3.3 r_c; beyond that the peak
      rule is ≈ 1 dB stricter, within it laxer (+1.3 dB at 2 r_c, +4.6 dB at r_c). For a double-slope
      decay the late line (slower when the decay sags, Kuttruff Eq. 3.67) gives the stricter test. The
      report prints both margins per band. Otherwise T20 (−5 to −25 dB) is reported for that band,
@@ -292,7 +298,7 @@ hand-tuned.
      room-averaged. A predictor replaces Eyring for all scenes (NFR-8: one predictor, no per-room
      choice) only if it lowers the mean |error| by ≥ 0.25 working jnd (1.25 % points) and makes no room
      worse by > 1 jnd (5 %). Otherwise Eyring stays. Shown separately for uniform and uneven α.
-     Conditions (decider report 11, accepted by Maisara, 2026-11-05): (i) a predictor counts as lowering the error only if it does so with a* converged to < 0.4 % per halving (margin/3, by analogy with AX11); (ii) a predictor with a free modelling input (γ²) must meet the rule at every admissible value: the Table 5.1 row and 0.4; (iii) the 5 % T jnd is a working value from outside the corpus (Vorländer Table 6.1 gives 5 % for EDT, not for T); (iv) only the initial-estimate α set counts: the fitted set is circular in Eyring's favour by construction (its α were scaled so that Eyring matches the measured T; researcher finding F6, BRAS documentation, outside the corpus) and is reported only. **Meter (AX23, decider D3):** the rule runs twice on the room-averaged measured T30, run 1 on octaves at 500 Hz, 1 kHz, 2 kHz and run 2 on octaves at 500 Hz and the half-octave meter at 1 and 2 kHz (outside the corpus), each under conditions (i)–(iv) unchanged; a predictor replaces Eyring only if both runs pass; if they disagree the outcome is "meter-dependent, Eyring stays", reported with both runs. **Octave-only branch (decider E2; outside the corpus):** B12 runs on octaves only (run 1) iff all hold, else the both-meters rule above: (1) the scope 7 calibration's entry condition holds (measured D ≥ 13 dB at 1 kHz and at 2 kHz in both variants, model check passed); (2) room set: every BRAS room that enters B12 (initial-estimate α set, condition (iv)), with its usable-range-evaluable AQ9 bands; (3) per room and band (500 Hz, 1 kHz, 2 kHz): r = T30(slower octave neighbour)/T30(band) from the room-averaged (pair-mean) measured octave T30; b_band = the model bias at that r and the measured D(f_c) of the matching variant, b = 0 when r ≤ 1; S_room = 2·mean of b_band over the room's evaluable AQ9 bands (% points); S_all = 2·mean over rooms (equal weight) of the per-room band means; (4) octave-only is allowed iff no room has an evaluable AQ9 band with r > 1.1, S_all ≤ 0.42 points (the 1.25-point margin / 3, as condition (i)), and every S_room ≤ 1.67 points (the 5 % "no room worse" limit / 3). 2·mean(b) is the worst-case change in two predictors' |error| gap when they straddle the measurement (interrogator D-12), a bound held to margin/3 like the a* convergence error. The report prints r, b_band, S_room, S_all and the branch applied. An outcome from BRAS alone is labelled "input-limited" in the AQ2 change request, and Maisara decides on it (C2). The replacement is implemented in a later phase, through an AQ2 change (BUILD_PLAN §5 B12).
+     Conditions (decider report 11, accepted by Maisara, 2026-11-05): (i) a predictor counts as lowering the error only if it does so with a* converged to < 0.4 % per halving (margin/3, by analogy with AX11); (ii) a predictor with a free modelling input (γ²) must meet the rule at every admissible value: the Table 5.1 row and 0.4; (iii) the 5 % T jnd is a working value from outside the corpus (Vorländer Table 6.1 gives 5 % for EDT, not for T); (iv) only the initial-estimate α set counts: the fitted set is circular in Eyring's favour by construction (its α were scaled so that Eyring matches the measured T; researcher finding F6, BRAS documentation, outside the corpus) and is reported only. **Meter (AX23, decider D3):** the rule runs twice on the room-averaged measured T30, run 1 on octaves at 500 Hz, 1 kHz, 2 kHz and run 2 on octaves at 500 Hz and the half-octave meter at 1 and 2 kHz (outside the corpus), each under conditions (i)–(iv) unchanged; a predictor replaces Eyring only if both runs pass; if they disagree the outcome is "meter-dependent, Eyring stays", reported with both runs. **Octave-only branch (decider E2; outside the corpus):** B12 runs on octaves only (run 1) iff all hold, else the both-meters rule above: (1) the scope 7 calibration's entry condition holds (decider G5-4): measured D(r_i) ≥ 13 dB at every calibrated r_i ≤ 1.1 (r_i = 1.05 and 1.1), at 1 kHz and 2 kHz, in both neighbour variants, and the model-check residual ≤ 0.6 % at every r_i ≤ 1.3 (the limit is r ≤ 1.1 because this branch admits only rooms with every evaluable AQ9 band at r ≤ 1.1); (2) room set: every BRAS room that enters B12 (initial-estimate α set, condition (iv)), with its usable-range-evaluable AQ9 bands; (3) per room and band (500 Hz, 1 kHz, 2 kHz): r = T30(slower octave neighbour)/T30(band) from the room-averaged (pair-mean) measured octave T30; b_band = the two-term-model bias at the room's measured r with D(r) = D₁,min − 10·log10 r and a = 10^(−D(r)/10), where D₁,min(f_c, variant) is the minimum of D₁(r_i) over calibrated r_i ≤ 1.3 (conservative: lowest attenuation, largest predicted bias; product choice, outside the corpus), the variant matching the side of the slower neighbour, 500 Hz from the 500 Hz calibration, b = 0 when r ≤ 1; for r > 1.3 the lookup is an extrapolation, labelled so, and never enables the octave-only branch; S_room = 2·mean of b_band over the room's evaluable AQ9 bands (% points); S_all = 2·mean over rooms (equal weight) of the per-room band means; (4) octave-only is allowed iff no room has an evaluable AQ9 band with r > 1.1, S_all ≤ 0.42 points (the 1.25-point margin / 3, as condition (i)), and every S_room ≤ 1.67 points (the 5 % "no room worse" limit / 3). 2·mean(b) is the worst-case change in two predictors' |error| gap when they straddle the measurement (interrogator D-12), a bound held to margin/3 like the a* convergence error. The report prints r, b_band, S_room, S_all and the branch applied. If the D₁ spread across r_i at an f_c exceeds 1 dB, the model is treated as inadequate at that f_c (as in the scope 7 reversal): the measured bias table replaces the model and the octave-only branch is not allowed. An outcome from BRAS alone is labelled "input-limited" in the AQ2 change request, and Maisara decides on it (C2). The replacement is implemented in a later phase, through an AQ2 change (BUILD_PLAN §5 B12).
    - **Reference hybrid (AX21):** at each specular hit, inject s(1−α) of the incident energy into the
      Lambert boundary patch hit, at the hit time (Kuttruff Eq. 4.24; Gilbert, §4.6). Propagate it with
      the **mixed specular/diffuse** form, not the all-Lambert Eq. 4.28: at every later hit, split the
@@ -397,7 +403,7 @@ hand-tuned.
      band-limited by an ideal FFT brick wall to f·2^(±½), times exp(−6.91·t/T_band), all at equal start
      power (product choice). Band f_c ∈ {500 Hz, 1, 2, 4, 8 kHz} at T_b = 1.0 s; its slower neighbour at
      r·T_b, r ∈ {1.05, 1.1, 1.2, 1.3, 1.5, 2.0}, in two variants (slower neighbour below, and above);
-     all other bands at T_b; R from AX11 for SE ≤ 0.2 % (R ≥ 51 is safe for σ₁ ≤ 1.5 %). Record both
+     all other bands at T_b; R from AX11 for SE ≤ 0.2 % (R ≥ 51 is enough for σ₁ ≤ 1.4 %; AX11's σ ≈ 0.5/√(BT) gives ≈ 2.7 % at 500 Hz and 1.9 % at 1 kHz for T = 1 s, so R is set per band by the SE rule). Record both
      meters' bias. **Leak D**, per f_c, variant and r: D = 10·log10(E_own/E_leak), E_own = total
      energy of the band's own component alone after the band's octave filter, E_leak = total energy of
      the slower neighbour's component alone after the same filter, onset to end, ensemble-averaged
@@ -405,7 +411,10 @@ hand-tuned.
      Eqs. 3.64–3.68 basis) E(x) = e^(−x) + a·e^(−x/r), a = 10^(−D/10), x = 2δ_b·t, T30 window
      x = 1.15–8.06, T_read/T_b = 1/(1 − Δ), Δ = [ln(1+q₂) − ln(1+q₁)]/6.91, q = a·e^(kx),
      k = (r − 1)/r, predicts the octave T30 bias from the measured D and r; record measured D,
-     predicted bias, measured bias and residual in AX23. Reversal: a residual > 0.6 % means the model
+     predicted bias, measured bias and residual in AX23. Per calibration point (f_c, variant, r_i) also
+     report D₁(r_i) = D(r_i) + 10·log10 r_i (the r-independent filter property; with equal start power
+     D falls by 10·log10 r) and print the D₁ spread across r_i beside the model-check residual
+     (decider G5-4). A D₁ spread > 1 dB at an f_c makes the model inadequate there (as below). Reversal: a residual > 0.6 % means the model
      is not adequate: B12 stays on both meters permanently and the AQ9 "leakage-sensitive" reason
      quotes the measured bias table.
    - **Paired noise test** (D5, E3; outside the corpus): R noise × exponential realisations per
@@ -421,10 +430,11 @@ hand-tuned.
      condition, with SE ≤ 0.15 % per condition (tol/4: tol/3 would give ≈ 4.9 % family false failure
      over 18 conditions, tol/4 ≈ 0.11 %). R: pilot n ≥ 51 per condition, σ₁,Δ = SD of bias_i in %,
      R = max(51, ⌈(σ₁,Δ/0.15)²⌉) per condition; check the SE afterwards. Seeds are fixed, so the test
-     is deterministic in CI; with the interrogator's +0.45 % estimate at 45 dB the real headroom is only
-     0.15 %, so a fail is a real finding. A condition where any realisation returns T30 None fails as
+     is deterministic in CI; the excess-energy estimate is linear in the noise power, so at the lowest
+     tested level (48 dB) it is ≈ +0.23 %, leaving ≈ 0.37 % headroom (a derivation, outside the corpus),
+     so a fail is a real finding. A condition where any realisation returns T30 None fails as
      "unsuitable" (reported separately), not as a bias failure. EDT and C80 are computed and reported
-     per condition, not gated (0.6 % derives from B12, which uses T30 only; expected effect < 0.01 dB).
+     per condition, not gated (0.6 % derives from B12, which uses T30 only; expected effect on EDT ≪ 1 % and on C80 < 0.01 dB).
      0.6 % is half of B12's 1.25-point margin, since a common bias b shifts a predictor gap by up to 2b
      (product derivation). **Case B** (plateau regime): 125 Hz, T = 0.3 s, reported, not gated.
      Reversal: if any case A condition fails, measured IRs run without the hull behind a flag,
