@@ -97,7 +97,8 @@ pytest tools/validation
 # nightly: .github/workflows/nightly.yml (schedule + workflow_dispatch)
 ```
 
-Known state: CR2 parses in seconds, CR3 in ≈ 15 min, CR4 in > 40 min (not finished).
+Known state: CR2 parses in seconds, CR3 in ≈ 15 min, CR4 in > 40 min (not finished; run it
+detached, see scope (b)).
 
 ## Scope
 
@@ -107,9 +108,11 @@ a. **After D-A:** regenerate the scenes for all selected rooms (`make_bras_scene
    reduction results appended to `bras_mapping.md` before any comparison (phase-05.md Data). No room
    is dropped after results are seen. If after D-A no room qualifies, phase-05.md Data's zero-room
    branch applies unchanged.
-b. **CR4:** make `skp_reader.py`'s re-synchronisation fast enough, or run the one-off extraction
-   detached. Accept CR4 only if every documented material area reproduces (the same check as for
-   CR2 and CR3).
+b. **CR4:** the geometry extraction is a one-off developer step, never run at run time (Maisara,
+   2026-11-06). Run it detached with no time limit, outside the 40-minute tool timeouts, e.g.
+   `nohup python tools/validation/extract_bras_geometry.py --rooms CR4 > extract-cr4.log 2>&1 &`.
+   Speeding up `skp_reader.py`'s re-synchronisation is optional, not required. Accept CR4 only if
+   every documented material area reproduces (the same check as for CR2 and CR3).
 c. **Baseline and nightly gate:** create `tests/golden/validation_baseline.json` through
    `tools/ci/update_goldens.py` with a reason, and make the nightly gate (phase-05.md scope 4) and the
    `MAKROOF_TEST_BIAS_T60` test green.
