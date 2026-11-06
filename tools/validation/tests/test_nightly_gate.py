@@ -32,6 +32,12 @@ DESCRIPTION = ("Phase 05 nightly gate: simulated T30/T20/EDT (octave, and half-o
                "tools/validation/data/phase05_results.json (reported, never gating).")
 
 
+def _need_baseline():
+    if not golden.golden_path(NAME).exists():
+        pytest.skip("baseline tests/golden/validation_baseline.json not created yet: the next Phase 05 phase creates it "
+                    "(tools/ci/update_goldens.py) once the reduction-rule decision gives a valid scene set (BUILD_PLAN §0)")
+
+
 def _binary():
     b = render_cli.find_render_cli()
     if b is None:
@@ -40,6 +46,7 @@ def _binary():
 
 
 def test_simulated_metrics_match_the_baseline():
+    _need_baseline()
     actual = rv.simulated_metrics(_binary())
     golden.assert_golden(NAME, actual, description=DESCRIPTION, tolerances=TOLERANCES)
 
@@ -58,6 +65,7 @@ def test_t60_bias_hook_fails_the_gate_on_t30():
     """With MAKROOF_TEST_BIAS_T60=1.05 (debug builds only) the gate fails on T30, and the octave
     T30 at 500 Hz / 1 kHz / 2 kHz rises by +3 ... +5.5 % in every band with
     T30 >= 3 (t_mix,e - t_dir,e); at least one band per scene must qualify."""
+    _need_baseline()
     dbg = os.environ.get("MAKROOF_DEBUG_RENDER_CLI")
     if not dbg:
         if os.environ.get("MAKROOF_REQUIRE_BRAS") == "1":

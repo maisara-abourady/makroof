@@ -1,6 +1,6 @@
 # Phase 05d — Second measured dataset (Arni, dEchorate)
 
-Size: **M** · Depends on: 05 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ1, AQ8, AQ9, AX4, AX11, AX17) and §3 (F2), `docs/phases/phase-05.md` (Data, scope 2–4, scope 6 "Paired comparisons"), PRD NFR-1, NFR-8, FR-3D-3, Q9
+Size: **M** · Depends on: 05, 05e · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ1, AQ8, AQ9, AX4, AX11, AX17) and §3 (F2), `docs/phases/phase-05.md` (Data, scope 2–4, scope 6 "Paired comparisons"), PRD NFR-1, NFR-8, FR-3D-3, Q9
 
 Created by decider report 15 (`docs/review/phase-04-consult/15-decider-second-dataset.md`), accepted by
 Maisara with its Challenge 1, 2026-11-05. Run after 05 and before 05b, but 05b does **not** depend on

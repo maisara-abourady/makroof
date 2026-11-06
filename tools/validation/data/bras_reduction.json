@@ -413,7 +413,8 @@
      "floor_found": true,
      "moved": []
     }
-   }
+   },
+   "contract_invalid": []
   },
   "fitted": {
    "dims": {
@@ -828,7 +829,8 @@
      "floor_found": true,
      "moved": []
     }
-   }
+   },
+   "contract_invalid": []
   }
  },
  "CR3": {
@@ -1335,7 +1337,10 @@
      "floor_found": true,
      "moved": []
     }
-   }
+   },
+   "contract_invalid": [
+    "W = 136.37 m outside AX6's [1.5, 100.0] m"
+   ]
   },
   "fitted": {
    "dims": {
@@ -1854,7 +1859,10 @@
      "floor_found": true,
      "moved": []
     }
-   }
+   },
+   "contract_invalid": [
+    "W = 136.37 m outside AX6's [1.5, 100.0] m"
+   ]
   }
  }
 }

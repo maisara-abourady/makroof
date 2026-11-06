@@ -1,6 +1,6 @@
 # Phase 13 — v1 hardening: performance, DAW matrix, signing
 
-Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12, including 05b and 05d (05d `done` or `blocked (reason)`, decider report 15, accepted by Maisara, 2026-11-05; with 05c, if it exists, `blocked` only on Maisara's recorded decision) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
+Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12, including 05b, 05d and 05e (05d `done` or `blocked (reason)`, decider report 15, accepted by Maisara, 2026-11-05; with 05c, if it exists, `blocked` only on Maisara's recorded decision) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
 
 ## Raise with Maisara (she does not track these herself)
 

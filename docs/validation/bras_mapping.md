@@ -151,6 +151,8 @@ Total absorption area A (box vs documented surfaces) at 500 Hz / 1 kHz / 2 kHz: 
 
 Model: V = 3330.6 m³, S = 2763.0 m² (documented); materials reproduced by the reader: ceiling 168.46 (doc 168.46), floor 342.53 (doc 342.53), plaster 450.27 (doc 450.27), seating 178.90 (doc 178.90), stagePanels 425.55 (doc 425.55), structuredPlaster 1171.93 (doc 1171.93), windows 25.38 (doc 25.38); unpainted faces (not a BRAS material, ignored) 0.00 m²; rotation θ = -0.05°; floor area (floor-assigned) A_floor = 757.34 m².
 
+**Not rendered:** the box violates the contract (W = 136.37 m outside AX6's [1.5, 100.0] m), so no scene is written for this room. The reduction rule (rule 2) needs a plan decision (BUILD_PLAN §0, Phase 05 notes).
+
 Box: W × D × H = 136.373 × 5.553 × 4.398 m (h = V/A_floor); square-floor fallback: no; S(box) = 2763.00 m² (-0.00 % vs documented S); model long side along y swapped to x: no.
 
 | face | box area | assigned area | assigned materials | α initial | α fitted | s (AX17) | s 500 / 1k / 2k |

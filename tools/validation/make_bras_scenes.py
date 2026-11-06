@@ -204,6 +204,16 @@ def scene_json(red: dict, pair: dict, seed: int) -> dict:
     }
 
 
+ROOM_SIDE_M = (1.5, 100.0)  # AX6
+
+
+def contract_problems(red: dict) -> list[str]:
+    """Reasons the reduced box is not a valid contract scene (AX6 room size)."""
+    d = red["dims"]
+    lo, hi = ROOM_SIDE_M
+    return [f"{k} = {d[k]:.2f} m outside AX6's [{lo}, {hi}] m" for k in ("W", "D", "H") if not lo <= d[k] <= hi]
+
+
 def build(cache: pathlib.Path):
     g_all = json.loads(GEOMETRY.read_text(encoding="utf-8"))["rooms"]
     reduction = {}
@@ -215,6 +225,9 @@ def build(cache: pathlib.Path):
             pairs = map_positions(g, red)
             red["pairs"] = pairs
             reduction[room][alpha_set] = red
+            red["contract_invalid"] = contract_problems(red)
+            if red["contract_invalid"]:
+                continue  # never write a scene the contract rejects (reported in bras_mapping.md §5)
             for k_pair, (pk, pair) in enumerate(sorted(pairs.items())):
                 s, r = pk.split("_")
                 seed = SEED_BASE + 100 * k_room + k_pair
@@ -242,6 +255,10 @@ def mapping_section(g_all: dict, reduction: dict) -> str:
                  + f"; unpainted faces (not a BRAS material, ignored) {g['unpainted_area_m2']:.2f} m²; rotation θ = {g['rotation_deg']:.2f}°; "
                  f"floor area (floor-assigned) A_floor = {g['floor_area_m2']:.2f} m².")
         L.append("")
+        if red.get("contract_invalid"):
+            L.append(f"**Not rendered:** the box violates the contract ({'; '.join(red['contract_invalid'])}), so no scene is written "
+                     "for this room. The reduction rule (rule 2) needs a plan decision (BUILD_PLAN §0, Phase 05 notes).")
+            L.append("")
         L.append(f"Box: W × D × H = {d['W']:.3f} × {d['D']:.3f} × {d['H']:.3f} m (h = V/A_floor); square-floor fallback: "
                  f"{'yes' if d['square_floor_fallback'] else 'no'}; S(box) = {d['S_box']:.2f} m² ({d['S_error_pct']:+.2f} % vs documented S); "
                  f"model long side along y swapped to x: {'yes' if red['swap_xy'] else 'no'}.")
@@ -310,6 +327,7 @@ def main(argv=None):
     red_text = json.dumps(reduction, indent=1) + "\n"
     if a.check:
         bad = [n for n, t in texts.items() if not (SCENES / n).exists() or (SCENES / n).read_text() != t]
+        bad += [p.name for p in SCENES.glob("bras_*.json") if p.name not in texts]
         if REDUCTION.read_text() != red_text:
             bad.append(REDUCTION.name)
         if bad:
@@ -317,6 +335,9 @@ def main(argv=None):
         print("scenes up to date")
         return
     SCENES.mkdir(parents=True, exist_ok=True)
+    for p in SCENES.glob("bras_*.json"):
+        if p.name not in texts:
+            p.unlink()
     for n, t in texts.items():
         (SCENES / n).write_text(t)
     REDUCTION.write_text(red_text)
