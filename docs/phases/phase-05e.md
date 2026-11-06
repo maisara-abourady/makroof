@@ -105,13 +105,13 @@ pytest tools/validation
 ```
 
 Known state: CR2 parses in seconds, CR3 in ≈ 15 min in Phase 05 (≈ 25 s in 05e session 1), CR4 in
-> 40 min (not finished; see scope (b)).
+> 40 min in Phase 05 (not finished); CR4 is now phase-05f (scope (b)).
 
 ## Scope
 
 All of it as specified in phase-05.md, unchanged; this list says what is left.
 
-a. **D-A (AX26) applied:** regenerate the scenes for all selected rooms (`make_bras_scenes.py`), with the
+a. **D-A (AX26) applied:** regenerate the scenes for all selected rooms except CR4 (phase-05f), i.e. CR2 and CR3 (`make_bras_scenes.py`), with the
    reduction results appended to `bras_mapping.md` before any comparison (phase-05.md Data). No room
    is dropped after results are seen. If after D-A no room qualifies, phase-05.md Data's zero-room
    branch applies unchanged.
@@ -125,29 +125,21 @@ a. **D-A (AX26) applied:** regenerate the scenes for all selected rooms (`make_b
      after results are seen.
    - CR3: the documentation gives 2 350 m³ excluding the attic, the model 3 330.6 m³ including it
      (`bras_mapping.md`); the same check applies and is reported.
-b. **CR4:** the geometry extraction is a one-off developer step, never run at run time (Maisara,
-   2026-11-06). Run it in the foreground with progress output while the session is active (detached
-   runs do not survive container reclamation: in 05e session 1 a detached run died after ≥ 41 min
-   with an empty log). Profile it first for at most 1 h. A generic reader fix (file-format level, no
-   per-room logic) is allowed if `tools/validation/tests/test_skp_reader.py`, the CR2/CR3 area
-   reproduction and `make_bras_scenes.py --check` (CR2/CR3 scenes unchanged) stay green.
-   Speeding up `skp_reader.py`'s re-synchronisation is optional, not required. Accept CR4 only if
-   every documented material area reproduces (the bras_mapping.md §2 acceptance test; the same check
-   as for CR2 and CR3).
-   - **Main track while CR4 is open** (decider, 2026-11-06, at Maisara's request; vetoable by
-     Maisara): until CR4 is extracted, scopes (a), (c)–(f) run on CR2 + CR3; AQ9 per room, B12 and
+b. **CR4:** CR4 extraction work and everything that needs CR4 belong to `docs/phases/phase-05f.md`
+   (created 2026-11-06 at Maisara's request), not to a 05e session 2. 05e session 1 profiled the
+   extraction and committed three generic `skp_reader.py` fixes under the CR2/CR3 regression guard
+   (`test_skp_reader.py`, CR2/CR3 area reproduction, `make_bras_scenes.py --check`); where CR4 stands
+   is in phase-05f.md "Start here". 05e completes on CR2 + CR3 with the provisional two-room label.
+   - **Main track without CR4** (decider, 2026-11-06, at Maisara's request; vetoable by
+     Maisara): scopes (a), (c)–(f) run on CR2 + CR3; AQ9 per room, B12 and
      the B11 (B) evidence are computed but labelled 'provisional, two-room (CR2, CR3; uniform α: CR2,
      uneven α: CR3 only); CR4 pending', and the B12 replacement and the B11 promotion decisions are
-     deferred (taken once CR4 is in, or once Maisara accepts the two-room label); the pass rules of
-     phase-05.md are unchanged, including B11 (B)'s 'no minimum count applies'. When CR4 passes:
-     write its scenes, append its reduction results to `bras_mapping.md` before any CR4 comparison,
-     re-run the report, extend the baseline with `tools/ci/update_goldens.py` (reason 'CR4 added,
-     pre-committed room'); the three-room outcome replaces the provisional one.
-   - Reversal: if the profile shows the time is not spent in the reader's re-synchronisation, the
-     fix is dropped and the stop rule (Definition of done) still applies; if CR4 parses but the
-     bras_mapping.md §2 acceptance test fails (an area or a face's planarity), CR4 is 'not extracted' (no tuning against it); if Maisara accepts the
-     two-room label, B12/B11 may proceed on two rooms (CR4 stays selected and pending; the acceptance
-     goes through /fix-plan as a phase-05.md change, bras_mapping.md §1).
+     deferred (taken once CR4 is in, in phase-05f, or once Maisara accepts the two-room label); the
+     pass rules of phase-05.md are unchanged, including B11 (B)'s 'no minimum count applies'. Adding
+     CR4 (scenes, reduction results, three-room report, baseline extension) is phase-05f scope (c).
+   - Reversal: if Maisara accepts the two-room label, B12/B11 may proceed on two rooms (CR4 stays
+     selected and pending; the acceptance goes through /fix-plan as a phase-05.md change,
+     bras_mapping.md §1); otherwise they wait for phase-05f.
 c. **Baseline and nightly gate:** create `tests/golden/validation_baseline.json` through
    `tools/ci/update_goldens.py` with a reason, and make the nightly gate (phase-05.md scope 4) and the
    `MAKROOF_TEST_BIAS_T60` test green.
@@ -219,7 +211,7 @@ a* against Table 5.2), and whether the conclusions in the report follow from the
 
 ## Risks
 
-As phase-05.md "Risks", unchanged. Also: CR4 extraction time (see scope (b) and the Definition of done); D-A (AX26) changes the
+As phase-05.md "Risks", unchanged. Also: CR4 is not in 05e (phase-05f, scope (b)), so 05e's results stay provisional, two-room; D-A (AX26) changes the
 scenes of CR2, so nothing built on the 20 CR2 scenes from Phase 05 is final; regenerate them first. The ±1 % a* gate may be borderline on Table 5.2 case 6 (the solver at 1.25 m, 5.787 s,
 is ≈ 1.2 % below a from-scratch particle simulation, 5.860 s, and still converging: last halving 0.42 %); 05e establishes it with the project MC at
 SE ≤ 0.25 %; a failure is a finding for /fix-plan, not a reason to retune either implementation.
@@ -230,12 +222,9 @@ Automated criteria green; report committed; status row 05e `done` with an "AQ9 m
 room and per pair, by α set (BRAS: evidence, not validation);
 the PR summarizes findings for the Spatial Audio Expert.
 
-If CR4 is not extracted (every documented area reproduced, the bras_mapping.md §2 acceptance test)
-by the end of 05e session 2 — criteria pre-committed in `docs/validation/bras_mapping.md` §1 — the
-status row 05e is `done` with the note 'AQ9 met x/y on CR2, CR3; CR4 pending extraction (reader),
-not dropped', B12/B11 stay labelled 'provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3
-only); CR4 pending', the B12 replacement and the B11 promotion decisions are deferred (taken once
-CR4 is in, or once Maisara accepts the two-room label; Eyring stays until then); the pass rules of
-phase-05.md are unchanged, including B11 (B)'s 'no minimum count applies'; and phase-05f 'CR4
-geometry and three-room re-run' is created (`blocked` if the reader cannot be fixed; Maisara decides
-on another extraction path).
+05e completes on CR2 + CR3 (CR4 criteria pre-committed in `docs/validation/bras_mapping.md` §1): the
+status row 05e is `done` with the note 'AQ9 met x/y on CR2, CR3; CR4 in phase-05f (pending
+extraction, not dropped)', B12/B11 stay labelled 'provisional, two-room (CR2, CR3; uniform α: CR2,
+uneven α: CR3 only); CR4 pending', the B12 replacement and the B11 promotion decisions are deferred
+(taken once CR4 is in, in phase-05f, or once Maisara accepts the two-room label; Eyring stays until
+then); the pass rules of phase-05.md are unchanged, including B11 (B)'s 'no minimum count applies'.

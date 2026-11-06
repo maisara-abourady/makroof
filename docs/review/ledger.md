@@ -1393,3 +1393,20 @@ INCONSISTENT, minor. Fixes: C1 the acceptance keeps CR4 selected and goes throug
 deferral of the decision time, pass rules unchanged; C3 full label; C4 "the bras_mapping.md §2 acceptance test"; C5
 status `done` with the note. Round 2: C1, C2, C4, C5 resolved; C3 label and the reversal's acceptance wording completed
 by the main session. Status: applied; vetoable by Maisara.
+
+## phase-05f.md (new), phase-05e.md, phase-05b.md, phase-13.md, BUILD_PLAN §0/§4/§6, bras_mapping.md §1 — phase-05f for CR4 (Maisara, 2026-11-06; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Maisara: "Go for setting 5f dedicated for whatever CR4 needs". Phase-05f created: decode the CFaceTextureCoords layout
+variant(s) in skp_reader.py (generic, regression guard), extract and accept CR4 only by the bras_mapping §2 test, then
+the three-room report, baseline extension and the deferred B12/B11 decisions; two-session stop rule →
+`blocked (reader: CR4 not extracted)`, CR4 pending, not dropped. 05e completes on CR2 + CR3 (provisional two-room).
+Following from the CR4-handling deferral (above): 05b and 13 wait for 05f `done` or Maisara's recorded two-room
+acceptance. Facts (05e session 1, measured): reader fixes; CR4 parses in ≈ 1 min, ≈ 1 083 of 5 851 m²; 1 547 of 1 767
+CFaceTextureCoords records fit 214 bytes, 220 do not; parse stops at 16.46 of 17.08 MB; the dict copy was 59 % (209 of
+353 s) of the profiled run.
+
+Interrogator diff check: no acoustic claim; C4, C5 (no room dropped, selection before comparison, B11 (B), B12, one
+CR4 owner, gating, stop rules) consistent; P1 phase-05f.md structure complies with CLAUDE.md; minor items fixed by the
+main session: F1 "≈ 220" → 220; F4 59 % referred to the profiled run; C1 05e scope (a) and BUILD_PLAN §4 "all selected
+rooms except CR4 (05f)"; C2 §6 row marks that it supersedes the 05e session-2 stop rule; C3 05f criterion for the
+CR4 bias-hook test. Status: applied; vetoable by Maisara.

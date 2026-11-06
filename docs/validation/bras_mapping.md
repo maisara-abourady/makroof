@@ -63,8 +63,8 @@ CR4 handling, phase-05e scope (b), vetoable by Maisara).** CR4 stays selected. I
 the §2 acceptance test passes (every documented material area of `_descr/mat_CR4.txt` reproduces and every loop
 vertex lies on its face's plane, as for CR2 and CR3);
 a parse whose areas do not reproduce counts as "not extracted" and is never tuned against. Until it enters, the
-results are labelled "provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3 only); CR4 pending". If CR4 is not extracted by the end of
-phase-05e session 2, it is recorded "pending extraction (reader)", not dropped, and moves to phase-05f; no other
+results are labelled "provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3 only); CR4 pending". CR4's extraction is the work of phase-05f (created 2026-11-06 at Maisara's request); if it is not accepted
+within phase-05f's two-session stop rule, CR4 is recorded "pending extraction (reader)", not dropped; no other
 reason, and no comparison result, removes CR4 from the selection. Maisara's acceptance of the two-room label
 (phase-05e scope (b), reversal) keeps CR4 selected and pending; it goes through /fix-plan as a phase-05.md change.
 
