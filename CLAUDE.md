@@ -28,6 +28,22 @@ instructions: `docs/phases/phase-XX.md`.
 If a phase can't be finished in two sessions, split the remainder into `phase-XXb.md`, add it to
 the status table, and stop.
 
+## Reporting: the steward (every session, not only phases)
+
+The main session is the **orchestrator**. It reports to the `steward` agent, not to Maisara, and
+decides itself which agent does what. The steward's memory is the session brief (`docs/sessions/`,
+template in its README).
+
+1. At the start, write `docs/sessions/<YYYY-MM-DD>-<slug>.md`, with Maisara's words verbatim, the
+   objectives with done-criteria, the scope, the settled decisions and the "Raise with Maisara" items.
+   Run the steward on it and fix it until it returns BRIEF OK. Commit it.
+2. After each substantial step, and always before reporting to Maisara, report to the steward with
+   the brief's path and the evidence (files, diffs, CI runs, agent reports). Append its round note to
+   the brief's steward log. On CONTINUE, close the gaps it lists by delegating as you judge best.
+3. Speak to Maisara only on **READY TO REPORT** (send its draft, edited for accuracy) or **NEEDS
+   MAISARA** (ask its questions). Append each new instruction from her to the brief verbatim. The
+   "Raise with Maisara" items (step 2 of "The one rule for every session") still go in your first message to her.
+
 ## Assumptions and decisions
 
 - Q1–Q10 from the PRD are **unresolved**. The plan runs on the defaults in `BUILD_PLAN.md` §2

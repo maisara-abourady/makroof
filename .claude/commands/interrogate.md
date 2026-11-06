@@ -14,5 +14,6 @@ rules as the interrogator (real section numbers only, short paraphrase, no quote
 Re-run the interrogator on your answers only for open blockers, at most 3 rounds. Update each ledger
 row's status (open / resolved / disputed) after every round.
 
-List what remains unresolved. Do not edit the target document; changes to the PRD or plans are
+List what remains unresolved, and report it to the **steward** with the session brief before you report
+to the user (CLAUDE.md, "Reporting: the steward"). Do not edit the target document; changes to the PRD or plans are
 Maisara's decision.
