@@ -36,8 +36,9 @@ hand-tuned.
   report also gives the mean over the source/receiver pairs of each room.
   **Meter (AX23, decider D2):** the AQ9 T30 and EDT figures stay on the octave filters at 500 Hz,
   1 kHz, 2 kHz (C80 unchanged). AQ9 uses the ISO octave meter. Air-only bound on the octave leakage bias (bias ≤ r − 1;
-  frequency-flat walls, 20 °C, T_w = 2 s air-free T; Kuttruff Eqs. 4.12, 5.24, Table 6.1): ≤ 2.3 % at
-  1 kHz and ≤ 7.1 % at 2 kHz, the worst case over Table 6.1's 40–70 % RH rows (at 40 % RH); 2.2 / 5.7 %
+  frequency-flat walls, 20 °C, T_w = 2 s air-free T; Kuttruff Eqs. 4.12, 5.24, Table 6.1): ≤ 2.5 % at
+  1 kHz (at 70 % RH) and ≤ 7.1 % at 2 kHz (at 40 % RH), the worst case over Table 6.1's 40–70 % RH
+  rows; 2.2 / 5.7 %
   at 50 % RH; ≈ 2.2 / 6.9 % at CR2's documented 19.5 °C, 41.7 % RH (conditions from the BRAS
   documentation, outside the corpus). Real wall α(f) sets the actual r, so the room check below
   measures r directly.
