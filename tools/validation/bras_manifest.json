@@ -1,0 +1,819 @@
+{
+  "dataset": "BRAS - Benchmark for Room Acoustical Simulation",
+  "version": "v3",
+  "doi": "10.14279/depositonce-6726.3",
+  "licence": "CC BY-SA 4.0",
+  "record": "https://depositonce.tu-berlin.de/items/38410727-febb-4769-8002-9c710ba393c4",
+  "note": "SHA-256 per extracted file, recorded by fetch_bras.py --record on 2026-11-06; archive MD5s are the repository's own checksums.",
+  "source": {
+    "bitstream_url": "https://api-depositonce.tu-berlin.de/server/api/core/bitstreams/{uuid}/content"
+  },
+  "archives": {
+    "Documentation.pdf": {
+      "uuid": "ba6b4f29-418b-4ec8-bb9d-72d488b8e5e6",
+      "kind": "file",
+      "md5": "19fa6422aa13b16592ddd13f0b25c936",
+      "size": 3678548
+    },
+    "1_scene_descriptions-CR2.zip": {
+      "uuid": "53c3cf64-3547-4aa6-946b-1b4755729f2a",
+      "kind": "zip",
+      "md5": "6aa695551c819d88cd5e68aebcf8531b",
+      "size": 615751495
+    },
+    "1_scene_descriptions-CR3.zip": {
+      "uuid": "e7b13112-0306-4596-9d9f-c6db057b0552",
+      "kind": "zip",
+      "md5": "796b1a677b6148e02267b92a526a0a1f",
+      "size": 739877895
+    },
+    "1_scene_descriptions-CR4.zip": {
+      "uuid": "bad0610b-293c-47cb-9926-c30c32f9b4c8",
+      "kind": "zip",
+      "md5": "d0e09fbbbe2b9af501cb9d3c86368bd1",
+      "size": 785106943
+    },
+    "3_surface_descriptions.zip": {
+      "uuid": "b2970524-fb10-482a-ab14-f07da5ad7615",
+      "kind": "zip",
+      "md5": "c6457c67b4b073bf6cad39fa937ce313",
+      "size": 235694104
+    },
+    "4_additional_data.zip": {
+      "uuid": "5e27800e-78ef-47a8-855e-78ac5a5adff6",
+      "kind": "zip",
+      "md5": "045877c4106f28408e74a20f5b1c14b4",
+      "size": 23634327
+    }
+  },
+  "files": [
+    {
+      "group": "docs",
+      "archive": "Documentation.pdf",
+      "member": null,
+      "path": "Documentation.pdf",
+      "sha256": "70c8deff6861f3d4ac7991fddba49c84b1b57bba9bcc0a0928d38263ac0fe4c6",
+      "size": 3678548
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR2_ceiling.csv",
+      "path": "materials/fitted/mat_CR2_ceiling.csv",
+      "sha256": "22e53e0318c4024eb79423a51dc830b22d9b91b5d54a6cf1b73bfc1aed7ed273",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR2_concrete.csv",
+      "path": "materials/fitted/mat_CR2_concrete.csv",
+      "sha256": "e37980f42fd913e21e4d6b3d88a5221c450a601b2c1f2ef8598fffbcfb536221",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR2_floor.csv",
+      "path": "materials/fitted/mat_CR2_floor.csv",
+      "sha256": "fa0c54d4ccad020268bd6763d9759d64c5107d3e6a932c598091e7b433df8d49",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR2_plaster.csv",
+      "path": "materials/fitted/mat_CR2_plaster.csv",
+      "sha256": "9eda67eaf55fd74cdd8bfeea829c3de6f27baa2633bd5cef1fbb4682e8e2b631",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR2_windows.csv",
+      "path": "materials/fitted/mat_CR2_windows.csv",
+      "sha256": "e654a65fdc6676c5d6ab293ff91bf4a35a50c045d697c295018703d3c289262f",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR3_ceiling.csv",
+      "path": "materials/fitted/mat_CR3_ceiling.csv",
+      "sha256": "a3b932290118fd1a62c769a309f489783d3376ad44d31f355587320a14a882e1",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR3_floor.csv",
+      "path": "materials/fitted/mat_CR3_floor.csv",
+      "sha256": "2379392d46c63f7519aa49a7bd3d6427675a68dffc13e8cdd7b6b4b7a89bb11b",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR3_plaster.csv",
+      "path": "materials/fitted/mat_CR3_plaster.csv",
+      "sha256": "18a8f4de310dd77a7fb174a1e37eb6fb38ffaead457b3836620025044fc23b36",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR3_seating.csv",
+      "path": "materials/fitted/mat_CR3_seating.csv",
+      "sha256": "928d32e16b572215905bb3f2fe21de960d6aa54dbf580c07f3f8eebe4b664ab2",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR3_stagePanels.csv",
+      "path": "materials/fitted/mat_CR3_stagePanels.csv",
+      "sha256": "43b1dbabf9078afec964247af8f987be7f297cd3189c85c6b14b9c0305244c92",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR3_structuredPlaster.csv",
+      "path": "materials/fitted/mat_CR3_structuredPlaster.csv",
+      "sha256": "c91013fa2f882f3a570f3986c14a1f327fcb05c52f0323630e4325c113fde8ae",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR3_windows.csv",
+      "path": "materials/fitted/mat_CR3_windows.csv",
+      "sha256": "d1d9664bbc6f7af95060bf9eb9c7bd420ce4ac9408b9dbaccde4e5a5b3ea5453",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR4_brickwall.csv",
+      "path": "materials/fitted/mat_CR4_brickwall.csv",
+      "sha256": "b1cc869677ab1599229a996072206a554ec1e83c8ec7728897c1fe82e12c61d8",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR4_concrete.csv",
+      "path": "materials/fitted/mat_CR4_concrete.csv",
+      "sha256": "954d4d20bcb717657cb0bc497339f302f33ab03e2203b46b5524b1b3f7697889",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR4_linoleum.csv",
+      "path": "materials/fitted/mat_CR4_linoleum.csv",
+      "sha256": "69abf8b8344babbf7a241dda98c595c713aba44e4ec63f1e014d6250cc4f41ee",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR4_parquet.csv",
+      "path": "materials/fitted/mat_CR4_parquet.csv",
+      "sha256": "f277e302468b7ac1bf90aca1192649cbdbc673168cc505fd07780e706e3e1593",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR4_seating.csv",
+      "path": "materials/fitted/mat_CR4_seating.csv",
+      "sha256": "5bc5abf6bd3c990a570397afb4d6f5cae07515f2b593873be9a405e8922a22b4",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR4_whitePanels.csv",
+      "path": "materials/fitted/mat_CR4_whitePanels.csv",
+      "sha256": "4c6469d22744778ea24d5d2882523b6d9300d66559bf3715d65f95e03a040140",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR4_windows.csv",
+      "path": "materials/fitted/mat_CR4_windows.csv",
+      "sha256": "961774e976a511e3c3430e2ff605c4acaad56e59794dd5f3f8ce7dcf0eae910a",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/fitted_estimates/mat_CR4_woodPanels.csv",
+      "path": "materials/fitted/mat_CR4_woodPanels.csv",
+      "sha256": "60cf70c32cc32998ef974d262655a233a59b38259fc11a053f2d361aff0824d7",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR4_linoleum.csv",
+      "path": "materials/initial/mat_CR4_linoleum.csv",
+      "sha256": "a2afc5f170c34f245a4083eeca404b66a84a6d8597e9baa5f30f0fa20664b0db",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR2_ceiling.csv",
+      "path": "materials/initial/mat_CR2_ceiling.csv",
+      "sha256": "b98b6480ce20c9279c2e261605811f3192bba03ae42e16599301e5c198ad6488",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR2_concrete.csv",
+      "path": "materials/initial/mat_CR2_concrete.csv",
+      "sha256": "82f116d5313877a0f03937a78c19488096121ce0cbe75ca2fc4a9514ba699e6a",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR2_floor.csv",
+      "path": "materials/initial/mat_CR2_floor.csv",
+      "sha256": "13abf00cd2b74797f77c25ea79c0b0846086d787b25cc24766df9b8ac2c00cb2",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR2_plaster.csv",
+      "path": "materials/initial/mat_CR2_plaster.csv",
+      "sha256": "39af492ae2b8545d4408b95cf0427b3fc903ba00381f05059fc818c498b022c1",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR2_windows.csv",
+      "path": "materials/initial/mat_CR2_windows.csv",
+      "sha256": "cbcb397f63a4933a177509204db488084ee3c373083107c7d34ca4106757e80e",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR3_ceiling.csv",
+      "path": "materials/initial/mat_CR3_ceiling.csv",
+      "sha256": "6be7e759951c9af5fb97227a3abe9828d91c0be04d82e54ac47468fb05dff6cf",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR3_floor.csv",
+      "path": "materials/initial/mat_CR3_floor.csv",
+      "sha256": "44f6a38e0b2ef0a7000181e375d4de176262f7b0e1f9be2dfb45f340d6785655",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR3_plaster.csv",
+      "path": "materials/initial/mat_CR3_plaster.csv",
+      "sha256": "ebf4bf3a6b3ea9d7834b662c02757896a2afcdd18c934ff5ce22314bf5b8b8bb",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR3_seating.csv",
+      "path": "materials/initial/mat_CR3_seating.csv",
+      "sha256": "36df81a9584ba008889061a714601eb57b199ed1d04b530c38a7af670b71e4aa",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR3_stagePanels.csv",
+      "path": "materials/initial/mat_CR3_stagePanels.csv",
+      "sha256": "63196bb0573116148044c379ceebb3e9a052ac543d67a62f472709e3030b99a5",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR3_structuredPlaster.csv",
+      "path": "materials/initial/mat_CR3_structuredPlaster.csv",
+      "sha256": "7249c227b688c81f35df17fce0a2358e4f6b63768b606fc414118040dc0c12c6",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR3_windows.csv",
+      "path": "materials/initial/mat_CR3_windows.csv",
+      "sha256": "cbcb397f63a4933a177509204db488084ee3c373083107c7d34ca4106757e80e",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR4_brickwall.csv",
+      "path": "materials/initial/mat_CR4_brickwall.csv",
+      "sha256": "efdb0cf8dd7097a6f6073afd3c76645c580fd03cd2ab81f6106fbcebf595c1c9",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR4_concrete.csv",
+      "path": "materials/initial/mat_CR4_concrete.csv",
+      "sha256": "15ac51c6d86c9fe5a8bb39b7a348dd0ecbedc273d5a7a0295d48e930f79f2f7f",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR4_parquet.csv",
+      "path": "materials/initial/mat_CR4_parquet.csv",
+      "sha256": "bbc4414e4f6bbcbe97a98ef340b8619a72fcecb2a5674ce2864bb591398bce86",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR4_seating.csv",
+      "path": "materials/initial/mat_CR4_seating.csv",
+      "sha256": "fdf886b911c557747d7699e076cad943143dedd98cc88fd12c9a46ca2118fea3",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR4_whitePanels.csv",
+      "path": "materials/initial/mat_CR4_whitePanels.csv",
+      "sha256": "b7dacf5e72f5ac5a6695113ab860f38c04de84a241dc466a6dd44143c8922d1f",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR4_windows.csv",
+      "path": "materials/initial/mat_CR4_windows.csv",
+      "sha256": "cbcb397f63a4933a177509204db488084ee3c373083107c7d34ca4106757e80e",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_csv/initial_estimates/mat_CR4_woodPanels.csv",
+      "path": "materials/initial/mat_CR4_woodPanels.csv",
+      "sha256": "a465c886a6459f0d147cc71b51e2071fbf7fc48a73840aeb12fb47d459ccc909",
+      "size": 600
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_descr/mat_CR2.txt",
+      "path": "materials/descr/mat_CR2.txt",
+      "sha256": "d56f8c9f5d7f6c4ea5c0b0722755e4c7aed22dc959e8ec8a4f033f39a1d7a1c2",
+      "size": 2683
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_descr/mat_CR3.txt",
+      "path": "materials/descr/mat_CR3.txt",
+      "sha256": "3c46249b7f8146858b365ce1b281381d001dd96d4e0058ae29e7e51d214a096a",
+      "size": 3615
+    },
+    {
+      "group": "materials",
+      "archive": "3_surface_descriptions.zip",
+      "member": "3 Surface descriptions/_descr/mat_CR4.txt",
+      "path": "materials/descr/mat_CR4.txt",
+      "sha256": "0aed5b8ed016e2d0fafcf1511569464761af57b4ff55c57ac16ca936439d901a",
+      "size": 3841
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/calculateRoomAcousticParameters.m",
+      "path": "parameters/calculateRoomAcousticParameters.m",
+      "sha256": "3084c3b5dc7a622591d75f929908217e1886d89f9d34daec7adf3abbad8d6aaa",
+      "size": 5413
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR2_C80.txt",
+      "path": "parameters/Evaluation_CR2_C80.txt",
+      "sha256": "5e80259aa7f3ca80246847494b6b65695b68bf8b2b6cfe767a604dbc9e64ce6b",
+      "size": 298
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR2_D50.txt",
+      "path": "parameters/Evaluation_CR2_D50.txt",
+      "sha256": "c69170c96741661832561a5fca3a0c2dea8db6e0279d0ab70afc7264625e2560",
+      "size": 275
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR2_EDT.txt",
+      "path": "parameters/Evaluation_CR2_EDT.txt",
+      "sha256": "9ba8ef4e1209c9556b9dc553a755c3639abacbe62f3b7b384367d6241821902a",
+      "size": 283
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR2_T20.txt",
+      "path": "parameters/Evaluation_CR2_T20.txt",
+      "sha256": "34fbeaddb055f28ae550c23781d9fbfe8c7f5f7dc728c4e4baa3e2f7a55b42c2",
+      "size": 279
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR3_C80.txt",
+      "path": "parameters/Evaluation_CR3_C80.txt",
+      "sha256": "d7127d6ddbd6a57011ff7954cdd70744b8cf8b7182fbc7da94b40b3b7cf875d2",
+      "size": 285
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR3_D50.txt",
+      "path": "parameters/Evaluation_CR3_D50.txt",
+      "sha256": "30382c5e875b4d59060d2337368adb99e32205deb694f1dd21de64bb6282d6c7",
+      "size": 275
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR3_EDT.txt",
+      "path": "parameters/Evaluation_CR3_EDT.txt",
+      "sha256": "083649f2d967b26aa71edb3352eb93b6cd6b35dedca20c2745d7d7043099e604",
+      "size": 283
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR3_T20.txt",
+      "path": "parameters/Evaluation_CR3_T20.txt",
+      "sha256": "03fad0e5f4d7896f23f477a37a1c989328bd20678f78411ca1a3560eac738881",
+      "size": 283
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR4_C80.txt",
+      "path": "parameters/Evaluation_CR4_C80.txt",
+      "sha256": "a89317a5ff4ef3251d1f15deddf94e23da464ec7f5dc37434fe8f050d82c012a",
+      "size": 296
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR4_D50.txt",
+      "path": "parameters/Evaluation_CR4_D50.txt",
+      "sha256": "35d58307c5b4892bfe32c0268bc885171ad6117f18c764701c6f9338af658b17",
+      "size": 279
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR4_EDT.txt",
+      "path": "parameters/Evaluation_CR4_EDT.txt",
+      "sha256": "8644e9ce9dc34621ac4b5d8a132d48f764d473afe85822ad860b4cd4618877af",
+      "size": 279
+    },
+    {
+      "group": "parameters",
+      "archive": "4_additional_data.zip",
+      "member": "4 Additional data/Room acoustic parameters/data/Evaluation_CR4_T20.txt",
+      "path": "parameters/Evaluation_CR4_T20.txt",
+      "sha256": "4a7aa28d806627f0b2e59a2499f992ff5a9947ce5a0d960a86e250b893b36a1b",
+      "size": 278
+    },
+    {
+      "group": "geometry",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/Geometry/CR2.skp",
+      "path": "CR2/geometry/CR2.skp",
+      "sha256": "2764cb4dc23a5cc86e38f463b48f28a473b362cc9a618be03ed98f0b323e3f13",
+      "size": 218076
+    },
+    {
+      "group": "geometry",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/Geometry/CR2_ModelSimplifications.pdf",
+      "path": "CR2/geometry/CR2_ModelSimplifications.pdf",
+      "sha256": "c3e937d37ffe276aa45eadbca56b9989d95eb7c7b8e3772abb67140667eb9249",
+      "size": 177947
+    },
+    {
+      "group": "geometry",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/CR2_RIRs_Dodecahedron.sofa",
+      "path": "CR2/geometry/CR2_RIRs_Dodecahedron.sofa",
+      "sha256": "4d48d85a0597516aea24bcbd8321885c9b09afcc1310c74e660f61663ca7a947",
+      "size": 10986750
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/wav/CR2_RIR_LS1_MP1_Dodecahedron.wav",
+      "path": "CR2/rirs/CR2_RIR_LS1_MP1_Dodecahedron.wav",
+      "sha256": "3a820f428a755e70e4b43785e2f135280ad9a415201c47498e4a38c0f0c0f9ee",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/wav/CR2_RIR_LS1_MP2_Dodecahedron.wav",
+      "path": "CR2/rirs/CR2_RIR_LS1_MP2_Dodecahedron.wav",
+      "sha256": "9795901a277a19f1abb2015dcb79a5a2ab4c6f627cd844a5f49971a16e03f88b",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/wav/CR2_RIR_LS1_MP3_Dodecahedron.wav",
+      "path": "CR2/rirs/CR2_RIR_LS1_MP3_Dodecahedron.wav",
+      "sha256": "b78e0ed15b0678c8a696ef5f8f78a4b0896defb509f33f7336c8680a81f239c4",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/wav/CR2_RIR_LS1_MP4_Dodecahedron.wav",
+      "path": "CR2/rirs/CR2_RIR_LS1_MP4_Dodecahedron.wav",
+      "sha256": "52ace43828dda6f102d521dc1f4db67658a5b46e90b4928664c7dfb635b9c304",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/wav/CR2_RIR_LS1_MP5_Dodecahedron.wav",
+      "path": "CR2/rirs/CR2_RIR_LS1_MP5_Dodecahedron.wav",
+      "sha256": "018632f093965ea8fbd1dcc8027eb9b38858b3724702ccbf0e61658c339c0360",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/wav/CR2_RIR_LS2_MP1_Dodecahedron.wav",
+      "path": "CR2/rirs/CR2_RIR_LS2_MP1_Dodecahedron.wav",
+      "sha256": "90039db8ea791fd404bac37c34afc4662597d2e5fe3b9f7b6e9a0a20ec708970",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/wav/CR2_RIR_LS2_MP2_Dodecahedron.wav",
+      "path": "CR2/rirs/CR2_RIR_LS2_MP2_Dodecahedron.wav",
+      "sha256": "50e961daf8f24cc3ad28f714d7264e8812d5ed890b6808511105711b65debe75",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/wav/CR2_RIR_LS2_MP3_Dodecahedron.wav",
+      "path": "CR2/rirs/CR2_RIR_LS2_MP3_Dodecahedron.wav",
+      "sha256": "0a094cc4e809e3e259e8ef090bea2044cef9a0ff9ca1c50e1ef220a999b11512",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/wav/CR2_RIR_LS2_MP4_Dodecahedron.wav",
+      "path": "CR2/rirs/CR2_RIR_LS2_MP4_Dodecahedron.wav",
+      "sha256": "22de25be557686f763177da733d79307f9d959d7ffb9d952a730e2c7623c9c0c",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR2.zip",
+      "member": "1 Scene descriptions/CR2 small room (seminar room)/RIRs/wav/CR2_RIR_LS2_MP5_Dodecahedron.wav",
+      "path": "CR2/rirs/CR2_RIR_LS2_MP5_Dodecahedron.wav",
+      "sha256": "ea589a9ad9ce40c532d872903ea1b14500fd6cde8b405a8c6f8c2e7abbdddd76",
+      "size": 617480
+    },
+    {
+      "group": "geometry",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/Geometry/CR3.skp",
+      "path": "CR3/geometry/CR3.skp",
+      "sha256": "41acf16d78476fedfdadce3c66235e7b8e91ee925264ec738a23c56cfb73041b",
+      "size": 12745427
+    },
+    {
+      "group": "geometry",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/Geometry/CR3_ModelSimplifications.pdf",
+      "path": "CR3/geometry/CR3_ModelSimplifications.pdf",
+      "sha256": "9504f08325494a628e9a829ee37b9d69e8326725afa35270e9baf18bd762c3f1",
+      "size": 1821965
+    },
+    {
+      "group": "geometry",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/CR3_RIRs_Dodecahedron.sofa",
+      "path": "CR3/geometry/CR3_RIRs_Dodecahedron.sofa",
+      "sha256": "384c7f427ec064cb8a5c6c0f3e4e78d587d77d1c931599f5df598c07ea1f81cc",
+      "size": 10966875
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/wav/CR3_RIR_LS1_MP1_Dodecahedron.wav",
+      "path": "CR3/rirs/CR3_RIR_LS1_MP1_Dodecahedron.wav",
+      "sha256": "72c8544af7bb84ab581c423d2ea6e598a42fc8356ce4237d578d6841f2e96f35",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/wav/CR3_RIR_LS1_MP2_Dodecahedron.wav",
+      "path": "CR3/rirs/CR3_RIR_LS1_MP2_Dodecahedron.wav",
+      "sha256": "7296c188279b0e7aed0f0578d8a20023fc0fc652b3c5fdba65519d59c5b7c535",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/wav/CR3_RIR_LS1_MP3_Dodecahedron.wav",
+      "path": "CR3/rirs/CR3_RIR_LS1_MP3_Dodecahedron.wav",
+      "sha256": "4f7f9a43eadd2be501cbad65de9f954783a71786bf17e8c5bd08931999e13fd4",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/wav/CR3_RIR_LS1_MP4_Dodecahedron.wav",
+      "path": "CR3/rirs/CR3_RIR_LS1_MP4_Dodecahedron.wav",
+      "sha256": "19e5523fd1919ce56104cdfd5bdeebbf9cdcd1fe713c157a8a01be99ca08def8",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/wav/CR3_RIR_LS1_MP5_Dodecahedron.wav",
+      "path": "CR3/rirs/CR3_RIR_LS1_MP5_Dodecahedron.wav",
+      "sha256": "1edd81bb1858a96243721dbb6a4b07c304cc8b793d2f44620984d2a7fcf4f675",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/wav/CR3_RIR_LS2_MP1_Dodecahedron.wav",
+      "path": "CR3/rirs/CR3_RIR_LS2_MP1_Dodecahedron.wav",
+      "sha256": "fc973f9afeaac110b437c380590790cfa77f690aff146bef164dc19aeab63679",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/wav/CR3_RIR_LS2_MP2_Dodecahedron.wav",
+      "path": "CR3/rirs/CR3_RIR_LS2_MP2_Dodecahedron.wav",
+      "sha256": "052281c3293c959fb3520168d88b74af052f41b188d00af7a0e29732d7a0e745",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/wav/CR3_RIR_LS2_MP3_Dodecahedron.wav",
+      "path": "CR3/rirs/CR3_RIR_LS2_MP3_Dodecahedron.wav",
+      "sha256": "29b3cbbcefe29d10e833d66bc4ad2648c7d7c9b5be7afa1448ecf801cd70587f",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/wav/CR3_RIR_LS2_MP4_Dodecahedron.wav",
+      "path": "CR3/rirs/CR3_RIR_LS2_MP4_Dodecahedron.wav",
+      "sha256": "83018001da590dd6a02fee8ca266eed3e5a93cfc9d46864626a1786ce0b28f8f",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR3.zip",
+      "member": "1 Scene descriptions/CR3 medium room (chamber music hall)/RIRs/wav/CR3_RIR_LS2_MP5_Dodecahedron.wav",
+      "path": "CR3/rirs/CR3_RIR_LS2_MP5_Dodecahedron.wav",
+      "sha256": "b763b2ffa4f8c2e4ee6c50284fa3d3ee079b05c2aec82a5ef90d19fcaf551a39",
+      "size": 617480
+    },
+    {
+      "group": "geometry",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/Geometry/CR4.skp",
+      "path": "CR4/geometry/CR4.skp",
+      "sha256": "853ebebb8dbcbc6b4c092de358c1fae1609fb54f0bfb682074b95b83676840e5",
+      "size": 17079234
+    },
+    {
+      "group": "geometry",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/Geometry/CR4_ModelSimplifications.pdf",
+      "path": "CR4/geometry/CR4_ModelSimplifications.pdf",
+      "sha256": "08f0afeb8bf13fb3bca49f6808dd10316ad7af279659cc0c7b74c26d8410304c",
+      "size": 12345688
+    },
+    {
+      "group": "geometry",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/CR4_RIRs_Dodecahedron.sofa",
+      "path": "CR4/geometry/CR4_RIRs_Dodecahedron.sofa",
+      "sha256": "9370f3817b167a90178e8dd09f59b33bbfcf181c8de16ff539e65db073e7411c",
+      "size": 10933943
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/wav/CR4_RIR_LS1_MP1_Dodecahedron.wav",
+      "path": "CR4/rirs/CR4_RIR_LS1_MP1_Dodecahedron.wav",
+      "sha256": "2f7a71f412513fd4fb1b665274c5ba4fe713e95b40f6a0bfd13083ad93009c1d",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/wav/CR4_RIR_LS1_MP2_Dodecahedron.wav",
+      "path": "CR4/rirs/CR4_RIR_LS1_MP2_Dodecahedron.wav",
+      "sha256": "a4adf3f952a017fa7b03a02696f3df32b522e76d0ae03bf638f892cb80fd991e",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/wav/CR4_RIR_LS1_MP3_Dodecahedron.wav",
+      "path": "CR4/rirs/CR4_RIR_LS1_MP3_Dodecahedron.wav",
+      "sha256": "27a6696e0400a9f8dba28aea53528f05776c522a146a255926454525a7a4b270",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/wav/CR4_RIR_LS1_MP4_Dodecahedron.wav",
+      "path": "CR4/rirs/CR4_RIR_LS1_MP4_Dodecahedron.wav",
+      "sha256": "b97144d51a876507250d93228e6c67c6e065e9898818687ca968c38ccb73e27d",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/wav/CR4_RIR_LS1_MP5_Dodecahedron.wav",
+      "path": "CR4/rirs/CR4_RIR_LS1_MP5_Dodecahedron.wav",
+      "sha256": "a129a50ef029678ea7d7a36063ecccbc4cef19b24ead0ca0f1797e64009dfe36",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/wav/CR4_RIR_LS2_MP1_Dodecahedron.wav",
+      "path": "CR4/rirs/CR4_RIR_LS2_MP1_Dodecahedron.wav",
+      "sha256": "6890c2ead99dd048283da7d5479d57659731cfad4e4cdbbc2bd104424c5c9052",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/wav/CR4_RIR_LS2_MP2_Dodecahedron.wav",
+      "path": "CR4/rirs/CR4_RIR_LS2_MP2_Dodecahedron.wav",
+      "sha256": "425725841784e08b1fabf3cb670e594c8999a1466e9b7608bf9cfaa1baac1e96",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/wav/CR4_RIR_LS2_MP3_Dodecahedron.wav",
+      "path": "CR4/rirs/CR4_RIR_LS2_MP3_Dodecahedron.wav",
+      "sha256": "289c9dcc1b773ce7ca0fc38277aad19be0e135e34beef3d44ff347c01c50a733",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/wav/CR4_RIR_LS2_MP4_Dodecahedron.wav",
+      "path": "CR4/rirs/CR4_RIR_LS2_MP4_Dodecahedron.wav",
+      "sha256": "dd7d1a3d2e7bc45021b9755f4f6eccd79fe1845fe980683db01a2171dda48889",
+      "size": 617480
+    },
+    {
+      "group": "rirs",
+      "archive": "1_scene_descriptions-CR4.zip",
+      "member": "1 Scene descriptions/CR4 large room (auditorium)/RIRs/wav/CR4_RIR_LS2_MP5_Dodecahedron.wav",
+      "path": "CR4/rirs/CR4_RIR_LS2_MP5_Dodecahedron.wav",
+      "sha256": "7451c2b6fa514be67cc13c0c54cfbe80a502e39bfb4af730e629f39c6948a747",
+      "size": 617480
+    }
+  ]
+}

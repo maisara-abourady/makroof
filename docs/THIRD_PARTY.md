@@ -25,6 +25,12 @@ checksum in a script. Python requirements are pinned by version and SHA-256 (`to
 | [pyroomacoustics](https://github.com/LCAV/pyroomacoustics) | `0.10.1` (with `Cython` 3.3.1, Apache-2.0) | [MIT](https://github.com/LCAV/pyroomacoustics/blob/master/LICENSE) | same | Independent second opinion: `experimental.measure_rt60` cross-checks our T30 (Phase 02); its image-source model is the ISM reference from Phase 03. |
 | [pluginval](https://github.com/Tracktion/pluginval) | release `v1.0.4` (zips verified by SHA-256 in `tools/ci/run_pluginval.sh`) | [GPLv3](https://github.com/Tracktion/pluginval/blob/develop/LICENSE) | Downloaded by `tools/ci/run_pluginval.sh` | Plugin validator run at strictness 10 in CI. Never linked. Its 1.0.x CLI always validates in-process (the `--validate-in-process` flag of 0.x no longer exists). |
 
+## Validation datasets (downloaded by checksum, never committed, never shipped)
+
+| Dataset | Version / pin | Licence | How it is pulled in | Notes |
+|---|---|---|---|---|
+| BRAS — Benchmark for Room Acoustical Simulation: Aspöck L., Brinkmann F., Ackermann D., Weinzierl S., Vorländer M., TU Berlin / RWTH Aachen; DepositOnce, DOI [10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3) (v3) | Member files of the v3 archives listed with SHA-256 (and the repository's archive MD5s) in `tools/validation/bras_manifest.json`; CR2–CR4 only (CR1 excluded, coupled) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) (stated in the record and in every SOFA file) | `tools/validation/fetch_bras.py` (HTTP range requests, only the needed zip members), cache `~/.cache/makroof/bras` | Validation only (Phase 05). Derived material in the repository (shoebox scenes in `tests/scenes/validation/`, `docs/validation/bras_mapping.md`, `docs/validation/report-phase05.md`, metrics in `tests/golden/validation_baseline.json`) is adapted from BRAS and carries this attribution; changes: shoebox reduction and band averaging. Under BY-SA, these adaptations are shared under CC BY-SA 4.0. |
+
 ## CI actions (GitHub Actions, pinned by version tag)
 
 | Action | Version | Purpose |
@@ -38,8 +44,7 @@ checksum in a script. Python requirements are pinned by version and SHA-256 (`to
 
 ## Planned (not yet added)
 
-PFFFT (FFT), an HRTF dataset and the BRAS measured-IR dataset arrive
-in later phases. Add their rows when they are pinned.
+PFFFT (FFT) and an HRTF dataset arrive in later phases. Add their rows when they are pinned.
 
 Validation datasets for phase 05d (decider report 15, accepted by Maisara, 2026-11-05; facts from
 researcher reports 13/14, external). The 05d session pins them, confirms the licence on the live record
