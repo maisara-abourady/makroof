@@ -74,6 +74,7 @@ class _Parser:
         self.objs = objs
         self.cur_def = None
         self.root = False
+        self.root_start = None  # file position where the root entities begin
 
     # primitives
     def u8(self):
@@ -140,7 +141,8 @@ class _Parser:
             return self.objs[t]
         name = self.cls[ci]
         self.idx += 1
-        o = {"_c": name, "_i": self.idx, "_owner": "root" if self.root else self.cur_def}
+        is_root = self.root or (self.root_start is not None and start >= self.root_start)
+        o = {"_c": name, "_i": self.idx, "_owner": "root" if is_root else self.cur_def}
         self.objs[self.idx] = o
         handler = _HANDLERS.get(name)
         if handler is None:
@@ -293,6 +295,13 @@ def read(data: bytes, log=None) -> Model:
     else:
         p.defs_seen = 0
         p.root = True
+    # Every definition record ends with its thumbnail PNG, so the root entities start after the
+    # n_defs-th PNG end (IEND chunk + CRC); checked: the BRAS files have exactly n_defs of them.
+    iends = [m.start() + 8 for m in re.finditer(rb"IEND\xaeB`\x82", data)]
+    if n_defs and len(iends) >= n_defs:
+        p.root_start = iends[n_defs - 1]
+    elif n_defs:
+        raise SkpFormatError(f"{n_defs} definitions but only {len(iends)} thumbnails")
     model = Model(definitions=n_defs)
     while p.pos < len(data) - 2:
         try:
@@ -305,9 +314,6 @@ def read(data: bytes, log=None) -> Model:
                 break
             q, delta = found
             _opaque(p.objs, p.idx + 1, p.idx + delta)
-            # After the last definition's thumbnail (a PNG) the root entities start.
-            if not p.root and p.defs_seen >= n_defs and data.find(b"IEND\xaeB`\x82", fail, q) >= 0:
-                p.root = True
             p.pos = q
             p.idx += delta
     # The first definition's object is in the opaque region: the one pre-region object that
@@ -351,6 +357,8 @@ def _trial(p, data, pos, idx, k=60):
     _opaque(objs, p.idx + 1, idx)
     q = _Parser(data, pos, idx, p.cls, objs)
     q.defs_seen = p.defs_seen
+    q.root_start = p.root_start
+    q.cur_def = p.cur_def
     got = 0
     try:
         for _ in range(k):
@@ -361,9 +369,11 @@ def _trial(p, data, pos, idx, k=60):
     except _Stop as e:
         # a record this reader has no layout for is not a desync: accept the position when
         # enough objects parsed before it (bad references and unknown class tags reject it)
-        return "definition body" in str(e) or ("no reader" in str(e) and got >= 10)
+        # (a desynchronised parse practically never yields 20 consistent new objects, so a stop
+        # after that many is the end of the record: a definition trailer, say)
+        return "definition body" in str(e) or ("no reader" in str(e) and got >= 10) or got >= 20
     except Exception:
-        return False
+        return got >= 20
     return got >= 10
 
 
