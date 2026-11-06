@@ -1,14 +1,13 @@
-"""Phase-05 scope 7 (decider D5, E3, N1): the measured-IR noise handling and the simulated EDC.
+"""Phase-05 scope 7 (decider D5, E3, N1; Phase 05e decision D-C, AX27): the measured-IR noise
+handling and the simulated EDC.
 
-Paired noise test, case A: |mean paired T30 bias| <= 0.6 % with SE <= 0.15 % in each of 18
-conditions (500 Hz, 1 kHz, 2 kHz x T = 1, 2 s x noise 48, 55, 65 dB below the decay). Measured
-on this branch (tools/acoustics/data/phase05_meter_checks.json): every 48 dB condition reads
-+1.8 ... +2.1 % and 500 Hz / 1 s / 55 dB +0.60 %, against the plan's predicted +0.23 % at 48 dB.
-The cause is the noise energy integrated between the -35 dB point and the Lundeby crosspoint (one
-correction only, no noise subtraction, as specified); removing the upper hull changes it by
-< 0.05 points. Those conditions are strict xfails pending a plan decision (D-C). Three 48 dB conditions also have
-'unsuitable' realisations (noisy-arm T30 None: 5/51, 1/51, 1/51), tested separately (PR, "Plan decisions
-needed"); if they start passing, the test says so. Case B (125 Hz, T = 0.3 s) is reported only.
+Paired noise test, case A, with AX27 noise subtraction: |mean paired T30 bias| <= 0.6 % with
+SE <= 0.15 % in each of 18 conditions (500 Hz, 1 kHz, 2 kHz x T = 1, 2 s x noise L_min, 55, 65 dB
+below the decay), no realisation 'unsuitable' (T30 None). L_min follows AX27's rule (the lowest
+level, in 1 dB steps from 51 dB, with median - 3 SD of the noise margin >= 45 dB in every
+condition); ``test_l_min_is_the_lowest_level_meeting_the_ax27_rule`` checks the constant against
+the rule. The former 48 dB level, 51 dB, case B, EDT and C80 are reported (run_meter_checks), not
+gated. Seeds are fixed per condition, so the test is deterministic.
 """
 
 import functools
@@ -17,42 +16,63 @@ import pytest
 
 from tools.acoustics import meter_checks as m
 
-# Bias above 0.6 % (measured): every 48 dB condition and 500 Hz / 1 s / 55 dB.
-FAILING_BIAS = {(500.0, 1.0, 48.0), (500.0, 2.0, 48.0), (1000.0, 1.0, 48.0), (1000.0, 2.0, 48.0), (2000.0, 1.0, 48.0),
-                (2000.0, 2.0, 48.0), (500.0, 1.0, 55.0)}
-# Realisations whose noisy-arm T30 is None ("unsuitable", reported separately, not a bias failure):
-# 5/51, 1/51, 1/51 (measured).
-FAILING_SUITABLE = {(500.0, 1.0, 48.0), (500.0, 2.0, 48.0), (1000.0, 1.0, 48.0)}
-
 
 @functools.lru_cache(maxsize=None)
-def _result(k):
-    return m.paired_noise_test([m.CASE_A[k]], seed=7070 + 1000 * k)[0]  # same seeds as run_meter_checks
+def _result(cond):
+    return m.paired_noise_test([cond])[0]  # same seeds as run_meter_checks (condition_seed)
 
 
-def _params(failing, reason):
-    for k, c in enumerate(m.CASE_A):
-        marks = [pytest.mark.xfail(strict=True, reason=reason)] if c in failing else []
-        yield pytest.param(k, c, marks=marks, id=f"{c[0]:.0f}Hz-T{c[1]}-{c[2]:.0f}dB")
+CONDS = [pytest.param(c, id=f"{c[0]:.0f}Hz-T{c[1]}-{c[2]:.0f}dB") for c in m.CASE_A]
 
 
-@pytest.mark.parametrize("k,cond", list(_params(FAILING_BIAS, "phase-05 paired noise test: measured bias above 0.6 % "
-                                                 "(noise energy before the crosspoint), plan decision D-C pending")))
-def test_paired_noise_case_a_bias(k, cond):
-    res = _result(k)
-    assert res["se_pct"] <= 0.15
+def test_case_a_has_18_conditions_at_l_min_55_65():
+    assert len(m.CASE_A) == 18
+    assert sorted({c[2] for c in m.CASE_A}) == sorted({m.L_MIN_DB, 55.0, 65.0})
+
+
+@pytest.mark.parametrize("cond", CONDS)
+def test_paired_noise_case_a_bias(cond):
+    res = _result(cond)
+    assert res["noise_subtraction"]
+    assert res["se_pct"] <= 0.15, res
     assert abs(res["mean_bias_pct"]) <= 0.6, res
 
 
-@pytest.mark.parametrize("k,cond", list(_params(FAILING_SUITABLE, "phase-05 paired noise test: some realisations return "
-                                                 "T30 None (unsuitable), plan decision D-C pending")))
-def test_paired_noise_case_a_every_realisation_is_suitable(k, cond):
-    assert _result(k)["unsuitable"] == 0, "a realisation returned T30 None: condition unsuitable"
+@pytest.mark.parametrize("cond", CONDS)
+def test_paired_noise_case_a_every_realisation_is_suitable(cond):
+    assert _result(cond)["unsuitable"] == 0, "a realisation returned T30 None: condition unsuitable"
+
+
+def _worst_margin(level):
+    rows = [m.paired_noise_condition(fc, T, level, 51, m.condition_seed(fc, T, level)) for fc, T in m.CASE_A_FC_T]
+    return min(r["margin_median_minus_3sd_dB"] for r in rows)
+
+
+def test_l_min_is_the_lowest_level_meeting_the_ax27_rule():
+    assert m.L_MIN_DB >= m.L_MIN_PLAN_DB
+    assert _worst_margin(m.L_MIN_DB) >= m.MARGIN_REQUIRED_DB
+    if m.L_MIN_DB > m.L_MIN_PLAN_DB:
+        assert _worst_margin(m.L_MIN_DB - 1.0) < m.MARGIN_REQUIRED_DB
 
 
 def test_simulated_edc_within_0_01_db_of_integration_to_the_end():
-    r = m.simulated_edc_check()
+    r = m.simulated_edc_check()  # AX27 on
     assert abs(r["difference_dB"]) <= 0.01, r
+
+
+def test_ax27_is_off_by_default_and_no_op_without_noise():
+    import numpy as np
+
+    from tools.acoustics import metrics
+
+    rng = np.random.default_rng(3)
+    fs = 48000.0
+    t = np.arange(int(1.2 * fs)) / fs
+    h = rng.standard_normal(t.size) * np.exp(-6.91 * t / 0.8)
+    h[int(0.9 * fs):] = 0.0  # exact zeros: noise-free, so the subtraction has nothing to remove
+    a = metrics.room_metrics(h, fs)
+    b = metrics.room_metrics(h, fs, noise_subtraction=True)
+    assert a["bands"]["1000"]["T30"] == b["bands"]["1000"]["T30"]
 
 
 def test_two_term_model_reproduces_the_plan_values():

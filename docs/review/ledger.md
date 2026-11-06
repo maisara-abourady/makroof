@@ -1317,3 +1317,28 @@ case 6 is borderline. No round 3 needed. Status: D-A, D-B, D-C applied; vetoable
 No rule, threshold or assumption changed; one science statement, checked by the main session: with A fixed, Sabine
 T = 0.161 V/A (Kuttruff Eq. 5.8, and Eyring likewise) scales with V, so 146.1 vs 145 m³ gives +1.1/145 = +0.76 % in
 predicted T for every CR2 pair. CORRECT. Status: applied; 05e establishes the cause before any comparison.
+
+## Phase 05e session 1 — AX27 L_min re-measurement and noise-margin estimator (2026-11-06; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Main session measured AX27's L_min as the rule requires (`tools/acoustics/meter_checks.py` `find_l_min`, R = 51 per
+condition, seeds fixed per condition by `condition_seed`; record `tools/acoustics/data/phase05_meter_checks.json`).
+The noise margin AX27 defines, 10·log10(P_line(t₀)/N̂) (`line_margin_db`), gives worst median − 3·SD (500 Hz, T = 1 s)
+41.9 / 42.6 / 44.6 / 44.3 / 44.5 / 44.7 / 46.8 dB at 51…57 dB, so **L_min = 57 dB** by the rule. The plan's prototype
+numbers (42.8 / 44.7 / 45.7 / 46.8 dB at 48 / 50 / 51 / 52 dB) and its "≈ 1.4 dB below nominal" are reproduced exactly
+by the peak-referred dynamic range (`dynamic_range_db`), not by the defined estimator (which reads 1.2–2.8 dB below
+nominal, SD 2–3 dB at 500 Hz / 1 s against ≈ 1.1 dB). Paired T30 bias with AX27: |mean| ≤ 0.13 %, SE ≤ 0.042 % in all
+18 gated conditions (57, 55, 65 dB); 51 dB +0.06…+0.15 %, 0 unsuitable; 48 dB up to +0.26 %, 7/51 unsuitable at
+500 Hz / 1 s.
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| E5-1 | NUMBER | L_min = 51 dB "of the Lundeby dynamic-range estimate (the noise margin below)" = P_line(t₀)/N̂ | INCONSISTENT | the "≈ 1.4 dB" claim and the prototype values match `dynamic_range_db` (51 − 49.56 = 1.44 dB), not the defined estimator (51 − 48.18 = 2.82 dB); with the defined estimator the rule gives 56–57 dB depending on the seed scheme | major (test gate and BRAS admission) | open: Maisara decides (applied: the text's estimator, L_min = 57 dB) |
+| E5-2 | NUMBER | 45 dB margin requirement | NOT CHECKABLE | Kuttruff §8.4, Vorländer §6.4.1 give the −5…−35 dB range re the initial level; no corpus noise-margin rule (ISO 3382-1 would settle it) | none | open |
+| E5-3 | FACT | margin referred to the decay, not the envelope peak | NOT CHECKABLE (leans to the defined estimator) | Kuttruff §8.4 (Eq. 8.29 context): noise bends the lower end of the backward-integrated curve; the reference is the decay's initial level; in a measured IR the envelope peak includes the direct sound (interrogator's inference) | none | open |
+| E5-4 | NUMBER | median − 3·SD over R = 51 in 1 dB steps | NOT CHECKABLE | non-corpus arithmetic: SE(3·SD) ≈ 0.6 dB, SE(median) ≈ 0.35 dB at SD 2 dB: the ±1 dB seed sensitivity observed | none | open |
+| E5-5 | FACT | Begault's 60 dB | CONSEQUENCE | Begault Ch. 4: 60 dB "to capture the whole decay" is an auralization condition, not a T30 condition | minor | open |
+
+Consequence on BRAS (measured `line_margin_db`, AQ9 bands): CR2 500 Hz 51.8–61.2 dB, CR4 500 Hz 55.7–59.6 dB, CR4
+2 kHz 56.7–62.1 dB, CR3 ≥ 65.5 dB. At 57 dB a large share of CR2/CR4 AQ9 bands leaves the gated mean; at 51 dB nearly
+all enter. Status: L_min = 57 dB applied by the rule as written; question for Maisara (estimator, and therefore 51 or
+57 dB) in the phase-05e PR.

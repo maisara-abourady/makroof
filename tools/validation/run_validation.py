@@ -61,7 +61,7 @@ CONDITIONS = {"CR2": (19.5, 41.7), "CR3": (22.4, 40.9), "CR4": (20.9, 37.5)}  # 
 
 def analyse(h: np.ndarray, fs: float) -> dict:
     """Per-band T30 / T20 / EDT / C80 with the usable-range tests, both meters, and diagnostics."""
-    m = metrics.room_metrics(h, fs)
+    m = metrics.room_metrics(h, fs, noise_subtraction=True)  # AX27: the validation decay path
     out = {"onset_s": m["onset_s"], "bands": {}}
     onset = metrics.onset_index(h)
     pre = h[:onset]
@@ -77,7 +77,7 @@ def analyse(h: np.ndarray, fs: float) -> dict:
                "T20": b["T20"] if ok("T20") else None, "dynamic_range_db": dr, "line_margin_db": lm,
                "noise_floor_db": b["noise_floor_db"], "crosspoint_s": b["crosspoint_s"]}
         if fc in HALF_BANDS:
-            hm = ensembles.band_metrics_half_octave_ensemble(np.asarray(h)[None, :], fs, fc)
+            hm = ensembles.band_metrics_half_octave_ensemble(np.asarray(h)[None, :], fs, fc, noise_subtraction=True)
             row["T30_half"], row["EDT_half"] = hm["T30"], hm["EDT"]
         # "noise not verified" inputs: mean square of the last 10 % of the band-filtered IR
         y, _ = bands.filter_band_with_lead(h, fs, fc)
@@ -125,6 +125,11 @@ def compare_pair(sim: dict, meas: dict) -> dict:
             sig = math.hypot(4.34 / math.sqrt(B * t1), 4.34 / math.sqrt(B * t2))
             d["noise_not_verified"] = abs(nf - l10) > 3 * sig
         d["low_band_BT_lt_16"] = fc <= 125 and tm is not None and 0.71 * fc * tm < 16
+        # AX27: a measured band enters the gated AQ9 mean and B12 only at a noise margin >= L_min
+        lm = mrow["line_margin_db"]
+        d["noise_margin_db"] = lm
+        d["admitted"] = lm is None or lm >= meter_checks.L_MIN_DB
+        d["noise_not_verified_margin"] = not d["admitted"]
         per_band[k] = d
     return per_band
 
@@ -132,7 +137,8 @@ def compare_pair(sim: dict, meas: dict) -> dict:
 def aq9(per_band: dict, bands_hz=AQ9_BANDS, half=False) -> dict:
     """Mean of the absolute per-band errors (AQ9); None when no band is evaluable."""
     def mean_abs(key, bs):
-        v = [abs(per_band[bands.band_key(f)][key]) for f in bs if per_band[bands.band_key(f)][key] is not None]
+        v = [abs(per_band[bands.band_key(f)][key]) for f in bs
+             if per_band[bands.band_key(f)][key] is not None and per_band[bands.band_key(f)].get("admitted", True)]
         return (float(np.mean(v)), len(v)) if v else (None, 0)
     tkey = "T_err_pct"
     res = {}
@@ -143,7 +149,7 @@ def aq9(per_band: dict, bands_hz=AQ9_BANDS, half=False) -> dict:
             for f in bands_hz:
                 kk = f"{q}_half_err_pct" if f in HALF_BANDS else key
                 v = per_band[bands.band_key(f)].get(kk)
-                if v is not None:
+                if v is not None and per_band[bands.band_key(f)].get("admitted", True):
                     vals.append(abs(v))
             res[name] = float(np.mean(vals)) if vals else None
             res[name + "_n"] = len(vals)
@@ -455,10 +461,11 @@ def b12(res: dict) -> dict:
                         continue
                     if pred == "a_star" and not r["predictors"]["bands"][k].get("a_star_converged_0.4pct"):
                         conv[rk] = False
+                    adm = [p for p in pairs if p["bands"][k].get("admitted", True)]  # AX27 noise margin
                     if use_half and fc in HALF_BANDS:
-                        tm = [p["meas"]["bands"][k]["T30_half"] for p in pairs if p["meas"]["bands"][k]["T30_half"]]
+                        tm = [p["meas"]["bands"][k]["T30_half"] for p in adm if p["meas"]["bands"][k]["T30_half"]]
                     else:
-                        tm = [p["meas"]["bands"][k]["T30"] for p in pairs if p["meas"]["bands"][k]["T30"]]
+                        tm = [p["meas"]["bands"][k]["T30"] for p in adm if p["meas"]["bands"][k]["T30"]]
                     if tm:
                         vals.append(abs(100 * (tp / np.mean(tm) - 1)))
                 if vals:
