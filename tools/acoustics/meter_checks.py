@@ -214,6 +214,8 @@ def paired_noise_condition(fc: float, t60: float, noise_below_db: float, R: int,
                                        if np.isfinite(mg).sum() > 1 else None),
         "dynamic_range_median_dB": float(np.nanmedian(dyn)) if np.isfinite(dyn).any() else None,
         "dynamic_range_sd_dB": float(np.nanstd(dyn, ddof=1)) if np.isfinite(dyn).sum() > 1 else None,
+        "dynamic_range_median_minus_3sd_dB": (float(np.nanmedian(dyn) - 3 * np.nanstd(dyn, ddof=1))
+                                              if np.isfinite(dyn).sum() > 1 else None),
         "mean_bias_pct": float(b.mean()) if b.size else None,
         "sd_pct": float(b.std(ddof=1)) if b.size > 1 else None,
         "se_pct": float(b.std(ddof=1) / math.sqrt(b.size)) if b.size > 1 else None,
@@ -222,17 +224,17 @@ def paired_noise_condition(fc: float, t60: float, noise_below_db: float, R: int,
     }
 
 
-# AX27 (decision D-C): L_min is the lowest noise level (1 dB steps, from the plan's 51 dB) with
-# median - 3 SD of the noise margin >= 45 dB in every case A condition. The noise margin is AX27's
-# 10 log10(P_line(t0) / N̂) (``LundebyResult.line_margin_db``). Re-measured in Phase 05e
-# (run_meter_checks, ``find_l_min``): 57 dB, not 51 dB; the plan prototype's 45.7 dB at 51 dB is
-# reproduced by the peak-referred dynamic range instead (``dynamic_range_db``, also recorded).
+# AX27 (decision D-C; E5-1 resolved by option C, 2026-11-06): L_min is the lowest noise level (1 dB
+# steps from 51 dB) with median - 3 SD >= 45 dB in every case A condition of the peak-referred Lundeby
+# dynamic range (``dynamic_range_db``, the D7(1) quantity); re-measured in Phase 05e: 51 dB. Measured
+# bands are admitted to the AQ9 mean and B12 at the decay-referred noise margin
+# 10 log10(P_line(t0) / N̂) (``line_margin_db``) >= L_min (tools/validation/run_validation.py).
 L_MIN_PLAN_DB = 51.0
-L_MIN_DB = 57.0
+L_MIN_DB = 51.0
 MARGIN_REQUIRED_DB = 45.0  # ISO 3382-1 §4.2.1, T30
 CASE_A_FC_T = [(fc, T) for fc in (500.0, 1000.0, 2000.0) for T in (1.0, 2.0)]
 CASE_A = [(fc, T, L) for fc, T in CASE_A_FC_T for L in (L_MIN_DB, 55.0, 65.0)]  # gated (18 conditions)
-CASE_A_REPORTED = [(fc, T, L) for fc, T in CASE_A_FC_T for L in (48.0, L_MIN_PLAN_DB)]  # reported, not gated
+CASE_A_REPORTED = [(fc, T, 48.0) for fc, T in CASE_A_FC_T]  # the former lowest level: reported, not gated
 CASE_B = [(125.0, 0.3, L) for L in (48.0, 55.0, L_MIN_DB, 65.0)]  # plateau regime, reported
 
 
@@ -242,19 +244,20 @@ def condition_seed(fc: float, T: float, L: float, base: int = 7070) -> int:
 
 
 def find_l_min(start_db: float = L_MIN_PLAN_DB, stop_db: float = 70.0, R: int = 51, log=None) -> dict:
-    """AX27 rule: the lowest level >= start_db, in 1 dB steps, at which median - 3 SD of the noise
-    margin is >= 45 dB in every case A (f_c, T); per level, the worst condition is recorded."""
+    """AX27 rule: the lowest level >= start_db, in 1 dB steps, at which median - 3 SD of the
+    peak-referred dynamic range is >= 45 dB in every case A (f_c, T); per level, the worst condition
+    is recorded (with the decay-referred noise margin beside it, reported)."""
     levels = []
     L = start_db
     while L <= stop_db:
         rows = [paired_noise_condition(fc, T, L, R, condition_seed(fc, T, L)) for fc, T in CASE_A_FC_T]
-        worst = min(rows, key=lambda r: r["margin_median_minus_3sd_dB"])
+        worst = min(rows, key=lambda r: r["dynamic_range_median_minus_3sd_dB"])
         levels.append({"level_dB": L, "worst": {k: worst[k] for k in ("f_c", "T", "margin_median_dB", "margin_sd_dB",
                                                                         "margin_median_minus_3sd_dB", "dynamic_range_median_dB",
-                                                                        "dynamic_range_sd_dB")}})
+                                                                        "dynamic_range_sd_dB", "dynamic_range_median_minus_3sd_dB")}})
         if log:
             log(levels[-1])
-        if worst["margin_median_minus_3sd_dB"] >= MARGIN_REQUIRED_DB:
+        if worst["dynamic_range_median_minus_3sd_dB"] >= MARGIN_REQUIRED_DB:
             return {"L_min_dB": L, "levels": levels}
         L += 1.0
     return {"L_min_dB": None, "levels": levels}

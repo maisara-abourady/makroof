@@ -4,9 +4,9 @@ handling and the simulated EDC.
 Paired noise test, case A, with AX27 noise subtraction: |mean paired T30 bias| <= 0.6 % with
 SE <= 0.15 % in each of 18 conditions (500 Hz, 1 kHz, 2 kHz x T = 1, 2 s x noise L_min, 55, 65 dB
 below the decay), no realisation 'unsuitable' (T30 None). L_min follows AX27's rule (the lowest
-level, in 1 dB steps from 51 dB, with median - 3 SD of the noise margin >= 45 dB in every
+level, in 1 dB steps from 51 dB, with median - 3 SD of the peak-referred dynamic range >= 45 dB in every
 condition); ``test_l_min_is_the_lowest_level_meeting_the_ax27_rule`` checks the constant against
-the rule. The former 48 dB level, 51 dB, case B, EDT and C80 are reported (run_meter_checks), not
+the rule. The former 48 dB level, case B, EDT and C80 are reported (run_meter_checks), not
 gated. Seeds are fixed per condition, so the test is deterministic.
 """
 
@@ -45,7 +45,7 @@ def test_paired_noise_case_a_every_realisation_is_suitable(cond):
 
 def _worst_margin(level):
     rows = [m.paired_noise_condition(fc, T, level, 51, m.condition_seed(fc, T, level)) for fc, T in m.CASE_A_FC_T]
-    return min(r["margin_median_minus_3sd_dB"] for r in rows)
+    return min(r["dynamic_range_median_minus_3sd_dB"] for r in rows)
 
 
 def test_l_min_is_the_lowest_level_meeting_the_ax27_rule():
