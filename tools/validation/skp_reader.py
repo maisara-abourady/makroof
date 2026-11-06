@@ -46,6 +46,7 @@ show up as a failed parse, and the area checks catch silently wrong geometry.
 
 from __future__ import annotations
 
+import collections
 import re
 import struct
 import sys
@@ -303,16 +304,39 @@ def read(data: bytes, log=None) -> Model:
     elif n_defs:
         raise SkpFormatError(f"{n_defs} definitions but only {len(iends)} thumbnails")
     model = Model(definitions=n_defs)
+    next_report = 1 << 20
+    last = None  # state at the last re-synchronisation, for the index-offset correction below
     while p.pos < len(data) - 2:
+        if log and p.pos >= next_report:  # progress (Phase 05e: long runs must show how far they got)
+            log(f"skp: {p.pos / 1e6:.1f} / {len(data) / 1e6:.1f} MB, {len(model.skips)} skips")
+            next_report = p.pos + (1 << 20)
         try:
             p.ref()
         except (_Stop, struct.error, UnicodeDecodeError, IndexError) as e:
+            k = _offset_correction(p, last, e)
+            if k:
+                # A class's index is the object index of its definition. A tag naming an unknown
+                # class just above the class defined after the last re-synchronisation means that
+                # re-synchronisation under-counted the objects in the skipped bytes by k (nothing
+                # in its trial window referenced them): replay from there with delta + k, once.
+                q, delta, idx0, state = last
+                for i in [i for i in p.objs if isinstance(i, int) and i > idx0]:
+                    del p.objs[i]
+                for i in [i for i in p.cls if i > idx0]:
+                    del p.cls[i]
+                p.cur_def, p.defs_seen, p.root = state
+                _opaque(p.objs, idx0 + 1, idx0 + delta + k)
+                p.pos, p.idx = q, idx0 + delta + k
+                model.skips.append((q, (q, delta + k), f"index offset corrected by {k} ({e})"))
+                last = None
+                continue
             fail = p.pos
             found = _resync(p, data)
             model.skips.append((fail, found, str(e)))
             if found is None:
                 break
             q, delta = found
+            last = (q, delta, p.idx, (p.cur_def, p.defs_seen, p.root))
             _opaque(p.objs, p.idx + 1, p.idx + delta)
             p.pos = q
             p.idx += delta
@@ -326,12 +350,34 @@ def read(data: bytes, log=None) -> Model:
         p.objs[i]["_i"] = "def0"
     for o in p.objs.values():
         if o["_c"] == "CFace":
+            if not all(k in o for k in ("n", "d", "loops")):
+                # a face record cut off by a parse stop (registered before its fields were read):
+                # no geometry, so it is left out and logged; the per-material area check of
+                # extract_bras_geometry.py shows whether anything that matters is missing (Phase 05e, CR4)
+                model.skips.append((None, None, f"incomplete face record {o['_i']}"))
+                continue
             model.faces.append(o)
         elif o["_c"] in ("CGroup", "CComponentInstance"):
             model.instances.append(o)
     if log:
         log(f"skp: {len(model.faces)} faces, {len(model.instances)} instances, {n_defs} definitions, {len(model.skips)} skips")
     return model
+
+
+def _offset_correction(p, last, err) -> int:
+    """k > 0 if ``err`` is an unknown class tag ci with ci - c in 1..63, c the newest class index
+    defined since the last re-synchronisation (see read); else 0."""
+    if last is None or not str(err).startswith("unknown class "):
+        return 0
+    try:
+        ci = int(str(err).split()[2], 16)
+    except (IndexError, ValueError):
+        return 0
+    newer = [c for c in p.cls if c > last[2] + last[1]]
+    if not newer:
+        return 0
+    k = ci - max(newer)
+    return k if 0 < k < 64 else 0
 
 
 def _definition_class_index(data, first_geom, base):
@@ -353,7 +399,11 @@ def _opaque(objs, first, last):
 
 
 def _trial(p, data, pos, idx, k=60):
-    objs = dict(p.objs)
+    # Copy-on-write view of the object table: a trial's writes go to its own layer and reads fall
+    # through to p.objs (same semantics as the former shallow copy dict(p.objs), whose O(N) cost per
+    # trial, up to 64 trials per candidate position, made re-synchronisation quadratic in the model
+    # size; Phase 05e, CR4).
+    objs = collections.ChainMap({}, p.objs)
     _opaque(objs, p.idx + 1, idx)
     q = _Parser(data, pos, idx, p.cls, objs)
     q.defs_seen = p.defs_seen
