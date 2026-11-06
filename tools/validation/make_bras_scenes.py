@@ -381,6 +381,27 @@ def write_mapping(g_all, reduction):
     MAPPING.write_text(head + mapping_section(g_all, reduction), encoding="utf-8")
 
 
+REDUCTION_RTOL = 1e-9
+
+
+def _max_rel_diff(a, b) -> float:
+    """Largest relative difference between two JSON values of the same structure (inf if the
+    structure or a non-numeric value differs)."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        if a.keys() != b.keys():
+            return float("inf")
+        return max((_max_rel_diff(a[k], b[k]) for k in a), default=0.0)
+    if isinstance(a, list) and isinstance(b, list):
+        if len(a) != len(b):
+            return float("inf")
+        return max((_max_rel_diff(x, y) for x, y in zip(a, b)), default=0.0)
+    if isinstance(a, bool) or isinstance(b, bool) or not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
+        return 0.0 if a == b else float("inf")
+    if a == b:
+        return 0.0
+    return abs(a - b) / max(abs(a), abs(b))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
@@ -393,8 +414,14 @@ def main(argv=None):
     if a.check:
         bad = [n for n, t in texts.items() if not (SCENES / n).exists() or (SCENES / n).read_text() != t]
         bad += [p.name for p in SCENES.glob("bras_*.json") if p.name not in texts]
-        if REDUCTION.read_text() != red_text:
-            bad.append(REDUCTION.name)
+        # The reduction stores full-precision floats; their last bits can differ between runner CPUs
+        # (numpy SIMD paths), so it is compared numerically (relative 1e-9), not as text. The scenes
+        # are rounded and compared exactly.
+        worst = _max_rel_diff(json.loads(REDUCTION.read_text()), json.loads(red_text))
+        if worst > REDUCTION_RTOL:
+            bad.append(f"{REDUCTION.name} (max relative difference {worst:.3g})")
+        elif worst > 0:
+            print(f"{REDUCTION.name}: float differences up to {worst:.3g} (within {REDUCTION_RTOL:g})")
         if bad:
             raise SystemExit(f"out of date: {bad}")
         print("scenes up to date")
