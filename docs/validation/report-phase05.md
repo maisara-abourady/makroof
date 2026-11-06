@@ -459,6 +459,23 @@ Positions of the synthetic cases: AX28 (the AQ10 benchmark room's listener and e
 | Handover floor + 140 ms vs rule, on the Phase 04 IR (reported) | EDT | 2.899 → 3.967 | +1.068 | 0.023 | CR2 -0.623 (0.027); CR3 +2.759 (0.037) | yes | reported; some pair moves > 1 jnd: yes |
 | Handover floor + 140 ms vs rule, on the Phase 04 IR (reported) | C80 | 1.217 → 1.362 | +0.145 | 0.008 | CR2 +0.015 (0.011); CR3 +0.276 (0.010) | yes |  |
 
+In-range figure (500–1000 Hz mean; Vorländer Table 6.1 states these jnds for 500–1000 Hz only) and per-band Δ̂ (room-averaged; for the handover, per band whether the two handovers differ by more than 1 jnd):
+
+| comparison | metric | Δ̂ 500–1000 Hz (SE) | Δ̂ 500 Hz | Δ̂ 1 kHz | Δ̂ 2 kHz | bands with \|Δ̂\| > 1 jnd | pairs > 1 jnd per band (500 / 1k / 2k) |
+|---|---|---|---|---|---|---|---|
+| B11 (B): reference hybrid vs Phase 04 IR (rule handover) | EDT | -0.060 (0.016) | -0.615 | +0.495 | +1.159 | 2000 | 7 / 6 / 10 |
+| B11 (B): reference hybrid vs Phase 04 IR (rule handover) | C80 | +0.112 (0.008) | -0.263 | +0.486 | +0.608 | none | 5 / 6 / 10 |
+| B10: hybrid with BRAS per-band s vs broadband s | EDT | +0.054 (0.002) | +0.120 | -0.013 | +0.224 | none | 0 / 0 / 0 |
+| B10: hybrid with BRAS per-band s vs broadband s | C80 | +0.004 (0.002) | +0.019 | -0.011 | +0.128 | none | 0 / 0 / 0 |
+| Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | -0.086 (0.011) | -0.192 | +0.021 | +0.338 | none | 0 / 0 / 3 |
+| Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | C80 | +0.028 (0.006) | -0.068 | +0.123 | +0.209 | none | 0 / 0 / 1 |
+| Handover floor t_dir,e + 140 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | -0.225 (0.019) | -0.171 | -0.278 | +0.085 | none | 7 / 1 / 0 |
+| Handover floor t_dir,e + 140 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | C80 | -0.081 (0.010) | -0.023 | -0.139 | -0.482 | none | 1 / 2 / 5 |
+| Handover floor + 80 ms vs rule, on the Phase 04 IR (reported) | EDT | -0.459 (0.017) | -0.275 | -0.643 | -0.882 | none | 14 / 10 / 10 |
+| Handover floor + 80 ms vs rule, on the Phase 04 IR (reported) | C80 | +0.228 (0.012) | +0.258 | +0.197 | +0.410 | none | 2 / 3 / 6 |
+| Handover floor + 140 ms vs rule, on the Phase 04 IR (reported) | EDT | +1.902 (0.033) | +1.804 | +2.000 | -0.600 | 500, 1000 | 20 / 14 / 13 |
+| Handover floor + 140 ms vs rule, on the Phase 04 IR (reported) | C80 | +0.086 (0.011) | -0.181 | +0.353 | +0.264 | none | 5 / 2 / 3 |
+
 Pairs whose handover Δ̂ exceeds 1 jnd: bras_cr3_ls1_mp3 C80 -1.18; bras_cr2_ls1_mp1 EDT -1.25; bras_cr2_ls1_mp2 EDT -1.45; bras_cr2_ls1_mp3 EDT -1.55; bras_cr2_ls1_mp4 EDT -1.21; bras_cr2_ls1_mp5 EDT -1.52; bras_cr2_ls2_mp1 EDT -1.35; bras_cr2_ls2_mp2 EDT -1.50; bras_cr2_ls2_mp3 EDT -1.50; bras_cr2_ls2_mp4 EDT -1.39; bras_cr2_ls2_mp5 EDT -1.47; bras_cr2_ls1_mp4 C80 +1.37; bras_cr2_ls1_mp5 C80 +1.23; bras_cr2_ls2_mp5 C80 +1.76; bras_cr2_ls2_mp4 EDT -2.61; bras_cr2_ls2_mp5 EDT -1.62; bras_cr3_ls1_mp1 EDT +2.63; bras_cr3_ls1_mp2 EDT +3.62; bras_cr3_ls1_mp3 EDT +3.88; bras_cr3_ls1_mp4 EDT +2.92.
 
 **fitted α** (reported only): R per arm = 51 (pilot 51; R needed per comparison after the run: B11_B 2, handover80_hybrid 2, handover140_hybrid 4, handover80_phase04 4, handover140_phase04 9).
@@ -475,6 +492,21 @@ Pairs whose handover Δ̂ exceeds 1 jnd: bras_cr3_ls1_mp3 C80 -1.18; bras_cr2_ls
 | Handover floor + 80 ms vs rule, on the Phase 04 IR (reported) | C80 | 0.862 → 1.645 | +0.783 | 0.006 | CR2 +1.501 (0.011); CR3 +0.064 (0.007) | yes |  |
 | Handover floor + 140 ms vs rule, on the Phase 04 IR (reported) | EDT | 1.716 → 6.121 | +4.406 | 0.025 | CR2 +3.918 (0.029); CR3 +4.894 (0.033) | yes | reported; some pair moves > 1 jnd: yes |
 | Handover floor + 140 ms vs rule, on the Phase 04 IR (reported) | C80 | 0.862 → 1.156 | +0.294 | 0.007 | CR2 +0.368 (0.012); CR3 +0.220 (0.013) | yes |  |
+
+In-range figure (500–1000 Hz mean; Vorländer Table 6.1 states these jnds for 500–1000 Hz only) and per-band Δ̂ (room-averaged; for the handover, per band whether the two handovers differ by more than 1 jnd):
+
+| comparison | metric | Δ̂ 500–1000 Hz (SE) | Δ̂ 500 Hz | Δ̂ 1 kHz | Δ̂ 2 kHz | bands with \|Δ̂\| > 1 jnd | pairs > 1 jnd per band (500 / 1k / 2k) |
+|---|---|---|---|---|---|---|---|
+| B11 (B): reference hybrid vs Phase 04 IR (rule handover) | EDT | -0.107 (0.019) | +0.079 | -0.294 | -0.699 | none | 4 / 4 / 9 |
+| B11 (B): reference hybrid vs Phase 04 IR (rule handover) | C80 | +0.057 (0.010) | +0.052 | +0.061 | +0.020 | none | 5 / 2 / 5 |
+| Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | +0.030 (0.011) | +0.102 | -0.043 | -0.239 | none | 0 / 0 / 2 |
+| Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | C80 | +0.036 (0.007) | +0.037 | +0.035 | +0.093 | none | 0 / 0 / 0 |
+| Handover floor t_dir,e + 140 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | +0.036 (0.017) | -0.023 | +0.095 | -0.232 | none | 1 / 1 / 1 |
+| Handover floor t_dir,e + 140 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | C80 | -0.079 (0.011) | -0.094 | -0.064 | -0.109 | none | 1 / 0 / 2 |
+| Handover floor + 80 ms vs rule, on the Phase 04 IR (reported) | EDT | +0.734 (0.016) | +0.650 | +0.818 | +0.885 | none | 7 / 11 / 10 |
+| Handover floor + 80 ms vs rule, on the Phase 04 IR (reported) | C80 | +0.847 (0.009) | +0.937 | +0.758 | +0.654 | none | 7 / 8 / 6 |
+| Handover floor + 140 ms vs rule, on the Phase 04 IR (reported) | EDT | +4.509 (0.035) | +4.192 | +4.826 | +4.200 | 500, 1000, 2000 | 19 / 20 / 20 |
+| Handover floor + 140 ms vs rule, on the Phase 04 IR (reported) | C80 | +0.368 (0.012) | +0.479 | +0.256 | +0.147 | none | 5 / 2 / 1 |
 
 Pairs whose handover Δ̂ exceeds 1 jnd: bras_cr2_ls1_mp1 EDT +1.40; bras_cr2_ls1_mp2 EDT +1.19; bras_cr2_ls1_mp3 EDT +1.07; bras_cr2_ls1_mp4 EDT +1.05; bras_cr2_ls1_mp5 EDT +1.24; bras_cr2_ls2_mp3 EDT +1.05; bras_cr3_ls1_mp1 EDT +1.23; bras_cr3_ls1_mp4 EDT +1.11; bras_cr3_ls2_mp1 EDT +1.33; bras_cr3_ls2_mp4 EDT +1.07; bras_cr2_ls1_mp1 C80 +2.24; bras_cr2_ls1_mp2 C80 +1.09; bras_cr2_ls1_mp3 C80 +1.08; bras_cr2_ls1_mp4 C80 +1.84; bras_cr2_ls1_mp5 C80 +1.68; bras_cr2_ls2_mp2 C80 +1.19; bras_cr2_ls2_mp3 C80 +1.44; bras_cr2_ls2_mp4 C80 +1.15; bras_cr2_ls2_mp5 C80 +2.37; bras_cr2_ls1_mp1 EDT +4.71.
 
