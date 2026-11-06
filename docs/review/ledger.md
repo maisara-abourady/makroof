@@ -1190,3 +1190,6 @@ T; the decided design reports both and gates on neither alone); the T jnd (5 % w
 only); the ISO 3382-2 curvature threshold and uncertainty constants and the Lundeby 1995 original (not
 retrieved); the advocate, researcher and decider agents should be registered in a fresh session so they run
 natively.
+
+**Accepted by Maisara (2026-11-06):** all decider decisions of this run (D1–D7, N1, N2, E1–E3, G5-1, G5-4)
+are accepted as applied; they are no longer proposals.
