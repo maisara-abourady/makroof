@@ -200,12 +200,19 @@ def extract_room(room: str, cache: pathlib.Path, log=print) -> dict:
     }
 
 
-def main():
+def main(argv=None):
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--rooms", nargs="+", default=list(ROOMS), help="rooms to (re-)extract; others are kept")
+    a = ap.parse_args(argv)
     cache = fetch_bras.cache_dir()
     fetch_bras.fetch(["materials", "geometry"], cache)
-    out = {"note": "Derived from BRAS (CC BY-SA 4.0; DOI 10.14279/depositonce-6726.3) by "
-                   "tools/validation/extract_bras_geometry.py; see docs/validation/bras_mapping.md.",
-           "rooms": {r: extract_room(r, cache) for r in ROOMS}}
+    out = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {"rooms": {}}
+    out["note"] = ("Derived from BRAS (CC BY-SA 4.0; DOI 10.14279/depositonce-6726.3) by "
+                   "tools/validation/extract_bras_geometry.py; see docs/validation/bras_mapping.md.")
+    for r in a.rooms:
+        out["rooms"][r] = extract_room(r, cache)
+        out["rooms"] = dict(sorted(out["rooms"].items()))
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print("wrote", OUT)

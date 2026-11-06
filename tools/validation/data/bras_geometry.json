@@ -1,0 +1,336 @@
+{
+ "rooms": {
+  "CR2": {
+   "source": {
+    "skp": "CR2.skp",
+    "skp_sha256": "2764cb4dc23a5cc86e38f463b48f28a473b362cc9a618be03ed98f0b323e3f13",
+    "reader_skips": 2
+   },
+   "documented": {
+    "areas": {
+     "mat_CR2_plaster": 34.93,
+     "mat_CR2_concrete": 56.94,
+     "mat_CR2_windows": 9.75,
+     "mat_CR2_floor": 49.29,
+     "mat_CR2_ceiling": 51.62
+    },
+    "d_char": {
+     "mat_CR2_plaster": 0.006,
+     "mat_CR2_concrete": 0.005,
+     "mat_CR2_windows": 0.002,
+     "mat_CR2_floor": 0.003,
+     "mat_CR2_ceiling": 0.06
+    },
+    "S": 202.53,
+    "V": 146.1
+   },
+   "model_material_area_m2": {
+    "mat_CR2_concrete": 56.93637029391894,
+    "mat_CR2_ceiling": 51.62111399999995,
+    "mat_CR2_floor": 49.29058199999993,
+    "mat_CR2_plaster": 34.93219703479834,
+    "mat_CR2_windows": 9.747035999999998
+   },
+   "unpainted_area_m2": 0.6224095478709257,
+   "max_off_plane_m": 7.219114195322618e-16,
+   "rotation_deg": -0.08594206645865993,
+   "assigned_area_m2": {
+    "mat_CR2_ceiling|ceiling": 47.74131399999992,
+    "mat_CR2_ceiling|xMax": 0.21000000000000485,
+    "mat_CR2_ceiling|xMin": 0.14000000000000368,
+    "mat_CR2_ceiling|yMax": 1.7649000000000008,
+    "mat_CR2_ceiling|yMin": 1.7649000000000008,
+    "mat_CR2_concrete|ceiling": 2.6988102803936664,
+    "mat_CR2_concrete|floor": 1.1696084257903725,
+    "mat_CR2_concrete|xMax": 26.629376547252456,
+    "mat_CR2_concrete|xMin": 10.031574014495432,
+    "mat_CR2_concrete|yMax": 12.419801151600725,
+    "mat_CR2_concrete|yMin": 3.9871998743862846,
+    "mat_CR2_floor|floor": 49.29058199999993,
+    "mat_CR2_plaster|floor": 0.021200000000001218,
+    "mat_CR2_plaster|xMax": 0.04040000000000088,
+    "mat_CR2_plaster|xMin": 16.730399999999996,
+    "mat_CR2_plaster|yMin": 18.14019703479836,
+    "mat_CR2_windows|yMax": 9.747035999999998
+   },
+   "floor_area_m2": 50.4813904257903,
+   "floor_bbox_xy": [
+    -3.042166934535412,
+    -4.257042152247849,
+    3.1477871027175843,
+    4.341578055981846
+   ],
+   "floor_mean_z": 0.01645303415840557,
+   "positions": {
+    "LS1": {
+     "xyz": [
+      0.93481937998104,
+      -2.54560066130017,
+      0.723
+     ]
+    },
+    "LS2": {
+     "xyz": [
+      0.11467994831599401,
+      2.8801752567255763,
+      0.723
+     ]
+    },
+    "MP1": {
+     "xyz": [
+      -0.9951378422234042,
+      1.4245089241471767,
+      1.23
+     ]
+    },
+    "MP2": {
+     "xyz": [
+      0.43922000194860433,
+      -0.1463413471588532,
+      1.23
+     ]
+    },
+    "MP3": {
+     "xyz": [
+      1.3619029517247074,
+      -0.6009578604890105,
+      1.23
+     ]
+    },
+    "MP4": {
+     "xyz": [
+      -1.1096147586022311,
+      -0.25766468033495127,
+      1.23
+     ]
+    },
+    "MP5": {
+     "xyz": [
+      -0.9958854175004347,
+      -1.410495386454697,
+      1.23
+     ]
+    }
+   },
+   "pair_floor": {
+    "LS1_MP1": {
+     "z_floor": -4.972392810189624e-22,
+     "floor_found": true
+    },
+    "LS1_MP2": {
+     "z_floor": -1.2064649498951391e-21,
+     "floor_found": true
+    },
+    "LS1_MP3": {
+     "z_floor": -1.5405151550126707e-21,
+     "floor_found": true
+    },
+    "LS1_MP4": {
+     "z_floor": -8.37918532895497e-22,
+     "floor_found": true
+    },
+    "LS1_MP5": {
+     "z_floor": -1.1201596487127635e-21,
+     "floor_found": true
+    },
+    "LS2_MP1": {
+     "z_floor": 9.034096272703455e-22,
+     "floor_found": true
+    },
+    "LS2_MP2": {
+     "z_floor": 1.9418395839416883e-22,
+     "floor_found": true
+    },
+    "LS2_MP3": {
+     "z_floor": -1.398662467233629e-22,
+     "floor_found": true
+    },
+    "LS2_MP4": {
+     "z_floor": 5.6273037539381045e-22,
+     "floor_found": true
+    },
+    "LS2_MP5": {
+     "z_floor": 2.8048925957654435e-22,
+     "floor_found": true
+    }
+   }
+  },
+  "CR3": {
+   "source": {
+    "skp": "CR3.skp",
+    "skp_sha256": "41acf16d78476fedfdadce3c66235e7b8e91ee925264ec738a23c56cfb73041b",
+    "reader_skips": 45
+   },
+   "documented": {
+    "areas": {
+     "mat_CR3_floor": 342.53,
+     "mat_CR3_seating": 178.9,
+     "mat_CR3_plaster": 450.27,
+     "mat_CR3_ceiling": 168.46,
+     "mat_CR3_stagePanels": 425.55,
+     "mat_CR3_structuredPlaster": 1171.93,
+     "mat_CR3_windows": 25.38
+    },
+    "d_char": {
+     "mat_CR3_floor": 0.007,
+     "mat_CR3_seating": 0.5,
+     "mat_CR3_plaster": 0.006,
+     "mat_CR3_ceiling": 0.02,
+     "mat_CR3_stagePanels": 0.001,
+     "mat_CR3_structuredPlaster": 0.05,
+     "mat_CR3_windows": 0.002
+    },
+    "S": 2763.0,
+    "V": 3330.6
+   },
+   "model_material_area_m2": {
+    "mat_CR3_structuredPlaster": 1171.9343405895202,
+    "mat_CR3_plaster": 450.2726818841582,
+    "mat_CR3_stagePanels": 425.546632388129,
+    "mat_CR3_floor": 342.53224418872793,
+    "mat_CR3_seating": 178.902107090366,
+    "mat_CR3_ceiling": 168.45893999999964,
+    "mat_CR3_windows": 25.379099999999912
+   },
+   "unpainted_area_m2": 0.0,
+   "max_off_plane_m": 3.1749664231028872e-12,
+   "rotation_deg": -0.04895374539953945,
+   "assigned_area_m2": {
+    "mat_CR3_ceiling|ceiling": 168.45893999999964,
+    "mat_CR3_floor|ceiling": 13.235036631811077,
+    "mat_CR3_floor|floor": 272.9728239999999,
+    "mat_CR3_floor|xMax": 16.261664694113982,
+    "mat_CR3_floor|xMin": 17.53905997635282,
+    "mat_CR3_floor|yMax": 15.918578886450026,
+    "mat_CR3_floor|yMin": 6.605080000000064,
+    "mat_CR3_plaster|ceiling": 18.305365999999218,
+    "mat_CR3_plaster|floor": 1.9004399999999277,
+    "mat_CR3_plaster|xMax": 84.07478548753781,
+    "mat_CR3_plaster|xMin": 68.0338373405769,
+    "mat_CR3_plaster|yMax": 143.88352305604462,
+    "mat_CR3_plaster|yMin": 134.07472999999956,
+    "mat_CR3_seating|floor": 166.07390099999958,
+    "mat_CR3_seating|xMax": 3.8090816150312663,
+    "mat_CR3_seating|xMin": 0.5545785124212212,
+    "mat_CR3_seating|yMax": 4.788176943955072,
+    "mat_CR3_seating|yMin": 3.6763690189589577,
+    "mat_CR3_stagePanels|ceiling": 34.09942133135706,
+    "mat_CR3_stagePanels|floor": 17.262943061108526,
+    "mat_CR3_stagePanels|xMax": 113.6929686019045,
+    "mat_CR3_stagePanels|xMin": 157.01633618298806,
+    "mat_CR3_stagePanels|yMax": 51.73742812983553,
+    "mat_CR3_stagePanels|yMin": 51.73753508093529,
+    "mat_CR3_structuredPlaster|ceiling": 534.3364310383631,
+    "mat_CR3_structuredPlaster|floor": 299.1295305696522,
+    "mat_CR3_structuredPlaster|xMax": 50.256393394281275,
+    "mat_CR3_structuredPlaster|xMin": 44.90163035879401,
+    "mat_CR3_structuredPlaster|yMax": 122.32979806709102,
+    "mat_CR3_structuredPlaster|yMin": 120.9805571613387,
+    "mat_CR3_windows|xMax": 4.1616000000000035,
+    "mat_CR3_windows|yMin": 21.21749999999991
+   },
+   "floor_area_m2": 757.33963863076,
+   "floor_bbox_xy": [
+    -10.218731863115677,
+    -7.850266445480915,
+    18.828055952763766,
+    7.166210545551157
+   ],
+   "floor_mean_z": 3.82889333030165,
+   "positions": {
+    "LS1": {
+     "xyz": [
+      -2.021708070562625,
+      1.9982733740461913,
+      2.38
+     ]
+    },
+    "LS2": {
+     "xyz": [
+      -3.3182899803207775,
+      -2.0028358910561628,
+      2.38
+     ]
+    },
+    "MP1": {
+     "xyz": [
+      7.839997138375631,
+      0.006698526846100632,
+      1.23
+     ]
+    },
+    "MP2": {
+     "xyz": [
+      2.1620592058298227,
+      3.442848528542392,
+      1.23
+     ]
+    },
+    "MP3": {
+     "xyz": [
+      9.224975112407408,
+      2.373882721505831,
+      1.23
+     ]
+    },
+    "MP4": {
+     "xyz": [
+      5.862013399963158,
+      -2.3539923319017815,
+      1.23
+     ]
+    },
+    "MP5": {
+     "xyz": [
+      12.72876362371807,
+      -3.2291256729200986,
+      1.23
+     ]
+    }
+   },
+   "pair_floor": {
+    "LS1_MP1": {
+     "z_floor": -1.971884807138184e-30,
+     "floor_found": true
+    },
+    "LS1_MP2": {
+     "z_floor": -6.778472869957254e-16,
+     "floor_found": true
+    },
+    "LS1_MP3": {
+     "z_floor": -2.1276676460544706e-30,
+     "floor_found": true
+    },
+    "LS1_MP4": {
+     "z_floor": -1.7737950618897293e-30,
+     "floor_found": true
+    },
+    "LS1_MP5": {
+     "z_floor": -2.2445600099338726e-30,
+     "floor_found": true
+    },
+    "LS2_MP1": {
+     "z_floor": -1.7833560869149723e-30,
+     "floor_found": true
+    },
+    "LS2_MP2": {
+     "z_floor": 1.0,
+     "floor_found": true
+    },
+    "LS2_MP3": {
+     "z_floor": -1.9391389258312587e-30,
+     "floor_found": true
+    },
+    "LS2_MP4": {
+     "z_floor": -6.385522820248334e-16,
+     "floor_found": true
+    },
+    "LS2_MP5": {
+     "z_floor": -2.056031289710661e-30,
+     "floor_found": true
+    }
+   }
+  }
+ },
+ "note": "Derived from BRAS (CC BY-SA 4.0; DOI 10.14279/depositonce-6726.3) by tools/validation/extract_bras_geometry.py; see docs/validation/bras_mapping.md."
+}
