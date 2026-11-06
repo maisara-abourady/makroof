@@ -1,12 +1,21 @@
 """Decay predictors (phase-05 scope 6; tools/acoustics/radiosity.py).
 
-The phase-05 criterion asks the a* solver to reproduce the Iteration column of Kuttruff Table 5.2
-within ±1 %. A converged solver and an independent Monte Carlo of Lambert particles agree with
-each other but sit 1-7 % below that column (reported in the PR and docs/validation/report-phase05.md,
-pending a plan decision), so that comparison is an xfail(strict) here: if it starts passing, the test
-says so. What is gated: the solver's own correctness (form-factor closure, mean free path,
-Eyring limit) and agreement with the independent Monte Carlo reference.
+a* criterion as decided in D-B (2026-11-06, phase-05.md; vetoable by Maisara): a*, with patches
+halved from 96 (cube) / 88 (1:2:3) equal elements until T changes by < 0.4 % per halving, agrees
+within ±1 % in all six Kuttruff Table 5.2 cases with an independent Lambert-particle Monte Carlo
+(``lambert_mc_t60``: no patches, no form factors) at SE <= 0.25 % per case. γ²-Eyring, the Table 5.2
+Iteration column, the 88/96-element result and Fig. 5.10's case-4 value are reported, not gated
+(the case-4 gap is 'unresolved', ledger DB-1).
+
+The full run (case 6 converges only at 5632 patches, ≈ 6 min and ≈ 5 GB) is
+``python -m tools.acoustics.radiosity``, committed as tools/acoustics/data/phase05e_a_star.json.
+This file gates on that record and, on every CI OS, recomputes each case's solver history up to
+1 600 patches and the first Monte Carlo seed, which must reproduce the record; the nightly workflow
+re-runs the whole gate (``slow``).
 """
+
+import json
+import pathlib
 
 import numpy as np
 import pytest
@@ -79,13 +88,55 @@ def test_absorbing_face_cases_match_independent_monte_carlo(case):
     assert t_conv == pytest.approx(t_mc, rel=0.02)
 
 
-@pytest.mark.xfail(strict=True, reason="phase-05 criterion: Table 5.2 Iteration column within ±1 %; the "
-                   "converged solver and an independent Monte Carlo are 1-7 % below it (plan decision pending)")
-@pytest.mark.parametrize("case", TABLE_5_2, ids=lambda c: f"case{c[0]}")
-def test_table_5_2_iteration_column_within_1_percent(case):
-    _, dims, alpha, _, t_iter, size = case
-    t, _ = _t_iter(dims, alpha, size)
-    assert t == pytest.approx(t_iter, rel=0.01)
+RECORD = pathlib.Path(r.__file__).resolve().parent / "data" / "phase05e_a_star.json"
+
+
+def _record():
+    return {c["case"]: c for c in json.loads(RECORD.read_text())["cases"]}
+
+
+def _check_gate_row(c):
+    assert c["solver_converged"], c["solver_history"]
+    h = c["solver_history"]
+    assert abs(h[-1]["T60_s"] / h[-2]["T60_s"] - 1) < r.D_B_CONVERGENCE
+    assert h[0]["patches"] == (96 if c["dims"] == [10, 10, 10] else 88)
+    assert c["mc"]["se_rel"] <= r.D_B_SE, c["mc"]
+    assert abs(c["solver_T60_s"] / c["mc"]["T60_s"] - 1) <= r.D_B_TOL, c
+
+
+@pytest.mark.parametrize("case", [c[0] for c in r.TABLE_5_2], ids=lambda c: f"case{c}")
+def test_a_star_agrees_with_the_independent_monte_carlo_within_1_percent(case):
+    c = _record()[case]
+    _check_gate_row(c)
+    print(f"case {case}: a* {c['solver_T60_s']:.4f} s ({c['solver_history'][-1]['patches']} patches), MC {c['mc']['T60_s']:.4f} s "
+          f"(SE {100 * c['mc']['se_rel']:.3f} %, {c['mc']['seeds']} x {c['mc']['n_per_seed']}), difference "
+          f"{100 * c['difference_rel']:+.2f} %; reported: Iteration column {c['iteration_column_s']} s "
+          f"({100 * c['iteration_column_vs_mc_rel']:+.2f} % vs MC), gamma2-Eyring {c['gamma2_eyring_s']:.4f} s "
+          f"({100 * c['gamma2_eyring_vs_mc_rel']:+.2f} %), 88/96 elements {c['solver_88_96_s']:.4f} s"
+          + (f", Fig. 5.10 {c['fig_5_10_s']} s ({c['case4_gap']})" if case == 4 else ""))
+
+
+@pytest.mark.parametrize("case", [c for c in r.TABLE_5_2], ids=lambda c: f"case{c[0]}")
+def test_record_reproduces_on_this_platform(case):
+    """Solver levels up to 1 600 patches and the first MC seed, recomputed, equal the record."""
+    n, dims, alpha, _, _, size = case
+    c = _record()[n]
+    for lvl in c["solver_history"]:
+        if lvl["patches"] > 1600:
+            continue
+        t, count = _t_iter(dims, alpha, lvl["size_m"])
+        assert count == lvl["patches"]
+        assert t == pytest.approx(lvl["T60_s"], rel=1e-6)
+    mc = r.mc_case(n, dims, alpha, seeds=[0])
+    assert mc["T60_per_seed_s"][0] == pytest.approx(c["mc"]["T60_per_seed_s"][0], rel=1e-6)
+
+
+@pytest.mark.slow
+def test_full_gate_recomputed():
+    """The whole D-B gate from scratch (nightly): every case converges and agrees within ±1 %."""
+    rows = r.table_5_2_gate()
+    for c in rows:
+        _check_gate_row(c)
 
 
 def test_gamma2_table_lookup():

@@ -20,6 +20,11 @@ def pytest_configure(config):
         "ensemble: Phase 04 AX11 ensemble gates (thousands of renders); CI runs them in the tail-gates "
         "job, one room per job, and deselects them in the python job",
     )
+    config.addinivalue_line(
+        "markers",
+        "slow: full recomputation of a committed reference record (minutes, several GB; Phase 05e D-B gate); "
+        "the python CI job deselects it, .github/workflows/nightly.yml runs it",
+    )
 
 
 @pytest.fixture(scope="session")

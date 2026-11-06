@@ -108,7 +108,8 @@ jobs:
           # -rP prints the margins some tests log (click detector, pyroomacoustics agreement).
           # The Phase 04 ensemble gates run in the tail-gates job.
           # The Phase 05 validation gate (marker nightly) runs in .github/workflows/nightly.yml.
-          python -m pytest tools -v -rP -m "not ensemble and not nightly"
+          # The full D-B a* gate recomputation (marker slow) runs in nightly.yml; its committed record is gated here.
+          python -m pytest tools -v -rP -m "not ensemble and not nightly and not slow"
 
       - name: Listening pack
         if: runner.os == 'Linux'
