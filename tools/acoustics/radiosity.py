@@ -122,12 +122,18 @@ def form_factors(p: Patches, q: int = 4, q_dist: int = 2):
     ww = np.outer(w, w).ravel()
     F = np.zeros((N, N))
     for k in range(N):
-        pts = p.corners[k, 0] + uu.ravel()[:, None] * p.u[k] + vv.ravel()[:, None] * p.v[k]
-        nk = np.repeat(p.normals[k][None, :], len(pts), axis=0)
-        for l in range(N):
-            if p.face[l] == p.face[k]:
-                continue
-            F[k, l] = np.dot(ww, _point_to_polygon_ff(pts, nk, p.corners[l]))
+        pts = p.corners[k, 0] + uu.ravel()[:, None] * p.u[k] + vv.ravel()[:, None] * p.v[k]  # (P, 3)
+        # all target patches at once: r[l, P, V, 3]
+        r = p.corners[:, None, :, :] - pts[None, :, None, :]
+        r1 = np.roll(r, -1, axis=2)
+        cr = np.cross(r, r1)
+        ncr = np.linalg.norm(cr, axis=3)
+        gamma = np.arctan2(ncr, np.einsum("lpvc,lpvc->lpv", r, r1))
+        with np.errstate(invalid="ignore", divide="ignore"):
+            g = np.where(ncr[..., None] > 0, cr / ncr[..., None], 0.0)
+        ff = np.abs((np.einsum("lpvc,c->lpv", g, p.normals[k]) * gamma).sum(axis=2)) / (2 * np.pi)  # (l, P)
+        F[k] = ff @ ww
+        F[k, p.face == p.face[k]] = 0.0
     s = (np.arange(q_dist) + 0.5) / q_dist
     su, sv = np.meshgrid(s, s, indexing="ij")
     sub = p.corners[:, 0][:, None, :] + su.ravel()[None, :, None] * p.u[:, None, :] + sv.ravel()[None, :, None] * p.v[:, None, :]
