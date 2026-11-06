@@ -297,7 +297,8 @@ def write(res: dict, path: pathlib.Path) -> None:
 SCOPE6 = HERE / "data" / "phase05_scope6.json"
 COMP_TITLE = {
     "B11_B": "B11 (B): reference hybrid vs Phase 04 IR (rule handover)",
-    "B10": "B10: hybrid with BRAS per-band s vs broadband s",
+    "B10": "B10: hybrid with BRAS per-band s (diffuse and specular) vs broadband s",
+    "B11_B_simE": "B11 (B) sensitivity (AX29): envelope scaled by the simulator's band energies (reported)",
     "handover80_hybrid": "Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter)",
     "handover140_hybrid": "Handover floor t_dir,e + 140 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter)",
     "handover80_phase04": "Handover floor + 80 ms vs rule, on the Phase 04 IR (reported)",
@@ -399,6 +400,8 @@ def scope6_section(w, res: dict) -> None:
             rd = c["readings"]
             if comp == "B11_B":
                 reading = "not worse (B11 (B) passes)" if rd["not_worse"] else "**worse or not valid** (B11 (B) fails)"
+            elif comp == "B11_B_simE":
+                reading = f"reported; not worse: {f(rd['not_worse'])}"
             elif comp == "B10":
                 reading = "**B10 moves ahead of phase-05b**" if rd["b10_moves_ahead"] else "B10 stays after phase 12"
             elif comp.endswith("hybrid"):

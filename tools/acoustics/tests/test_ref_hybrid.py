@@ -79,10 +79,8 @@ def _scene(path):
 
 
 @pytest.mark.parametrize("name", ["club", "stone_box", "medium_room"])  # medium_room: AX22 fallback
-def test_python_phase04_plan_matches_render_cli(name, tmp_path):
-    binary = render_cli.find_render_cli()
-    if binary is None:
-        pytest.skip("render_cli not built")
+def test_python_phase04_plan_matches_render_cli(name, tmp_path, render_cli_path):
+    binary = render_cli_path  # fails instead of skipping under SPATIAL_REQUIRE_RENDER_CLI=1 (CI)
     path = REPO / "tests" / "scenes" / "valid" / f"{name}.json"
     out = tmp_path / "d.json"
     r = render_cli.run(binary, "--scene", path, "--mode", "omni", "--rate", "44100", "--diagnostics", out)

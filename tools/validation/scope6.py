@@ -63,6 +63,9 @@ AQ10_RCV = np.array([10.0, 8.0, 1.7])
 AQ10_SRC = np.array([7.0, 20.0, 2.0])
 AQ10_DIMS = np.array([20.0, 30.0, 10.0])
 PILOT_R = 51
+# The simulator's octave band impulse energies at 44.1 kHz (E_target(render_cli) / E_target(Python),
+# tools/acoustics/tests/test_ref_hybrid.py): the AX29 sensitivity arm scales the envelope with these.
+SIM_BAND_ENERGY_44K = np.array([0.0039404, 0.00380438, 0.00760878, 0.01521785, 0.03043599, 0.06087664, 0.12175825, 0.73911278])
 R_MAX_IN_SESSION = 2000
 DELTA = 0.25  # jnd
 
@@ -297,11 +300,52 @@ def edt_c80(h: np.ndarray, adds: dict) -> dict:
         y, lead = bands.filter_band_with_lead(h, FS, fc)
         e0 = y**2
         for k, add in adds.items():
+            rescale = None
+            if isinstance(add, tuple):  # (additive envelope, specular rescale (dbins, bin index, scale))
+                add, rescale = add
             e = e0 if add is None else e0 + np.concatenate([np.zeros(lead), add[i][: h.size]])
+            if rescale is not None:
+                e = rescale_specular(e, lead, h.size, *rescale, i)
             m = metrics._band_metrics(y, FS, onset + lead, direct + lead, energy=e, lead=lead, band_hz=fc,
                                       noise_subtraction=True)
             out[k][bands.band_key(fc)] = (m["EDT"], m["C80"])
     return out
+
+
+def specular_delta_bins(scene: pathlib.Path, room: str, mix_s: float, T: int) -> np.ndarray:
+    """Per band, the specular image energy with BRAS per-band s minus that with the scene's broadband
+    s, binned in 1 ms bins of arrival time (amplitude² units) and weighted by the ISM crossfade
+    weight cos² (AX18, AX29): (8, T)."""
+    si = scene_inputs(scene)
+    red = json.loads(rv.REDUCTION.read_text())[room]["initial"]
+    s_bands = [red["faces"][f]["scattering_bands"] for f in FACES]
+    m = air_m()
+    t_max = min(T * rh.DT, mix_s + rh.CROSSFADE_HALF_S)
+    eb = rh.image_entries(si["dims"], rh.variant(si["alpha"], si["s"], m), si["src"], si["rcv"], t_max)
+    ep = rh.image_entries(si["dims"], rh.variant(si["alpha"], s_bands, m), si["src"], si["rcv"], t_max)
+    assert np.array_equal(eb["t"], ep["t"])
+    d = ep["spec"] - eb["spec"]  # (8, M)
+    tau = (eb["t"] - (mix_s - rh.CROSSFADE_HALF_S)) / (2 * rh.CROSSFADE_HALF_S)
+    w = np.where(tau <= 0, 1.0, np.where(tau >= 1, 0.0, np.cos(0.5 * np.pi * np.clip(tau, 0, 1)) ** 2))
+    b = np.minimum(np.floor(eb["t"] / rh.DT).astype(np.int64), T - 1)
+    out = np.zeros((8, T))
+    for k in range(8):
+        out[k] = np.bincount(b, weights=d[k] * w, minlength=T)
+    return out
+
+
+def rescale_specular(e: np.ndarray, lead: int, n: int, dbins: np.ndarray, bidx: np.ndarray, scale: np.ndarray,
+                     band: int) -> np.ndarray:
+    """Scale the band energy of every 1 ms bin by 1 + ΔE_spec/E_bin (≥ 0), so the bin's energy
+    changes by the specular difference while staying non-negative."""
+    e = e.copy()
+    ok = bidx >= 0
+    seg = e[lead: lead + n]
+    E = np.bincount(bidx[ok], weights=seg[ok], minlength=dbins.shape[1])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        f = np.where(E > 0, np.maximum(1 + scale[band] * dbins[band] / np.where(E > 0, E, 1), 0.0), 1.0)
+    seg[ok] *= f[bidx[ok]]
+    return e
 
 
 def pair_job(args) -> dict:
@@ -324,9 +368,20 @@ def pair_job(args) -> dict:
         n = irs.shape[1]
         add_bb = np.stack([envelope_samples(env[v_bb, b, pi], shift, mix, n, scale[b]) for b in range(8)])
         adds = {arm: None, arm + "+hyb": add_bb}
+        if arm == "rule":  # AX29 sensitivity (reported): the simulator's band energies instead of the analysis filter's
+            adds["rule+hyb_simE"] = np.stack([envelope_samples(env[v_bb, b, pi], shift, mix, n, SIM_BAND_ENERGY_44K[b])
+                                              for b in range(8)])
         if arm == "rule" and alpha_set == "initial":
             v_pb = variants.index("initial_bands_s")
-            adds["rule+hyb_bands_s"] = np.stack([envelope_samples(env[v_pb, b, pi], shift, mix, n, scale[b]) for b in range(8)])
+            add_pb = np.stack([envelope_samples(env[v_pb, b, pi], shift, mix, n, scale[b]) for b in range(8)])
+            # The rendered specular part carries the scenes' broadband (1 - s) per hit (AX17); with
+            # per-band s it changes too, so the B10 arm rescales each 1 ms bin's early energy by the
+            # per-band / broadband specular energy difference (Python image entries), not only adds
+            # the per-band-s diffuse envelope (review of PR #12, finding M1).
+            dbins = specular_delta_bins(scene, room, mix, env.shape[-1])
+            t = np.arange(n) / FS + shift
+            bidx = np.where((t >= 0) & (t < env.shape[-1] * rh.DT), np.floor(t / rh.DT), -1).astype(np.int64)
+            adds["rule+hyb_bands_s"] = (add_pb, (dbins, bidx, scale))
         per_seed = [edt_c80(h, adds) for h in irs]
         for k in adds:
             res[k] = [ps[k] for ps in per_seed]
@@ -355,6 +410,7 @@ def errors(arm_seeds: list, meas: dict, bands_hz=("500", "1000", "2000")) -> np.
 COMPARISONS = {  # name: (with, base, needs pair-level SE (handover (a)))
     "B11_B": ("rule+hyb", "rule", False),
     "B10": ("rule+hyb_bands_s", "rule+hyb", False),
+    "B11_B_simE": ("rule+hyb_simE", "rule", False),  # AX29 sensitivity, reported only
     "handover80_hybrid": ("f80+hyb", "rule+hyb", True),
     "handover140_hybrid": ("f140+hyb", "rule+hyb", True),
     "handover80_phase04": ("f80", "rule", True),
@@ -428,6 +484,9 @@ def readings(comp: str, res: dict) -> dict:
     if comp == "B11_B":  # not worse: Δ̂ <= +δ for both, no room > +1 jnd
         ok = all(M[m]["delta"] <= DELTA for m in M) and all(r["delta"] <= 1.0 for m in M for r in M[m]["room"].values())
         return {"not_worse": bool(ok and res["R_ok"]), "valid": res["R_ok"]}
+    if comp == "B11_B_simE":  # same rule as B11 (B), reported only (AX29 filter-energy sensitivity)
+        ok = all(M[m]["delta"] <= DELTA for m in M) and all(r["delta"] <= 1.0 for m in M for r in M[m]["room"].values())
+        return {"not_worse": bool(ok and res["R_ok"]), "valid": res["R_ok"], "reported_only": True}
     if comp == "B10":  # B10 moves ahead of 05b if the room-averaged change >= δ or any room's > 1 jnd
         moves = any(abs(M[m]["delta"]) >= DELTA for m in M) or any(abs(r["delta"]) > 1.0 for m in M for r in M[m]["room"].values())
         return {"b10_moves_ahead": bool(moves), "valid": res["R_ok"]}
