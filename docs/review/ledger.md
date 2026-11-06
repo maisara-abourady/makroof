@@ -1311,3 +1311,9 @@ R2-2 ("≈ 1 % below" → "≈ 1.2 %, still converging") and R2-3 (AX23 / scope 
 the measured +1.8…+2.1 % at 48 dB exceeds the ≈ +1.7 % prediction by more than the condition SEs of 0.05–0.14 %):
 IMPRECISE, minor, resolved (wording). Case 5 converged: solver 2.978 s at 2.5 m vs particle 2.981 s (−0.1 %), so only
 case 6 is borderline. No round 3 needed. Status: D-A, D-B, D-C applied; vetoable by Maisara.
+
+### Follow-up: CR2/CR3 documented-vs-model volume check added to phase-05e scope (a) (2026-11-06, at Maisara's request)
+
+No rule, threshold or assumption changed; one science statement, checked by the main session: with A fixed, Sabine
+T = 0.161 V/A (Kuttruff Eq. 5.8, and Eyring likewise) scales with V, so 146.1 vs 145 m³ gives +1.1/145 = +0.76 % in
+predicted T for every CR2 pair. CORRECT. Status: applied; 05e establishes the cause before any comparison.

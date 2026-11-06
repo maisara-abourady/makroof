@@ -112,6 +112,16 @@ a. **D-A (AX26) applied:** regenerate the scenes for all selected rooms (`make_b
    reduction results appended to `bras_mapping.md` before any comparison (phase-05.md Data). No room
    is dropped after results are seen. If after D-A no room qualifies, phase-05.md Data's zero-room
    branch applies unchanged.
+   - **CR2 volume.** BRAS documents V = 145 m³ (documentation p. 25; Brinkmann et al. 2019 Table II;
+     external), the model gives 146.1 m³, which AX26 uses; with A fixed this raises predicted T by
+     ≈ +0.76 % for every CR2 pair. Before any comparison, establish the cause (e.g. rounding in the
+     documentation, or a volume the model includes that the documentation excludes) and record it in
+     `bras_mapping.md`. The rule is unchanged: AX26 keeps the model volume (one generic rule for all
+     rooms; no per-room correction, NFR-8). Report the +0.76 % beside the CR2 AQ9 line. If the cause
+     shows the model volume is wrong, raise it through /fix-plan before the baseline is created; never
+     after results are seen.
+   - CR3: the documentation gives 2 350 m³ excluding the attic, the model 3 330.6 m³ including it
+     (`bras_mapping.md`); the same check applies and is reported.
 b. **CR4:** the geometry extraction is a one-off developer step, never run at run time (Maisara,
    2026-11-06). Run it detached with no time limit, outside the 40-minute tool timeouts, e.g.
    `nohup python tools/validation/extract_bras_geometry.py --rooms CR4 > extract-cr4.log 2>&1 &`.
