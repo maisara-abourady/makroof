@@ -441,17 +441,23 @@ hand-tuned.
      quotes the measured bias table.
    - **Paired noise test** (D5, E3; outside the corpus): R noise × exponential realisations per
      condition; per realisation i, bias_i = T30_noisy,i / T30_clean,i − 1 (the pairing isolates the
-     noise handling). Noisy arm = the measured-IR path of `run_validation.py`: decay + independent
+     noise handling). Noisy arm = the measured-IR path of `run_validation.py` except the D7(2)
+     line-margin test, which cannot fire for a band admitted at line_margin_db ≥ L_min (at nominal
+     51 dB it would fail in ≈ 5.5 % of realisations and move the suitability gate towards option A's
+     57 dB; product choice by the main session between the interrogator's two coherent options,
+     ledger E5-7; vetoable by Maisara): decay + independent
      stationary white noise scaled per band to L_min, 55 or 65 dB below the decay's band power at t₀,
      L_min = 51 dB (AX27). L_min is the lowest level, in 1 dB steps, with median − 3·SD ≥ 45 dB in
-     every condition, where median and SD are those of the Lundeby dynamic-range estimate (the noise
-     margin below) over the realisations of a condition: it keeps the estimate clear of the 45 dB T30
+     every case A condition, where median and SD are those of the peak-referred Lundeby dynamic range
+     (`dynamic_range_db`, the D7(1) quantity) over the realisations of a condition: it keeps the
+     estimate clear of the 45 dB T30
      requirement (ISO 3382-1:2009 §4.2.1, external). The session re-measures the median and SD per
-     condition at L_min in its own run; if median − 3·SD < 45 dB in any condition, L_min rises in
-     1 dB steps and the value is recorded in AX27. Measured (prototype with AX27, R = 51, same seeds):
-     the estimate reads ≈ 1.4 dB below nominal; worst median − 3·SD = 42.8 dB at 48 dB, 44.7 at 50,
-     45.7 at 51, 46.8 at 52 (500 Hz / 1 s); at 51 dB the other conditions read 47.2–48.5 dB, the bias
-     +0.02…+0.14 %, 0 unsuitable. The former 48 dB level is still run per condition and reported,
+     condition at L_min in its own run; if median − 3·SD < 45 dB in any case A condition, L_min rises in
+     1 dB steps and the value is recorded in AX27. Measured (05e session 1, R = 51): `dynamic_range_db`
+     reads ≈ 1.4 dB below nominal; at 500 Hz / 1 s median / SD / median − 3·SD = 46.65 / 1.27 /
+     42.83 dB at 48 dB, 48.56 / 1.27 / 44.74 at 50, 49.56 / 1.27 / 45.75 at 51, 50.58 / 1.26 / 46.80
+     at 52; at 51 dB the other conditions read 47.04–48.64 dB, the bias +0.06…+0.15 %, 0 unsuitable.
+     The former 48 dB level is still run per condition and reported,
      not gated, with its count of "unsuitable" realisations. File 3.5 s with the last 1024 samples
      Hann-faded (BRAS-like, researcher F14), fade trimmed (D6), then the `metrics.room_metrics` octave
      band with AX27 noise subtraction. Clean arm = the same decay realisation without noise or fade,
@@ -463,7 +469,7 @@ hand-tuned.
      R = max(51, ⌈(σ₁,Δ/0.15)²⌉) per condition; check the SE afterwards. Seeds are fixed, so the test
      is deterministic in CI. Without subtraction: E[g_m²(t)] = g²(t) + N (g_m the noisy band IR;
      noise uncorrelated with g); with x = t/τ, τ = T/(6 ln 10), N relative to g²(t₀), Kuttruff
-     Eq. 8.29 split at t_c gives EDC/τ = e^(−x) + N(x_c − x). This predicts ≈ +1.7 % at 48 dB, ≈ +0.5 %
+     Eq. 8.29 (no noise term) applied to E[g_m²] and split at t_c gives EDC/τ = e^(−x) + N(x_c − x). This predicts ≈ +1.7 % at 48 dB, ≈ +0.5 %
      at 55, ≈ +0.2 % at 60, ≈ +0.07 % at 65 dB (continuous −5…−35 dB regression, −35 dB point on the
      noisy curve), close to Phase 05's measured +1.8…+2.1 / +0.43…+0.60 / ≈ +0.07 % (the earlier
      +0.23 % estimate was wrong). With AX27 the residual EDC term is εN(x_c − x), ε = (N − N̂)/N; the
@@ -473,15 +479,27 @@ hand-tuned.
      per condition, not gated (0.6 % derives from B12, which uses T30 only; expected effect on EDT ≪ 1 % and on C80 < 0.01 dB).
      0.6 % is half of B12's 1.25-point margin, since a common bias b shifts a predictor gap by up to 2b
      (product derivation). **Case B** (plateau regime): 125 Hz, T = 0.3 s, reported, not gated.
-     A measured band enters the gated AQ9 mean and B12 only if its noise margin is ≥ L_min: noise
-     margin = 10·log10(P_line(t₀)/N̂), P_line(t₀) the mean-square level of the Lundeby late-decay line
-     at the onset t₀ (same band filter), N̂ the Lundeby noise mean-square. This is the estimator whose
-     median − 3·SD set L_min; in the test it reads ≈ 1.4 dB below the nominal level, and on measured
-     IRs early energy makes it conservative; other bands are reported with the
+     A measured band enters the gated AQ9 mean and B12 only if its decay-referred noise margin
+     10·log10(P_line(t₀)/N̂) (`line_margin_db`; P_line(t₀) the mean-square level of the Lundeby
+     late-decay line at the onset t₀, same band filter; N̂ the Lundeby noise mean-square) is ≥ L_min
+     (AX27, option C, ledger E5-1). It is not the test-level estimator: at nominal 51 dB it reads
+     median 48.18 dB, SD 1.99 dB (500 Hz / 1 s), and on measured BRAS IRs below the peak-referred value
+     (e.g. CR2 500 Hz 51.8 vs 59.9 dB). Decay-referred because the bias is set by the noise relative to
+     the decay's initial level (follows from Eq. 8.29 applied to E[g_m²] with N relative to g²(t₀),
+     above; Kuttruff §8.4 Fig. 8.13 illustrates it, T = 2 s, noise −41.4 dB). "Conservative" is
+     outside the corpus: it rests on the bias falling with level (with AX27 0.26 % at 48, ≤ 0.15 % at
+     51, ≤ 0.13 % at 57 dB) and on the line margin reading below nominal. Probability that a
+     nominal-48 dB band reads line ≥ 51 dB: normal approx. from the measured line_margin_db at
+     nominal 48 dB (500 Hz, 1 s: median 46.21 dB, SD 1.83 dB): z = (51 − 46.21)/1.83 = 2.62 →
+     0.44 %; outside the corpus. Other bands are reported
+     with the
      flag 'noise not verified (margin)'. Reversal: if any case A condition fails with AX27, AX27 is
      not used and measured bands enter AQ9/B12 only at a margin ≥ 60 dB (interrogator: the
      uncorrected bias at 60 dB is ≈ +0.2 %, continuous −5…−35 dB regression, −35 dB point on the noisy
-     curve; Begault: ideally 60 dB above the noise floor). The upper
+     curve; Begault: ideally 60 dB above the noise floor). Second reversal: if any case A condition
+     at 51 dB fails the 0.6 % gate in the 05e CI run, a nominal-48 dB band reads line ≥ 51 dB in > 1 %
+     of realisations, or the ISO 3382-1 text (outside the corpus) requires a decay-referred 45 dB
+     margin, the test-level rule moves to the line margin (57 dB, AX27). The upper
      hull stays (removing it changes the bias by < 0.05 points).
    - **Simulated-EDC test** (N1): for a noise-free exponential decay ending at −90 dB, the
      `metrics.room_metrics` EDC at −35 dB differs from integration to the end by ≤ 0.01 dB (run with
@@ -542,8 +560,8 @@ and do not change the simulator.
       humidity bound); they are reported, not gated.
 - [ ] Scope 7 paired noise test (with AX27): each of the 18 case A conditions (noise levels L_min,
       55, 65 dB; L_min = 51 dB unless the AX27 rule raises it): |mean paired T30 bias| ≤ 0.6 % with
-      SE ≤ 0.15 %; the median and SD of the Lundeby dynamic-range estimate at L_min are recorded in
-      AX27 (48 dB conditions with their "unsuitable" count, case B, EDT and C80 reported, not gated).
+      SE ≤ 0.15 %; the median and SD of the peak-referred Lundeby dynamic range (`dynamic_range_db`)
+      at L_min are recorded in AX27 (48 dB conditions with their "unsuitable" count, case B, EDT and C80 reported, not gated).
 - [ ] Scope 7 simulated-EDC test: EDC at −35 dB within 0.01 dB of integration to the end.
 - [ ] Scope 7 leak calibration runs and its results (both meters' bias per f_c, variant and r; measured leak D;
       model-predicted bias and residual)

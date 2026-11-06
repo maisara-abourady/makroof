@@ -1332,13 +1332,43 @@ nominal, SD 2–3 dB at 500 Hz / 1 s against ≈ 1.1 dB). Paired T30 bias with A
 
 | id | kind | item | verdict | evidence | severity | status |
 |---|---|---|---|---|---|---|
-| E5-1 | NUMBER | L_min = 51 dB "of the Lundeby dynamic-range estimate (the noise margin below)" = P_line(t₀)/N̂ | INCONSISTENT | the "≈ 1.4 dB" claim and the prototype values match `dynamic_range_db` (51 − 49.56 = 1.44 dB), not the defined estimator (51 − 48.18 = 2.82 dB); with the defined estimator the rule gives 56–57 dB depending on the seed scheme | major (test gate and BRAS admission) | open: Maisara decides (applied: the text's estimator, L_min = 57 dB) |
+| E5-1 | NUMBER | L_min = 51 dB "of the Lundeby dynamic-range estimate (the noise margin below)" = P_line(t₀)/N̂ | INCONSISTENT | the "≈ 1.4 dB" claim and the prototype values match `dynamic_range_db` (51 − 49.56 = 1.44 dB), not the defined estimator (51 − 48.18 = 2.82 dB); with the defined estimator the rule gives 56–57 dB depending on the seed scheme | major (test gate and BRAS admission) | resolved by option C with corrections (decider 2026-11-06, interrogator diff check); applied: L_min = 51 dB on dynamic_range_db; admission on line_margin_db ≥ 51 dB; option A, 57 dB, rejected |
 | E5-2 | NUMBER | 45 dB margin requirement | NOT CHECKABLE | Kuttruff §8.4, Vorländer §6.4.1 give the −5…−35 dB range re the initial level; no corpus noise-margin rule (ISO 3382-1 would settle it) | none | open |
 | E5-3 | FACT | margin referred to the decay, not the envelope peak | NOT CHECKABLE (leans to the defined estimator) | Kuttruff §8.4 (Eq. 8.29 context): noise bends the lower end of the backward-integrated curve; the reference is the decay's initial level; in a measured IR the envelope peak includes the direct sound (interrogator's inference) | none | open |
 | E5-4 | NUMBER | median − 3·SD over R = 51 in 1 dB steps | NOT CHECKABLE | non-corpus arithmetic: SE(3·SD) ≈ 0.6 dB, SE(median) ≈ 0.35 dB at SD 2 dB: the ±1 dB seed sensitivity observed | none | open |
 | E5-5 | FACT | Begault's 60 dB | CONSEQUENCE | Begault Ch. 4: 60 dB "to capture the whole decay" is an auralization condition, not a T30 condition | minor | open |
+| E5-6 | FACT | "noise term of Kuttruff Eq. 8.29" | WRONG | Kuttruff §8.4: Eq. 8.29 ⟨h²(t)⟩ = ∫ₜ^∞ g² dx has no noise term; noise appears only in the prose and Fig. 8.13 | minor (attribution) | resolved by correction 2 (and E5-D14 in AX23) |
+| E5-7 | FACT | noisy arm "= measured-IR path" | INCONSISTENT | the arm skips D7(2), which would fail in ≈ 5.5 % of realisations at 51 dB; no effect on admission | minor | resolved by correction 3 (main-session product choice; vetoable by Maisara) |
 
 Consequence on BRAS (measured `line_margin_db`, AQ9 bands): CR2 500 Hz 51.8–61.2 dB, CR4 500 Hz 55.7–59.6 dB, CR4
 2 kHz 56.7–62.1 dB, CR3 ≥ 65.5 dB. At 57 dB a large share of CR2/CR4 AQ9 bands leaves the gated mean; at 51 dB nearly
-all enter. Status: L_min = 57 dB applied by the rule as written; question for Maisara (estimator, and therefore 51 or
-57 dB) in the phase-05e PR.
+all enter. Status: L_min = 51 dB (option C, decider 2026-11-06 with interrogator diff check; vetoable by Maisara); 57 dB
+is the result of the rejected option A (non-monotone, SD 2.2–3.0 dB, ±1 dB seed-sensitive, E5-4, no measured bias
+benefit).
+
+### Decision: option C (decider, 2026-11-06; /fix-plan, corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Decider (medium confidence): L_min = 51 dB with one estimator per job. The test-level rule (median − 3·SD ≥ 45 dB, 1 dB
+steps) is read on the peak-referred `dynamic_range_db` (D7(1) quantity; worst 45.75 dB at 500 Hz / 1 s at 51 dB,
+44.74 dB at 50 dB). Measured bands are admitted to the gated AQ9 mean and B12 only at a decay-referred
+`line_margin_db` ≥ 51 dB (it reads below nominal: median 48.18 dB, SD 1.99 dB at nominal 51 dB; below the peak-referred
+value on BRAS, e.g. CR2 500 Hz 51.8 vs 59.9 dB). Option A (57 dB on the line margin) rejected: non-monotone, seed-
+sensitive (E5-4), no measured bias benefit (bias with AX27 0.26 % at 48, ≤ 0.15 % at 51, ≤ 0.13 % at 57 dB).
+Reversal: a case A condition at 51 dB fails the 0.6 % gate in the 05e CI run; a nominal-48 dB band reads line ≥ 51 dB
+in > 1 % of realisations (normal approx. 0.44 %: z = (51 − 46.21)/1.83 = 2.62, outside the corpus); or ISO 3382-1
+requires a decay-referred 45 dB margin → test-level rule on the line margin (57 dB).
+
+Interrogator diff check of the proposal: adoptable with three corrections (E5-6 Eq. 8.29 has no noise term; drop "both
+refer to the same decay", state the measured offset; E5-7 noisy arm "= measured-IR path except the D7(2) test, which
+cannot fire for a band admitted at line_margin_db ≥ L_min" — the alternative, applying D7(2), would move the
+suitability gate towards 57 dB; main-session product choice, vetoable by Maisara).
+
+### Diff check of the applied text (interrogator; two rounds)
+
+Round 1 (E5-D1…D15): D1–D8, D10, D13, D15 CORRECT; D9 IMPRECISE (Fig. 8.13 illustrates, the reference level follows
+from the Eq. 8.29 derivation); D11 NOT CHECKABLE (the 0.44 % inputs were not stated); D12 INCONSISTENT ("any
+condition" vs "every case A condition"); D14 IMPRECISE (AX23 row repeated the E5-6 attribution). Round 2 after the
+fixes: D9, D10, D11, D12, D14 CORRECT (0.44 %: z = 4.79/1.83 = 2.62; L_min: 48.56 − 3.81 = 44.75 < 45, 49.56 − 3.81 =
+45.75 ≥ 45). One labelling note, not an error: "≤ 0.15 %" (05e session 1) vs "≤ +0.14 %" (prototype) at 51 dB come
+from different runs. Status: applied (BUILD_PLAN AX23, AX27, §6 row; phase-05.md scope 7 and criterion; phase-05e.md
+item 6 and criterion); vetoable by Maisara.

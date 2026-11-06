@@ -41,8 +41,11 @@ Maisara which decisions it applied, so she can veto.
    the B12 decision rule's use of a* (scope (e)).
 6. **(D-C) Scope 7 paired noise test: decided 2026-11-06 (§6 row; vetoable by Maisara).** AX27:
    Lundeby noise-power subtraction before the Schroeder integral in the validation decay path; gated
-   levels L_min = 51 dB, 55, 65 dB (48 dB reported); measured bands enter AQ9/B12 only at a noise
-   margin ≥ L_min; the hull stays (phase-05.md scope 7). The xfails in
+   levels L_min = 51 dB, 55, 65 dB (48 dB reported); L_min by the test-level rule on the peak-referred
+   `dynamic_range_db`; measured bands enter AQ9/B12 only at a decay-referred noise margin
+   (`line_margin_db`) ≥ L_min (option C, decider 2026-11-06 with the interrogator diff check, ledger
+   E5-1, E5-6, E5-7; option A, 57 dB on the line margin, rejected; the noisy arm skipping D7(2) is a
+   main-session product choice; vetoable by Maisara); the hull stays (phase-05.md scope 7). The xfails in
    `tools/acoustics/tests/test_noise_handling.py` resolve under AX27. Unblocks the paired noise
    criterion below and the measured-IR noise handling of scope (d), (e).
 
@@ -164,8 +167,8 @@ unchanged:
       as decided in D-B).
 - [ ] AX26 unit test on a synthetic rotated L-shaped room and `make_bras_scenes.py --check`
       (phase-05.md criterion, added by D-A).
-- [ ] Scope 7 paired noise test with AX27, each of the 18 case A conditions at L_min, 55, 65 dB
-      (phase-05.md criterion, as decided in D-C).
+- [ ] Scope 7 paired noise test with AX27, each of the 18 case A conditions at L_min = 51, 55, 65 dB
+      (48 dB reported; phase-05.md criterion, as decided in D-C).
 - [ ] The report contains the scope 6 comparisons (decay predictors, reference hybrid, handover,
       humidity bound); reported, not gated.
 - [ ] The report prints per band the octave and half-octave readings, r, the "meter-dependent",
