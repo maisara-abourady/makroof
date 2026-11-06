@@ -442,14 +442,16 @@ Positions of the synthetic cases: AX28 (the AQ10 benchmark room's listener and e
 
 Δ̂ = error with the change − error of the base, paired on the same tail seeds. Validity: SE(Δ̂) ≤ δ/3 = 0.083 jnd, SE per room (and per pair for the handover (a)) ≤ 1/3 jnd; R from the pilot (n = 51) by R ≥ max(144·σ₁,Δ², 9·σ₁,Δ,room², 9·σ₁,Δ,pair²), checked after the run. Jnds: EDT 5 %, C80 1 dB (Vorländer Table 6.1, 500–1000 Hz, extended to 2 kHz, AQ9). **Provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3 only); CR4 pending**: the B11 promotion and any handover change are deferred (phase-05e scope (b)).
 
-**initial α** (counted): R per arm = 51 (pilot 51; R needed per comparison after the run: B11_B 1, B10 1, handover80_hybrid 2, handover140_hybrid 4, handover80_phase04 4, handover140_phase04 13).
+**initial α** (counted): R per arm = 51 (pilot 51; R needed per comparison after the run: B11_B 1, B10 1, B11_B_simE 1, handover80_hybrid 2, handover140_hybrid 4, handover80_phase04 4, handover140_phase04 13).
 
 | comparison | metric | error base → with (jnd) | Δ̂ (jnd) | SE | per room Δ̂ (SE) | valid | reading |
 |---|---|---|---|---|---|---|---|
 | B11 (B): reference hybrid vs Phase 04 IR (rule handover) | EDT | 2.899 → 3.245 | +0.346 | 0.011 | CR2 +0.070 (0.001); CR3 +0.622 (0.021) | yes | **worse or not valid** (B11 (B) fails) |
 | B11 (B): reference hybrid vs Phase 04 IR (rule handover) | C80 | 1.217 → 1.494 | +0.277 | 0.005 | CR2 +0.101 (0.004); CR3 +0.454 (0.010) | yes |  |
-| B10: hybrid with BRAS per-band s vs broadband s | EDT | 3.245 → 3.355 | +0.111 | 0.002 | CR2 +0.001 (0.000); CR3 +0.220 (0.003) | yes | B10 stays after phase 12 |
-| B10: hybrid with BRAS per-band s vs broadband s | C80 | 1.494 → 1.540 | +0.046 | 0.001 | CR2 -0.008 (0.001); CR3 +0.099 (0.002) | yes |  |
+| B10: hybrid with BRAS per-band s (diffuse and specular) vs broadband s | EDT | 3.245 → 3.263 | +0.019 | 0.001 | CR2 -0.000 (0.000); CR3 +0.037 (0.001) | yes | B10 stays after phase 12 |
+| B10: hybrid with BRAS per-band s (diffuse and specular) vs broadband s | C80 | 1.494 → 1.490 | -0.004 | 0.000 | CR2 -0.001 (0.000); CR3 -0.008 (0.000) | yes |  |
+| B11 (B) sensitivity (AX29): envelope scaled by the simulator's band energies (reported) | EDT | 2.899 → 3.284 | +0.386 | 0.011 | CR2 +0.076 (0.001); CR3 +0.695 (0.022) | yes | reported; not worse: no |
+| B11 (B) sensitivity (AX29): envelope scaled by the simulator's band energies (reported) | C80 | 1.217 → 1.526 | +0.309 | 0.006 | CR2 +0.112 (0.004); CR3 +0.506 (0.010) | yes |  |
 | Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | 3.245 → 3.300 | +0.056 | 0.007 | CR2 -0.177 (0.006); CR3 +0.288 (0.012) | yes | rule stands ((a) no, (b) no, (c) yes) |
 | Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | C80 | 1.494 → 1.582 | +0.088 | 0.005 | CR2 -0.027 (0.008); CR3 +0.203 (0.004) | yes |  |
 | Handover floor t_dir,e + 140 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | 3.245 → 3.123 | -0.121 | 0.013 | CR2 -0.282 (0.014); CR3 +0.039 (0.020) | yes | rule stands ((a) yes, (b) no, (c) yes) |
@@ -465,8 +467,10 @@ In-range figure (500–1000 Hz mean; Vorländer Table 6.1 states these jnds for 
 |---|---|---|---|---|---|---|---|
 | B11 (B): reference hybrid vs Phase 04 IR (rule handover) | EDT | -0.060 (0.016) | -0.615 | +0.495 | +1.159 | 2000 | 7 / 6 / 10 |
 | B11 (B): reference hybrid vs Phase 04 IR (rule handover) | C80 | +0.112 (0.008) | -0.263 | +0.486 | +0.608 | none | 5 / 6 / 10 |
-| B10: hybrid with BRAS per-band s vs broadband s | EDT | +0.054 (0.002) | +0.120 | -0.013 | +0.224 | none | 0 / 0 / 0 |
-| B10: hybrid with BRAS per-band s vs broadband s | C80 | +0.004 (0.002) | +0.019 | -0.011 | +0.128 | none | 0 / 0 / 0 |
+| B10: hybrid with BRAS per-band s (diffuse and specular) vs broadband s | EDT | +0.009 (0.001) | +0.019 | -0.002 | +0.039 | none | 0 / 0 / 0 |
+| B10: hybrid with BRAS per-band s (diffuse and specular) vs broadband s | C80 | -0.001 (0.000) | -0.002 | +0.000 | -0.011 | none | 0 / 0 / 0 |
+| B11 (B) sensitivity (AX29): envelope scaled by the simulator's band energies (reported) | EDT | -0.045 (0.016) | -0.655 | +0.565 | +1.247 | 2000 | 7 / 6 / 10 |
+| B11 (B) sensitivity (AX29): envelope scaled by the simulator's band energies (reported) | C80 | +0.135 (0.009) | -0.264 | +0.535 | +0.656 | none | 5 / 6 / 10 |
 | Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | -0.086 (0.011) | -0.192 | +0.021 | +0.338 | none | 0 / 0 / 3 |
 | Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | C80 | +0.028 (0.006) | -0.068 | +0.123 | +0.209 | none | 0 / 0 / 1 |
 | Handover floor t_dir,e + 140 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | -0.225 (0.019) | -0.171 | -0.278 | +0.085 | none | 7 / 1 / 0 |
@@ -478,12 +482,14 @@ In-range figure (500–1000 Hz mean; Vorländer Table 6.1 states these jnds for 
 
 Pairs whose handover Δ̂ exceeds 1 jnd: bras_cr3_ls1_mp3 C80 -1.18; bras_cr2_ls1_mp1 EDT -1.25; bras_cr2_ls1_mp2 EDT -1.45; bras_cr2_ls1_mp3 EDT -1.55; bras_cr2_ls1_mp4 EDT -1.21; bras_cr2_ls1_mp5 EDT -1.52; bras_cr2_ls2_mp1 EDT -1.35; bras_cr2_ls2_mp2 EDT -1.50; bras_cr2_ls2_mp3 EDT -1.50; bras_cr2_ls2_mp4 EDT -1.39; bras_cr2_ls2_mp5 EDT -1.47; bras_cr2_ls1_mp4 C80 +1.37; bras_cr2_ls1_mp5 C80 +1.23; bras_cr2_ls2_mp5 C80 +1.76; bras_cr2_ls2_mp4 EDT -2.61; bras_cr2_ls2_mp5 EDT -1.62; bras_cr3_ls1_mp1 EDT +2.63; bras_cr3_ls1_mp2 EDT +3.62; bras_cr3_ls1_mp3 EDT +3.88; bras_cr3_ls1_mp4 EDT +2.92.
 
-**fitted α** (reported only): R per arm = 51 (pilot 51; R needed per comparison after the run: B11_B 2, handover80_hybrid 2, handover140_hybrid 4, handover80_phase04 4, handover140_phase04 9).
+**fitted α** (reported only): R per arm = 51 (pilot 51; R needed per comparison after the run: B11_B 2, B11_B_simE 2, handover80_hybrid 2, handover140_hybrid 4, handover80_phase04 4, handover140_phase04 9).
 
 | comparison | metric | error base → with (jnd) | Δ̂ (jnd) | SE | per room Δ̂ (SE) | valid | reading |
 |---|---|---|---|---|---|---|---|
 | B11 (B): reference hybrid vs Phase 04 IR (rule handover) | EDT | 1.716 → 1.411 | -0.305 | 0.014 | CR2 -0.019 (0.001); CR3 -0.590 (0.028) | yes | not worse (B11 (B) passes) |
 | B11 (B): reference hybrid vs Phase 04 IR (rule handover) | C80 | 0.862 → 0.906 | +0.044 | 0.007 | CR2 -0.093 (0.004); CR3 +0.182 (0.015) | yes |  |
+| B11 (B) sensitivity (AX29): envelope scaled by the simulator's band energies (reported) | EDT | 1.716 → 1.413 | -0.303 | 0.015 | CR2 -0.021 (0.001); CR3 -0.585 (0.031) | yes | reported; not worse: yes |
+| B11 (B) sensitivity (AX29): envelope scaled by the simulator's band energies (reported) | C80 | 0.862 → 0.933 | +0.071 | 0.008 | CR2 -0.099 (0.004); CR3 +0.241 (0.016) | yes |  |
 | Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | 1.411 → 1.351 | -0.060 | 0.009 | CR2 +0.060 (0.008); CR3 -0.180 (0.016) | yes | rule stands ((a) no, (b) no, (c) yes) |
 | Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | C80 | 0.906 → 0.961 | +0.055 | 0.006 | CR2 -0.057 (0.010); CR3 +0.167 (0.008) | yes |  |
 | Handover floor t_dir,e + 140 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | 1.411 → 1.358 | -0.053 | 0.010 | CR2 -0.005 (0.012); CR3 -0.102 (0.020) | yes | rule stands ((a) no, (b) no, (c) yes) |
@@ -499,6 +505,8 @@ In-range figure (500–1000 Hz mean; Vorländer Table 6.1 states these jnds for 
 |---|---|---|---|---|---|---|---|
 | B11 (B): reference hybrid vs Phase 04 IR (rule handover) | EDT | -0.107 (0.019) | +0.079 | -0.294 | -0.699 | none | 4 / 4 / 9 |
 | B11 (B): reference hybrid vs Phase 04 IR (rule handover) | C80 | +0.057 (0.010) | +0.052 | +0.061 | +0.020 | none | 5 / 2 / 5 |
+| B11 (B) sensitivity (AX29): envelope scaled by the simulator's band energies (reported) | EDT | -0.087 (0.021) | +0.109 | -0.283 | -0.735 | none | 4 / 4 / 9 |
+| B11 (B) sensitivity (AX29): envelope scaled by the simulator's band energies (reported) | C80 | +0.084 (0.010) | +0.076 | +0.091 | +0.046 | none | 5 / 3 / 5 |
 | Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | +0.030 (0.011) | +0.102 | -0.043 | -0.239 | none | 0 / 0 / 2 |
 | Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | C80 | +0.036 (0.007) | +0.037 | +0.035 | +0.093 | none | 0 / 0 / 0 |
 | Handover floor t_dir,e + 140 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter) | EDT | +0.036 (0.017) | -0.023 | +0.095 | -0.232 | none | 1 / 1 / 1 |
