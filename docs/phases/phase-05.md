@@ -1,6 +1,6 @@
 # Phase 05 — Comparison with measured impulse responses (evidence) + accuracy report
 
-Size: **M** · Depends on: 04 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ9, AX4, AX16, AX21, AX22) and §3 (F2, F3), PRD NFR-1, NFR-8, Q2, Q9
+Size: **M** · Depends on: 04 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ9, AX4, AX16, AX21, AX22, AX23) and §3 (F2, F3), PRD NFR-1, NFR-8, Q2, Q9
 
 ## Raise with Maisara (she does not track these herself)
 
@@ -39,6 +39,11 @@ hand-tuned.
   user-facing, not in the contract) separates model error from atmosphere mismatch (scope 6).
 - **AX21**: the Phase 04 hybrid IR has no scattered energy before t_mix,e (known deficit); scope 6
   measures what adding it would change, without changing the simulator.
+- **AX23** (Phase 04 decay-time meter): the `tools/acoustics` order-6 Butterworth octave filters read
+  a band's decay time long when T60 falls steeply into the next band (`metrics.py` "known limits");
+  Phase 04 measured +29 % at 8 kHz in `stone_box` and +10.6 % in `concert_hall_box` (central
+  half-octave reading ≈ 0 %). AX23 names Phase 05 among the phases it affects. How Phase 05 treats
+  this bias is not yet decided (/fix-plan, 2026-11-06).
 
 ## Data
 
@@ -130,7 +135,9 @@ hand-tuned.
      file end without compensation biases T30 (e.g. ≈ +40 % by −5…−35 dB regression at noise −50 dB re the initial band
      envelope energy, T = 1 s, 3 s file). Noise per band: the mean square of the band-filtered IR over
      the last ≈ 10 % of the file, only if that segment is verified to be noise (not a fade or
-     truncation; flag otherwise); iterative crossing-point search (Lundeby et al. 1995); compensation
+     truncation; flag otherwise); iterative crossing-point search (Lundeby et al. 1995; `tools/acoustics`
+     has it as `metrics.lundeby`, which since Phase 04 decides on the upper hull of the smoothed decay,
+     BUILD_PLAN §6 Phase 04 row); compensation
      energy (A/k)·e^(−k·t_c) with k from the late slope near the crossing t_c; one correction only (no
      additional noise subtraction); the same truncated and compensated energy is used in the late
      integral of C80 (Eq. 6.7) (expert recommendation, outside the corpus; window and iteration
