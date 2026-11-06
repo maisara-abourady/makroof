@@ -74,17 +74,22 @@ third source position, measured with the Genelec only, which is not omni and is 
 4. **Scattering** per face and octave band: s_face = Σ Sᵢ(1−αᵢ)sᵢ / Σ Sᵢ(1−αᵢ) (reflected-energy
    weights, Vorländer Eqs. 3.23–3.24), then one broadband s per face by AX17 (mean of the 500 Hz,
    1 kHz and 2 kHz octave values). Per-band s is kept for the B10 run of the reference hybrid.
-5. **Third octaves → octaves (AX25, pending interrogator check):** an octave band's α (and s) is
-   the arithmetic mean of its three third-octave values (63 Hz: 50, 63, 80 Hz; … 8 kHz: 6.3, 8,
-   10 kHz), applied to the BRAS csv values before rule 3.
-6. **Positions (AX24, pending interrogator check)** — keep the real source–receiver distance r and
-   the source and receiver heights above the floor (phase-05 scope 2):
-   - height above the floor = z − z_floor, z_floor the elevation of the highest floor-assigned
-     face directly below the point (vertical ray), or the area-weighted mean floor elevation
-     when none is below it;
+5. **Third octaves → octaves (AX25):** an octave band's α is the arithmetic mean of its three
+   third-octave values (63 Hz: 50, 63, 80 Hz; … 8 kHz: 6.3, 8, 10 kHz; the three tile the octave,
+   Vorländer Eq. 1.39; A is linear in α, Eq. 4.30, so the order relative to rule 3 does not
+   matter); its s is the reflected-energy-weighted mean Σ(1−α_k)s_k / Σ(1−α_k) over the three, as
+   in rule 4 (interrogator AX25-1…6). Eyring on the octave-mean ᾱ underestimates the octave's
+   initial decay rate by ≈ Var_k(ᾱ_k)/(2(1−ᾱ)²) (Kuttruff Eqs. 3.68, 5.22; AX25-4), reported.
+6. **Positions (AX24)** — keep the real source–receiver distance r and the source and receiver
+   heights above the floor (phase-05 scope 2):
+   - both heights are measured vertically to one floor plane per pair: z_floor, the elevation of
+     the highest floor-assigned face below the pair's horizontal midpoint (where the floor
+     reflection lands), or the area-weighted mean floor elevation when none is below it. One
+     plane per pair, so the box floor reflection corresponds to one real face (Vorländer §11.3.1;
+     interrogator AX24-4) and Δh = Δz;
    - horizontal: the midpoint of the pair is mapped proportionally from the floor-assigned faces'
-     bounding box (rotated frame) to the box floor; the pair keeps its horizontal direction and
-     its horizontal separation √(r² − Δh²) about that midpoint;
+     bounding box (rotated frame) to the box floor; the pair keeps its real horizontal direction
+     and horizontal separation about that midpoint, so r is kept exactly (AX24-5);
    - if a point falls closer than AX6's 0.1 m to a box face it is moved to 0.1 m and the r error
      is reported; the heights are capped at h − 0.1 m the same way.
    - Both contract emitters (L, R) are placed at the source; emitter 0 (L) is analysed.
@@ -92,6 +97,12 @@ third source position, measured with the Genelec only, which is not omni and is 
    scene (the nightly gate is deterministic), 44.1 kHz renders (the BRAS sample rate).
 
 ## 4. Known limits of the reduction (reported, not corrected)
+
+- Heights are vertical; over a sloped floor face the normal distance that sets the reflection
+  delay is (z − z_floor)·cos θ (Vorländer Eq. 11.33; AX24-3). Proportional mapping keeps wall
+  distances only where the box extent equals the model's (AX24-6). Points moved to AX6's 0.1 m
+  are near grazing for that face (AX24-8). The specular box floor has no seat-dip attenuation
+  over audience seating (Kuttruff §6.7; AX24-9).
 
 - Non-rectangular plan, raked floors, balconies, the stage house and the coupled attic (CR3) are
   represented only through the face-rule areas and α.
