@@ -49,3 +49,9 @@ Reason: phase 04 plan update (AX22): the realised-k switch falls back to ISM-onl
 - `phase04_small_room_omni`: rewritten, within tolerance
 - `phase04_stone_box_omni`: rewritten, within tolerance
 
+## 2026-11-06
+
+Reason: Phase 05e: create the nightly-gate baseline of the BRAS validation scenes (CR2, CR3 under AX26; AX27 noise subtraction in the validation path). CR4 is added when its extraction is accepted.
+
+- `validation_baseline`: created
+
