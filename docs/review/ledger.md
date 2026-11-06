@@ -1132,3 +1132,64 @@ c1b171f (adds Kuttruff, Room Acoustics). Corrections applied to the rows are lis
 (AX23-1…3 now CORRECT). Open: AX23-10 (Expert); which corpus air table AX4/AX23 should cite
 (Kuttruff Table 6.1 agrees with ISO 9613-1; Vorländer's annex bins do not) is a plan question.
 
+
+## docs/phases/phase-05.md — AX23 and Lundeby (2026-11-06) (/fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d; external sources: researcher report below)
+
+Trigger: the Phase 04 session reported that AX23 (octave-filter leakage reads decay times long at 4–8 kHz
+when T falls steeply between bands; numbered AX21 on its branch) and the upper-hull change to
+`metrics.lundeby` were not reflected in the Phase 05 plan. Chain run by the main session as orchestrator:
+plan-editor (pass 1, DECISIONS NEEDED D1–D7) → interrogator ×2 → advocate ×2 (cross-examination) →
+interrogator final verdicts → researcher (outside the corpus) → decider (D1–D7, N1, N2; addenda E1–E3,
+G5-1, G5-4) → plan-editor passes 2–3 → interrogator final check, rounds 1–3. The advocate, researcher and
+decider were run as general-purpose agents following `.claude/agents/<name>.md` verbatim (they were added
+after this session started and are not registered in it). Decisions are proposals Maisara can veto.
+Commits 2c1b785, 44eef9e, 0cb2068, 389ad46, 977c5f3.
+
+### Decisions (interrogator final verdict → decider choice)
+
+| id | question | interrogator final (after advocate) | decided | outside the corpus |
+|---|---|---|---|---|
+| D1 | meter at 1–8 kHz, sim vs meas | "fair because both carry the bias" CONDITIONS VIOLATED (bias depends on r and per-band leak D, Kuttruff Eq. 3.64–3.68 two-term model); half-octave NOT CHECKABLE (AX23-10); R 1.8 rejected; several options valid | (c): octave primary, AX23 half-octave beside on both IRs; "meter-dependent" flag at > 5 points; r printed; leak calibration recorded in AX23 | 5 % working jnd; half-octave meter; ISO octave practice |
+| D2 | AQ9 bands | "BRAS rooms small" INCONSISTENT (145/2350/8650 m³); air-only bound CORRECT under conditions; product matter | (a)+(b): AQ9 on octaves, half-octave mean printed (never gating); per-room r from pair-mean T30, r > 1.1 → "leakage-sensitive" | 1.1 threshold (model-derived) |
+| D3 | B12 meter | (a) not provably safe vs 1.25-point margin (bound 5.5 / 3.7 points on 2·mean); (c) robust | (c): B12 on both meters, else "meter-dependent, Eyring stays"; octave-only branch (E2) only with measured D ≥ 13 dB at r ≤ 1.1, S_all ≤ 0.42, S_room ≤ 1.67 points | branch thresholds |
+| D4 | nightly gate | all valid; AX23(a)(i) reason imprecise for scope 4 | (b): octave all bands + half-octave 1–8 kHz, ±2 %; AX23(a) not applied, reason reworded | — |
+| D5 | upper-hull Lundeby on measured IRs | "1.5–3 % T30" and "B·T ≲ 67" withdrawn; ≈ +0.45 % in AQ9 bands; plateau only for B·T ≲ 30–45 with ≳ 9T noise | (d): paired single-realisation test, 18 conditions gated ≤ 0.6 % (SE ≤ 0.15 %), noise 48/55/65 dB, BRAS-like fade; case B 125 Hz reported; §6 "unchanged" claim annotated | 0.6 % (half B12 margin), 48 dB |
+| D6 | noise estimate | all valid | (c): iterative Lundeby estimate (Venturi et al. 2013 summary), BRAS 1024-sample fade trimmed, last-10 % cross-check flag | F7, F14, σ formula |
+| D7+N2 | usable-range reference | peak and intercept references coincide only near 3.3 r_c; literal EDC rule laxer by 10·log10(1 + (r_c/r)²) | (c): peak rule (ISO 3382-1 §4.2.1/§5.2.1) AND the Lundeby late line at t₀, both ≥ 45/35 dB | 45/35 dB (ISO) |
+| N1 | simulated EDC vs code | plan "integrated to the end" INCONSISTENT with code (sim IR goes through lundeby; ≈ 4·10⁻⁵ dB) | plan amended to one path; unit test ≤ 0.01 dB | — |
+
+Researcher (sources read unless noted): ISO 3382-1:2009 §4.2.1, §4.2.2, §5.2.1 and ISO 3382-2:2008 §4.3.3–4.3.4,
+§5.2.1 (previews); Venturi, Farina, Tronchin, POMA 19, 015006 (2013), doi:10.1121/1.4800277 (Lundeby summary;
+leakage magnitudes); Brinkmann et al., JASA 145(4) 2746–2760 (2019), doi:10.1121/1.5096178, Table II (CR2
+145 m³, T ≈ 2.0 s, d_c 0.49 m); Aspöck et al., BRAS documentation (2020), doi:10.14279/depositonce-6726.3,
+§3.4.1 (omni RIRs 3.5 s, last 1024 samples Hann-faded). Not retrieved: Lundeby et al. 1995 original;
+ISO 3382-2 Annex B threshold, §7 text and uncertainty constants; Jacobsen B·T rule; ISO 3382-1 Annex A table.
+
+### Final check of the applied text
+
+| id | kind | item | verdict | severity | status |
+|---|---|---|---|---|---|
+| G5-1 | NUMBER | air-only leakage bound stated only for 50 % RH | CONDITIONS VIOLATED | major | resolved (round 3: ≤ 2.5 % at 1 kHz (70 % RH), ≤ 7.1 % at 2 kHz (40 % RH); 50 % and CR2 values added; measured-r check is the rule) |
+| G5-2 | NUMBER | "R ≥ 51 safe for σ₁ ≤ 1.5 %" | WRONG | major | resolved (≤ 1.4 %; R per band by the SE rule) |
+| G5-3 | NUMBER | "2.9 dB at r = r_c" | IMPRECISE | minor | resolved (3.0 dB) |
+| G5-4 | FACT | which r's D is used | IMPRECISE | minor | resolved (decider: D₁ = D + 10·log10 r; entry at r_i ≤ 1.1; lookup with D₁,min) |
+| G5-5 | NUMBER | headroom quoted at untested 45 dB | IMPRECISE | minor | resolved (≈ 0.23 % / 0.37 % at 48 dB) |
+| G5-6 | NUMBER | §6 row SE 0.2 % superseded | IMPRECISE | minor | resolved (marked superseded) |
+| G5-7 | DECISION | AX23 row omits E2 branch | INCONSISTENT | minor | resolved |
+| G5-8 | NUMBER | EDT effect in dB | IMPRECISE | minor | resolved |
+| G5-9 | NUMBER | BRAS T not labelled | NOT CHECKABLE | none | resolved (labelled, Brinkmann et al. 2019) |
+| G5-11 | NUMBER | 1 kHz worst case at 40 % RH | WRONG | major | resolved (70 % RH, 2.5 %) |
+
+Confirmed CORRECT by the final check: two-term model and its window; 0.42 %/1.2 %; 0.42/1.67 points; 0.6 %;
+0.15 %; family false-failure rates; R formula; 10·log10(1 + (r_c/r)²) form; 62 dB flag; −0.18 dB fade;
+nightly limits; Kuttruff citations; labels; consistency across scopes 3, 4, 6, 7, acceptance criteria and
+BUILD_PLAN; no stale text.
+
+**Open (for Maisara / the Expert):** AX23-10 (is a half-octave reading an acceptable basis for octave-band
+T; the decided design reports both and gates on neither alone); the T jnd (5 % working value, practice-cited
+only); the ISO 3382-2 curvature threshold and uncertainty constants and the Lundeby 1995 original (not
+retrieved); the advocate, researcher and decider agents should be registered in a fresh session so they run
+natively.
+
+**Accepted by Maisara (2026-11-06):** all decider decisions of this run (D1–D7, N1, N2, E1–E3, G5-1, G5-4)
+are accepted as applied; they are no longer proposals.
