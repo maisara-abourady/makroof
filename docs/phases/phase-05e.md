@@ -1,6 +1,6 @@
 # Phase 05e — Comparison with measured IRs, part 2 (remainder of Phase 05)
 
-Size: **M** · Depends on: 05 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ9, AX4, AX16, AX21, AX22, AX23, AX24, AX25) and §3 (F2, F3), **`docs/phases/phase-05.md` (all of it: its rules apply here unchanged)**, `docs/validation/bras_mapping.md`, `docs/review/ledger.md` section "Phase 05 session — Table 5.2 check and AX24/AX25", PRD NFR-1, NFR-8, Q2, Q9
+Size: **M** · Depends on: 05 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ9, AX4, AX16, AX21, AX22, AX23, AX24, AX25, AX26, AX27) and §3 (F2, F3), **`docs/phases/phase-05.md` (all of it: its rules apply here unchanged)**, `docs/validation/bras_mapping.md`, `docs/review/ledger.md` section "Phase 05 session — Table 5.2 check and AX24/AX25", PRD NFR-1, NFR-8, Q2, Q9
 
 Created on 2026-11-06 at Maisara's request ("invest in a clean stop for this phase that is testable
 and mergeable and prep a clear new phase that can start with a fresh context"). Phase 05 was split:
@@ -23,30 +23,28 @@ The session raises each item in its **first message** and again in the **PR desc
 3. **Commissioning decision.** Tell Maisara that this decision comes after Phase 05d (see phase-05d,
    "Raise with Maisara"), and summarise for her what this phase's numbers already suggest.
 
-Three plan decisions are open from Phase 05. Each must be taken through `/fix-plan` (acoustic choices
-go to the interrogator first, CLAUDE.md) **before the work that depends on it starts**. Check
-`docs/BUILD_PLAN.md` §6 first: if a row records the decision, apply it and say so; if not, raise it.
+Three plan decisions were open from Phase 05; all three were **decided 2026-11-06** (BUILD_PLAN §6
+row of that date; decider proposal at Maisara's request, interrogator verdicts on corpus c1b171f;
+vetoable by Maisara). The rule text is in `docs/phases/phase-05.md`; the session applies it and tells
+Maisara which decisions it applied, so she can veto.
 
-4. **(D-A) Dimension rule.** phase-05.md Data, "Dimensions" (keep h = V / documented floor area and
-   S) gives degenerate or invalid boxes: CR2 becomes 13.9 × 3.6 × 2.9 m against a real ≈ 6.2 × 8.6 m;
-   CR3 becomes 136.4 × 5.55 × 4.40 m, outside AX6 (≤ 100 m), so no CR3 scene is written (both CR3 end
-   walls would also be clamped to α = 1). Waits on it: scope (a), and through it (c), (d), (e), (f)
-   and every acceptance criterion that needs scenes or a report.
-5. **(D-B) a* against Kuttruff Table 5.2.** The criterion "the a* solver reproduces the iteration
-   column of Kuttruff Table 5.2 within ±1 %" is not checkable as written: the converged solver and an
-   independent Monte Carlo are 1.6–7.3 % below the column (ledger T52-01, T52-10). The test is a
-   strict xfail (`tools/acoustics/tests/test_radiosity.py`). Waits on it: the a* criterion below, and
+4. **(D-A) Dimension rule: decided 2026-11-06 (§6 row; vetoable by Maisara).** AX26: keep V and
+   h = V / A_floor, plan ratio from the floor surfaces' minimum-area oriented bounding rectangle, S not
+   matched (its error and the Eyring change reported), A conserved per face (phase-05.md Data,
+   "Dimensions"). Unblocks scope (a), and through it (c), (d), (e), (f) and every acceptance
+   criterion that needs scenes or a report.
+5. **(D-B) a* against Kuttruff Table 5.2: decided 2026-11-06 (§6 row; vetoable by Maisara).** a*,
+   converged to < 0.4 % per halving, is gated within ±1 % in all six Table 5.2 cases against a Lambert-particle Monte
+   Carlo; γ²-Eyring and the Table 5.2 column are reported, not gated, and a* may not replace Eyring in B12 while
+   ledger DB-1 is unresolved (phase-05.md a* criterion; B12 condition (v)). The strict xfail in
+   `tools/acoustics/tests/test_radiosity.py` becomes the new gate. Unblocks the a* criterion below and
    the B12 decision rule's use of a* (scope (e)).
-6. **(D-C) Scope 7 paired noise test.** Case A fails in the 48 dB conditions (+1.8 … +2.1 % against
-   the 0.6 % gate) and in 500 Hz / T = 1 s / 55 dB (+0.60 %); the cause is noise energy before the
-   crosspoint, not the hull. Besides the bias, three 48 dB conditions have "unsuitable" realisations
-   (noisy-arm T30 None): 5/51 at 500 Hz / 1 s, 1/51 at 500 Hz / 2 s, 1/51 at 1 kHz / 1 s.
-   `tools/acoustics/tests/test_noise_handling.py` checks bias and suitability separately, both as
-   strict xfails (7 bias, 3 suitability).
-   phase-05.md scope 7's reversal ("measured IRs run without the hull behind a flag, through a new AX")
-   concerns the hull; the decision says whether it applies or what replaces it. Waits on it: the
-   paired noise criterion below, and the measured-IR noise handling that the report's numbers pass
-   through (scope (d), (e)).
+6. **(D-C) Scope 7 paired noise test: decided 2026-11-06 (§6 row; vetoable by Maisara).** AX27:
+   Lundeby noise-power subtraction before the Schroeder integral in the validation decay path; gated
+   levels L_min = 51 dB, 55, 65 dB (48 dB reported); measured bands enter AQ9/B12 only at a noise
+   margin ≥ L_min; the hull stays (phase-05.md scope 7). The xfails in
+   `tools/acoustics/tests/test_noise_handling.py` resolve under AX27. Unblocks the paired noise
+   criterion below and the measured-IR noise handling of scope (d), (e).
 
 ## Goal
 
@@ -57,7 +55,8 @@ comparisons.
 ## Assumptions in force
 
 As phase-05.md "Assumptions in force", unchanged, plus AX24 and AX25 (BUILD_PLAN §2, added by
-Phase 05) and the Phase 05 leak calibration and paired noise results recorded in AX23.
+Phase 05), AX26 and AX27 (added 2026-11-06 by decisions D-A and D-C), and the Phase 05 leak
+calibration and paired noise results recorded in AX23.
 
 ## Start here
 
@@ -72,7 +71,7 @@ details in BUILD_PLAN §0 row 05):
 - `tools/validation/extract_bras_geometry.py`, `tools/validation/make_bras_scenes.py`,
   `docs/validation/bras_mapping.md` (selection and rules committed before any comparison; CR2 and
   CR3 reduction results).
-- 20 CR2 scenes in `tests/scenes/validation/` (initial and `_fitted` α sets). No CR3 scene (D-A),
+- 20 CR2 scenes in `tests/scenes/validation/` (initial and `_fitted` α sets). No CR3 scene (old dimension rule; D-A),
   no CR4 scene (reader).
 - AX24, AX25 in BUILD_PLAN §2.
 - `render_cli --atmosphere`, `--mix-floor-ms` (validation only) and the debug-only
@@ -109,10 +108,20 @@ detached, see scope (b)).
 
 All of it as specified in phase-05.md, unchanged; this list says what is left.
 
-a. **After D-A:** regenerate the scenes for all selected rooms (`make_bras_scenes.py`), with the
+a. **D-A (AX26) applied:** regenerate the scenes for all selected rooms (`make_bras_scenes.py`), with the
    reduction results appended to `bras_mapping.md` before any comparison (phase-05.md Data). No room
    is dropped after results are seen. If after D-A no room qualifies, phase-05.md Data's zero-room
    branch applies unchanged.
+   - **CR2 volume.** BRAS documents V = 145 m³ (documentation p. 25; Brinkmann et al. 2019 Table II;
+     external), the model gives 146.1 m³, which AX26 uses; with A fixed this raises predicted T by
+     ≈ +0.76 % for every CR2 pair. Before any comparison, establish the cause (e.g. rounding in the
+     documentation, or a volume the model includes that the documentation excludes) and record it in
+     `bras_mapping.md`. The rule is unchanged: AX26 keeps the model volume (one generic rule for all
+     rooms; no per-room correction, NFR-8). Report the +0.76 % beside the CR2 AQ9 line. If the cause
+     shows the model volume is wrong, raise it through /fix-plan before the baseline is created; never
+     after results are seen.
+   - CR3: the documentation gives 2 350 m³ excluding the attic, the model 3 330.6 m³ including it
+     (`bras_mapping.md`); the same check applies and is reported.
 b. **CR4:** the geometry extraction is a one-off developer step, never run at run time (Maisara,
    2026-11-06). Run it detached with no time limit, outside the 40-minute tool timeouts, e.g.
    `nohup python tools/validation/extract_bras_geometry.py --rooms CR4 > extract-cr4.log 2>&1 &`.
@@ -151,10 +160,12 @@ unchanged:
       meets phase-05.md's criterion.
 - [ ] AQ9 pass/fail is printed per room (mean over pairs) and per pair, with the α set of each, and
       stated in the report summary (phase-05.md criterion).
-- [ ] The a* solver against the iteration column of Kuttruff Table 5.2 (phase-05.md criterion),
-      **subject to D-B**.
-- [ ] Scope 7 paired noise test, each of the 18 case A conditions (phase-05.md criterion),
-      **subject to D-C**.
+- [ ] a* against the independent references, Table 5.2 column reported (phase-05.md criterion,
+      as decided in D-B).
+- [ ] AX26 unit test on a synthetic rotated L-shaped room and `make_bras_scenes.py --check`
+      (phase-05.md criterion, added by D-A).
+- [ ] Scope 7 paired noise test with AX27, each of the 18 case A conditions at L_min, 55, 65 dB
+      (phase-05.md criterion, as decided in D-C).
 - [ ] The report contains the scope 6 comparisons (decay predictors, reference hybrid, handover,
       humidity bound); reported, not gated.
 - [ ] The report prints per band the octave and half-octave readings, r, the "meter-dependent",
@@ -187,8 +198,10 @@ a* against Table 5.2), and whether the conclusions in the report follow from the
 
 ## Risks
 
-As phase-05.md "Risks", unchanged. Also: CR4 extraction time (scope (b)); D-A may change the
-scenes of CR2, so nothing built on the current 20 CR2 scenes is final until D-A is applied.
+As phase-05.md "Risks", unchanged. Also: CR4 extraction time (scope (b)); D-A (AX26) changes the
+scenes of CR2, so nothing built on the 20 CR2 scenes from Phase 05 is final; regenerate them first. The ±1 % a* gate may be borderline on Table 5.2 case 6 (the solver at 1.25 m, 5.787 s,
+is ≈ 1.2 % below a from-scratch particle simulation, 5.860 s, and still converging: last halving 0.42 %); 05e establishes it with the project MC at
+SE ≤ 0.25 %; a failure is a finding for /fix-plan, not a reason to retune either implementation.
 
 ## Definition of done
 

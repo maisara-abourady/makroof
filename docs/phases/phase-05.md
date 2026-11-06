@@ -116,21 +116,26 @@ hand-tuned.
   reduced to a shoebox, by these generic rules, and which BRAS material set is used. The room
   selection and its reasons are committed to `bras_mapping.md` before any simulated-vs-measured number
   is computed; no room is dropped after results are seen (decider report 8, accepted by Maisara, 2026-11-05):
-  - **Dimensions:** keep the mean floor-to-ceiling height h, always defined as h = V / documented floor
-    area; solve the floor from a·b = V/h and a + b = (S − 2V/h)/(2h), the longer side
-    along x (AQ1 axes). A real solution exists iff S ≥ 2V/h + 4√(V·h); otherwise use the square floor
-    a = b = √(V/h) (the smallest S for that V and h) and report the S error. With this h the box keeps
-    the room's floor and ceiling areas, total wall area and plan perimeter exactly; only the split
-    between x- and y-walls is approximate, and the floor and ceiling keep their documented α under the
-    face rule (expert recommendation, outside the corpus). Near-square plans sit close to the existence
-    bound, so the square-floor fallback may trigger on small errors in the documented S (harmless, S
-    error < 1 %; report it). Choosing to keep h is a
-    product choice (the corpus statistics, Vorländer Eq. 4.22, 4.23, 4.28, depend only on V, S and ᾱ;
-    individual dimensions enter through the image lattice, §11.3.3).
+  - **Dimensions (AX26):** keep V and h = V / A_floor, A_floor = summed area of the surfaces the
+    absorption rule assigns to the floor; plan ratio ρ ≥ 1 = side ratio of the minimum-area oriented
+    bounding rectangle of those surfaces' horizontal projection; a = √(A_floor·ρ) along x (AQ1),
+    b = √(A_floor/ρ). S is not matched: report box S vs documented S, ℓ̄ = 4V/S of both, and per band
+    the box's Eyring T against Eyring on the documented V, S, A. A room whose box has a side outside
+    AX6 is not written and is reported (no room is dropped after results are seen). With this h the
+    box keeps the floor-assigned area for its floor and ceiling (a·b = A_floor); total wall area and
+    plan perimeter are not kept. First-order T and the per-axis decay rate depend on V and the
+    per-face absorption area A only (Kuttruff Eq. 5.8; per-axis rate (c/2L_x)α_x = cA_x/4V to first
+    order, Eqs. 4.8–4.9; reflection rate Eq. 4.6 depends on V only); S and the proportions enter at
+    second order (Eyring, Eq. 5.35 γ²); early reflections depend on the real geometry, which no box
+    keeps, and C80 (Kuttruff Eq. 7.10) integrates the first 80 ms. The only published shoebox rule found keeps V and the main-dimension proportions
+    (RAZR in Brinkmann et al. 2019, JASA 145:2746, §II.D; external). The previous S-preserving rule
+    gave CR2 13.9 × 3.6 m (aspect 3.84 against the real ≈ 1.39) and an invalid CR3 box (136 m).
+    Reversal: only on evidence independent of the BRAS AQ9 results (an Expert answer on Q1/Q2, or a
+    reference simulation on the real geometry), never after seeing the comparison numbers.
   - **Absorption:** assign each documented surface to exactly one box face, the one whose outward
     normal is closest to its own; per band, α_face = ΣSᵢαᵢ / S_face over the assigned surfaces, so the
-    absorption area A (Eq. 4.30) is conserved per face and in total and, with S matched, ᾱ and the
-    Eyring T (Eq. 4.28, 4.32) are preserved; clamp α_face ≤ 1 and report every clamp and the A it
+    absorption area A (Eq. 4.30) is conserved per face and in total; S is not matched, so ᾱ and the
+    Eyring T shift at second order (reported, see Dimensions); clamp α_face ≤ 1 and report every clamp and the A it
     loses. (An area-weighted mean ΣSᵢαᵢ/ΣSᵢ does not conserve A unless face areas equal mapped areas.)
   - **Scattering:** per band, s_face = ΣSᵢ(1−αᵢ)sᵢ / ΣSᵢ(1−αᵢ) over the assigned surfaces (weighted by
     reflected energy, Vorländer Eq. 3.23–3.24), then reduced to one broadband s per face by AX17 (mean
@@ -307,14 +312,15 @@ hand-tuned.
      is tabulated, else 0.4 (Kuttruff §5.5). The choice changes T by ≈ 0.4 % in Table 5.2 case 4
      (γ² ≈ 0.376, linearly interpolated between Table 5.1's 1:2:2 = 0.363 and 1:2:5 = 0.403 rows, against 0.40); in general ΔT/T ≈ (Δγ²·a/2)/(1 − γ²a/2) with a = −ln(1−ᾱ) (Kuttruff
      Eqs. 5.33–5.34), e.g. ≈ 1 % for case 3 with 0.342 against 0.4, and a few % in elongated rooms with
-     high ᾱ. a* solver patches for the Table 5.2 test: 88 equal elements for the 1:2:3 room (cases 3–6,
-     Miles' example, Kuttruff §5.7) and 96 equal elements (6 × 4²) for the cube (cases 1–2); for BRAS rooms,
+     high ᾱ. a* solver patches for the Table 5.2 test: start from 88 equal elements for the 1:2:3 room (cases 3–6,
+     Miles' example, Kuttruff §5.7) and 96 equal elements (6 × 4²) for the cube (cases 1–2) and halve
+     until T changes by < 0.4 % per halving (D-B, see the a* criterion); for BRAS rooms,
      halve the patch size until a* changes by < 1 %. **Decision rule (B12)** (decider report 8, accepted by Maisara, 2026-11-05): Phase 05
      compares predicted T₆₀ (deterministic, so no seed noise, but not error-free: a* is converged to < 1 % per patch halving and the γ² choice moves γ²-Eyring by ≈ 0.4–3.6 % (Kuttruff Eqs. 5.33–5.34), both the size of the 1.25-point margin) with measured T30 at 500 Hz–2 kHz,
      room-averaged. A predictor replaces Eyring for all scenes (NFR-8: one predictor, no per-room
      choice) only if it lowers the mean |error| by ≥ 0.25 working jnd (1.25 % points) and makes no room
      worse by > 1 jnd (5 %). Otherwise Eyring stays. Shown separately for uniform and uneven α.
-     Conditions (decider report 11, accepted by Maisara, 2026-11-05): (i) a predictor counts as lowering the error only if it does so with a* converged to < 0.4 % per halving (margin/3, by analogy with AX11); (ii) a predictor with a free modelling input (γ²) must meet the rule at every admissible value: the Table 5.1 row and 0.4; (iii) the 5 % T jnd is a working value from outside the corpus (Vorländer Table 6.1 gives 5 % for EDT, not for T); (iv) only the initial-estimate α set counts: the fitted set is circular in Eyring's favour by construction (its α were scaled so that Eyring matches the measured T; researcher finding F6, BRAS documentation, outside the corpus) and is reported only. **Meter (AX23, decider D3):** the rule runs twice on the room-averaged measured T30, run 1 on octaves at 500 Hz, 1 kHz, 2 kHz and run 2 on octaves at 500 Hz and the half-octave meter at 1 and 2 kHz (outside the corpus), each under conditions (i)–(iv) unchanged; a predictor replaces Eyring only if both runs pass; if they disagree the outcome is "meter-dependent, Eyring stays", reported with both runs. **Octave-only branch (decider E2; outside the corpus):** B12 runs on octaves only (run 1) iff all hold, else the both-meters rule above: (1) the scope 7 calibration's entry condition holds (decider G5-4): measured D(r_i) ≥ 13 dB at every calibrated r_i ≤ 1.1 (r_i = 1.05 and 1.1), at 1 kHz and 2 kHz, in both neighbour variants, and the model-check residual ≤ 0.6 % at every r_i ≤ 1.3 (the limit is r ≤ 1.1 because this branch admits only rooms with every evaluable AQ9 band at r ≤ 1.1); (2) room set: every BRAS room that enters B12 (initial-estimate α set, condition (iv)), with its usable-range-evaluable AQ9 bands; (3) per room and band (500 Hz, 1 kHz, 2 kHz): r = T30(slower octave neighbour)/T30(band) from the room-averaged (pair-mean) measured octave T30; b_band = the two-term-model bias at the room's measured r with D(r) = D₁,min − 10·log10 r and a = 10^(−D(r)/10), where D₁,min(f_c, variant) is the minimum of D₁(r_i) over calibrated r_i ≤ 1.3 (conservative: lowest attenuation, largest predicted bias; product choice, outside the corpus), the variant matching the side of the slower neighbour, 500 Hz from the 500 Hz calibration, b = 0 when r ≤ 1; for r > 1.3 the lookup is an extrapolation, labelled so, and never enables the octave-only branch; S_room = 2·mean of b_band over the room's evaluable AQ9 bands (% points); S_all = 2·mean over rooms (equal weight) of the per-room band means; (4) octave-only is allowed iff no room has an evaluable AQ9 band with r > 1.1, S_all ≤ 0.42 points (the 1.25-point margin / 3, as condition (i)), and every S_room ≤ 1.67 points (the 5 % "no room worse" limit / 3). 2·mean(b) is the worst-case change in two predictors' |error| gap when they straddle the measurement (interrogator D-12), a bound held to margin/3 like the a* convergence error. The report prints r, b_band, S_room, S_all and the branch applied. If the D₁ spread across r_i at an f_c exceeds 1 dB, the model is treated as inadequate at that f_c (as in the scope 7 reversal): the measured bias table replaces the model and the octave-only branch is not allowed. An outcome from BRAS alone is labelled "input-limited" in the AQ2 change request, and Maisara decides on it (C2). The replacement is implemented in a later phase, through an AQ2 change (BUILD_PLAN §5 B12).
+     Conditions (decider report 11, accepted by Maisara, 2026-11-05): (i) a predictor counts as lowering the error only if it does so with a* converged to < 0.4 % per halving (margin/3, by analogy with AX11); (ii) a predictor with a free modelling input (γ²) must meet the rule at every admissible value: the Table 5.1 row and 0.4; (iii) the 5 % T jnd is a working value from outside the corpus (Vorländer Table 6.1 gives 5 % for EDT, not for T); (iv) only the initial-estimate α set counts: the fitted set is circular in Eyring's favour by construction (its α were scaled so that Eyring matches the measured T; researcher finding F6, BRAS documentation, outside the corpus) and is reported only; (v) a* may not replace Eyring while ledger DB-1 (Table 5.2 / Fig. 5.10 case-4 gap) is unresolved; the AQ2 change request states this (D-B, decider 2026-11-06); e.g. Table 5.2 case 4 (absorbing floor): Eyring 1.38 s is 14 % above the Iteration value 1.21 s; under (v) Eyring stays for such rooms. **Meter (AX23, decider D3):** the rule runs twice on the room-averaged measured T30, run 1 on octaves at 500 Hz, 1 kHz, 2 kHz and run 2 on octaves at 500 Hz and the half-octave meter at 1 and 2 kHz (outside the corpus), each under conditions (i)–(v) unchanged; a predictor replaces Eyring only if both runs pass; if they disagree the outcome is "meter-dependent, Eyring stays", reported with both runs. **Octave-only branch (decider E2; outside the corpus):** B12 runs on octaves only (run 1) iff all hold, else the both-meters rule above: (1) the scope 7 calibration's entry condition holds (decider G5-4): measured D(r_i) ≥ 13 dB at every calibrated r_i ≤ 1.1 (r_i = 1.05 and 1.1), at 1 kHz and 2 kHz, in both neighbour variants, and the model-check residual ≤ 0.6 % at every r_i ≤ 1.3 (the limit is r ≤ 1.1 because this branch admits only rooms with every evaluable AQ9 band at r ≤ 1.1); (2) room set: every BRAS room that enters B12 (initial-estimate α set, condition (iv)), with its usable-range-evaluable AQ9 bands; (3) per room and band (500 Hz, 1 kHz, 2 kHz): r = T30(slower octave neighbour)/T30(band) from the room-averaged (pair-mean) measured octave T30; b_band = the two-term-model bias at the room's measured r with D(r) = D₁,min − 10·log10 r and a = 10^(−D(r)/10), where D₁,min(f_c, variant) is the minimum of D₁(r_i) over calibrated r_i ≤ 1.3 (conservative: lowest attenuation, largest predicted bias; product choice, outside the corpus), the variant matching the side of the slower neighbour, 500 Hz from the 500 Hz calibration, b = 0 when r ≤ 1; for r > 1.3 the lookup is an extrapolation, labelled so, and never enables the octave-only branch; S_room = 2·mean of b_band over the room's evaluable AQ9 bands (% points); S_all = 2·mean over rooms (equal weight) of the per-room band means; (4) octave-only is allowed iff no room has an evaluable AQ9 band with r > 1.1, S_all ≤ 0.42 points (the 1.25-point margin / 3, as condition (i)), and every S_room ≤ 1.67 points (the 5 % "no room worse" limit / 3). 2·mean(b) is the worst-case change in two predictors' |error| gap when they straddle the measurement (interrogator D-12), a bound held to margin/3 like the a* convergence error. The report prints r, b_band, S_room, S_all and the branch applied. If the D₁ spread across r_i at an f_c exceeds 1 dB, the model is treated as inadequate at that f_c (as in the scope 7 reversal): the measured bias table replaces the model and the octave-only branch is not allowed. An outcome from BRAS alone is labelled "input-limited" in the AQ2 change request, and Maisara decides on it (C2). The replacement is implemented in a later phase, through an AQ2 change (BUILD_PLAN §5 B12).
    - **Reference hybrid (AX21):** at each specular hit, inject s(1−α) of the incident energy into the
      Lambert boundary patch hit, at the hit time (Kuttruff Eq. 4.24; Gilbert, §4.6). Propagate it with
      the **mixed specular/diffuse** form, not the all-Lambert Eq. 4.28: at every later hit, split the
@@ -436,27 +442,50 @@ hand-tuned.
    - **Paired noise test** (D5, E3; outside the corpus): R noise × exponential realisations per
      condition; per realisation i, bias_i = T30_noisy,i / T30_clean,i − 1 (the pairing isolates the
      noise handling). Noisy arm = the measured-IR path of `run_validation.py`: decay + independent
-     stationary white noise scaled per band to 48, 55 or 65 dB below the decay's band power at t₀
-     (48 = ISO 3382-1's 45 dB T30 minimum + 3 dB, product choice, so the usable-range rule does not
-     reject a random subset at the edge; researcher F1/F2), file 3.5 s with the last 1024 samples
+     stationary white noise scaled per band to L_min, 55 or 65 dB below the decay's band power at t₀,
+     L_min = 51 dB (AX27). L_min is the lowest level, in 1 dB steps, with median − 3·SD ≥ 45 dB in
+     every condition, where median and SD are those of the Lundeby dynamic-range estimate (the noise
+     margin below) over the realisations of a condition: it keeps the estimate clear of the 45 dB T30
+     requirement (ISO 3382-1:2009 §4.2.1, external). The session re-measures the median and SD per
+     condition at L_min in its own run; if median − 3·SD < 45 dB in any condition, L_min rises in
+     1 dB steps and the value is recorded in AX27. Measured (prototype with AX27, R = 51, same seeds):
+     the estimate reads ≈ 1.4 dB below nominal; worst median − 3·SD = 42.8 dB at 48 dB, 44.7 at 50,
+     45.7 at 51, 46.8 at 52 (500 Hz / 1 s); at 51 dB the other conditions read 47.2–48.5 dB, the bias
+     +0.02…+0.14 %, 0 unsuitable. The former 48 dB level is still run per condition and reported,
+     not gated, with its count of "unsuitable" realisations. File 3.5 s with the last 1024 samples
      Hann-faded (BRAS-like, researcher F14), fade trimmed (D6), then the `metrics.room_metrics` octave
-     band. Clean arm = the same decay realisation without noise or fade, same band filter, Schroeder
+     band with AX27 noise subtraction. Clean arm = the same decay realisation without noise or fade,
+     same band filter, Schroeder
      integration to the end of the file (as N1). **Case A** (AQ9 regime): 18 conditions, 500 Hz,
      1 kHz, 2 kHz × T = 1.0, 2.0 s × the three noise levels; gate |mean_i bias_i| ≤ 0.6 % in every
      condition, with SE ≤ 0.15 % per condition (tol/4: tol/3 would give ≈ 4.9 % family false failure
      over 18 conditions, tol/4 ≈ 0.11 %). R: pilot n ≥ 51 per condition, σ₁,Δ = SD of bias_i in %,
      R = max(51, ⌈(σ₁,Δ/0.15)²⌉) per condition; check the SE afterwards. Seeds are fixed, so the test
-     is deterministic in CI; the excess-energy estimate is linear in the noise power, so at the lowest
-     tested level (48 dB) it is ≈ +0.23 %, leaving ≈ 0.37 % headroom (a derivation, outside the corpus),
-     so a fail is a real finding. A condition where any realisation returns T30 None fails as
+     is deterministic in CI. Without subtraction: E[g_m²(t)] = g²(t) + N (g_m the noisy band IR;
+     noise uncorrelated with g); with x = t/τ, τ = T/(6 ln 10), N relative to g²(t₀), Kuttruff
+     Eq. 8.29 split at t_c gives EDC/τ = e^(−x) + N(x_c − x). This predicts ≈ +1.7 % at 48 dB, ≈ +0.5 %
+     at 55, ≈ +0.2 % at 60, ≈ +0.07 % at 65 dB (continuous −5…−35 dB regression, −35 dB point on the
+     noisy curve), close to Phase 05's measured +1.8…+2.1 / +0.43…+0.60 / ≈ +0.07 % (the earlier
+     +0.23 % estimate was wrong). With AX27 the residual EDC term is εN(x_c − x), ε = (N − N̂)/N; the
+     expected T30 bias is ≈ ε times the uncorrected bias (prototype: ε ≈ 0.14–0.17; measured bias
+     ≤ +0.14 % at 51 dB); so a fail is a real finding. A condition where any realisation returns T30 None fails as
      "unsuitable" (reported separately), not as a bias failure. EDT and C80 are computed and reported
      per condition, not gated (0.6 % derives from B12, which uses T30 only; expected effect on EDT ≪ 1 % and on C80 < 0.01 dB).
      0.6 % is half of B12's 1.25-point margin, since a common bias b shifts a predictor gap by up to 2b
      (product derivation). **Case B** (plateau regime): 125 Hz, T = 0.3 s, reported, not gated.
-     Reversal: if any case A condition fails, measured IRs run without the hull behind a flag,
-     through a new AX.
+     A measured band enters the gated AQ9 mean and B12 only if its noise margin is ≥ L_min: noise
+     margin = 10·log10(P_line(t₀)/N̂), P_line(t₀) the mean-square level of the Lundeby late-decay line
+     at the onset t₀ (same band filter), N̂ the Lundeby noise mean-square. This is the estimator whose
+     median − 3·SD set L_min; in the test it reads ≈ 1.4 dB below the nominal level, and on measured
+     IRs early energy makes it conservative; other bands are reported with the
+     flag 'noise not verified (margin)'. Reversal: if any case A condition fails with AX27, AX27 is
+     not used and measured bands enter AQ9/B12 only at a margin ≥ 60 dB (interrogator: the
+     uncorrected bias at 60 dB is ≈ +0.2 %, continuous −5…−35 dB regression, −35 dB point on the noisy
+     curve; Begault: ideally 60 dB above the noise floor). The upper
+     hull stays (removing it changes the bias by < 0.05 points).
    - **Simulated-EDC test** (N1): for a noise-free exponential decay ending at −90 dB, the
-     `metrics.room_metrics` EDC at −35 dB differs from integration to the end by ≤ 0.01 dB.
+     `metrics.room_metrics` EDC at −35 dB differs from integration to the end by ≤ 0.01 dB (run with
+     AX27 on).
 
 ## Out of scope
 
@@ -482,16 +511,39 @@ and do not change the simulator.
       stated in the report summary; a per-pair pass/fail mostly reflects noise in position-specific
       details (RR19 found the per-position structure mostly not reproduced; external source)
       (decider report 11, accepted by Maisara, 2026-11-05).
-- [ ] The a* solver reproduces the iteration column of Kuttruff Table 5.2 (all six cases), called
-      directly (the α = 0 walls of those cases are forbidden in scenes by AQ3), within **±1 %**, with 88 equal
-      elements for the 1:2:3 room (cases 3–6, Miles' example, Kuttruff §5.7) and 96 equal elements
-      (6 × 4², the nearest equal layout) for the cube (cases 1–2) (Maisara, 2026-11-05). The corpus's own two methods agree to ≈ 0.5 %
-      (Fig. 5.10's slope of −1.57 dB per mean free path, with n̄ = cS/4V, gives 1.216 s against
-      case 4's 1.21 s).
+- [ ] a* (solver called directly; the α = 0 walls are forbidden in scenes by AQ3), with patches
+      halved from 96 (cube) / 88 (1:2:3) equal elements until T changes by < 0.4 % per halving (as
+      B12 condition (i)), agrees within ±1 % in **all six** Table 5.2 cases with an independent
+      Lambert-particle Monte Carlo that shares none of the solver's form factors (SE ≤ 0.25 % per
+      case, tol/4). Reported, not gated, each with its difference: γ²-Eyring (Kuttruff Eq. 5.34;
+      Table 5.1 γ² = 0.342 for the cube, interpolated 0.376 for 1:2:3; not gated because Eq. 5.30
+      needs ½σ_N²a² ≪ 1, which is 0.26–0.51 at −35 dB), the Table 5.2 Iteration column, the
+      88/96-element result, and Fig. 5.10's case-4 value (−1.57 dB per mean free path → 1.215 s).
+      The case-4 gap (two corpus figures ≈ 7 % above the solver and both Monte Carlos; ledger DB-1)
+      is labelled 'unresolved'. This gate checks model consistency, not agreement with the corpus
+      table, whose method and discretisation are not stated (ledger T52-01, T52-04, T52-10; likely
+      Kuttruff 1995 JASA 98:288 or Gilbert 1981 JASA 69:178, not in the corpus). This replaces
+      Maisara's 2026-11-05 choice of gating against the column at 88/96 elements (D-B, decider
+      2026-11-06, vetoable by Maisara). Evidence: three independent implementations (solver; project
+      Monte Carlo; a from-scratch particle simulation: case 1 1.526 s, case 2 1.350 s vs table 1.35,
+      case 3 1.473 s, case 4 1.133 vs 1.21, case 5 2.981 vs 3.06, case 6 5.860 vs 5.93). The fixed
+      layouts are cube 96 elements (2.5 m) and 1:2:3 88 elements (5 m); the solver gives case 1 1.525 s
+      (96 and 384 elements), case 2 1.331 s, case 3 1.472 s (88) / 1.473 s (352), and at 88 elements
+      case 4 1.127, case 5 2.945, case 6 5.667 s. Convergence: case 2 1.3315 / 1.3378 / 1.3393 s
+      (2.5 / 1.25 / 0.625 m; halvings 0.47 %, 0.11 %), case 6 5.667 / 5.763 / 5.787 s (5 / 2.5 /
+      1.25 m; 1.7 %, 0.42 %). So the fixed layouts measure discretisation (case 6 −3.3 % at 88
+      elements); the converged solver is ≈ −0.8 % (case 2) and ≈ −1.2 % (case 6, still converging)
+      from the particle simulation. Reversal: Table 5.2's source is found and its discretisation
+      reproduces the column within 1 % → the gate returns to the column.
+- [ ] AX26 unit test on a synthetic rotated L-shaped room: the box keeps V and A_floor (rel. 1e-9),
+      ρ equals the oriented bounding-rectangle ratio, A is conserved per face, the S and Eyring errors
+      are printed; `make_bras_scenes.py --check` passes.
 - [ ] The report contains the scope 6 comparisons (decay predictors, reference hybrid, handover,
       humidity bound); they are reported, not gated.
-- [ ] Scope 7 paired noise test: each of the 18 case A conditions: |mean paired T30 bias| ≤ 0.6 %
-      with SE ≤ 0.15 % (case B, EDT and C80 reported, not gated).
+- [ ] Scope 7 paired noise test (with AX27): each of the 18 case A conditions (noise levels L_min,
+      55, 65 dB; L_min = 51 dB unless the AX27 rule raises it): |mean paired T30 bias| ≤ 0.6 % with
+      SE ≤ 0.15 %; the median and SD of the Lundeby dynamic-range estimate at L_min are recorded in
+      AX27 (48 dB conditions with their "unsuitable" count, case B, EDT and C80 reported, not gated).
 - [ ] Scope 7 simulated-EDC test: EDC at −35 dB within 0.01 dB of integration to the end.
 - [ ] Scope 7 leak calibration runs and its results (both meters' bias per f_c, variant and r; measured leak D;
       model-predicted bias and residual)
