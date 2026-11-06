@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import scipy.signal as sg
 
 from . import bands, ensembles, metrics
 
@@ -100,7 +101,8 @@ def leak_calibration(fc_list=(500.0, 1000.0, 2000.0, 4000.0, 8000.0), ratios=(1.
                 n = int((1.5 * 1.5 * max(t60.values()) + 0.3) * fs)  # to beyond -90 dB of the slowest
                 rng = np.random.default_rng(seed + int(fc) * 1000 + (0 if variant == "below" else 7) * 100 + int(r * 100))
                 acc_oct = None
-                hal = []
+                taps = ensembles.half_octave_fir(fc, fs) if fc >= 1000 else None
+                acc_half = None
                 e_own = e_leak = 0.0
                 for _ in range(R):
                     comps = multiband_components(rng, n, fs, t60)
@@ -109,12 +111,17 @@ def leak_calibration(fc_list=(500.0, 1000.0, 2000.0, 4000.0, 8000.0), ratios=(1.
                     acc_oct = e if acc_oct is None else acc_oct + e
                     e_own += float(np.sum(_octave_energy(comps[fc], fs, fc)[0]))
                     e_leak += float(np.sum(_octave_energy(comps[nb], fs, fc)[0]))
-                    hal.append(x)
-                    if len(hal) == 16:
-                        hal = [np.stack(hal)]
+                    if taps is not None:
+                        # the same as ensembles.band_metrics_half_octave_ensemble, streamed
+                        eh = sg.fftconvolve(x[metrics.onset_index(x):], taps) ** 2
+                        if acc_half is None:
+                            acc_half = eh
+                        else:
+                            k = min(acc_half.size, eh.size)
+                            acc_half = acc_half[:k] + eh[:k]
                 m_oct = metrics._band_metrics(np.empty(0), fs, lead, lead, energy=acc_oct / R, lead=lead, band_hz=fc)
-                irs = np.concatenate([h if h.ndim == 2 else h[None, :] for h in hal]) if hal else None
-                m_half = ensembles.band_metrics_half_octave_ensemble(irs, fs, fc) if fc >= 1000 else None
+                half = None if taps is None else taps.size // 2
+                m_half = None if taps is None else metrics._band_metrics(np.empty(0), fs, half, half, energy=acc_half / R, lead=half)
                 d_db = 10 * math.log10(e_own / e_leak)
                 row = {
                     "f_c": fc, "variant": variant, "r": r, "R": R,
