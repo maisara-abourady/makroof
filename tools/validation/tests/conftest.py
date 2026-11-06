@@ -6,3 +6,11 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parents[3]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "nightly: Phase 05 validation gate against the BRAS baseline (.github/workflows/nightly.yml); "
+        "the python CI job deselects it",
+    )

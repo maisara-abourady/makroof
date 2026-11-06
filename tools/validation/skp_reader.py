@@ -304,6 +304,7 @@ def read(data: bytes, log=None) -> Model:
             if found is None:
                 break
             q, delta = found
+            _opaque(p.objs, p.idx + 1, p.idx + delta)
             # After the last definition's thumbnail (a PNG) the root entities start.
             if not p.root and p.defs_seen >= n_defs and data.find(b"IEND\xaeB`\x82", fail, q) >= 0:
                 p.root = True
@@ -339,8 +340,16 @@ def _definition_class_index(data, first_geom, base):
     return None
 
 
+def _opaque(objs, first, last):
+    """Objects created in skipped bytes: references to them resolve, their content is unknown."""
+    for i in range(first, last + 1):
+        objs.setdefault(i, {"_c": "skipped", "_i": i})
+
+
 def _trial(p, data, pos, idx, k=60):
-    q = _Parser(data, pos, idx, p.cls, dict(p.objs))
+    objs = dict(p.objs)
+    _opaque(objs, p.idx + 1, idx)
+    q = _Parser(data, pos, idx, p.cls, objs)
     q.defs_seen = p.defs_seen
     got = 0
     try:
@@ -350,7 +359,9 @@ def _trial(p, data, pos, idx, k=60):
             o = q.ref()
             got += o is not None and o.get("_i", 0) > idx
     except _Stop as e:
-        return "definition body" in str(e)
+        # a record this reader has no layout for is not a desync: accept the position when
+        # enough objects parsed before it (bad references and unknown class tags reject it)
+        return "definition body" in str(e) or ("no reader" in str(e) and got >= 10)
     except Exception:
         return False
     return got >= 10
@@ -462,8 +473,10 @@ def world_polygons(model: Model) -> list[Polygon]:
         m = o["mat"]
         return m["_i"] if m is not None and m.get("_c") == "pre" else None
 
+    skipped = 0
+
     def emit(owner, M, inherited, depth):
-        owner = "def0" if owner == "def0" else owner
+        nonlocal skipped
         if depth > 32:
             raise SkpFormatError("instance nesting too deep")
         for f in by_owner.get(owner, []):
@@ -472,8 +485,12 @@ def world_polygons(model: Model) -> list[Polygon]:
             nw = np.linalg.inv(R).T @ n
             nw /= np.linalg.norm(nw)
             loops, area, off = [], 0.0, 0.0
-            for k, lp in enumerate(f["loops"]):
-                P = _loop_points(lp)
+            try:
+                pts = [_loop_points(lp) for lp in f["loops"]]
+            except (KeyError, TypeError):
+                skipped += 1  # depends on an object in skipped bytes
+                continue
+            for k, P in enumerate(pts):
                 off = max(off, float(np.max(np.abs(P @ n + f["d"])) * INCH)) if len(P) else off
                 Pw = (P @ R.T + M[:3, 3]) * INCH
                 loops.append(Pw)
@@ -489,6 +506,7 @@ def world_polygons(model: Model) -> list[Polygon]:
             emit(d["_i"], M @ _xf_matrix(inst["xf"]), m if m is not None else inherited, depth + 1)
 
     emit("root", np.eye(4), None, 0)
+    model.faces_not_resolved = skipped
     return out
 
 
