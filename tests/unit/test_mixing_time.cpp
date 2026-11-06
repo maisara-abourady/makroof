@@ -104,3 +104,23 @@ TEST_CASE("mixingTime is deterministic", "[sim][tail][mixing]")
     const auto b = sim::tail::mixingTime(0.0177, 384.0);
     CHECK(a.mixS == b.mixS);
 }
+
+TEST_CASE("mixingTime floor raises only the lower bound (phase-05 scope 6, validation only)",
+          "[sim][tail][mixing]")
+{
+    const double direct = 0.0177, v = 384.0;
+    const auto base = sim::tail::mixingTime(direct, v);
+    // A floor below the rule's own bound changes nothing.
+    const auto low = sim::tail::mixingTime(direct, v, 0.005);
+    CHECK(low.mixS == base.mixS);
+    CHECK(low.lowerBoundS == base.lowerBoundS);
+    // A later floor moves the lower bound to t_dir + floor; the k_eff rule still applies above it.
+    for (const double floor : {0.080, 0.140})
+    {
+        const auto mt = sim::tail::mixingTime(direct, v, floor);
+        CHECK_THAT(mt.lowerBoundS, WithinRel(direct + floor, 1e-12));
+        CHECK(mt.mixS >= mt.lowerBoundS);
+        CHECK(mt.mixS >= base.mixS);
+        CHECK(mt.expectedKeff >= sim::tail::kMixingMinKeff);
+    }
+}

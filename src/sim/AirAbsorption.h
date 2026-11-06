@@ -22,6 +22,11 @@ double airAttenuationDbPerMetre(double frequencyHz, double temperatureC = kAirTe
 // AX4 atmosphere, evaluated at the nominal band centres contract::kOctaveBandsHz.
 contract::BandArray bandsAirAttenuationDbPerMetre() noexcept;
 
+// The same for another atmosphere. Validation only (AX4: render_cli --atmosphere, phase-05 scope 6
+// humidity bound); the product always uses the AX4 atmosphere above.
+contract::BandArray bandsAirAttenuationDbPerMetre(double temperatureC,
+                                                  double relativeHumidityPercent) noexcept;
+
 // Pressure-amplitude factor of air absorption over `distanceM` metres per band:
 // 10^(-a_b * r / 20).
 contract::BandArray bandsAirAmplitude(const contract::BandArray& bandsDbPerMetre, double distanceM) noexcept;

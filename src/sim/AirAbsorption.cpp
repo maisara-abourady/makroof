@@ -40,6 +40,16 @@ contract::BandArray bandsAirAttenuationDbPerMetre() noexcept
     return bands;
 }
 
+contract::BandArray bandsAirAttenuationDbPerMetre(double temperatureC,
+                                                  double relativeHumidityPercent) noexcept
+{
+    contract::BandArray bands{};
+    for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+        bands[b] = airAttenuationDbPerMetre(contract::kOctaveBandsHz[b], temperatureC,
+                                            relativeHumidityPercent);
+    return bands;
+}
+
 contract::BandArray bandsAirAmplitude(const contract::BandArray& bandsDbPerMetre, double distanceM) noexcept
 {
     contract::BandArray amplitude{};

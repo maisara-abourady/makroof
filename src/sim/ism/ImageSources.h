@@ -11,6 +11,7 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace sim::ism {
@@ -63,8 +64,11 @@ struct ImageSourceOptions
     // AX20 (Phase 04 hybrid IR): when > 0, the list is time-bounded instead: every image of any
     // order whose arrival time is < maxArrivalTimeS, and maxOrder is ignored.
     double maxArrivalTimeS = 0.0;
-    double gain = 1.0;                         // linear emitter gain (10^(gainDb / 20))
-    bool airAbsorption = true;                 // AX4; false only for validation against references
+    double gain = 1.0;         // linear emitter gain (10^(gainDb / 20))
+    bool airAbsorption = true; // AX4; false only for validation against references
+    // Validation only (AX4 atmosphere override, render_cli --atmosphere): air attenuation per band
+    // in dB/m used instead of the AX4 atmosphere when set (and airAbsorption is true).
+    std::optional<contract::BandArray> airDbPerMetreOverride{};
     Directivity directivity = omniDirectivity; // AQ8
 };
 

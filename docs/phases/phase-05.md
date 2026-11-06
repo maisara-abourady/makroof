@@ -2,6 +2,21 @@
 
 Size: **M** · Depends on: 04 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ9, AX4, AX16, AX21, AX22, AX23) and §3 (F2, F3), PRD NFR-1, NFR-8, Q2, Q9
 
+**Split on 2026-11-06 at Maisara's request** (a clean, testable, mergeable stop). Phase 05 delivered:
+`fetch_bras.py`, `bras_manifest.json` and the tamper test; the own SketchUp reader `skp_reader.py`
+(every documented material area of CR2 and CR3 reproduced; CR4 not finished within 40 min);
+`extract_bras_geometry.py`, `make_bras_scenes.py`, `bras_mapping.md` (selection and rules committed
+before any comparison; CR2 and CR3 reductions); 20 CR2 scenes in `tests/scenes/validation`; AX24 and
+AX25; `render_cli --atmosphere`, `--mix-floor-ms` and the debug-only `MAKROOF_TEST_BIAS_T60` hook;
+`tools/acoustics/radiosity.py`; the scope 7 meter checks (recorded in AX23); `run_validation.py`,
+`report.py`, `ab_pack.py`, `loudness.py`; the nightly workflow and its tests (no baseline golden and
+no report committed). Phase 05 is closed as part 1 with what it delivered (above); it does not meet
+this file's Definition of done. That Definition of done, the unmet acceptance criteria and the "AQ9
+met in x/y" status note are carried by [`phase-05e.md`](phase-05e.md) (its own Definition of done
+refers to them), together with the remainder and the open plan decisions (D-A dimension rule, D-B
+Table 5.2 criterion, D-C paired noise test). The rule text below is unchanged and stays
+authoritative for both phases.
+
 ## Raise with Maisara (she does not track these herself)
 
 The session raises each item in its **first message** and again in the **PR description**.

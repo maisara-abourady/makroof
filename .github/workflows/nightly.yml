@@ -1,0 +1,87 @@
+# Phase 05 nightly validation (docs/phases/phase-05.md scope 4): simulated metrics of the BRAS
+# validation scenes against the committed baseline (tests/golden/validation_baseline.json), the
+# bias-hook self-test (debug render_cli), the comparison report with measured IRs (artifact).
+# Linux only. Runs nightly, on demand, and on pull requests that touch the validation.
+name: nightly validation
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "tools/validation/**"
+      - "tests/scenes/validation/**"
+      - "tests/golden/validation_baseline.json"
+      - "src/sim/**"
+      - ".github/workflows/nightly.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    name: BRAS validation (linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      SPATIAL_REQUIRE_RENDER_CLI: "1"
+      MAKROOF_REQUIRE_BRAS: "1"
+      MAKROOF_BRAS_CACHE: ${{ github.workspace }}/.bras-cache
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            tools/ci/requirements.txt
+            tools/acoustics/requirements.txt
+            tools/validation/requirements.txt
+      - name: Install Python dependencies
+        run: python -m pip install -r tools/ci/requirements.txt -r tools/acoustics/requirements.txt -r tools/validation/requirements.txt
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
+
+      - name: Build render_cli (release) and a debug render_cli for the bias hook
+        run: |
+          cmake --preset cli
+          cmake --build --preset cli
+          cmake -S . -B build/clidebug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DSPATIAL_BUILD_PLUGIN=OFF -DSPATIAL_BUILD_TESTS=OFF
+          cmake --build build/clidebug --target render_cli
+
+      - name: Cache BRAS files (verified by SHA-256 on every use)
+        uses: actions/cache@v6.1.0
+        with:
+          path: .bras-cache
+          key: bras-${{ hashFiles('tools/validation/bras_manifest.json') }}
+      - name: Fetch BRAS
+        run: python tools/validation/fetch_bras.py --groups docs materials parameters rirs geometry
+
+      - name: Scenes are up to date with the reduction rules
+        run: python tools/validation/make_bras_scenes.py --check
+
+      - name: Nightly gate and validation tests
+        run: |
+          export RENDER_CLI="$PWD/build/cli/render_cli"
+          export MAKROOF_DEBUG_RENDER_CLI="$PWD/build/clidebug/render_cli"
+          python -m pytest tools/validation -v -rP
+
+      - name: Comparison report
+        if: always()
+        run: RENDER_CLI="$PWD/build/cli/render_cli" python tools/validation/run_validation.py
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: validation-report-phase05
+          path: |
+            docs/validation/report-phase05.md
+            docs/validation/phase05/
+            tools/validation/data/phase05_results.json
+          if-no-files-found: warn

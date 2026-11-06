@@ -193,7 +193,8 @@ ImageSourceSet computeImageSources(const contract::Room& room, const Vec3& sourc
 
     BandArray airDbPerMetre{};
     if (options.airAbsorption)
-        airDbPerMetre = bandsAirAttenuationDbPerMetre();
+        airDbPerMetre = options.airDbPerMetreOverride ? *options.airDbPerMetreOverride
+                                                      : bandsAirAttenuationDbPerMetre();
 
     ImageSourceSet set;
     if (!timeBounded)

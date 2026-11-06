@@ -1193,3 +1193,50 @@ natively.
 
 **Accepted by Maisara (2026-11-06):** all decider decisions of this run (D1–D7, N1, N2, E1–E3, G5-1, G5-4)
 are accepted as applied; they are no longer proposals.
+
+## Phase 05 session — Table 5.2 check and AX24/AX25 (2026-11-06) (interrogator; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+### Kuttruff Table 5.2 as the a* acceptance reference
+
+The converged radiosity solver (`tools/acoustics/radiosity.py`; form-factor closure 1e-15, mean
+free path = 4V/S within 0.2 %) and an independent Lambert Monte Carlo agree within ≈ 1–2 %; both sit
+1.6–7.3 % below the Iteration column. For uniform α the solver equals Eq. 5.34 with Table 5.1's γ².
+
+| id | kind | item | verdict | severity | status |
+|---|---|---|---|---|---|
+| T52-01 | NUMBER | a* within ±1 % of the Table 5.2 Iteration column (all 6 cases) | CONDITIONS VIOLATED (no stated method parameters, element count or accuracy for the column) | major | open (plan decision; test is a strict xfail) |
+| T52-02 | NUMBER | 88 elements belong to the Fig. 5.10 Miles example, not to Table 5.2 | IMPRECISE | minor | open |
+| T52-03 | NUMBER | 96 elements for the cube | NOT CHECKABLE | none | open |
+| T52-04 | FACT | provenance, Δt, m = Int(R/cΔt) of the column | NOT CHECKABLE (R5.5 / R5.7 needed) | none | open |
+| T52-05 | FACT | case geometry (Sabine and Eyring columns re-derived) | CORRECT | none | closed |
+| T52-06 | FACT | ℓ̄ = 4V/S, T = 0.161 V/(S a*) | CORRECT | none | closed |
+| T52-07 | FACT | Eq. 5.49 ρ(r) vs ρ_l in Eq. 5.51 | INCONSISTENT (as printed; harmless for the eigenvalue) | minor | closed |
+| T52-08 | FACT | solver path statistics (ℓ̄ ±0.2 %, γ² 0.349 / 0.385) | CORRECT | none | closed |
+| T52-09 | NUMBER | Eq. 5.34: case 1 1.519 s, case 3 1.467 s | CORRECT | none | closed |
+| T52-10 | FACT | Iteration cases 1, 3 imply γ² ≈ 0.55 / 0.58, outside Table 5.1 | CONDITIONS VIOLATED (Eq. 5.34 is second order, independent paths) | major | open |
+| T52-11 | NUMBER | Fig. 5.10 slope −1.57 dB/MFP → 1.215 s (consistency, not independent proof) | IMPRECISE | minor | open |
+| T52-12 | NUMBER | case 4 a* 0.3905 (MC) vs 0.3893 (solver) | INCONSISTENT (0.35 %, two different runs) | minor | closed |
+| T52-13 | FACT | qualitative signs (case 4 < Eyring, case 6 > Eyring, case 5 close) | CORRECT | none | closed |
+| T52-14 | FACT | "least deviation in case 1" vs the table | INCONSISTENT (corpus-internal) | minor | closed |
+| T52-15 | FACT | §9.8 ray tracing as numeric reference | NOT CHECKABLE (no numbers) | none | open |
+| T52-16 | FACT | offset pattern explained by early stopping | NOT CHECKABLE | none | open |
+
+### AX24 (positions in the shoebox) and AX25 (third octaves → octaves)
+
+| id | kind | item | verdict | severity | status |
+|---|---|---|---|---|---|
+| AX25-1 | NUMBER | the three third octaves tile the octave (Vorländer Eq. 1.39) | CORRECT | none | closed |
+| AX25-2 | FACT | arithmetic mean of α is consistent with A = ΣSα (Eq. 4.30) | CORRECT | none | closed |
+| AX25-3 | FACT | equal weights match the octave's initial slope only for equal energy per third (Kuttruff Eq. 3.68) | IMPRECISE | minor | open (reported) |
+| AX25-4 | FACT | mean of α, not of ln(1−α) (Millington–Sette, Kuttruff §5.4) | CORRECT | none | closed |
+| AX25-5 | FACT | plain mean of s contradicts rule 4's (1−α) weighting | INCONSISTENT | major | resolved (s weighted by (1−α) across the thirds) |
+| AX25-6 | FACT | how octave tables are formed from thirds | NOT CHECKABLE | none | open |
+| AX24-1 | FACT | r enters C80 through the direct sound (Vorländer Eq. 6.20) | CORRECT | none | closed |
+| AX24-2 | FACT | heights fix floor/ceiling reflection delays (Eqs. 11.33–11.34) | CORRECT | none | closed |
+| AX24-3 | FACT | vertical height vs normal distance on a sloped face | IMPRECISE | minor | open (reported in bras_mapping.md §4) |
+| AX24-4 | FACT | heights to two different local faces describe no real reflection | CONDITIONS VIOLATED | major | resolved (one floor plane per pair, under its midpoint) |
+| AX24-5 | NUMBER | √(r² − Δh²) undefined when \|Δh\| > r | CONDITIONS VIOLATED | major | resolved (Δh = Δz; real horizontal separation kept) |
+| AX24-6 | DECISION | proportional mapping keeps wall distances only where extents match | CONSEQUENCE | minor | open (reported) |
+| AX24-7 | DECISION | mean-floor fallback | CONSEQUENCE | minor | open (reported) |
+| AX24-8 | NUMBER | 0.1 m clearance is near grazing | NOT CHECKABLE | minor | open (reported) |
+| AX24-9 | DECISION | specular box floor has no seat dip (Kuttruff §6.7) | CONSEQUENCE | minor | open (reported) |

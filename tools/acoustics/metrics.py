@@ -48,10 +48,13 @@ Known limits (see also bands.py):
   octave beyond) and dominates the late decay. Measured on ensemble-averaged synthetic decays
   (tools/acoustics/tests/test_metrics.py): +20% at 250 Hz next to a 2:1 step (2.0 s below, 1.0 s
   above), +18% for a 0.5 s band between 0.8 s neighbours, +5% at 8 kHz for a hall profile falling
-  1.3 -> 0.9 s from 4 to 8 kHz; smooth profiles stay within a few percent. It affects simulated and
-  measured IRs alike, so comparisons through this same filterbank are fair, but a per-band
-  comparison with an analytic per-band prediction (e.g. Eyring in Phase 04) inherits it. A
-  property of octave filtering of this order, not tunable away here (note for the Expert).
+  1.3 -> 0.9 s from 4 to 8 kHz; smooth profiles stay within a few percent. A comparison of two IRs
+  through this same filterbank is fair only if both have the same neighbour ratio
+  r = T(slower neighbour) / T(band) and the same leak (the energy the neighbour puts through the
+  band's skirts); otherwise each reading carries its own bias (phase-05 scope 7, decider D1; two-term
+  model on the Kuttruff Eqs. 3.64-3.68 basis). A per-band comparison with an analytic per-band
+  prediction (e.g. Eyring in Phase 04) inherits it. A property of octave filtering of this order,
+  not tunable away here (note for the Expert; AX23).
 - 63 Hz decays shorter than ~0.4 s are biased by the band filter (B * T60 < 16).
 - A measured IR whose noise floor is not stationary defeats Lundeby's method (it assumes
   stationary noise after the crosspoint).
@@ -125,6 +128,16 @@ class LundebyResult:
     dynamic_range_db: float  # peak of the smoothed envelope above the noise level (inf if noise-free)
     iterations: int
     warnings: list[str] = field(default_factory=list)
+    # Level (dB, block-mean power) of that final late-decay line extrapolated to index 0 (the onset);
+    # None when there is no line (noise-free signal or too little decay). Phase-05 usable range (D7).
+    late_intercept_db: float | None = None
+
+    @property
+    def line_margin_db(self) -> float | None:
+        """Height of the final late-decay line at the onset above the noise level (dB)."""
+        if self.late_intercept_db is None or self.noise_power <= 0.0:
+            return None
+        return self.late_intercept_db - float(_db(self.noise_power))
 
 
 def _smooth_db(e: np.ndarray, block: int) -> tuple[np.ndarray, np.ndarray]:
@@ -162,7 +175,12 @@ def lundeby(e: np.ndarray, fs: float, initial_block_s: float = 0.010, intervals_
     ``e`` is the squared band IR from the onset on. Steps:
       1. average e in 10 ms blocks (level in dB), and take the upper hull of that level (running
          maximum from the end), so exact-zero gaps between sparse early reflections of a synthetic
-         IR are not mistaken for the noise floor (a measured, near-monotonic decay is unchanged);
+         IR are not mistaken for the noise floor. On a noisy decay the hull is not the level itself:
+         it lifts the block-to-block dips of the noise, so a measured IR is not left unchanged; the
+         phase-05 paired noise test (tools/acoustics/tests/test_noise_handling.py) measures the
+         paired T30 bias of the whole noise handling: about +0.07 % at 65 dB, +0.4 ... +0.6 % at
+         55 dB and +1.8 ... +2.1 % at 48 dB below the decay (500 Hz-2 kHz), against its 0.6 %
+         gate; the hull itself changes it by < 0.05 points (phase-05e decision D-C);
       2. preliminary noise level = mean of the last 10% of e;
       3. line through the smoothed decay from its peak to the first block 10 dB above the noise;
       4. crosspoint = where the line meets the noise level;
@@ -253,7 +271,7 @@ def lundeby(e: np.ndarray, fs: float, initial_block_s: float = 0.010, intervals_
     crosspoint = max(crosspoint, 1)
     tau = 10.0 / (-b * math.log(10.0))  # power time constant of the late decay line, seconds
     compensation = noise * tau * fs
-    return LundebyResult(crosspoint, noise, compensation, b, dynamic_range, iterations, warnings)
+    return LundebyResult(crosspoint, noise, compensation, b, dynamic_range, iterations, warnings, late_intercept_db=a)
 
 
 # --------------------------------------------------------------------------------------------
@@ -310,6 +328,7 @@ def _band_metrics(
             "noise_floor_db": None,
             "dynamic_range_db": None,
             "crosspoint_s": None,
+            "line_margin_db": None,
             "warnings": ["band has no energy after the onset"],
         }
     lb = lundeby(decay_part, fs)
@@ -357,6 +376,9 @@ def _band_metrics(
 
     result["noise_floor_db"] = _none_if_nan(float(_db(lb.noise_power))) if lb.noise_power > 0.0 else None
     result["dynamic_range_db"] = _none_if_nan(lb.dynamic_range_db)
+    # Phase-05 usable range (decider D7): the final Lundeby late-decay line at the onset above the
+    # noise level, beside the peak-referred dynamic range. Reported only; not used here.
+    result["line_margin_db"] = _none_if_nan(lb.line_margin_db) if lb.line_margin_db is not None else None
     result["crosspoint_s"] = (onset - lead + lb.crosspoint) / fs
     result["warnings"] = warnings
     return result
