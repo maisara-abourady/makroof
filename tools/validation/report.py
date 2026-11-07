@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import posixpath
 import pathlib
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -380,7 +381,7 @@ def write(res: dict, path: pathlib.Path) -> None:
         plot = p.get("edc_plot")
         w(f"| {name} | " + " / ".join(f(b[k]["T_err_pct"]) for k in AQ9) + " | " + " / ".join(f(b[k]["EDT_err_pct"]) for k in AQ9)
           + " | " + " / ".join(f(b[k]["C80_err_db"], 2) for k in AQ9) + f" | {pf(a['T'])} / {pf(a['EDT'])} / {pf(a['C80'])} | "
-          + (", ".join(flags) or "–") + " | " + (f"[png]({os.path.relpath(plot, 'docs/validation')})" if plot else "–") + " |")
+          + (", ".join(flags) or "–") + " | " + (f"[png]({posixpath.relpath(plot, 'docs/validation')})" if plot else "–") + " |")
     w("")
     w("Flags: 'T20' = the T30 usable-range test failed (peak-referred dynamic range or the Lundeby late line < 45 dB); "
       "measured T20 is compared with simulated T20. 'meter-dependent' = octave and half-octave errors differ by > 5 points. "
