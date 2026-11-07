@@ -394,3 +394,30 @@ TEST_CASE("CrossfadingConvolver: a full release queue pauses swaps, nothing is f
     CHECK(c.fadeCount() > CrossfadingConvolver::kReleaseQueueSize + 1);
     c.releaseRetired();
 }
+
+TEST_CASE("CrossfadingConvolver::reset during a fade ends it on the target and clears the history",
+          "[conv][crossfade]")
+{
+    const int p = 128;
+    const auto hA = conv_test::noise(500, 85u), hB = conv_test::noise(500, 86u);
+    CrossfadingConvolver c;
+    c.prepare(1, 1, p, p, 4, kFade48k);
+    std::vector<float> in(p, 0.2f), out(p);
+    REQUIRE(c.requestIr(monoIr(hA, p)));
+    c.process(in.data(), out.data(), p);
+    REQUIRE(c.requestIr(monoIr(hB, p)));
+    c.process(in.data(), out.data(), p);
+    REQUIRE(c.isFading());
+    c.reset();
+    CHECK_FALSE(c.isFading());
+    CHECK(c.fadeStartSample() == -1);
+    CHECK(c.releaseRetired() == 1); // A retired by reset(), freed here
+    // After reset the output is x * B from scratch (latency P), with no trace of the old input.
+    const auto x = conv_test::noise(3000, 87u);
+    std::vector<float> xin(x.size() + hB.size() + p, 0.0f), y(xin.size());
+    std::copy(x.begin(), x.end(), xin.begin());
+    for (std::size_t pos = 0; pos < xin.size(); pos += p)
+        c.process(xin.data() + pos, y.data() + pos,
+                  static_cast<int>(std::min<std::size_t>(p, xin.size() - pos)));
+    CHECK(conv_test::residualDb(y, conv_test::reference(x, hB), p) <= -120.0);
+}

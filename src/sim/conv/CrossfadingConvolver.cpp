@@ -45,7 +45,7 @@ void CrossfadingConvolver::prepare(int numInputs, int numOutputs, int maxBlock, 
     numInputs_ = numInputs;
     numOutputs_ = numOutputs;
     maxBlock_ = maxBlock;
-    partitionSize_ = partitionSize;
+    partitionSize_ = 0; // stays 0 (process() a no-op) until every allocation below succeeded
     fadeLength_ = fadeLengthSamples;
     position_ = 0;
     blockStart_ = 0;
@@ -92,6 +92,7 @@ void CrossfadingConvolver::prepare(int numInputs, int numOutputs, int maxBlock, 
         yAPtrs_[static_cast<std::size_t>(c)] = yA_.get() + offset;
         yBPtrs_[static_cast<std::size_t>(c)] = yB_.get() + offset;
     }
+    partitionSize_ = partitionSize;
 }
 
 bool CrossfadingConvolver::requestIr(std::shared_ptr<const IrSet> ir, CrossfadeLaw law)

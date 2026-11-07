@@ -90,12 +90,13 @@ void FrequencyDelayLine::prepare(int numInputs, int partitionSize, std::size_t c
     if (numInputs <= 0 || !isSupportedPartitionSize(partitionSize) || capacity == 0)
         throw std::invalid_argument("FrequencyDelayLine::prepare: bad arguments");
     numInputs_ = numInputs;
-    partitionSize_ = partitionSize;
+    partitionSize_ = 0; // set once both buffers are allocated
     capacity_ = capacity;
     head_ = 0;
     const auto twoP = static_cast<std::size_t>(2 * partitionSize);
     time_ = allocateAligned(static_cast<std::size_t>(numInputs) * twoP);
     ring_ = allocateAligned(static_cast<std::size_t>(numInputs) * capacity * twoP);
+    partitionSize_ = partitionSize;
 }
 
 void FrequencyDelayLine::reset() noexcept
@@ -162,7 +163,7 @@ void PartitionedConvolver::prepare(int numInputs, int numOutputs, int maxBlock, 
     numInputs_ = numInputs;
     numOutputs_ = numOutputs;
     maxBlock_ = maxBlock;
-    partitionSize_ = partitionSize;
+    partitionSize_ = 0; // stays 0 (process() a no-op) until every allocation below succeeded
     position_ = 0;
     ir_.reset();
     const auto p = static_cast<std::size_t>(partitionSize);
@@ -178,6 +179,7 @@ void PartitionedConvolver::prepare(int numInputs, int numOutputs, int maxBlock, 
         inPtrs_[static_cast<std::size_t>(n)] = inBlock_.get() + static_cast<std::size_t>(n) * p;
     for (int m = 0; m < numOutputs; ++m)
         outPtrs_[static_cast<std::size_t>(m)] = outBlock_.get() + static_cast<std::size_t>(m) * p;
+    partitionSize_ = partitionSize;
 }
 
 void PartitionedConvolver::setIrSet(std::shared_ptr<const IrSet> ir)

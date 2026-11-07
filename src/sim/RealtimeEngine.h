@@ -34,7 +34,8 @@ public:
 
     // Non-real-time. sampleRate must be one of kSupportedSampleRatesHz (AX6). The input history holds
     // maxIrLengthSamples(sampleRate) samples: the longest IR buildRoomIR can produce. Drops any IR.
-    // Throws std::invalid_argument for an unsupported rate or maxBlock < 1.
+    // Throws std::invalid_argument for an unsupported rate or maxBlock < 1; after a throw the engine
+    // is unprepared (process() writes silence) until a prepare() succeeds.
     void prepare(double sampleRate, int maxBlock);
 
     // Audio thread. in[c] / out[c] hold n samples, c = 0, 1; in and out may be the same buffers.

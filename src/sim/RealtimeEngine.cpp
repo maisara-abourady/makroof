@@ -24,11 +24,11 @@ std::size_t RealtimeEngine::maxIrLengthSamples(double sampleRate) noexcept
 
 void RealtimeEngine::prepare(double sampleRate, int maxBlock)
 {
+    sampleRate_ = 0.0; // unprepared (silence) until this call succeeds, also when it throws
     if (!isSupportedSampleRate(sampleRate))
         throw std::invalid_argument("RealtimeEngine::prepare: unsupported sample rate");
     if (maxBlock < 1)
         throw std::invalid_argument("RealtimeEngine::prepare: maxBlock must be >= 1");
-    sampleRate_ = 0.0; // stays 0 if the convolver's prepare() throws
     const auto fade = static_cast<int>(std::lround(kCrossfadeS * sampleRate)); // AQ4: 30 ms
     convolver_.prepare(kNumChannels, kNumChannels, maxBlock, partitionSize_,
                        conv::partitionCount(maxIrLengthSamples(sampleRate), partitionSize_), fade);
