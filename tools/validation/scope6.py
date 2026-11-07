@@ -584,8 +584,10 @@ def main(argv=None):
         keep = {} if a.rooms is None else {k: v for k, v in res.get("bras", {}).items() if k not in a.rooms}
         todo = a.rooms or bras_rooms()
         res["bras"] = dict(sorted({**keep, **{r: bras_room(r, halving=r == "CR2") for r in todo}}.items()))
-        res["phase04_rooms"] = phase04_rooms()
-        res["synthetic"] = table52_and_s_cases()
+        if a.rooms is None or "phase04_rooms" not in res:  # room-independent, deterministic
+            res["phase04_rooms"] = phase04_rooms()
+        if a.rooms is None or "synthetic" not in res:
+            res["synthetic"] = table52_and_s_cases()
         res["xb"] = xb_reading(res)
         OUT.write_text(json.dumps(res, indent=1, default=float) + "\n")
     if a.part in ("ensembles", "all"):

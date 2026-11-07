@@ -27,6 +27,10 @@ def pf(p):
 
 
 SELECTED = ("CR2", "CR3", "CR4")  # bras_mapping.md §1 (pre-committed; never changed after results)
+# B12 "shown separately for uniform and uneven α" (phase-05 scope 6): the grouping is the bras_mapping.md §5
+# classification (Raise with Maisara item 1, read from the area tables before any comparison): CR2 uniform;
+# CR3 and CR4 one strong absorber (the seating).
+ALPHA_GROUP = {"CR2": "uniform", "CR3": "uneven", "CR4": "uneven"}
 
 
 def room_set(res: dict) -> list:
@@ -204,11 +208,61 @@ def write(res: dict, path: pathlib.Path) -> None:
         for pred, s in res["b12"][run].items():
             w(f"| {run} | {pred} | {f(s.get('mean_abs_err_pct'))} | {f(s.get('lowers_by_pts'), 2)} | "
               f"{f(s.get('worst_room_increase_pts'), 2)} | {f(s['meets_margin'])} |")
+    # per room, sorted by the two indicators (phase-05 scope 6: no threshold splits them), and by α group
+    preds = [k for k in ("Eyring", "a_star", "gamma2_table", "gamma2_0.4") if k in res["b12"]["run1_octave"]]
+    ind = {}
+    for rk, r in res["rooms"].items():
+        room, aset = rk.split("|")
+        if aset == "initial" and "absorption_contrast" in r:
+            ind[room] = (sum(r["absorption_contrast"].values()) / len(r["absorption_contrast"]),
+                         sum(r["largest_face_share"].values()) / len(r["largest_face_share"]),
+                         r["predictors"]["gamma2_table"], r["predictors"]["gamma2_how"],
+                         all(b.get("a_star_converged_0.4pct") for k, b in r["predictors"]["bands"].items() if k in AQ9))
+    w("")
+    w("Per room (initial α, mean |T30 error| at 500 Hz–2 kHz in %, run 1 / run 2), with the indicators of section 2 "
+      "(means over 500 Hz–2 kHz) and the γ² admissible for the room (condition ii: the Table 5.1 row where the shape "
+      "is tabulated, else 0.4):")
+    w("")
+    w("| room | absorption contrast | largest face share of A | admissible γ² | a* converged < 0.4 % | "
+      + " | ".join(preds) + " |")
+    w("|---|---|---|---|---|" + "---|" * len(preds))
+    for room in sorted(ind, key=lambda rm: ind[rm][0]):
+        c, sh, g, how, conv = ind[room]
+        cells = []
+        for pr_ in preds:
+            r1 = res["b12"]["run1_octave"].get(pr_, {}).get("by_room", {}).get(room)
+            r2 = res["b12"]["run2_half"].get(pr_, {}).get("by_room", {}).get(room)
+            cells.append(f"{f(r1)} / {f(r2)}")
+        w(f"| {room} | {c:.2f} | {sh:.2f} | " + (f"{g:.3f} (Table 5.1) and 0.4" if g is not None else f"0.4 only ({how})")
+          + f" | {f(conv)} | " + " | ".join(cells) + " |")
+    w("")
+    w("Sorted by absorption contrast: " + ", ".join(sorted(ind, key=lambda rm: ind[rm][0]))
+      + "; by largest single-face share of A: " + ", ".join(sorted(ind, key=lambda rm: ind[rm][1])) + ".")
+    groups = {g: [rm for rm in ind if ALPHA_GROUP.get(rm) == g] for g in ("uniform", "uneven")}
+    for g, rms in groups.items():
+        if not rms:
+            continue
+        w(f"- {g} α ({', '.join(rms)}; bras_mapping.md §5 classification): "
+          + "; ".join(f"{pr_} {sum(res['b12']['run1_octave'][pr_]['by_room'][rm] for rm in rms) / len(rms):.2f} %"
+                      for pr_ in preds if all(rm in res["b12"]["run1_octave"].get(pr_, {}).get("by_room", {}) for rm in rms))
+          + " (run 1).")
+    w("")
+    w("Conditions: (i) a* counts only when converged to < 0.4 % per halving in every band used: "
+      + ("met" if all(v[4] for v in ind.values()) else "not met in " + ", ".join(rm for rm, v in ind.items() if not v[4]))
+      + "; (ii) γ²-Eyring must pass at every admissible γ² (per room above); (iii) the 5 % T jnd is a working value "
+      "from outside the corpus; (iv) only the initial-estimate α set counts (this table); (v) a* may not replace Eyring "
+      "while ledger DB-1 is unresolved (unresolved).")
     e2 = res["b12"]["e2_octave_only"]
     w("")
     w(f"Octave-only branch (E2): {'allowed' if e2['allowed'] else 'not allowed'}"
       + (f" ({'; '.join(e2['reasons'])})" if e2["reasons"] else "") + f"; S_all = {f(e2.get('S_all_pts'), 2)} points.")
     w("Decision: " + "; ".join(f"{k}: {v}" for k, v in res["b12"]["decision"].items()) + f" — {res['b12']['label']}.")
+    if any(v.startswith("replaces") for v in res["b12"]["decision"].values()):
+        w("")
+        w("**Open plan question (/fix-plan):** phase-05.md scope 6 introduces γ²-Eyring \"for information only\" (on Table "
+          "5.2 cases 2 and 4 it moves T away from the iteration result) while its B12 rule (condition ii) treats it as a "
+          "candidate. The rule's outcome is recorded as computed; it is input-limited (BRAS alone), Maisara decides (C2), "
+          "and any replacement is a later AQ2 change (BUILD_PLAN §5 B12). Eyring stays in `src/sim` until then.")
     # ---------------- per pair
     w("")
     w("## 4. Per pair (initial α)")
