@@ -17,9 +17,11 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <ctime>
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
@@ -66,6 +68,18 @@ std::vector<std::vector<float>> runEngine(sim::RealtimeEngine& engine, const sim
         pos += static_cast<std::size_t>(n);
     }
     return out;
+}
+
+// This thread's CPU time in microseconds (POSIX CLOCK_THREAD_CPUTIME_ID: Linux, macOS), or -1 where it
+// isn't available (Windows: GetThreadTimes counts in scheduler quanta, too coarse for a 1.3 ms callback).
+double threadCpuMicros() noexcept
+{
+#if defined(CLOCK_THREAD_CPUTIME_ID)
+    timespec ts{};
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) == 0)
+        return static_cast<double>(ts.tv_sec) * 1e6 + static_cast<double>(ts.tv_nsec) * 1e-3;
+#endif
+    return -1.0;
 }
 
 } // namespace
@@ -233,43 +247,67 @@ TEST_CASE("benchmark: real-time convolution 2 x 2, 48 kHz, host buffers 512 and 
                                    o0(static_cast<std::size_t>(host)), o1(static_cast<std::size_t>(host));
                 const float* ins[2] = {l.data(), r.data()};
                 float* outs[2] = {o0.data(), o1.data()};
+                // Per callback: wall-clock time, and (POSIX) this thread's CPU time, which excludes
+                // time the runner's scheduler took the thread off the CPU (preemption). Returns mean,
+                // p99.9 and max of the wall time, then p99.9 and max of the CPU time (-1 if unavailable),
+                // all as % of the callback budget.
                 const auto measure = [&](bool fading) {
-                    std::vector<double> us;
+                    std::vector<double> us, cpu;
                     us.reserve(callbacks);
+                    cpu.reserve(callbacks);
                     for (std::size_t i = 0; i < callbacks; ++i)
                     {
                         if (fading && !engine.convolver().isFading())
                             engine.submitIrSet(i % 2 ? setA : setB);
+                        const double c0 = threadCpuMicros();
                         const auto t0 = std::chrono::steady_clock::now();
                         engine.process(ins, outs, host);
                         const auto t1 = std::chrono::steady_clock::now();
+                        const double c1 = threadCpuMicros();
                         us.push_back(std::chrono::duration<double, std::micro>(t1 - t0).count());
+                        cpu.push_back(c0 >= 0.0 ? c1 - c0 : -1.0);
                     }
                     double mean = 0.0;
                     for (const double v : us)
                         mean += v;
                     mean /= static_cast<double>(us.size());
                     std::sort(us.begin(), us.end());
+                    std::sort(cpu.begin(), cpu.end());
                     const std::size_t i999 = std::min(us.size() - 1, us.size() * 999 / 1000);
-                    return std::array<double, 3>{100.0 * mean / budgetUs, 100.0 * us[i999] / budgetUs,
-                                                 100.0 * us.back() / budgetUs};
+                    const bool haveCpu = cpu.front() >= 0.0;
+                    return std::array<double, 5>{100.0 * mean / budgetUs, 100.0 * us[i999] / budgetUs,
+                                                 100.0 * us.back() / budgetUs,
+                                                 haveCpu ? 100.0 * cpu[i999] / budgetUs : -1.0,
+                                                 haveCpu ? 100.0 * cpu.back() / budgetUs : -1.0};
                 };
                 for (int i = 0; i < 4 * p / host + 50; ++i) // warm-up
                     engine.process(ins, outs, host);
                 const auto steady = measure(false);
                 const auto fade = measure(true);
+                const auto cpuText = [](const std::array<double, 5>& m) {
+                    std::ostringstream t;
+                    t << std::fixed << std::setprecision(1);
+                    if (m[3] >= 0.0)
+                        t << "; thread-CPU p99.9 " << m[3] << " %, max " << m[4] << " %";
+                    return t.str();
+                };
                 std::cout << std::fixed << std::setprecision(1) << "  host " << host << ", P = " << p
                           << ", IR " << seconds << " s (" << sim::conv::partitionCount(len, p)
                           << " partitions/path): steady mean " << steady[0] << " % (p99.9 " << steady[1]
-                          << " %, max " << steady[2] << " %); crossfading mean " << fade[0] << " % (p99.9 "
-                          << fade[1] << " %, max " << fade[2] << " %)"
-                          << (host == 512 && p == 512 && seconds > 2.5 && seconds < 3.5
-                                  ? "  <- AQ10 budget 15 %"
-                                  : "")
-                          << (host == 64 && p == 512 && seconds > 11.5
-                                  ? "  <- worst-case callback (p99.9 < 100 %)"
-                                  : "")
-                          << "\n";
+                          << " %, max " << steady[2] << " %" << cpuText(steady) << "); crossfading mean "
+                          << fade[0] << " % (p99.9 " << fade[1] << " %, max " << fade[2] << " %"
+                          << cpuText(fade) << ")";
+                if (host == 512 && p == 512 && seconds > 2.5 && seconds < 3.5)
+                    std::cout << "  <- AQ10 budget 15 % (mean): "
+                              << (steady[0] <= 15.0 && fade[0] <= 15.0 ? "met" : "MISSED");
+                if (host == 64 && p == 512 && seconds > 11.5)
+                {
+                    std::cout << "  <- worst-case callback, target p99.9 < 100 % while crossfading: wall "
+                              << (fade[1] < 100.0 ? "met" : "MISSED");
+                    if (fade[3] >= 0.0)
+                        std::cout << ", thread-CPU " << (fade[3] < 100.0 ? "met" : "MISSED");
+                }
+                std::cout << "\n";
                 engine.releaseRetired();
             }
     std::cout.unsetf(std::ios::fixed);
