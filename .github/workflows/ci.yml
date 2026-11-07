@@ -123,7 +123,7 @@ jobs:
         with:
           path: .bras-cache
           key: bras-${{ hashFiles('tools/validation/bras_manifest.json') }}
-      - name: Listening pack (phase-05f A/B: CR2, CR3, CR4)
+      - name: Listening pack (phase-05f A/B, CR2 CR3 CR4)
         if: runner.os == 'Linux'
         env:
           MAKROOF_BRAS_CACHE: ${{ github.workspace }}/.bras-cache
