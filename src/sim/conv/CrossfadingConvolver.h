@@ -22,7 +22,7 @@
 // of the block's work per callback instead of all of it in one. The result is the same convolution
 // (only the summation order differs from PartitionedConvolver).
 //
-// Timing: the mailbox is read at a PARTITION boundary, i.e. when process() has taken in the P input
+// Timing (AX31): the mailbox is read at a PARTITION boundary, i.e. when process() has taken in the P input
 // samples of block b and computes that block's output. A request taken there first spends one block
 // accumulating (see above) and enters the output with the NEXT block: with output samples counted
 // from 0 since prepare() (or reset()), a request made after r input samples is taken at the boundary
