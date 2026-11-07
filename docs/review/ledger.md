@@ -1535,3 +1535,14 @@ threshold, largest host level or clamp/zero convention), `decider-round1.md`, `i
 | P06B-D2 | DECISION | AX31 confirmed (note appended) | SURVIVES; advocate PASS | decider-round2.md D2 | – | vetoable by Maisara | proposal |
 | P06B-D3 | DECISION | AX32: |x| > 2²⁰, ±Inf, NaN → 0 before the forward FFT; test (a)–(d) | SURVIVES WITH CORRECTIONS (applied); advocate PASS | decider-round2.md D3 | – | vetoable by Maisara | proposal |
 | P06B-D4 | DECISION | summation-order test: T = 400 exact case, max error ≤ 50 ulp (midpoint of 0 and 100) at P = 128/256/512 | SURVIVES WITH CORRECTIONS (applied); advocate PASS | decider-round2.md D4; measured SSE: 0 ulp (descending), 100 ulp (ascending mutant) | – | vetoable by Maisara | proposal |
+
+Diff check (interrogator, /fix-plan step 5) of the applied plan edits (commit 67034fe): nothing WRONG.
+
+| id | type | claim | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| P06B-74 | FACT | AX31 row: rationale "the 35 ms rotation rows … don't apply to v1" vs the appended note "head rotation deferred to phase-08 item 8, not out of scope" | INCONSISTENT → applied: the rationale now names only the source-rotation / directivity row and §15's 50 ms; the head-rotation row is deferred to phase-08 item 8 | Vorländer Table 15.1 (two 35 ms rows) | major | – | closed |
+| P06B-75 | NUMBER | AX32 "peak taps 0.155–0.49 over the test scenes" | IMPRECISE → applied: "0.155 in medium_room to 0.49, the largest over the test scenes" (smallest peak not measured) | M1 | minor | – | closed |
+| P06B-76 | NUMBER | phase-08 item 8: W1 in (13.7, 24.3] ms decides the row | IMPRECISE → applied: "under the 35 ms limit with the fade not counted"; under 20 ms neither variant meets it for W1 | Vorländer §15, Table 15.1 | minor | – | closed |
+
+Outside the diff: the plain D1 line for Maisara (P06B-63, "compensates … on playback and bounce") is qualified
+in the PR / report text.
