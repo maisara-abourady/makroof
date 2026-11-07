@@ -19,12 +19,14 @@ struct FailFastOnWindows
     FailFastOnWindows() noexcept
     {
         _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+#if defined(_DEBUG) // CRT debug reports (assertion dialogs) exist only in Debug; the calls are no-ops otherwise
         const int reportTypes[] = {_CRT_WARN, _CRT_ERROR, _CRT_ASSERT};
         for (const int type : reportTypes)
         {
             _CrtSetReportMode(type, _CRTDBG_MODE_FILE);
             _CrtSetReportFile(type, _CRTDBG_FILE_STDERR);
         }
+#endif
         SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     }
 };
