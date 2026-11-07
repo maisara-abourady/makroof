@@ -33,6 +33,81 @@ SELECTED = ("CR2", "CR3", "CR4")  # bras_mapping.md §1 (pre-committed; never ch
 ALPHA_GROUP = {"CR2": "uniform", "CR3": "uneven", "CR4": "uneven"}
 
 
+REDUCTION = HERE / "data" / "bras_reduction.json"
+GEOMETRY = HERE / "data" / "bras_geometry.json"
+# BRAS documentation sheets (Aspöck et al., Documentation.pdf pp. 25–27): the rounded room volumes, CR3 "excluding
+# the attic". The one number of the volume paragraph that is not in the committed data (bras_mapping.md §1).
+BRAS_SHEET_VOLUME_M3 = {"CR2": 145.0, "CR3": 2350.0, "CR4": 8650.0}
+SHEET_NOTE = {"CR3": "the sheet excludes the attic that the model includes"}
+# The material of the one strong absorber in the uneven-α rooms (bras_mapping.md §5 classification, read from the
+# area tables before any comparison); its s is read from bras_reduction.json.
+STRONG_ABSORBER = "seating"
+# Recorded B12 outcome (BUILD_PLAN §5 B12, Phase 05f; ledger F5f-2 … F5f-27). Printed whenever a predictor meets the
+# rule's arithmetic; the arithmetic itself is printed above from the results.
+B12_RECORDED_OUTCOME = (
+    "**Recorded outcome (BUILD_PLAN §5 B12; recommendation under C2, decider 2026-11-07, accepted by Maisara "
+    "2026-11-07):** not adopted; Eyring stays in `src/sim`; AQ2 unchanged. The BRAS margin does not separate accurate "
+    "from inaccurate predictors: Eyring under-predicts T in 8 of 9 room-bands (CR2, CR3, CR4 at 500 Hz–2 kHz), so any lengthening lowers the mean "
+    "error (Sabine, less accurate than Eyring on Kuttruff Table 5.2, gains most), and γ²-Eyring (Kuttruff Eq. 5.34) "
+    "lengthens T for every γ² > 0 and fails the rule on Table 5.2. Reopened only on a measured dataset that meets the "
+    "conditions in BUILD_PLAN §5 B12 (ledger F5f-2 … F5f-27).")
+
+
+def load_reduction(path: pathlib.Path = REDUCTION) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def model_volumes(path: pathlib.Path = GEOMETRY) -> dict:
+    """Documented model volume per room (`_descr/mat_CRx.txt`, "based on provided 3d models")."""
+    g = json.loads(path.read_text(encoding="utf-8"))
+    return {rm: r["documented"]["V"] for rm, r in g["rooms"].items()}
+
+
+def volume_ratios_pct(rooms, model_v: dict | None = None) -> dict:
+    """Predicted-T rise from using the model volume instead of the sheet volume (A fixed: T ∝ V), in %."""
+    model_v = model_volumes() if model_v is None else model_v
+    return {rm: 100.0 * (model_v[rm] / BRAS_SHEET_VOLUME_M3[rm] - 1.0) for rm in rooms}
+
+
+def _num(x: float, nd: int) -> str:
+    """Space as the thousands separator, as in the plan documents (8 656.5)."""
+    return f"{x:,.{nd}f}".replace(",", " ")
+
+
+def volume_paragraph(rooms) -> str:
+    model_v = model_volumes()
+    ratios = volume_ratios_pct(rooms, model_v)
+    parts = []
+    for rm in rooms:
+        note = SHEET_NOTE.get(rm, "rounded")
+        parts.append(f"{ratios[rm]:+.2f} % in {rm} ({_num(model_v[rm], 1)} vs {_num(BRAS_SHEET_VOLUME_M3[rm], 0)} m³; {note})")
+    return ("Model volume (AX26 keeps it; bras_mapping.md §1 volume check): with A fixed, predicted T scales with V, so "
+            "the model volume (`_descr/mat_CRx.txt`) raises predicted T against the BRAS sheet volumes (Aspöck et al., "
+            "pp. 25–27) by " + ", ".join(parts) + ". BRAS's own fitted α reproduce BRAS's measured T20 with the model "
+            "volumes to within the figures of bras_mapping.md §1 (volume check, item 2).")
+
+
+def seating_s(reduction: dict, rooms) -> dict:
+    """{room: (s 500 Hz, 1 kHz, 2 kHz)} of the strong absorber, octave values by AX25 (bras_reduction.json)."""
+    out = {}
+    for rm in rooms:
+        mats = reduction[rm]["initial"]["materials"]
+        key = next(k for k in mats if k.endswith("_" + STRONG_ABSORBER))
+        sb = mats[key]["scattering_bands"]
+        out[rm] = tuple(sb[BK.index(b)] for b in AQ9)
+    return out
+
+
+def seating_s_text(reduction: dict, rooms) -> str:
+    """'0.43 / 0.60 / 0.85–0.87': per band, one value or the range over the rooms (two decimals)."""
+    vals = seating_s(reduction, rooms)
+    cells = []
+    for i in range(len(AQ9)):
+        lo, hi = (f"{x:.2f}" for x in (min(v[i] for v in vals.values()), max(v[i] for v in vals.values())))
+        cells.append(lo if lo == hi else f"{lo}–{hi}")
+    return " / ".join(cells)
+
+
 def room_set(res: dict) -> list:
     return sorted({rk.split("|")[0] for rk in res["rooms"]})
 
@@ -98,11 +173,7 @@ def write(res: dict, path: pathlib.Path) -> None:
         w(room_set_label(res) + " (phase-05e scope (b)): the pending rooms stay selected and are not dropped. The B12 "
           "replacement and the B11 promotion decisions are deferred until they enter (pass rules unchanged).")
     w("")
-    w("Model volume (AX26 keeps it; bras_mapping.md §1 volume check): with A fixed, predicted T scales with V, so the "
-      "model volume raises predicted T against the BRAS sheet volumes by +0.76 % in CR2 (146.1 vs 145 m³; the sheet "
-      "value is rounded), +41.7 % in CR3 (3 330.6 vs 2 350 m³; the sheet excludes the attic that the model includes) and "
-      "+0.08 % in CR4 (8 656.5 vs 8 650 m³, rounded). BRAS's own fitted α reproduce BRAS's measured T20 with the model "
-      "volumes (CR2 ≤ 0.45 %, CR3 ≤ 0.23 %, CR4 ≤ 0.29 %).")
+    w(volume_paragraph(room_set(res)))
     pp = {"initial": [0, 0], "fitted": [0, 0]}
     for p in res["pairs"].values():
         ps = [p["aq9"]["pass"][n] for n in ("T", "EDT", "C80")]
@@ -259,10 +330,7 @@ def write(res: dict, path: pathlib.Path) -> None:
     w("Decision: " + "; ".join(f"{k}: {v}" for k, v in res["b12"]["decision"].items()) + f" — {res['b12']['label']}.")
     if any(v.startswith("replaces") for v in res["b12"]["decision"].values()):
         w("")
-        w("**Open plan question (/fix-plan):** phase-05.md scope 6 introduces γ²-Eyring \"for information only\" (on Table "
-          "5.2 cases 2 and 4 it moves T away from the iteration result) while its B12 rule (condition ii) treats it as a "
-          "candidate. The rule's outcome is recorded as computed; it is input-limited (BRAS alone), Maisara decides (C2), "
-          "and any replacement is a later AQ2 change (BUILD_PLAN §5 B12). Eyring stays in `src/sim` until then.")
+        w(B12_RECORDED_OUTCOME)
     # ---------------- per pair
     w("")
     w("## 4. Per pair (initial α)")
@@ -532,4 +600,5 @@ def scope6_section(w, res: dict) -> None:
         w("")
     w("**B11 not validated against measurement for uneven-α / low-s rooms**: no BRAS room in this set combines uneven α "
       "with low s (CR2: uniform α, low s; CR3 and CR4: one strong absorber, the seating, whose own s is high, "
-      "0.43 / 0.60 / 0.85–0.87 at 500 Hz / 1 / 2 kHz; F2; bras_mapping.md §5 classification).")
+      + seating_s_text(load_reduction(), [rm for rm in room_set(res) if ALPHA_GROUP.get(rm) == "uneven"])
+      + " at 500 Hz / 1 / 2 kHz; F2; bras_mapping.md §5 classification).")
