@@ -70,6 +70,16 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
 8. **Flush-to-zero guard for MSVC on ARM64** (Windows on Arm): `sim/conv/Denormals.h` is a no-op there;
    implement with `_ReadStatusReg`/`_WriteStatusReg` (FPCR.FZ) together with an ARM64 Windows CI runner
    that can test it (Phase 06 follow-up).
+9. **Small-buffer callback timing on real macOS hardware** (Phase 06 follow-up, brief
+   `docs/sessions/2026-11-07-phase-06-followups.md` O3(b)): with the Phase 06 work spreading (AX31), the
+   worst callback at host buffer 64, 12 s IR, P = 512, while crossfading must stay under its real-time
+   budget (p99.9 < 100 %). CI measured it below the target on Linux (wall 66.6 %, thread-CPU 65.9 %, run
+   42397114233) and Windows (wall 32.2 %, same run), but could not show it on the shared macOS runner:
+   wall p99.9 75.5 % (run 42390056623), 609 % (42392204088), 161.8 % (42394370942) and 657.4 %
+   (42397114233), with thread-CPU p99.9 109.9 % in 42397114233 (most of the wall overshoot is the runner
+   taking the thread off the CPU). Measure it on an Apple-silicon Mac with the `[benchmark]` test (it
+   prints wall and thread-CPU p99.9 per case); if it misses, the remedy is a smaller first partition or
+   non-uniform partitioning (scope 1), not a change to the target.
 
 ## Out of scope
 
