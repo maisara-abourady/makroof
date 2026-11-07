@@ -139,7 +139,7 @@ def test_count_mismatch_is_an_error(monkeypatch):
     skp = CACHE / "CR3" / "geometry" / "CR3.skp"
     _need(skp)
     real = skp_reader.definition_records
-    monkeypatch.setattr(skp_reader, "definition_records", lambda d, s: real(d, s)[:-1])
+    monkeypatch.setattr(skp_reader, "definition_records", lambda d, s, e=None: real(d, s, e)[:-1])
     with pytest.raises(skp_reader.SkpFormatError, match="19 definitions declared, 18"):
         skp_reader.read(skp.read_bytes())
 

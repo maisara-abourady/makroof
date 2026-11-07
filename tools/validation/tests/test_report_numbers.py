@@ -74,3 +74,12 @@ def test_b12_paragraph_is_the_recorded_outcome():
     assert "Open plan question (/fix-plan)" not in text
     assert report.B12_RECORDED_OUTCOME in text
     assert "accepted by Maisara 2026-11-07" in report.B12_RECORDED_OUTCOME
+
+
+def test_b12_outcome_text_matches_the_plan():
+    """The one hand-typed figure in B12_RECORDED_OUTCOME ('8 of 9 room-bands') is the plan's (BUILD_PLAN §5 B12)."""
+    plan = (REPO / "docs" / "BUILD_PLAN.md").read_text(encoding="utf-8")
+    b12 = next(line for line in plan.splitlines() if line.startswith("| B12 |"))
+    assert "under-predicts T in 8 of 9 room-bands" in b12
+    assert "8 of 9 room-bands" in report.B12_RECORDED_OUTCOME
+    assert "Eyring stays; AQ2 unchanged" in b12 and "accepted by Maisara 2026-11-07" in b12

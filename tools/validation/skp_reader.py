@@ -42,7 +42,7 @@ position at which a new object of a geometry class (or a class definition) start
 60 references parse with every back-reference resolving, trying index offsets 0-63 for objects
 created in the skipped bytes. Skips are logged; any back-reference that fails after a skip would
 show up as a failed parse, and the area checks catch silently wrong geometry. When several offsets
-pass that trial, the exact one is the offset that parses furthest under a strict, type-checked
+pass that trial, the offset taken is the one that parses furthest under a strict, type-checked
 extended trial (an edge's ends must be vertices, an edge-use's edge an edge, a loop's first element
 an edge-use, a face's loops loops; _exact_offset, Phase 05g scope 6): the 60-reference trial alone
 could accept an offset one too small, which showed up kilobytes later as a 'bad reference' skip
@@ -347,7 +347,7 @@ def read(data: bytes, log=None) -> Model:
         if k >= len(iends):
             raise SkpFormatError(f"{n_defs} definitions: no thumbnail ends the last one")
         p.root_start = iends[k]
-    records = definition_records(data, first_geom)
+    records = definition_records(data, first_geom, p.root_start)
     if len(records) != n_defs:
         raise SkpFormatError(f"{n_defs} definitions declared, {len(records)} definition records found "
                              f"(thumbnail trailers after the first geometry class)")
@@ -416,13 +416,17 @@ def read(data: bytes, log=None) -> Model:
 # 1.0, two doubles 0.0 (39 bytes). It is followed by the thumbnail image, a new CDib object (class 3, as
 # in every BRAS file: tag 0x8003) whose PNG ends the record, or by a null reference (no image: the
 # record ends there and the next definition, or the root, follows). Found on every definition of CR2,
-# CR3 and CR4 (Phase 05g scope 5): 1 / 17 / 17 with a PNG, 0 / 2 / 2 without.
+# CR3 and CR4 (Phase 05g scope 5): 1 / 17 / 17 with a PNG, 0 / 2 / 2 without. CDib = class 3 is the same
+# calibration assumption as in read() (CVersionMap 1, CDib 3 in every BRAS file); a file where it differs
+# fails the count check loudly (to re-check for any new dataset, e.g. phase-05d).
 DEFINITION_TRAILER = b"\x01\x00\xff\xfe\xff\x00" + bytes(15) + b"\xf0\x3f" + bytes(16)
 _CDIB_TAG = b"\x03\x80"
 
 
-def definition_records(data: bytes, start: int) -> list:
-    """(position, has PNG) of every definition-record trailer after ``start`` (see DEFINITION_TRAILER).
+def definition_records(data: bytes, start: int, end: int | None = None) -> list:
+    """(position, has PNG) of every definition-record trailer in [start, end) (see DEFINITION_TRAILER).
+    read() passes the root start as ``end``: the definitions precede the root entities, and a byte
+    match inside the root must not offset a missed record in the count.
 
     The consistency check of read(): their count equals the declared definition count. In CR3 and CR4,
     which declare 19, 17 records end with a PNG thumbnail; the other two are the group definitions
@@ -431,14 +435,15 @@ def definition_records(data: bytes, start: int) -> list:
     The root-start rule (read) only needs the PNG-ended records: in all three files the last
     definition record before the root has a PNG."""
     out = []
-    i = data.find(DEFINITION_TRAILER, start)
+    end = len(data) if end is None else end
+    i = data.find(DEFINITION_TRAILER, start, end)
     while i >= 0:
         nxt = data[i + len(DEFINITION_TRAILER) : i + len(DEFINITION_TRAILER) + 2]
         if nxt == _CDIB_TAG:
             out.append((i, True))
         elif nxt == b"\x00\x00":
             out.append((i, False))
-        i = data.find(DEFINITION_TRAILER, i + 1)
+        i = data.find(DEFINITION_TRAILER, i + 1, end)
     return out
 
 
@@ -568,7 +573,7 @@ def _reach(p, data, pos, idx, k=EXTENDED_TRIAL_OBJECTS):
         m = str(e)
         if m.startswith(("bad reference", "unknown class", "type mismatch")):
             return q.idx - idx - 1  # the object being read when the error came is not counted
-    except Exception:
+    except (struct.error, UnicodeDecodeError, IndexError):  # ran off a record: as a reference error
         return q.idx - idx - 1
     return min(q.idx - idx, k)
 
@@ -580,7 +585,13 @@ def _exact_offset(p, data, q, passing):
     later as a 'bad reference' skip (CR3, CR4: a few KB after each 'definition body' skip). The exact
     offset is the one under which every back-reference resolves to an object of the class its field
     expects; it is taken as the passing offset that parses furthest under the strict, type-checked
-    extended trial (ties: the smallest). One rule for every file, no per-room logic."""
+    extended trial (ties: the smallest). One rule for every file, no per-room logic.
+
+    Where all passing offsets tie (in CR3/CR4 about half the re-synchronisations: the trial reaches a
+    record this reader has no layout for within a few objects, so nothing tells the offsets apart),
+    the smallest is kept, as before Phase 05g; an offset error there is still caught by the next
+    stop's re-synchronisation or by _offset_correction, and the area and re-extraction tests guard
+    the geometry."""
     if len(passing) == 1:
         return passing[0]
     best, best_reach = passing[0], -1
