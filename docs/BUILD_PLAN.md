@@ -24,7 +24,7 @@ Linux, macOS and Windows, and Maisara has gone through its listening checklist.
 | 05f | CR4 geometry and three-room re-run | M | not started | | | |
 | 05b | Early scattered energy (B11) | M | not started | | | |
 | 05d | Second measured dataset (Arni, dEchorate) | M | not started | | | |
-| 06 | Real-time partitioned convolution + latency | M | in progress | | 2026-11-07 | |
+| 06 | Real-time partitioned convolution + latency | M | done | [#14](https://github.com/maisara-abourady/makroof/pull/14) | 2026-11-07 | PFFFT v1.1.0 (commit 1fdcb50, SSE1 / NEON), UPOLS over a shared FDL, P ∈ {128, 256, 512} (default 512); lock-free latest-wins mailbox + SPSC deferred-release queue; 30 ms crossfade, equal-gain or equal-power per request (AQ4, AX18); first IR installed at once only in the first partition after prepare/reset, otherwise faded in from silence. Nulls: UPOLS vs Phase 02 reference ≤ −129.8 dB (gate −120), analytic crossfade ≤ −133 dB (gate −100), render_cli --realtime-emulation −124.5 … −127.9 dB. Reported latency = P + 32 (AX1) = **544 samples at P = 512**: over AQ10's "≤ 512" if read as the total, raised with Maisara in the PR (not decided). **Benchmark** (2×2, 48 kHz, host buffer 512, mean % of budget steady / crossfading, CI run 42355829013): 3 s IR, P = 512 (AQ10 ≤ 15 %): macOS 1.6 / 3.3, Linux 2.1 / 4.1, Windows 2.0 / 4.0; 12 s IR, P = 512: macOS 7.3 / 14.0, Linux 11.7 / 26.0, Windows 9.1 / 26.2; 12 s, P = 256: up to 59 % while crossfading (Linux/Windows). New `tsan` CI job. Listening checklist pending Maisara. |
 | 07 | Plugin integration: parameters, state, IR pipeline | M | not started | | | |
 | 08 | Binaural output with a generic HRTF | L | not started | | | |
 | 09 | Stereo-speaker output mode | S | not started | | | |
