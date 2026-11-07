@@ -319,8 +319,11 @@ k ~= 1.7 (FFTW3 on a Core2, powers of two, natural log)
   including Apple Silicon), WASM SIMD, RISC-V RVV 1.0 [S11].
 - Latest commits as of 2026-11-04 [S12]: 7ae36e8 (Nov 4 2026) "cmake: offer MSVC /arch values as a
   dropdown ..."; 5055b93 (Nov 3 2026) "Bump the CMake package version to 1.2.0"; 9c59148 (Nov 3 2026)
-  "pffft_double.c: drop the unneeded <alloca.h> include". No GitHub Releases are published; pin by
-  commit hash in FetchContent (CLAUDE.md requires a pinned tag or commit; there is no tag to pin).
+  "pffft_double.c: drop the unneeded <alloca.h> include". The fork has release tags `v1.0.0`,
+  `v1.1.0` (commit 1fdcb508, 2026-02-27) and `v1.2.0` (commit 5055b930, 2026-11-03), verified with
+  `git ls-remote --tags` on 2026-11-07 (corrected: an earlier version of this note said there were no
+  tags). Pin a tag's commit hash in FetchContent (CLAUDE.md allows a pinned tag or commit; the hash
+  is immutable). The project pins v1.1.0's commit 1fdcb508 (Phase 06, `cmake/SpatialDependencies.cmake`).
 - NOTE: the raw header of the fork was not reachable through this session's proxy (404 via
   raw.githubusercontent and jsdelivr); the API facts above come from the original header, which the fork
   preserves, plus the fork README. Helper names such as `pffft_min_fft_size()`, `pffft_is_valid_size()`,

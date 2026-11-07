@@ -1,5 +1,20 @@
 #include "AllocationTracker.h"
 
+// Under AddressSanitizer the global operator new / delete are NOT replaced: ASan's own operators
+// check new/delete mismatches and sized-delete sizes for the whole test binary, and replacing them
+// would switch those checks off. The tracker then counts nothing (trackerActive() is false) and the
+// zero-allocation assertions are skipped there; they run in every other build (debug on 3 OSes).
+#if defined(__SANITIZE_ADDRESS__)
+#define SPATIAL_TRACKER_ACTIVE 0
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define SPATIAL_TRACKER_ACTIVE 0
+#endif
+#endif
+#ifndef SPATIAL_TRACKER_ACTIVE
+#define SPATIAL_TRACKER_ACTIVE 1
+#endif
+
 #include <cstdlib>
 #include <new>
 
@@ -14,19 +29,19 @@ thread_local bool tTracking = false;
 thread_local std::size_t tCount = 0;
 thread_local std::size_t tFrees = 0;
 
-void noteFree(void* p) noexcept
+[[maybe_unused]] void noteFree(void* p) noexcept
 {
     if (tTracking && p != nullptr)
         ++tFrees;
 }
 
-void noteAllocation() noexcept
+[[maybe_unused]] void noteAllocation() noexcept
 {
     if (tTracking)
         ++tCount;
 }
 
-void* allocate(std::size_t size)
+[[maybe_unused]] void* allocate(std::size_t size)
 {
     noteAllocation();
     for (;;)
@@ -40,7 +55,7 @@ void* allocate(std::size_t size)
     }
 }
 
-void* allocateAligned(std::size_t size, std::size_t alignment)
+[[maybe_unused]] void* allocateAligned(std::size_t size, std::size_t alignment)
 {
     noteAllocation();
     if (alignment < sizeof(void*))
@@ -64,7 +79,7 @@ void* allocateAligned(std::size_t size, std::size_t alignment)
     }
 }
 
-void freeAligned(void* p) noexcept
+[[maybe_unused]] void freeAligned(void* p) noexcept
 {
 #if defined(_WIN32)
     _aligned_free(p);
@@ -76,6 +91,11 @@ void freeAligned(void* p) noexcept
 } // namespace
 
 namespace test_support {
+
+bool trackerActive() noexcept
+{
+    return SPATIAL_TRACKER_ACTIVE != 0;
+}
 
 std::size_t trackedAllocations() noexcept
 {
@@ -112,6 +132,7 @@ std::size_t ScopedTracking::deallocations() const noexcept
 
 } // namespace test_support
 
+#if SPATIAL_TRACKER_ACTIVE
 // ---- Replacements of the global allocation functions ([replacement.functions]) ----
 
 void* operator new(std::size_t size)
@@ -235,3 +256,5 @@ void operator delete[](void* p, std::align_val_t, const std::nothrow_t&) noexcep
     noteFree(p);
     freeAligned(p);
 }
+
+#endif // SPATIAL_TRACKER_ACTIVE

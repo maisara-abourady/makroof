@@ -19,6 +19,7 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -165,6 +166,8 @@ TEST_CASE("RealtimeEngine refuses IRs that don't fit", "[conv][engine]")
 
 TEST_CASE("RealtimeEngine::process allocates nothing, including IR swaps", "[conv][engine][alloc]")
 {
+    if (!test_support::trackerActive())
+        SKIP("AllocationTracker inactive under AddressSanitizer (ASan keeps its own operator new/delete)");
     sim::RealtimeEngine engine(256);
     engine.prepare(48000.0, 1024);
     auto a = emptyIr(48000.0, 4000), b = emptyIr(48000.0, 6000);
@@ -198,63 +201,77 @@ TEST_CASE("RealtimeEngine::process allocates nothing, including IR swaps", "[con
 // 48 kHz, host buffer 512: the mean (and median, max) time per host buffer as % of its real-time
 // budget (512 / 48 000 s = 10.67 ms), steady and while crossfading continuously. AQ10: <= 15 % for
 // the 3 s IR at P = 512.
-TEST_CASE("benchmark: real-time convolution 2 x 2, 48 kHz, host buffer 512", "[.][benchmark]")
+TEST_CASE("benchmark: real-time convolution 2 x 2, 48 kHz, host buffers 512 and 64", "[.][benchmark]")
 {
+    // Per host callback, as % of that callback's real-time budget (host / fs): mean, 99.9th percentile
+    // and max, steady and while crossfading continuously. The p99.9 / max at host buffer 64 show the
+    // work spreading (a whole partition is no longer computed in one callback). The max includes
+    // runner preemption, which is not the convolver: recorded, never a pass/fail (phase-06 AC 8).
     constexpr double fs = 48000.0;
-    constexpr int host = 512;
-    constexpr int blocks = 1500;
-    const double budgetUs = host / fs * 1e6;
+    constexpr std::size_t audioSamples = 1500 * 512; // 16 s of audio per measurement
     std::cout << "Phase 06 real-time convolution benchmark (PFFFT backend " << sim::conv::Fft::simdArch()
-              << "), 2 x 2, 48 kHz, host buffer " << host << " (budget " << budgetUs << " us)\n";
-    for (const int p : {256, 512})
-        for (const double seconds : {1.0, 3.0, 6.0, 12.0})
-        {
-            const auto len = static_cast<std::size_t>(seconds * fs);
-            auto irA = emptyIr(fs, len), irB = emptyIr(fs, len);
-            for (std::size_t path = 0; path < 4; ++path)
+              << "), 2 x 2, 48 kHz; % of the callback budget (512: 10667 us, 64: 1333 us)\n";
+    for (const int host : {512, 64})
+        for (const int p : {256, 512})
+            for (const double seconds : {1.0, 3.0, 6.0, 12.0})
             {
-                irA.taps[path] = conv_test::noise(len, 10u + path, 0.01);
-                irB.taps[path] = conv_test::noise(len, 20u + path, 0.01);
-            }
-            sim::RealtimeEngine engine(p);
-            engine.prepare(fs, host);
-            const auto setA = engine.makeIrSet(irA), setB = engine.makeIrSet(irB);
-            REQUIRE(engine.submitIrSet(setA));
-            std::vector<float> l = conv_test::noise(host, 1u), r = conv_test::noise(host, 2u), o0(host),
-                               o1(host);
-            const float* ins[2] = {l.data(), r.data()};
-            float* outs[2] = {o0.data(), o1.data()};
-            const auto measure = [&](bool fading) {
-                std::vector<double> us;
-                us.reserve(blocks);
-                for (int i = 0; i < blocks; ++i)
+                const double budgetUs = host / fs * 1e6;
+                const std::size_t callbacks = audioSamples / static_cast<std::size_t>(host);
+                const auto len = static_cast<std::size_t>(seconds * fs);
+                auto irA = emptyIr(fs, len), irB = emptyIr(fs, len);
+                for (std::size_t path = 0; path < 4; ++path)
                 {
-                    if (fading && !engine.convolver().isFading())
-                        engine.submitIrSet(i % 2 ? setA : setB);
-                    const auto t0 = std::chrono::steady_clock::now();
-                    engine.process(ins, outs, host);
-                    const auto t1 = std::chrono::steady_clock::now();
-                    us.push_back(std::chrono::duration<double, std::micro>(t1 - t0).count());
+                    irA.taps[path] = conv_test::noise(len, 10u + path, 0.01);
+                    irB.taps[path] = conv_test::noise(len, 20u + path, 0.01);
                 }
-                double mean = 0.0;
-                for (const double v : us)
-                    mean += v;
-                mean /= static_cast<double>(us.size());
-                std::sort(us.begin(), us.end());
-                return std::array<double, 3>{mean, us[us.size() / 2], us.back()};
-            };
-            for (int i = 0; i < 50; ++i) // warm-up
-                engine.process(ins, outs, host);
-            const auto steady = measure(false);
-            const auto fade = measure(true);
-            std::cout << std::fixed << std::setprecision(1) << "  P = " << p << ", IR " << seconds << " s ("
-                      << sim::conv::partitionCount(len, p) << " partitions/path): steady mean "
-                      << 100.0 * steady[0] / budgetUs << " % (median " << 100.0 * steady[1] / budgetUs
-                      << " %, max " << 100.0 * steady[2] / budgetUs << " %); crossfading mean "
-                      << 100.0 * fade[0] / budgetUs << " % (max " << 100.0 * fade[2] / budgetUs << " %)"
-                      << (p == 512 && seconds > 2.5 && seconds < 3.5 ? "  <- AQ10 budget 15 %" : "") << "\n";
-            engine.releaseRetired();
-        }
+                sim::RealtimeEngine engine(p);
+                engine.prepare(fs, host);
+                const auto setA = engine.makeIrSet(irA), setB = engine.makeIrSet(irB);
+                REQUIRE(engine.submitIrSet(setA));
+                std::vector<float> l = conv_test::noise(static_cast<std::size_t>(host), 1u),
+                                   r = conv_test::noise(static_cast<std::size_t>(host), 2u),
+                                   o0(static_cast<std::size_t>(host)), o1(static_cast<std::size_t>(host));
+                const float* ins[2] = {l.data(), r.data()};
+                float* outs[2] = {o0.data(), o1.data()};
+                const auto measure = [&](bool fading) {
+                    std::vector<double> us;
+                    us.reserve(callbacks);
+                    for (std::size_t i = 0; i < callbacks; ++i)
+                    {
+                        if (fading && !engine.convolver().isFading())
+                            engine.submitIrSet(i % 2 ? setA : setB);
+                        const auto t0 = std::chrono::steady_clock::now();
+                        engine.process(ins, outs, host);
+                        const auto t1 = std::chrono::steady_clock::now();
+                        us.push_back(std::chrono::duration<double, std::micro>(t1 - t0).count());
+                    }
+                    double mean = 0.0;
+                    for (const double v : us)
+                        mean += v;
+                    mean /= static_cast<double>(us.size());
+                    std::sort(us.begin(), us.end());
+                    const std::size_t i999 = std::min(us.size() - 1, us.size() * 999 / 1000);
+                    return std::array<double, 3>{100.0 * mean / budgetUs, 100.0 * us[i999] / budgetUs,
+                                                 100.0 * us.back() / budgetUs};
+                };
+                for (int i = 0; i < 4 * p / host + 50; ++i) // warm-up
+                    engine.process(ins, outs, host);
+                const auto steady = measure(false);
+                const auto fade = measure(true);
+                std::cout << std::fixed << std::setprecision(1) << "  host " << host << ", P = " << p
+                          << ", IR " << seconds << " s (" << sim::conv::partitionCount(len, p)
+                          << " partitions/path): steady mean " << steady[0] << " % (p99.9 " << steady[1]
+                          << " %, max " << steady[2] << " %); crossfading mean " << fade[0] << " % (p99.9 "
+                          << fade[1] << " %, max " << fade[2] << " %)"
+                          << (host == 512 && p == 512 && seconds > 2.5 && seconds < 3.5
+                                  ? "  <- AQ10 budget 15 %"
+                                  : "")
+                          << (host == 64 && p == 512 && seconds > 11.5
+                                  ? "  <- worst-case callback (p99.9 < 100 %)"
+                                  : "")
+                          << "\n";
+                engine.releaseRetired();
+            }
     std::cout.unsetf(std::ios::fixed);
 }
 
@@ -264,10 +281,38 @@ TEST_CASE("RealtimeEngine::process before a successful prepare() writes silence"
     std::vector<float> l(64, 0.5f), r(64, 0.5f), o0(64, 7.0f), o1(64, 7.0f);
     const float* ins[2] = {l.data(), r.data()};
     float* outs[2] = {o0.data(), o1.data()};
-    engine.process(ins, outs, 64);
+    conv_test::runWithWatchdog([&] { engine.process(ins, outs, 64); },
+                               "RealtimeEngine::process (unprepared)");
     CHECK(std::all_of(o0.begin(), o0.end(), [](float v) { return v == 0.0f; }));
     CHECK_THROWS_AS(engine.prepare(22050.0, 64), std::invalid_argument);
     std::fill(o1.begin(), o1.end(), 7.0f);
-    engine.process(ins, outs, 64); // still unprepared: must not spin
+    conv_test::runWithWatchdog([&] { engine.process(ins, outs, 64); },
+                               "RealtimeEngine::process (failed prepare)");
     CHECK(std::all_of(o1.begin(), o1.end(), [](float v) { return v == 0.0f; }));
+}
+
+// Input guard: NaN and +-Inf host samples are taken in as 0, so they cannot poison the FDL: the
+// output is finite everywhere and equals the render of the input with those samples zeroed.
+TEST_CASE("RealtimeEngine replaces non-finite input samples by zero", "[conv][engine]")
+{
+    sim::RealtimeEngine engine(256);
+    engine.prepare(48000.0, 512);
+    auto ir = emptyIr(48000.0, 5000);
+    for (std::size_t path = 0; path < 4; ++path)
+        ir.taps[path] = conv_test::noise(5000, 70u + path, 0.2);
+    REQUIRE(engine.submitRoomIR(ir));
+    sim::MultiChannel x = {conv_test::noise(20000, 75u), conv_test::noise(20000, 76u)};
+    sim::MultiChannel clean = x;
+    x[0][1000] = std::numeric_limits<float>::quiet_NaN();
+    x[1][3001] = std::numeric_limits<float>::infinity();
+    x[0][7777] = -std::numeric_limits<float>::infinity();
+    clean[0][1000] = clean[1][3001] = clean[0][7777] = 0.0f;
+    const auto ref = sim::renderOffline(ir, clean);
+    const auto out = runEngine(engine, x, ref[0].size() + 256, 0, 512);
+    for (std::size_t m = 0; m < 2; ++m)
+    {
+        CHECK(std::all_of(out[m].begin(), out[m].end(), [](float v) { return std::isfinite(v); }));
+        const std::vector<double> r(ref[m].begin(), ref[m].end());
+        CHECK(conv_test::residualDb(out[m], r, 256) <= -120.0);
+    }
 }

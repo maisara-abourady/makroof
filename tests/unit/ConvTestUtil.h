@@ -6,10 +6,15 @@
 #include "sim/OfflineRender.h"
 #include "sim/Rng.h"
 
+#include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <limits>
+#include <thread>
 #include <vector>
 
 namespace conv_test {
@@ -67,6 +72,31 @@ inline std::vector<int> blockSchedule(std::size_t total, int blockSize, std::uin
         done += static_cast<std::size_t>(n);
     }
     return sizes;
+}
+
+// Runs f() on a worker thread and waits at most `limit`. A call that hangs (e.g. a process() that
+// spins) aborts the test binary with a message after `limit`, so the test fails in seconds instead
+// of at the 600 s ctest timeout. (The hung thread can't be cancelled, so aborting is the only clean
+// exit.)
+template <typename F>
+void runWithWatchdog(F&& f, const char* what, std::chrono::milliseconds limit = std::chrono::seconds(5))
+{
+    std::atomic<bool> finished{false};
+    std::thread worker([&] {
+        f();
+        finished.store(true, std::memory_order_release);
+    });
+    const auto until = std::chrono::steady_clock::now() + limit;
+    while (!finished.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < until)
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    if (!finished.load(std::memory_order_acquire))
+    {
+        std::fprintf(stderr, "WATCHDOG: %s did not return within %lld ms (hang); aborting\n", what,
+                     static_cast<long long>(limit.count()));
+        std::fflush(stderr);
+        std::abort();
+    }
+    worker.join();
 }
 
 } // namespace conv_test

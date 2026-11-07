@@ -59,8 +59,12 @@ void CrossfadingConvolver::prepare(int numInputs, int numOutputs, int maxBlock, 
     outBlock_ = allocateAligned(static_cast<std::size_t>(numOutputs) * p);
     yA_ = allocateAligned(static_cast<std::size_t>(numOutputs) * p);
     yB_ = allocateAligned(static_cast<std::size_t>(numOutputs) * p);
-    accumulator_ = allocateAligned(2 * p);
     timeScratch_ = allocateAligned(2 * p);
+    for (Lane* lane : {&laneA_, &laneB_})
+    {
+        lane->acc = allocateAligned(static_cast<std::size_t>(numOutputs) * 2 * p);
+        lane->done = lane->total = 0;
+    }
 
     // AX18 ramps, j = 0 .. L. Equal gain: g = j / L (linear, complementary). Equal power:
     // sin / cos of g pi/2 (squares sum to 1).
@@ -162,47 +166,134 @@ void CrossfadingConvolver::reset() noexcept
     position_ = 0;
     blockStart_ = 0;
     fadeStart_ = -1;
+    restartLanes();
+}
+
+void CrossfadingConvolver::startLane(Lane& lane, const Request* r) noexcept
+{
+    lane.done = 0;
+    lane.total = 0;
+    if (r == nullptr)
+        return;
+    const IrSet& ir = *r->ir;
+    lane.total = static_cast<std::size_t>(ir.numOutputs()) * static_cast<std::size_t>(ir.numInputs())
+                 * (ir.numPartitions() - 1);
+    std::fill(lane.acc.get(),
+              lane.acc.get()
+                  + static_cast<std::size_t>(numOutputs_) * 2 * static_cast<std::size_t>(partitionSize_),
+              0.0f);
+}
+
+void CrossfadingConvolver::advanceLane(Lane& lane, const IrSet& ir, std::size_t target) noexcept
+{
+    // Unit u = one 2P-bin multiply-add: output m, input n, partition k >= 1, in that nesting order.
+    // Before the boundary's FDL push, X(b + 1 - k) is the spectrum of age k - 1.
+    target = std::min(target, lane.total);
+    if (lane.done >= target)
+        return;
+    const auto twoP = static_cast<std::size_t>(2 * partitionSize_);
+    const std::size_t k1 = ir.numPartitions() - 1; // > 0 whenever total > 0
+    const auto inputs = static_cast<std::size_t>(ir.numInputs());
+    const std::size_t capacity = fdl_.capacity();
+    const std::size_t head = fdl_.head();
+    std::size_t m = lane.done / (inputs * k1);
+    std::size_t n = (lane.done / k1) % inputs;
+    std::size_t k = 1 + lane.done % k1;
+    for (std::size_t u = lane.done; u < target; ++u)
+    {
+        // Partitions in descending order (the quiet, late ones first): the running sum stays small
+        // while most terms are added, which lowers the float rounding error (see the PR, O9).
+        const std::size_t kk = k1 + 1 - k;
+        const std::size_t age = kk - 1;
+        const std::size_t slot = head >= age ? head - age : head + capacity - age;
+        fft_.multiplyAccumulate(fdl_.slotSpectrum(static_cast<int>(n), slot),
+                                ir.spectrum(static_cast<int>(n), static_cast<int>(m), kk),
+                                lane.acc.get() + m * twoP, 1.0f);
+        if (++k > k1)
+        {
+            k = 1;
+            if (++n == inputs)
+            {
+                n = 0;
+                ++m;
+            }
+        }
+    }
+    macs_ += target - lane.done;
+    lane.done = target;
+}
+
+void CrossfadingConvolver::finishLane(Lane& lane, const IrSet& ir, float* const* y) noexcept
+{
+    // After the FDL push: add the k = 0 term (the new block, age 0) and transform back.
+    const auto p = static_cast<std::size_t>(partitionSize_);
+    for (int m = 0; m < ir.numOutputs(); ++m)
+    {
+        float* acc = lane.acc.get() + static_cast<std::size_t>(m) * 2 * p;
+        for (int n = 0; n < ir.numInputs(); ++n)
+            fft_.multiplyAccumulate(fdl_.spectrum(n, 0), ir.spectrum(n, m, 0), acc, 1.0f);
+        macs_ += static_cast<std::uint64_t>(ir.numInputs());
+        fft_.inverse(acc, timeScratch_.get());
+        // Overlap-save: the last P samples are the linear convolution; the first P wrap around.
+        std::memcpy(y[m], timeScratch_.get() + p, p * sizeof(float));
+    }
+}
+
+void CrossfadingConvolver::advanceLanes() noexcept
+{
+    // Keep each state's k >= 1 work in step with the samples taken in: a fraction position / P.
+    const auto pos = static_cast<std::size_t>(position_);
+    const auto p = static_cast<std::size_t>(partitionSize_);
+    if (current_ != nullptr)
+        advanceLane(laneA_, *current_->ir, laneA_.total * pos / p);
+    if (next_ != nullptr)
+        advanceLane(laneB_, *next_->ir, laneB_.total * pos / p);
+}
+
+void CrossfadingConvolver::restartLanes() noexcept
+{
+    startLane(laneA_, current_);
+    startLane(laneB_, next_);
 }
 
 void CrossfadingConvolver::computeBlock() noexcept
 {
     const auto p = static_cast<std::size_t>(partitionSize_);
     const std::int64_t newStart = blockStart_ + partitionSize_; // first output sample of this block
-    fdl_.push(inPtrs_.data(), fft_);
 
+    // 1. The very first IR after prepare() / reset() is installed here and rendered in full this
+    //    block (the output so far is the latency's silence: offline renders start exact, no fade).
+    //    Every other hand-over happens at the end of the boundary, see 4.
     if (retiring_ != nullptr && pushRetired(retiring_))
         retiring_ = nullptr;
-    if (next_ == nullptr && retiring_ == nullptr)
+    if (current_ == nullptr && next_ == nullptr && retiring_ == nullptr && blockStart_ == 0)
     {
         if (Request* r = mailbox_.exchange(nullptr, std::memory_order_acq_rel))
         {
-            if (current_ == nullptr && blockStart_ == 0)
-            {
-                // The first partition after prepare() / reset(): the output so far is the latency's
-                // silence, so the IR is installed at once (offline renders start exact, no fade).
-                current_ = r;
-            }
-            else // AQ4: every other change crossfades, from silence too (y_A = 0 when current_ is null)
-            {
-                next_ = r;
-                fadeStart_ = newStart;
-                ++fades_;
-            }
+            current_ = r;
+            startLane(laneA_, current_); // its lane did not run during this block: whole sum below
         }
     }
+    const bool renderB = next_ != nullptr && fadeStart_ <= newStart; // B's lane ran during this block
 
+    // 2. The k >= 1 remainder (before the push), the push, then k = 0 and the inverse transforms.
     if (current_ != nullptr)
-        renderPartition(*current_->ir, fdl_, fft_, accumulator_.get(), timeScratch_.get(), yAPtrs_.data());
+        advanceLane(laneA_, *current_->ir, laneA_.total);
+    if (renderB)
+        advanceLane(laneB_, *next_->ir, laneB_.total);
+    fdl_.push(inPtrs_.data(), fft_);
+    if (current_ != nullptr)
+        finishLane(laneA_, *current_->ir, yAPtrs_.data());
     else
         std::fill(yA_.get(), yA_.get() + static_cast<std::size_t>(numOutputs_) * p, 0.0f);
 
-    if (next_ == nullptr)
+    if (!renderB)
     {
         std::memcpy(outBlock_.get(), yA_.get(), static_cast<std::size_t>(numOutputs_) * p * sizeof(float));
     }
     else
     {
-        renderPartition(*next_->ir, fdl_, fft_, accumulator_.get(), timeScratch_.get(), yBPtrs_.data());
+        finishLane(laneB_, *next_->ir, yBPtrs_.data());
         const std::size_t law = lawIndex(next_->law);
         const float* gIn = rampIn_[law].data();
         const float* gOut = rampOut_[law].data();
@@ -230,6 +321,25 @@ void CrossfadingConvolver::computeBlock() noexcept
         }
     }
     blockStart_ = newStart;
+
+    // 4. Hand-over, after a finished fade has retired (so back-to-back requests keep the AQ4 pace:
+    //    one fade per 30 ms plus at most a block). A request taken now accumulates during the next
+    //    block and enters the output with it: s0 = blockStart_ + P. AQ4: every change crossfades, from
+    //    silence too (y_A = 0 when current_ is null).
+    if (retiring_ != nullptr && pushRetired(retiring_))
+        retiring_ = nullptr;
+    if (next_ == nullptr && retiring_ == nullptr)
+    {
+        if (Request* r = mailbox_.exchange(nullptr, std::memory_order_acq_rel))
+        {
+            next_ = r;
+            fadeStart_ = blockStart_ + partitionSize_;
+            ++fades_;
+        }
+    }
+
+    // 5. The next block's accumulation starts from zero (lane A for current_, lane B for next_).
+    restartLanes();
 }
 
 void CrossfadingConvolver::process(const float* const* in, float* const* out, int n) noexcept
@@ -237,13 +347,20 @@ void CrossfadingConvolver::process(const float* const* in, float* const* out, in
     if (partitionSize_ == 0) // not prepared (or prepare() threw): nothing to do, never spin
         return;
     const ScopedFlushDenormals noDenormals;
+    macs_ = 0;
     int done = 0;
     while (done < n)
     {
         const int chunk = std::min(n - done, partitionSize_ - position_);
         const auto bytes = static_cast<std::size_t>(chunk) * sizeof(float);
         for (int c = 0; c < numInputs_; ++c)
-            std::memcpy(inPtrs_[static_cast<std::size_t>(c)] + position_, in[c] + done, bytes);
+        {
+            float* dst = inPtrs_[static_cast<std::size_t>(c)] + position_;
+            std::memcpy(dst, in[c] + done, bytes);
+            for (int i = 0; i < chunk; ++i) // input guard: NaN / Inf would poison the FDL
+                if (!std::isfinite(dst[i]))
+                    dst[i] = 0.0f;
+        }
         for (int c = 0; c < numOutputs_; ++c)
             std::memcpy(out[c] + done, outPtrs_[static_cast<std::size_t>(c)] + position_, bytes);
         position_ += chunk;
@@ -252,6 +369,10 @@ void CrossfadingConvolver::process(const float* const* in, float* const* out, in
         {
             computeBlock();
             position_ = 0;
+        }
+        else
+        {
+            advanceLanes();
         }
     }
 }

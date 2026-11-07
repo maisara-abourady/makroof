@@ -17,6 +17,9 @@
 
 namespace test_support {
 
+// False in AddressSanitizer builds, where operator new / delete are left to ASan (see the .cpp) and
+// nothing is counted; tests skip their allocation assertions then.
+bool trackerActive() noexcept;
 // Allocations by operator new on this thread since the tracker started, while tracking was on.
 std::size_t trackedAllocations() noexcept;
 // Non-null pointers freed by operator delete on this thread while tracking was on.

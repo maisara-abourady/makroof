@@ -37,8 +37,9 @@ std::shared_ptr<const IrSet> monoIr(const std::vector<float>& h, int p)
 } // namespace
 
 // Acceptance: switching A -> B mid-signal equals (1 - g) (x*A) + g (x*B) within -100 dB, g a 30 ms
-// ramp starting at the block boundary where the swap is picked up (the first output sample of the
-// partition computed after the request: s0 = (floor(r / P) + 1) P for a request after r input
+// ramp starting at the block boundary where the swap is picked up. The mailbox is read at the first
+// partition boundary after the request and the new state spends one block accumulating (work
+// spreading), so its fade starts with the next block: s0 = (floor(r / P) + 2) P for a request after r input
 // samples). Equal gain (linear g) and equal power (cos / sin of g pi/2, AX18).
 TEST_CASE("CrossfadingConvolver A -> B equals the analytic crossfade (-100 dB)", "[conv][crossfade]")
 {
@@ -78,7 +79,7 @@ TEST_CASE("CrossfadingConvolver A -> B equals the analytic crossfade (-100 dB)",
     REQUIRE(requested);
     REQUIRE(c.fadeCount() == 1);
     const auto pp = static_cast<std::size_t>(p);
-    const auto s0 = static_cast<std::int64_t>((requestedAt / pp + 1) * pp);
+    const auto s0 = static_cast<std::int64_t>((requestedAt / pp + 2) * pp);
     CHECK(c.fadeStartSample() == s0);
     CHECK_FALSE(c.isFading());
 
@@ -224,6 +225,8 @@ TEST_CASE("CrossfadingConvolver: 100 requests in 1 s, the last one wins", "[conv
 // Acceptance: zero heap allocations in process() for all block sizes, including during crossfades.
 TEST_CASE("CrossfadingConvolver::process allocates nothing, also while fading", "[conv][crossfade][alloc]")
 {
+    if (!test_support::trackerActive())
+        SKIP("AllocationTracker inactive under AddressSanitizer (ASan keeps its own operator new/delete)");
     const int p = GENERATE(128, 256, 512);
     CrossfadingConvolver c;
     c.prepare(2, 2, 2048, p, 30, kFade48k);
@@ -343,7 +346,7 @@ TEST_CASE("CrossfadingConvolver: a first IR arriving mid-stream fades in from si
     }
     CHECK(c.fadeCount() == 1);
     const auto pp = static_cast<std::size_t>(p);
-    const auto s0 = static_cast<std::int64_t>((requestedAt / pp + 1) * pp);
+    const auto s0 = static_cast<std::int64_t>((requestedAt / pp + 2) * pp);
     CHECK(c.fadeStartSample() == s0);
     std::vector<double> expected(out.size(), 0.0);
     for (std::size_t s = pp; s < out.size(); ++s)
@@ -359,7 +362,8 @@ TEST_CASE("CrossfadingConvolver::process before prepare() returns at once", "[co
 {
     CrossfadingConvolver c;
     std::vector<float> in(64, 0.5f), out(64, 7.0f);
-    c.process(in.data(), out.data(), 64); // must not spin
+    conv_test::runWithWatchdog([&] { c.process(in.data(), out.data(), 64); },
+                               "CrossfadingConvolver::process");
     CHECK(out[0] == 7.0f);
     CHECK_FALSE(c.requestIr(monoIr(std::vector<float>(10, 0.1f), 128)));
 }
@@ -385,7 +389,8 @@ TEST_CASE("CrossfadingConvolver: a full release queue pauses swaps, nothing is f
         c.process(in.data(), out.data(), p);
         frees += tracking.deallocations();
     }
-    CHECK(frees == 0);
+    if (test_support::trackerActive()) // under ASan the tracker counts nothing
+        CHECK(frees == 0);
     // kReleaseQueueSize retired requests are queued, one more is held, then swaps stop.
     CHECK(c.fadeCount() == CrossfadingConvolver::kReleaseQueueSize + 1);
     CHECK(c.releaseRetired() == CrossfadingConvolver::kReleaseQueueSize);
@@ -420,4 +425,48 @@ TEST_CASE("CrossfadingConvolver::reset during a fade ends it on the target and c
         c.process(xin.data() + pos, y.data() + pos,
                   static_cast<int>(std::min<std::size_t>(p, xin.size() - pos)));
     CHECK(conv_test::residualDb(y, conv_test::reference(x, hB), p) <= -120.0);
+}
+
+// Work spreading: no process() call does much more than its share of the block's k >= 1 work. With
+// host buffer n and U = M N (K - 1) multiply-adds per state and block, a call does at most
+// ceil(U n / P) + 1 per active state, plus at a partition boundary the k = 0 terms (N M per state).
+// Without spreading, the boundary call would do all U per state at once.
+TEST_CASE("CrossfadingConvolver spreads the partition work across small host buffers", "[conv][crossfade]")
+{
+    constexpr int p = 512, host = 64;
+    constexpr std::size_t partitions = 60;
+    CrossfadingConvolver c;
+    c.prepare(2, 2, host, p, partitions, kFade48k);
+    const auto taps = [](std::uint64_t seed) {
+        return std::vector<std::vector<float>>(4, conv_test::noise(partitions * p, seed, 0.01));
+    };
+    const auto a = IrSet::create(2, 2, taps(1), p), b = IrSet::create(2, 2, taps(2), p);
+    const std::uint64_t units = 2 * 2 * (partitions - 1);
+    const std::uint64_t share = (units * host + p - 1) / p + 1;
+    std::vector<float> l = conv_test::noise(host, 3u), r = conv_test::noise(host, 4u), o0(host), o1(host);
+    const float* ins[2] = {l.data(), r.data()};
+    float* outs[2] = {o0.data(), o1.data()};
+    REQUIRE(c.requestIr(a));
+    std::uint64_t worst = 0, worstFading = 0;
+    for (int call = 0; call < 2000; ++call)
+    {
+        if (call % 300 == 150)
+            REQUIRE(c.requestIr(call % 600 == 150 ? b : a, CrossfadeLaw::EqualPower));
+        const bool fadingBefore = c.isFading();
+        c.process(ins, outs, host);
+        if (call < p / host) // the first boundary installs the first IR and renders it in full
+            continue;
+        const std::uint64_t macs = c.lastProcessMultiplyAdds();
+        // Two states while a fade is pending or running (also in the call where it ends).
+        const std::uint64_t states = fadingBefore || c.isFading() ? 2 : 1;
+        CHECK(macs <= states * (share + 2 * 2));
+        worst = std::max(worst, macs);
+        if (c.isFading())
+            worstFading = std::max(worstFading, macs);
+    }
+    INFO("worst call " << worst << " multiply-adds (fading " << worstFading << "), unspread block " << units
+                       << " per state");
+    CHECK(c.fadeCount() >= 4);
+    CHECK(worstFading > 0);
+    CHECK(worst < units); // far below one whole block of one state
 }

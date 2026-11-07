@@ -244,6 +244,8 @@ TEST_CASE("PartitionedConvolver latency is exactly P and in-place processing wor
 
 TEST_CASE("PartitionedConvolver::process allocates nothing on the heap", "[conv][alloc]")
 {
+    if (!test_support::trackerActive())
+        SKIP("AllocationTracker inactive under AddressSanitizer (ASan keeps its own operator new/delete)");
     const int p = GENERATE(128, 512);
     sim::conv::PartitionedConvolver c;
     c.prepare(2, 2, 2048, p, 100);
@@ -261,6 +263,8 @@ TEST_CASE("PartitionedConvolver::process allocates nothing on the heap", "[conv]
 
 TEST_CASE("AllocationTracker sees operator new on the tracking thread", "[conv][alloc]")
 {
+    if (!test_support::trackerActive())
+        SKIP("AllocationTracker inactive under AddressSanitizer (ASan keeps its own operator new/delete)");
     test_support::ScopedTracking tracking;
     auto* v = new std::vector<int>(100);
     delete v;
@@ -315,6 +319,7 @@ TEST_CASE("PartitionedConvolver::process before prepare() returns at once", "[co
 {
     sim::conv::PartitionedConvolver c;
     std::vector<float> in(64, 0.5f), out(64, 7.0f);
-    c.process(in.data(), out.data(), 64); // must not spin
+    conv_test::runWithWatchdog([&] { c.process(in.data(), out.data(), 64); },
+                               "PartitionedConvolver::process");
     CHECK(out[0] == 7.0f);
 }
