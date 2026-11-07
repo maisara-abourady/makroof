@@ -579,4 +579,8 @@ TEST_CASE("CrossfadingConvolver sums the partitions late-first (exact-arithmetic
     // D4: the pass line is the midpoint of the two exact errors (0 and 100 ulp), a free margin: every
     // operation in this case is exact, so a correct build reads 0 on any SIMD path.
     CHECK(worst <= 50.0);
+    // D4 also says a non-zero descending error means the case is not exact on that platform: it must be
+    // reported and the case redesigned (never re-thresholded). This check makes such a platform fail
+    // loudly instead of passing unseen; it is not the order criterion above.
+    CHECK(worst == 0.0);
 }

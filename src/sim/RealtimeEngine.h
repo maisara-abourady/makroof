@@ -59,7 +59,7 @@ public:
     // The same with a prebuilt IrSet (makeIrSet()), e.g. to switch between cached IRs.
     bool submitIrSet(std::shared_ptr<const conv::IrSet> irSet,
                      conv::CrossfadeLaw law = conv::CrossfadeLaw::EqualGain);
-    // Non-audio thread. nullptr when the IR doesn't fit (as submitRoomIR).
+    // Non-audio thread. nullptr when the IR doesn't fit or has a non-finite tap (as submitRoomIR).
     std::shared_ptr<const conv::IrSet> makeIrSet(const RoomIR& ir) const;
 
     // Non-audio thread: frees IRs the audio thread has retired; returns how many.
