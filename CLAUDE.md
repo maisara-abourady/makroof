@@ -17,7 +17,8 @@ instructions: `docs/phases/phase-XX.md`.
 4. Set the phase to `in progress` in `docs/BUILD_PLAN.md` §0 and commit that first.
 5. Do the phase's scope and nothing outside it. If you find work that belongs to another phase,
    write it under "Follow-ups" in your PR description. Don't do it.
-6. When every **automated** acceptance criterion passes in CI on Linux, macOS and Windows:
+6. When every **automated** acceptance criterion passes in CI on Linux, macOS and Windows (a run that
+   CI skipped because the tree already passed counts; cite the run its `ci ok` summary links):
    - set the status to `done` (or `blocked (reason)`), fill in the PR link, date and short notes;
    - add a row to the change log (§6) if you changed an assumption, a threshold or a golden file;
    - put the phase's **listening checklist** in the PR description for Maisara, with where to
@@ -190,6 +191,17 @@ build/release/tests/unit/spatial_tests "[benchmark]" --benchmark-samples 10
 cmake --preset tsan -DSPATIAL_BUILD_PLUGIN=OFF && cmake --build --preset tsan --target spatial_tests
 build/tsan/tests/unit/spatial_tests "[conv]"
 ```
+
+**When CI skips.** `ci.yml` starts with a `changes` job that fingerprints every tracked file except
+prose no build or test reads (`tools/ci/ci_fingerprint.py`: `docs/sessions/`, `docs/review/`,
+`docs/phases/`, `docs/PRD.md`, `docs/BUILD_PLAN.md`, `docs/THIRD_PARTY.md`, `CLAUDE.md`, `README.md`,
+`.claude/`). If a run on the same fingerprint passed every job, all jobs are skipped and the `ci ok`
+check links that run (its jobs and artifacts, listening pack included, are the evidence). Markers from
+`main` are visible to every PR, a PR's own markers only to that PR. To force a full run: Actions → CI →
+Run workflow with `force` (once the trigger is on `main`), or push a change outside those paths. Add a
+path to the exclusions only if `pytest tools/ci` (which greps code for reads of them) still passes.
+Every new CI job needs `needs: changes`, the `if:` gate and an entry in `ci-ok`'s `needs`
+(`tools/ci/test_ci_workflow.py` fails otherwise).
 
 Binary dirs are `build/<preset>/`. Plugin bundles land in
 `build/<preset>/SpatialScene_artefacts/<Config>/{VST3,AU,Standalone}/`.

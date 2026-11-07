@@ -100,7 +100,11 @@ The description must contain, and the reviewer checks each against the diff and 
    not done with a reason).
 2. **Acceptance-criteria checklist with CI evidence**: each automated criterion of the phase file
    ticked with a link to the run/job/artifact that proves it. "Passes locally" is not evidence.
-   Verify the linked run is on the PR's head commit and green on all three OSes.
+   Verify the linked run is on the PR's head commit and green on all three OSes. If CI skipped the
+   head commit (its `ci ok` summary says the tree's fingerprint already passed and links a run), the
+   linked run counts: check it is green on all three OSes and that the head differs from that run's
+   commit only in paths `tools/ci/ci_fingerprint.py` lists as inert. Its artifacts (listening pack,
+   plugins) are the ones to cite.
 3. **Listening checklist for Maisara**, copied from the phase file, with where to find the
    listening-pack artifact (or the plugin artifacts for phases without audio).
 4. **Contractor review focus**, from the phase file, with pointers into the diff.

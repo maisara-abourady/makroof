@@ -6,6 +6,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Manual run; `force` bypasses the skip below.
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Run every job even if this tree's fingerprint already passed
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -16,8 +23,52 @@ env:
   HOMEBREW_NO_AUTO_UPDATE: "1"
 
 jobs:
+  # Skip gate. tools/ci/ci_fingerprint.py hashes every tracked file that can change a CI result (all
+  # but prose: session briefs, reviews, phase files, PRD, BUILD_PLAN, CLAUDE.md, .claude/). If a run
+  # on a tree with the same fingerprint passed every job, its `ci-ok` job left a pass marker in the
+  # Actions cache, and this run skips every job (they report "skipped", which counts as passing for
+  # required checks). Markers saved on main are visible to every PR; a PR's markers to that PR only.
+  changes:
+    name: changes (skip if this tree already passed)
+    runs-on: ubuntu-24.04
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+      fingerprint: ${{ steps.fp.outputs.fingerprint }}
+      reused: ${{ steps.decide.outputs.reused }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Fingerprint
+        id: fp
+        run: echo "fingerprint=$(python3 tools/ci/ci_fingerprint.py)" >> "$GITHUB_OUTPUT"
+      # The marker is tiny (the commit and run that passed), so it is restored, not only looked up:
+      # a skipped run links the run whose jobs and artifacts (listening pack, plugins) it reuses.
+      - name: Look up a pass marker
+        id: lookup
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: .ci-pass
+          key: ci-pass-${{ steps.fp.outputs.fingerprint }}
+      - name: Decide
+        id: decide
+        env:
+          FP: ${{ steps.fp.outputs.fingerprint }}
+          HIT: ${{ steps.lookup.outputs.cache-hit }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: |
+          if [[ "$HIT" == "true" && "$FORCE" != "true" ]]; then
+            passed="$(cat .ci-pass/passed 2>/dev/null || echo unknown)"
+            echo "Fingerprint $FP already passed CI: skipping every job. Reused run: $passed" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "reused=$passed" >> "$GITHUB_OUTPUT"
+          else
+            echo "Fingerprint $FP: running CI (marker hit: ${HIT:-false}, force: $FORCE)." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
   format:
     name: clang-format
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -30,6 +81,8 @@ jobs:
   # self-test). Cheap, so it runs on all three OSes.
   contract-tools:
     name: contract tools (${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -58,6 +111,8 @@ jobs:
   # render_cli end-to-end tests and the metrics see every platform.
   python:
     name: python tools (${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -146,6 +201,8 @@ jobs:
   # gates; up to ~4200 realisations per rate), one test room per job so they run in parallel.
   tail-gates:
     name: tail gates (${{ matrix.name }}, ${{ matrix.room }})
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
@@ -197,6 +254,8 @@ jobs:
 
   build:
     name: build (${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -347,6 +406,8 @@ jobs:
 
   asan:
     name: ASan + UBSan (linux)
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -378,6 +439,8 @@ jobs:
   # processes. The plugin isn't needed for them, so it isn't built here (much faster).
   tsan:
     name: TSan (linux)
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -401,3 +464,45 @@ jobs:
         env:
           TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
         run: build/tsan/tests/unit/spatial_tests "[conv]"
+
+  # One check that sums the run up (a good candidate for the only required status check). Green when
+  # every job passed, or when the gate skipped them all; red otherwise. Only a fully green run records
+  # the pass marker, so a cancelled, failed or partly skipped run never lets a later run skip.
+  ci-ok:
+    name: ci ok
+    if: always()
+    needs: [changes, format, contract-tools, python, tail-gates, build, asan, tsan]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check job results
+        env:
+          RUN: ${{ needs.changes.outputs.run }}
+          REUSED: ${{ needs.changes.outputs.reused }}
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if [[ "$(echo "$NEEDS" | jq -r '.changes.result')" != "success" ]]; then
+            echo "::error::the skip gate did not succeed"; exit 1
+          fi
+          if [[ "$RUN" == "false" ]]; then want=skipped; else want=success; fi
+          bad=$(echo "$NEEDS" | jq -r --arg want "$want" 'del(.changes) | to_entries[] | select(.value.result != $want) | .key')
+          if [[ -n "$bad" ]]; then
+            echo "::error::jobs not $want: $bad"; exit 1
+          fi
+          if [[ "$RUN" == "false" ]]; then
+            echo "Skipped: this tree's fingerprint passed in $REUSED (jobs and artifacts there)." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Write the pass marker
+        if: needs.changes.outputs.run == 'true'
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          mkdir -p .ci-pass
+          echo "$RUN_URL (commit $SHA)" > .ci-pass/passed
+      - name: Save the pass marker
+        if: needs.changes.outputs.run == 'true'
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: .ci-pass
+          key: ci-pass-${{ needs.changes.outputs.fingerprint }}
