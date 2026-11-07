@@ -1488,6 +1488,7 @@ the new row is AX31) → interrogator diff check (nothing WRONG; four IMPRECISE 
 | P06F-8 | FACT | AX31 "§15's 50 ms head-tracked total delay" | IMPRECISE → applied: "§15's 50 ms total delay for interactive virtual environments" | Vorländer §15 | minor | – | closed |
 | P06F-9 | FACT | phase-06 AC 3 wording (ramp start = where the new IR enters the output) | CORRECT; same test | code, AX31 | none | – | closed |
 | P06F-10 | FACT | phase-07 threading bullets; phase-13 scope 1 numbers, item 8 | SOFTWARE / NOT CHECKABLE (measurements, CI run 42355829013) | – | none | – | closed |
+| P06F-11 | NUMBER | AQ4 "32 ms at P = 256 or 512" (found by the phase re-review) | IMPRECISE → applied: 32 ms at 48 kHz for P = 128/256/512; at 44.1 kHz ⌈1323/P⌉·P = 1536 samples = 34.8 ms (P = 256, 512), 1408 = 31.9 ms (P = 128) | arithmetic | minor | – | closed |
 
 Finished diff: nothing WRONG; the four IMPRECISE points applied. Noted: Vorländer §15.3 prints 20 ms where
 Table 15.1 gives 35 ms (corpus erratum; neither AQ4 nor AX31 relies on it).
