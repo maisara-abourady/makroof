@@ -43,14 +43,36 @@ SHEET_NOTE = {"CR3": "the sheet excludes the attic that the model includes"}
 # area tables before any comparison); its s is read from bras_reduction.json.
 STRONG_ABSORBER = "seating"
 # Recorded B12 outcome (BUILD_PLAN §5 B12, Phase 05f; ledger F5f-2 … F5f-27). Printed whenever a predictor meets the
-# rule's arithmetic; the arithmetic itself is printed above from the results.
+# rule's arithmetic; the arithmetic itself is printed above from the results, the room-band count below is computed.
 B12_RECORDED_OUTCOME = (
     "**Recorded outcome (BUILD_PLAN §5 B12; recommendation under C2, decider 2026-11-07, accepted by Maisara "
     "2026-11-07):** not adopted; Eyring stays in `src/sim`; AQ2 unchanged. The BRAS margin does not separate accurate "
-    "from inaccurate predictors: Eyring under-predicts T in 8 of 9 room-bands (CR2, CR3, CR4 at 500 Hz–2 kHz), so any lengthening lowers the mean "
-    "error (Sabine, less accurate than Eyring on Kuttruff Table 5.2, gains most), and γ²-Eyring (Kuttruff Eq. 5.34) "
-    "lengthens T for every γ² > 0 and fails the rule on Table 5.2. Reopened only on a measured dataset that meets the "
-    "conditions in BUILD_PLAN §5 B12 (ledger F5f-2 … F5f-27).")
+    "from inaccurate predictors: Eyring under-predicts T in {under} of {total} room-bands ({rooms} at 500 Hz–2 kHz, "
+    "initial α, against the mean measured T30), so any lengthening lowers the mean error (Sabine, less accurate than "
+    "Eyring on Kuttruff Table 5.2, gains most), and γ²-Eyring (Kuttruff Eq. 5.34) lengthens T for every γ² > 0 and "
+    "fails the rule on Table 5.2. Reopened only on a measured dataset that meets the conditions in BUILD_PLAN §5 B12 "
+    "(ledger F5f-2 … F5f-27).")
+
+
+def eyring_under_prediction(res: dict) -> tuple:
+    """(room-bands where Eyring's T is below the mean measured T30, room-bands, rooms): initial α, 500 Hz–2 kHz."""
+    under = total = 0
+    rooms = []
+    for rk in sorted(res["rooms"]):
+        room, aset = rk.split("|")
+        if aset != "initial":
+            continue
+        r = res["rooms"][rk]
+        rooms.append(room)
+        for b in AQ9:
+            total += 1
+            under += r["predictors"]["bands"][b]["Eyring"] < r["T30_meas_mean"][b]
+    return under, total, rooms
+
+
+def b12_recorded_outcome(res: dict) -> str:
+    under, total, rooms = eyring_under_prediction(res)
+    return B12_RECORDED_OUTCOME.format(under=under, total=total, rooms=", ".join(rooms))
 
 
 def load_reduction(path: pathlib.Path = REDUCTION) -> dict:
@@ -330,7 +352,7 @@ def write(res: dict, path: pathlib.Path) -> None:
     w("Decision: " + "; ".join(f"{k}: {v}" for k, v in res["b12"]["decision"].items()) + f" — {res['b12']['label']}.")
     if any(v.startswith("replaces") for v in res["b12"]["decision"].values()):
         w("")
-        w(B12_RECORDED_OUTCOME)
+        w(b12_recorded_outcome(res))
     # ---------------- per pair
     w("")
     w("## 4. Per pair (initial α)")
