@@ -470,3 +470,69 @@ TEST_CASE("CrossfadingConvolver spreads the partition work across small host buf
     CHECK(worstFading > 0);
     CHECK(worst < units); // far below one whole block of one state
 }
+
+// reset() mid-block during a fade, from a long A to a short B, then odd host blocks: the lanes must
+// restart for the new current IR (a stale lane would run past B's partitions / accumulator).
+TEST_CASE("CrossfadingConvolver::reset mid-block during a fade restarts the lanes", "[conv][crossfade]")
+{
+    const int p = 128;
+    const auto hA = conv_test::noise(2000, 88u), hB = conv_test::noise(300, 89u);
+    CrossfadingConvolver c;
+    c.prepare(1, 1, 512, p, sim::conv::partitionCount(2000, p), kFade48k);
+    std::vector<float> in(512, 0.2f), out(512);
+    REQUIRE(c.requestIr(monoIr(hA, p)));
+    c.process(in.data(), out.data(), p); // installs A
+    REQUIRE(c.requestIr(monoIr(hB, p)));
+    c.process(in.data(), out.data(), p + 50); // B taken, its lane running; 50 samples into a block
+    REQUIRE(c.isFading());
+    c.reset();
+    CHECK(c.currentIr()->length() == 300);
+    CHECK(c.releaseRetired() == 1);
+    const auto x = conv_test::noise(3000, 90u);
+    std::vector<float> xin(x.size() + hB.size() + p, 0.0f), y(xin.size());
+    std::copy(x.begin(), x.end(), xin.begin());
+    for (std::size_t pos = 0; pos < xin.size(); pos += 37)
+        c.process(xin.data() + pos, y.data() + pos,
+                  static_cast<int>(std::min<std::size_t>(37, xin.size() - pos)));
+    CHECK(conv_test::residualDb(y, conv_test::reference(x, hB), p) <= -120.0);
+}
+
+// The per-call bound for host blocks that straddle partition boundaries (37, 100, random <= P): a
+// call does at most ceil(U n / P) + 2 multiply-adds per active state (its share, split over at most
+// two blocks) plus the boundary's k = 0 terms (N M per state).
+TEST_CASE("CrossfadingConvolver work spreading holds for odd and random host blocks", "[conv][crossfade]")
+{
+    constexpr int p = 256;
+    constexpr std::size_t partitions = 40;
+    const int host = GENERATE(37, 100, 0);
+    CrossfadingConvolver c;
+    c.prepare(2, 2, p, p, partitions, kFade48k);
+    const auto taps = [](std::uint64_t seed) {
+        return std::vector<std::vector<float>>(4, conv_test::noise(partitions * p, seed, 0.01));
+    };
+    const auto a = IrSet::create(2, 2, taps(5), p), b = IrSet::create(2, 2, taps(6), p);
+    const std::uint64_t units = 2 * 2 * (partitions - 1);
+    std::vector<float> l = conv_test::noise(p, 7u), r = conv_test::noise(p, 8u), o0(p), o1(p);
+    const float* ins[2] = {l.data(), r.data()};
+    float* outs[2] = {o0.data(), o1.data()};
+    REQUIRE(c.requestIr(a));
+    std::size_t samples = 0;
+    int call = 0;
+    for (const int n : conv_test::blockSchedule(static_cast<std::size_t>(p) * 400, host, 13u, p))
+    {
+        if (call % 97 == 50)
+            REQUIRE(c.requestIr(call % 194 == 50 ? b : a));
+        const bool fadingBefore = c.isFading();
+        const std::size_t before = samples;
+        c.process(ins, outs, n);
+        samples += static_cast<std::size_t>(n);
+        ++call;
+        if (before < static_cast<std::size_t>(p)) // contains the first boundary: first IR rendered in full
+            continue;
+        const std::uint64_t states = fadingBefore || c.isFading() ? 2 : 1;
+        const std::uint64_t share = (units * static_cast<std::uint64_t>(n) + p - 1) / p + 2;
+        INFO("host " << n << " (schedule " << host << "), call " << call);
+        CHECK(c.lastProcessMultiplyAdds() <= states * (share + 2 * 2));
+    }
+    CHECK(c.fadeCount() >= 3);
+}

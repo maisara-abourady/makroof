@@ -202,7 +202,8 @@ void CrossfadingConvolver::advanceLane(Lane& lane, const IrSet& ir, std::size_t 
     for (std::size_t u = lane.done; u < target; ++u)
     {
         // Partitions in descending order (the quiet, late ones first): the running sum stays small
-        // while most terms are added, which lowers the float rounding error (see the PR, O9).
+        // while most terms are added, which lowers the float rounding error (measured: the
+        // render_cli null at P = 128 went from -124.9 to -128.6 dB, ascending vs descending).
         const std::size_t kk = k1 + 1 - k;
         const std::size_t age = kk - 1;
         const std::size_t slot = head >= age ? head - age : head + capacity - age;
@@ -274,7 +275,8 @@ void CrossfadingConvolver::computeBlock() noexcept
             startLane(laneA_, current_); // its lane did not run during this block: whole sum below
         }
     }
-    const bool renderB = next_ != nullptr && fadeStart_ <= newStart; // B's lane ran during this block
+    // B is taken at the end of a boundary (step 4), so a set next_ always had its lane run this block.
+    const bool renderB = next_ != nullptr;
 
     // 2. The k >= 1 remainder (before the push), the push, then k = 0 and the inverse transforms.
     if (current_ != nullptr)
