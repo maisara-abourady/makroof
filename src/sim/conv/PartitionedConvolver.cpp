@@ -212,6 +212,8 @@ void PartitionedConvolver::computeBlock() noexcept
 
 void PartitionedConvolver::process(const float* const* in, float* const* out, int n) noexcept
 {
+    if (partitionSize_ == 0) // not prepared: nothing to do, never spin
+        return;
     const ScopedFlushDenormals noDenormals;
     int done = 0;
     while (done < n)

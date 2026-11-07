@@ -16,6 +16,11 @@
 #include <thread>
 #include <vector>
 
+// Exact comparisons are intended (untouched buffers, exact zeros).
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#endif
+
 namespace {
 
 using sim::conv::CrossfadeLaw;
@@ -311,4 +316,81 @@ TEST_CASE("CrossfadingConvolver: requestIr from two threads while processing (TS
     CHECK(refused.load() == 0);
     CHECK(requests.load() > 10);
     CHECK(c.fadeCount() > 0);
+}
+
+// A first IR that arrives after processing has started fades in from silence (AQ4), so it never
+// starts with a step: out = g (x*A) for equal gain, with g the 30 ms ramp from the pickup boundary.
+TEST_CASE("CrossfadingConvolver: a first IR arriving mid-stream fades in from silence", "[conv][crossfade]")
+{
+    const int p = 256;
+    const auto h = conv_test::noise(4000, 83u, 0.3);
+    const auto x = conv_test::noise(20000, 84u, 0.5);
+    const auto ref = conv_test::reference(x, h);
+    CrossfadingConvolver c;
+    c.prepare(1, 1, 512, p, 20, kFade48k);
+    std::vector<float> in(x.size() + h.size() + p, 0.0f), out(in.size(), 0.0f);
+    std::copy(x.begin(), x.end(), in.begin());
+    std::size_t pos = 0, requestedAt = 0;
+    for (int n : conv_test::blockSchedule(in.size(), 0, 9u, 512))
+    {
+        if (requestedAt == 0 && pos >= 3000)
+        {
+            REQUIRE(c.requestIr(monoIr(h, p)));
+            requestedAt = pos;
+        }
+        c.process(in.data() + pos, out.data() + pos, n);
+        pos += static_cast<std::size_t>(n);
+    }
+    CHECK(c.fadeCount() == 1);
+    const auto pp = static_cast<std::size_t>(p);
+    const auto s0 = static_cast<std::int64_t>((requestedAt / pp + 1) * pp);
+    CHECK(c.fadeStartSample() == s0);
+    std::vector<double> expected(out.size(), 0.0);
+    for (std::size_t s = pp; s < out.size(); ++s)
+    {
+        const double g = std::clamp(static_cast<double>(static_cast<std::int64_t>(s) - s0) / kFade48k, 0.0,
+                                    1.0);
+        expected[s] = s - pp < ref.size() ? g * ref[s - pp] : 0.0;
+    }
+    CHECK(conv_test::residualDb(out, expected, 0) <= -100.0);
+}
+
+TEST_CASE("CrossfadingConvolver::process before prepare() returns at once", "[conv][crossfade]")
+{
+    CrossfadingConvolver c;
+    std::vector<float> in(64, 0.5f), out(64, 7.0f);
+    c.process(in.data(), out.data(), 64); // must not spin
+    CHECK(out[0] == 7.0f);
+    CHECK_FALSE(c.requestIr(monoIr(std::vector<float>(10, 0.1f), 128)));
+}
+
+// If the non-audio side never drains the release queue, the audio thread holds the next retired
+// request and starts no new fade: nothing is dropped and nothing is freed on the audio thread. Once
+// drained, fades resume.
+TEST_CASE("CrossfadingConvolver: a full release queue pauses swaps, nothing is freed on the audio thread",
+          "[conv][crossfade][alloc]")
+{
+    constexpr int p = 128;
+    CrossfadingConvolver c;
+    c.prepare(1, 1, p, p, 2, 8); // 8-sample fades: one swap per partition
+    const auto ir = monoIr(std::vector<float>(100, 0.1f), p);
+    std::vector<float> in(p, 0.1f), out(p);
+    REQUIRE(c.requestIr(ir));
+    c.process(in.data(), out.data(), p); // installs
+    std::size_t frees = 0;
+    for (int i = 0; i < 3 * static_cast<int>(CrossfadingConvolver::kReleaseQueueSize); ++i)
+    {
+        REQUIRE(c.requestIr(ir)); // allocates the request here, on the "message" thread
+        test_support::ScopedTracking tracking;
+        c.process(in.data(), out.data(), p);
+        frees += tracking.deallocations();
+    }
+    CHECK(frees == 0);
+    // kReleaseQueueSize retired requests are queued, one more is held, then swaps stop.
+    CHECK(c.fadeCount() == CrossfadingConvolver::kReleaseQueueSize + 1);
+    CHECK(c.releaseRetired() == CrossfadingConvolver::kReleaseQueueSize);
+    for (int i = 0; i < 4; ++i)
+        c.process(in.data(), out.data(), p);
+    CHECK(c.fadeCount() > CrossfadingConvolver::kReleaseQueueSize + 1);
+    c.releaseRetired();
 }

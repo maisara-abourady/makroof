@@ -175,11 +175,13 @@ void CrossfadingConvolver::computeBlock() noexcept
     {
         if (Request* r = mailbox_.exchange(nullptr, std::memory_order_acq_rel))
         {
-            if (current_ == nullptr)
+            if (current_ == nullptr && blockStart_ == 0)
             {
-                current_ = r; // first IR: no fade from silence
+                // The first partition after prepare() / reset(): the output so far is the latency's
+                // silence, so the IR is installed at once (offline renders start exact, no fade).
+                current_ = r;
             }
-            else
+            else // AQ4: every other change crossfades, from silence too (y_A = 0 when current_ is null)
             {
                 next_ = r;
                 fadeStart_ = newStart;
@@ -222,7 +224,7 @@ void CrossfadingConvolver::computeBlock() noexcept
             Request* old = current_;
             current_ = next_;
             next_ = nullptr;
-            if (!pushRetired(old))
+            if (old != nullptr && !pushRetired(old))
                 retiring_ = old;
         }
     }
@@ -231,6 +233,8 @@ void CrossfadingConvolver::computeBlock() noexcept
 
 void CrossfadingConvolver::process(const float* const* in, float* const* out, int n) noexcept
 {
+    if (partitionSize_ == 0) // not prepared (or prepare() threw): nothing to do, never spin
+        return;
     const ScopedFlushDenormals noDenormals;
     int done = 0;
     while (done < n)

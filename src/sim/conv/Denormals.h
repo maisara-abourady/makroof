@@ -28,9 +28,9 @@ public:
         _mm_setcsr(static_cast<unsigned int>(previous_) | kSseFtz | kSseDaz);
 #elif defined(SPATIAL_DENORMALS_AARCH64)
         std::uint64_t fpcr = 0;
-        asm volatile("mrs %0, fpcr" : "=r"(fpcr));
+        asm volatile("mrs %0, fpcr" : "=r"(fpcr) : : "memory");
         previous_ = fpcr;
-        asm volatile("msr fpcr, %0" : : "r"(fpcr | kArmFz));
+        asm volatile("msr fpcr, %0" : : "r"(fpcr | kArmFz) : "memory");
 #endif
     }
 
@@ -39,7 +39,7 @@ public:
 #if defined(SPATIAL_DENORMALS_SSE)
         _mm_setcsr(static_cast<unsigned int>(previous_));
 #elif defined(SPATIAL_DENORMALS_AARCH64)
-        asm volatile("msr fpcr, %0" : : "r"(previous_));
+        asm volatile("msr fpcr, %0" : : "r"(previous_) : "memory");
 #endif
     }
 

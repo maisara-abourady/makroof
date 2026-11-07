@@ -13,10 +13,10 @@ set(SPATIAL_NLOHMANN_JSON_TAG "v3.12.0")
 # Used by render_cli only (WAV I/O without JUCE).
 set(SPATIAL_DR_WAV_COMMIT "fa931f3285ced10ace628f7f1ac951e1951e7ea6")
 set(SPATIAL_DR_WAV_SHA256 "c69816d0e0ac6cab3df8bf2f42df451d4531c2bfa34f7d7a69e959e6ed399038")
-# PFFFT (marton78/pffft) — pinned release tag v1.1.0 (commit 1fdcb508e5082052ab406d560b7c4622b8b4b0dd).
+# PFFFT (marton78/pffft) — pinned to the commit of release tag v1.1.0 (immutable, unlike a tag).
 # Real FFT of the real-time convolver (src/sim/conv, Phase 06). Only the single-precision sources are
 # compiled, into spatial_pffft below; the repository's own CMakeLists is not used.
-set(SPATIAL_PFFFT_TAG "v1.1.0")
+set(SPATIAL_PFFFT_COMMIT "1fdcb508e5082052ab406d560b7c4622b8b4b0dd") # tag v1.1.0
 
 FetchContent_Declare(nlohmann_json
                      GIT_REPOSITORY https://github.com/nlohmann/json.git
@@ -35,8 +35,7 @@ FetchContent_MakeAvailable(dr_wav)
 
 FetchContent_Declare(pffft
                      GIT_REPOSITORY https://github.com/marton78/pffft.git
-                     GIT_TAG ${SPATIAL_PFFFT_TAG}
-                     GIT_SHALLOW TRUE
+                     GIT_TAG ${SPATIAL_PFFFT_COMMIT}
                      # A directory that doesn't exist, so MakeAvailable only downloads (no add_subdirectory).
                      SOURCE_SUBDIR spatial-no-cmake)
 FetchContent_MakeAvailable(pffft)

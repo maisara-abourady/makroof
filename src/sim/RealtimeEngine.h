@@ -10,8 +10,9 @@
 //                                   compensates this latency hears the direct sound on the grid)
 //   submitRoomIR(RoomIR)            any non-audio thread; builds the IrSet there and hands it over
 //
-// Until the first IR arrives the output is silence. The first IR is installed at once; every later
-// one crossfades over 30 ms (AQ4) with the requested law (AX18). Retired IRs are freed by the next
+// Until the first IR arrives the output is silence. An IR submitted before processing starts is
+// installed at once; every later change, including a first IR that arrives mid-stream, crossfades
+// over 30 ms (AQ4) with the requested law (AX18). Retired IRs are freed by the next
 // submit*() or by releaseRetired(), always on the calling (non-audio) thread.
 #include "sim/Engine.h"
 #include "sim/conv/CrossfadingConvolver.h"
@@ -37,6 +38,7 @@ public:
     void prepare(double sampleRate, int maxBlock);
 
     // Audio thread. in[c] / out[c] hold n samples, c = 0, 1; in and out may be the same buffers.
+    // Before a successful prepare() it writes silence.
     void process(const float* const in[2], float* const out[2], int n) noexcept;
 
     int latencySamples() const noexcept { return partitionSize_ + kAlignPreRollSamples; }

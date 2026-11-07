@@ -5,6 +5,7 @@
 #include "ConvTestUtil.h"
 #include "sim/Engine.h"
 #include "sim/OfflineRender.h"
+#include "sim/conv/CrossfadingConvolver.h"
 #include "sim/conv/Denormals.h"
 #include "sim/conv/Fft.h"
 #include "sim/conv/PartitionedConvolver.h"
@@ -12,6 +13,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <limits>
@@ -285,4 +287,34 @@ TEST_CASE("ScopedFlushDenormals flushes subnormal results and restores the previ
     }
     const float after = tiny * factor;
     CHECK(after != 0.0f);
+}
+
+// The guard is active inside process() (phase-06 scope 5): products that would be subnormal come
+// out as exact zeros. Without it the output here would be ~3e-40 (subnormal).
+TEST_CASE("process() flushes subnormal results to zero", "[conv][denormals]")
+{
+    if (!sim::conv::ScopedFlushDenormals::isSupported())
+        SKIP("no FTZ control on this target");
+    const int p = 128;
+    std::vector<float> h(300, 1e-12f), x(2000, 1e-30f), y(x.size(), 1.0f); // exact x*h = 3e-40
+    sim::conv::PartitionedConvolver c;
+    c.prepare(1, 1, 2000, p, 3);
+    c.setIrSet(sim::conv::IrSet::create(1, 1, {h}, p));
+    c.process(x.data(), y.data(), static_cast<int>(x.size()));
+    CHECK(std::all_of(y.begin(), y.end(), [](float v) { return v == 0.0f; }));
+
+    sim::conv::CrossfadingConvolver xc;
+    xc.prepare(1, 1, 2000, p, 3, 64);
+    REQUIRE(xc.requestIr(sim::conv::IrSet::create(1, 1, {h}, p)));
+    std::fill(y.begin(), y.end(), 1.0f);
+    xc.process(x.data(), y.data(), static_cast<int>(x.size()));
+    CHECK(std::all_of(y.begin(), y.end(), [](float v) { return v == 0.0f; }));
+}
+
+TEST_CASE("PartitionedConvolver::process before prepare() returns at once", "[conv]")
+{
+    sim::conv::PartitionedConvolver c;
+    std::vector<float> in(64, 0.5f), out(64, 7.0f);
+    c.process(in.data(), out.data(), 64); // must not spin
+    CHECK(out[0] == 7.0f);
 }

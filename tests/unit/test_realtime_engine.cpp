@@ -22,6 +22,11 @@
 #include <stdexcept>
 #include <vector>
 
+// Exact comparisons are intended (untouched buffers, exact zeros).
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#endif
+
 namespace {
 
 contract::SceneDescription loadScene(const std::string& name)
@@ -251,4 +256,18 @@ TEST_CASE("benchmark: real-time convolution 2 x 2, 48 kHz, host buffer 512", "[.
             engine.releaseRetired();
         }
     std::cout.unsetf(std::ios::fixed);
+}
+
+TEST_CASE("RealtimeEngine::process before a successful prepare() writes silence", "[conv][engine]")
+{
+    sim::RealtimeEngine engine;
+    std::vector<float> l(64, 0.5f), r(64, 0.5f), o0(64, 7.0f), o1(64, 7.0f);
+    const float* ins[2] = {l.data(), r.data()};
+    float* outs[2] = {o0.data(), o1.data()};
+    engine.process(ins, outs, 64);
+    CHECK(std::all_of(o0.begin(), o0.end(), [](float v) { return v == 0.0f; }));
+    CHECK_THROWS_AS(engine.prepare(22050.0, 64), std::invalid_argument);
+    std::fill(o1.begin(), o1.end(), 7.0f);
+    engine.process(ins, outs, 64); // still unprepared: must not spin
+    CHECK(std::all_of(o1.begin(), o1.end(), [](float v) { return v == 0.0f; }));
 }

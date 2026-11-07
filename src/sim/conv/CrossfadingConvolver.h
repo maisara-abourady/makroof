@@ -23,8 +23,10 @@
 //   EqualPower: out = cos(g pi/2) y_A + sin(g pi/2) y_B   (unrelated IRs: mode switch, large jumps)
 // where y_A, y_B are the exact convolutions x * A and x * B (both states read the full history), so
 // with the latency P: out(t) = (1 - g(t)) (x*A)(t - P) + g(t) (x*B)(t - P) for equal gain.
-// After the fade, B becomes the current state and A's request is retired. The first IR picked up
-// when there is no current IR is installed at once (no fade from silence).
+// After the fade, B becomes the current state and A's request is retired. An IR picked up in the
+// first partition after prepare() / reset() is installed at once (the output so far is the latency's
+// silence, and an offline render then starts exact); one picked up later with no current IR fades in
+// from silence (y_A = 0) like any other change, so a late first IR never starts with a step.
 //
 // Memory reclamation: the audio thread never frees. A retired request goes into a fixed-size
 // lock-free single-producer (audio) / single-consumer queue; releaseRetired() pops and frees them
@@ -70,7 +72,8 @@ public:
     // Any non-audio thread: frees the requests the audio thread has retired. Returns how many.
     std::size_t releaseRetired();
 
-    // Audio thread. n in 1 .. maxBlock. in and out may be the same buffers when N == M.
+    // Audio thread. n in 1 .. maxBlock. in and out may be the same buffers when N == M. Before a
+    // successful prepare() it does nothing (out is left untouched).
     void process(const float* const* in, float* const* out, int n) noexcept;
     // 1 x 1 convenience.
     void process(const float* in, float* out, int n) noexcept;
@@ -123,6 +126,8 @@ private:
     std::uint64_t fades_ = 0;
 
     std::atomic<Request*> mailbox_{nullptr};
+    static_assert(std::atomic<Request*>::is_always_lock_free, "the IR mailbox must be lock-free");
+    static_assert(std::atomic<std::size_t>::is_always_lock_free, "the release queue must be lock-free");
 
     // SPSC queue: audio thread pushes (writeIndex_), releaseRetired() pops (readIndex_).
     std::array<Request*, kReleaseQueueSize> releaseQueue_{};

@@ -138,6 +138,7 @@ public:
 
     // Real-time. in[n] and out[m] hold n samples each; n in 1 .. maxBlock (n <= 0 does nothing).
     // in and out may be the same buffers (in place) when numInputs == numOutputs.
+    // Before prepare() it does nothing.
     void process(const float* const* in, float* const* out, int n) noexcept;
     // 1 x 1 convenience.
     void process(const float* in, float* out, int n) noexcept;
