@@ -90,3 +90,15 @@ the stdout-lock probe reproduces it deterministically.
 
 A visible test that calls `std::abort()` is reported by ctest by name:
 `Test #68: crash probe plain abort ....Subprocess aborted***Exception: 0.00 sec`.
+
+### M3, added after steward round 3 (G1, G2)
+
+- **The stdout-lock probe under plain ctest** (scratch CTestTestfile, the project's 600 s timeout, fixed build):
+  `1/1 Test #1: fail-fast probe: abort while another thread holds the stdout lock ...Subprocess aborted***Exception:   0.05 sec`.
+  ctest names the crashed test and reports it failed, not Timeout, in 0.05 s. Before the fix the same probe
+  hung (rc 124 at 20 s; under the wrapper, ctest `Failed 30.01 sec`).
+- **The wrapper accepts only an abort** (`run_crash_probe.cmake`: "Subprocess aborted" / "Child aborted",
+  or exit code 3 on Windows):
+  - PROBE = the real probe: rc 0, "Subprocess aborted after 54 ms";
+  - PROBE = `/bin/true` (normal exit): rc 1, "did not end by abort() (result '0')";
+  - PROBE = `/bin/false` (non-zero exit, as when no test matches): rc 1, "did not end by abort() (result '1')".
