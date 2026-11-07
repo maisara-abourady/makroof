@@ -5,6 +5,8 @@
 #include "contract/Version.h"
 #include "sim/Engine.h"
 #include "sim/OfflineRender.h"
+#include "sim/RealtimeEngine.h"
+#include "sim/Rng.h"
 
 #include <algorithm>
 #include <array>
@@ -26,6 +28,14 @@ namespace cli {
 
 namespace {
 
+// Largest fixed --block, and the upper end of --block random (1 .. 2048, the largest host buffer
+// in the phase-06 acceptance list).
+constexpr int kMaxEmulationBlock = 8192;
+constexpr int kMaxRandomBlock = 2048;
+// Seed of the --block random schedule (PCG32 state, stream): fixed, so the emulation is deterministic.
+constexpr std::uint64_t kRandomBlockSeed = 20261107u;
+constexpr std::uint64_t kRandomBlockStream = 6u;
+
 struct Options
 {
     std::string scenePath;
@@ -41,6 +51,12 @@ struct Options
     std::optional<std::uint32_t> imageCap;
     std::optional<sim::BuildOptions::Atmosphere> atmosphere;
     std::optional<double> mixFloorMs;
+    // Phase 06: render --in through sim::RealtimeEngine in host blocks (realtime emulation).
+    bool realtimeEmulation = false;
+    std::optional<int> block;     // fixed host block size; 0 = seeded random sizes 1..2048
+    std::optional<int> partition; // P (128, 256, 512)
+    std::string switchScenePath;  // listening demo: alternate with this scene's IR
+    std::optional<double> switchEveryS;
     bool noAirAbsorption = false;
     bool tailOnly = false;
     std::optional<double> rate;
@@ -108,6 +124,11 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             options.tailOnly = true;
             continue;
         }
+        if (arg == "--realtime-emulation")
+        {
+            options.realtimeEmulation = true;
+            continue;
+        }
 
         std::string* target = nullptr;
         if (arg == "--scene")
@@ -124,9 +145,12 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             target = &options.imagesPath;
         else if (arg == "--diagnostics")
             target = &options.diagnosticsPath;
+        else if (arg == "--switch-scene")
+            target = &options.switchScenePath;
         else if (arg != "--rate" && arg != "--mode" && arg != "--tail-seed" && arg != "--ensemble"
                  && arg != "--ensemble-emitter" && arg != "--image-cap" && arg != "--atmosphere"
-                 && arg != "--mix-floor-ms")
+                 && arg != "--mix-floor-ms" && arg != "--block" && arg != "--partition"
+                 && arg != "--switch-every")
             return "unknown argument '" + arg + "'";
 
         if (i + 1 >= args.size())
@@ -187,6 +211,34 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
                 return "--mix-floor-ms must be a number of milliseconds in [0, 1000], got '" + value + "'";
             options.mixFloorMs = ms;
         }
+        else if (arg == "--block")
+        {
+            if (value == "random")
+                options.block = 0;
+            else
+            {
+                const auto b = parseSeed(value);
+                if (!b || *b == 0 || *b > static_cast<std::uint32_t>(kMaxEmulationBlock))
+                    return "--block must be 'random' or an integer in [1, "
+                           + std::to_string(kMaxEmulationBlock) + "], got '" + value + "'";
+                options.block = static_cast<int>(*b);
+            }
+        }
+        else if (arg == "--partition")
+        {
+            const auto p = parseSeed(value);
+            if (!p || !sim::conv::isSupportedPartitionSize(static_cast<int>(*p)))
+                return "--partition must be 128, 256 or 512, got '" + value + "'";
+            options.partition = static_cast<int>(*p);
+        }
+        else if (arg == "--switch-every")
+        {
+            char* end = nullptr;
+            const double sec = std::strtod(value.c_str(), &end);
+            if (end != value.c_str() + value.size() || !std::isfinite(sec) || sec < 0.05 || sec > 60.0)
+                return "--switch-every must be a number of seconds in [0.05, 60], got '" + value + "'";
+            options.switchEveryS = sec;
+        }
         else if (arg == "--ensemble-emitter")
         {
             options.ensembleEmitter = parseSeed(value);
@@ -228,6 +280,13 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         return "--atmosphere and --no-air-absorption exclude each other";
     if (options.ensembleEmitter && !options.ensemble)
         return "--ensemble-emitter needs --ensemble";
+    if (options.realtimeEmulation && options.inPath.empty())
+        return "--realtime-emulation needs --in and --out";
+    if ((options.block || options.partition || !options.switchScenePath.empty() || options.switchEveryS)
+        && !options.realtimeEmulation)
+        return "--block, --partition, --switch-scene and --switch-every need --realtime-emulation";
+    if (options.switchScenePath.empty() != !options.switchEveryS)
+        return "--switch-scene and --switch-every must be given together";
     if (options.rate && !sim::isSupportedSampleRate(*options.rate))
         return "--rate must be one of 44100, 48000, 88200, 96000 (AX6)";
     return {};
@@ -439,6 +498,72 @@ bool writeDiagnostics(const std::filesystem::path& path, const contract::SceneDe
     return static_cast<bool>(os);
 }
 
+// --realtime-emulation: renders `input` through sim::RealtimeEngine in host blocks, as a plugin
+// would, so the real-time path can be nulled against renderOffline. The output has the offline
+// render's length and alignment: the convolver latency P is removed (the AX1 pre-roll is part of the
+// IR in both paths). With `other`, the engine switches between ir and *other every switchEvery
+// samples of the render (equal-power, AX18: unrelated IRs), starting with ir; a host block boundary
+// is placed at every switch.
+bool renderRealtime(const sim::RoomIR& ir, const sim::RoomIR* other, const Options& options,
+                    const sim::MultiChannel& input, sim::MultiChannel& output, std::string& error)
+{
+    const int partition = options.partition.value_or(sim::conv::kDefaultPartitionSize);
+    const int block = options.block.value_or(512);
+    const int maxBlock = block == 0 ? kMaxRandomBlock : block;
+    sim::RealtimeEngine engine(partition);
+    engine.prepare(ir.sampleRate, maxBlock);
+    const auto setA = engine.makeIrSet(ir);
+    const auto setB = other != nullptr ? engine.makeIrSet(*other) : nullptr;
+    if (!setA || (other != nullptr && !setB))
+    {
+        error = "the room IR does not fit the real-time engine (longer than "
+                + std::to_string(sim::RealtimeEngine::maxIrLengthSamples(ir.sampleRate)) + " samples)";
+        return false;
+    }
+    const std::size_t irLength = std::max(ir.length(), other != nullptr ? other->length() : std::size_t{0});
+    const std::size_t frames = input.empty() ? 0 : input.front().size();
+    const std::size_t outLength = frames == 0 ? 0 : frames + std::max<std::size_t>(irLength, 1) - 1;
+    const auto latency = static_cast<std::size_t>(partition);
+    const std::size_t total = outLength + latency;
+
+    std::vector<std::vector<float>> in(2, std::vector<float>(total, 0.0f)),
+        out(2, std::vector<float>(total, 0.0f));
+    for (std::size_t c = 0; c < 2 && c < input.size(); ++c)
+        std::copy(input[c].begin(), input[c].end(), in[c].begin());
+
+    const std::size_t interval = options.switchEveryS
+                                     ? std::max<std::size_t>(1, static_cast<std::size_t>(std::llround(
+                                                                    *options.switchEveryS * ir.sampleRate)))
+                                     : 0;
+    engine.submitIrSet(setA);
+    sim::Pcg32 rng(kRandomBlockSeed, kRandomBlockStream);
+    std::size_t nextSwitch = interval;
+    bool onA = true;
+    for (std::size_t pos = 0; pos < total;)
+    {
+        if (interval != 0 && pos == nextSwitch)
+        {
+            onA = !onA;
+            engine.submitIrSet(onA ? setA : setB, sim::conv::CrossfadeLaw::EqualPower);
+            nextSwitch += interval;
+        }
+        std::size_t n = block == 0 ? 1 + rng.next() % static_cast<std::uint32_t>(kMaxRandomBlock)
+                                   : static_cast<std::size_t>(block);
+        n = std::min(n, total - pos);
+        if (interval != 0)
+            n = std::min(n, nextSwitch - pos);
+        const float* ins[2] = {in[0].data() + pos, in[1].data() + pos};
+        float* outs[2] = {out[0].data() + pos, out[1].data() + pos};
+        engine.process(ins, outs, static_cast<int>(n));
+        engine.releaseRetired();
+        pos += n;
+    }
+    output.assign(2, {});
+    for (std::size_t c = 0; c < 2; ++c)
+        output[c].assign(out[c].begin() + static_cast<std::ptrdiff_t>(latency), out[c].end());
+    return true;
+}
+
 } // namespace
 
 std::string usage()
@@ -485,6 +610,15 @@ std::string usage()
            "               sensitivity report at nu_r(2 i0))\n"
            "  --ensemble-emitter  with --ensemble: build and write only emitter channel 0 or 1 (one\n"
            "               WAV channel per seed)\n"
+           "  --realtime-emulation  with --in/--out: render through the real-time engine (Phase 06:\n"
+           "               partitioned convolution, as the plugin will) instead of the offline reference;\n"
+           "               same length and alignment as the offline render (the convolver latency P is\n"
+           "               removed; the AX1 pre-roll stays in the IR as offline)\n"
+           "  --block N|random  realtime emulation: host block size (default 512), or seeded random sizes\n"
+           "               in 1..2048\n"
+           "  --partition P  realtime emulation: partition size 128, 256 or 512 (default 512)\n"
+           "  --switch-scene <json> --switch-every S  realtime emulation, listening demo: switch the IR\n"
+           "               between --scene and this scene every S seconds (30 ms equal-power crossfade)\n"
            "  --automation not implemented until Phase 10\n"
            "\n"
            "exit codes: 0 ok, 1 usage error, 2 invalid scene, 3 I/O error, 4 internal error\n";
@@ -530,6 +664,29 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
     contract::SceneDescription scene = *parsed.scene;
     if (options.tailSeed)
         scene.render.tailSeed = *options.tailSeed;
+
+    std::optional<contract::SceneDescription> switchScene;
+    if (!options.switchScenePath.empty())
+    {
+        std::string switchText;
+        if (!readTextFile(options.switchScenePath, switchText))
+        {
+            err << "render_cli: cannot read scene file '" << options.switchScenePath << "'\n";
+            return kExitIo;
+        }
+        const contract::ParseResult other = contract::parseScene(switchText);
+        for (const auto& issue : other.issues)
+            err << (issue.severity() == contract::Severity::error ? "error: " : "warning: ")
+                << contract::toString(issue) << "\n";
+        if (!other.ok())
+        {
+            err << "render_cli: invalid scene '" << options.switchScenePath << "'\n";
+            return kExitInvalidScene;
+        }
+        switchScene = *other.scene;
+        if (options.tailSeed)
+            switchScene->render.tailSeed = *options.tailSeed;
+    }
 
     // ---- Input ----
     Audio input;
@@ -654,8 +811,19 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
     {
         Audio rendered;
         rendered.sampleRate = input.sampleRate;
-        rendered.channels = sim::renderOffline(ir, input.channels);
         std::string error;
+        if (options.realtimeEmulation)
+        {
+            const sim::RoomIR other = switchScene ? sim::buildRoomIR(*switchScene, build) : sim::RoomIR{};
+            if (!renderRealtime(ir, switchScene ? &other : nullptr, options, input.channels,
+                                rendered.channels, error))
+            {
+                err << "render_cli: " << error << "\n";
+                return kExitInternal;
+            }
+        }
+        else
+            rendered.channels = sim::renderOffline(ir, input.channels);
         if (!writeWavFloat32(options.outPath, rendered, error))
         {
             err << "render_cli: " << error << "\n";

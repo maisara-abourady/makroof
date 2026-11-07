@@ -209,6 +209,50 @@ def synthetic_decay(
     return decay
 
 
+def drum_loop(fs: float, bpm: float = 100.0, bars: int = 4, level_dbfs: float = -6.0, seed: int = 6) -> tuple[np.ndarray, np.ndarray]:
+    """A synthetic stereo drum loop (4/4, eighth-note grid) for listening checks, as (left, right).
+
+    Kick (a 0.35 s sine glide 110 -> 45 Hz with an exponential decay) on beats 1 and 3 and the
+    "and" of 3, both channels; snare (0.2 s of noise plus a 190 Hz tone) on beats 2 and 4, slightly
+    left; closed hi-hat (40 ms of noise, first differences, so mostly above 5 kHz) on every eighth,
+    slightly right. Every hit has a 1 ms raised-cosine attack so nothing starts with a step.
+    Deterministic for a seed; peak normalised to ``level_dbfs``.
+    """
+    rng = np.random.default_rng(seed)
+    beat = 60.0 / bpm
+    n = int(round(bars * 4 * beat * fs + 0.5 * fs))  # half a second of room after the last bar
+    left, right = np.zeros(n), np.zeros(n)
+    attack = _raised_cosine_fade(max(1, int(round(0.001 * fs))))
+
+    def hit(x: np.ndarray, start: int, sound: np.ndarray, gain: float) -> None:
+        sound = sound.copy()
+        sound[: attack.size] *= attack[: sound.size]
+        stop = min(n, start + sound.size)
+        x[start:stop] += gain * sound[: stop - start]
+
+    tk = np.arange(int(0.35 * fs)) / fs
+    f = 45.0 + 65.0 * np.exp(-tk / 0.04)
+    kick = np.sin(2.0 * np.pi * np.cumsum(f) / fs) * np.exp(-tk / 0.12)
+    ts = np.arange(int(0.2 * fs)) / fs
+    th = np.arange(int(0.04 * fs)) / fs
+    for bar in range(bars):
+        for eighth in range(8):
+            start = int(round((bar * 4 + eighth / 2.0) * beat * fs))
+            if eighth in (0, 4, 5):
+                hit(left, start, kick, 1.0)
+                hit(right, start, kick, 1.0)
+            if eighth in (2, 6):
+                snare = (0.6 * rng.standard_normal(ts.size) + 0.5 * np.sin(2.0 * np.pi * 190.0 * ts)) * np.exp(-ts / 0.05)
+                hit(left, start, snare, 0.8)
+                hit(right, start, snare, 0.55)
+            hat = np.diff(rng.standard_normal(th.size + 1)) * np.exp(-th / 0.012)
+            hit(left, start, hat, 0.12)
+            hit(right, start, hat, 0.2)
+    peak = max(np.max(np.abs(left)), np.max(np.abs(right)))
+    g = db_to_amp(level_dbfs) / peak
+    return left * g, right * g
+
+
 def to_stereo(left: np.ndarray, right: np.ndarray | None = None) -> np.ndarray:
     """Shape (frames, 2) array; right defaults to a copy of left."""
     right = left if right is None else right
