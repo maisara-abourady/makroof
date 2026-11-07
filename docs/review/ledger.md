@@ -1421,3 +1421,46 @@ CR4 max 1.98e-5 m (374 of 1 844 faces > 1e-9 m); CR4's 8 material areas within 0
 |---|---|---|---|---|---|---|---|
 | F5f-1 | NUMBER | AX30: BRAS SketchUp planarity limit, absolute, for every loop vertex; ≤ 25 µm off-plane is acoustically immaterial | CORRECT (acoustic immateriality); 0.001 in as a SketchUp tolerance NOT CHECKABLE (file-format spec); the limit's value is a product matter | Vorländer §3.3.2, Fig. 3.8 (smooth if h, a ≪ λ/2) and §11.1.1 (0.5 m model resolution; off-plane uncertainty of 4th+ vertices admissible if adjusted onto the plane); Kuttruff Ch. 9 after Eq. 9.9 (irregularities ≪ λ negligible). c = 343 m/s (Kuttruff Eq. 1.1): λ(8 kHz) = 42.9 mm, δ/λ ≈ 6e-4; path change ≤ 2δ ≈ 148 ns; normal tilt ≤ 2.5e-5 rad. Absolute preferred (corpus criteria are absolute lengths vs λ); nothing argues tighter. | none | value → decider | confirmed |
 | F5f-1d | DECISION | AX30 value | decider 2026-11-07: **1.0e-3 m absolute** instead of 2.54e-5 m | 1 mm ≈ 15 × below λ/2 at 11.3 kHz (Vorländer §3.3.2) and ≈ 1/1 870 of the pre-fix misparse (1.87 m); 2.54e-5 m is unverifiable and was proposed after CR4's 1.98e-5 m was seen (looks fitted). Sub-mm reader errors covered by the area check and the CR2/CR3 guard. | none | none | applied; vetoable by Maisara |
+
+## BUILD_PLAN §5 B12, phase-05.md scope 6 — Phase 05f B12 outcome and the γ²-Eyring wording (2026-11-07; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Asked by Maisara ("Why haven't you delegated the decider on the 4 points?!"). Decider D1 (B12 outcome under C2) and D2
+(scope 6 wording) → interrogator round 1 (both SURVIVE WITH CORRECTIONS) → advocate round 1 (D1 REDIRECT: the reversal's
+"Eyring within ±5 %" clause was circular in Eyring's favour, and condition (ii) was not shown at the admissible γ²; D2 PASS)
+→ decider round 2 (input-side reversal criterion; γ² sweep from the main session: 0.342 → −1.56, 0.4 → −1.83, 0.613 → −2.87
+pts; 0.4 the only admissible value) → interrogator round 2 (D1 SURVIVES WITH CORRECTIONS: the user-audible-fact sentence
+restated, §5.7 limited to floor/audience absorption in auditoria, Eq. 5.30 "most of the T30 range"; D2 SURVIVES) → advocate
+round 2 (PASS, PASS) → plan-editor applied → interrogator check of the finished diff (below).
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| F5f-2 | FACT | for γ² > 0, a'' = a(1−γ²a/2) < a, so γ²-Eyring T ≥ Eyring T | CORRECT | Kuttruff §5.5 Eqs. 5.33–5.34 | none | – | closed |
+| F5f-3 | NUMBER | Table 5.2 case 4: 1.473 s (γ² 0.4) vs Eyring 1.379 s (+14.0 %), Iteration 1.21 s; worse by 7.75 pts | CORRECT | Kuttruff Table 5.2, Eqs. 5.33–5.34; also vs Fig. 5.10 1.215 s | none | – | closed |
+| F5f-4 | NUMBER | case 2 and six-case means (Eyring 10.29 %, γ²-Eyring 10.13–10.18 %) | CORRECT | Kuttruff Tables 5.1, 5.2 | none | – | closed |
+| F5f-5 | NUMBER | γ² = 0.376 for 1:2:3 | IMPRECISE → applied: only 0.4 cited | interpolation, not a Table 5.1 row | minor | – | closed |
+| F5f-6 | NUMBER/FACT | Sabine control (BRAS −4.5 pts; Table 5.2 Sabine 14.3 % vs Eyring 10.3 %) | CORRECT; gloss restated (8 of 9 room-bands under-predicted) | report §2; Kuttruff Table 5.2, §9.4 | minor | – | closed |
+| F5f-7 | NUMBER | BRAS γ²-Eyring 19.5 → 17.7 %, −1.83 pts, worst room −1.22 | CORRECT | report §3 | none | – | closed |
+| F5f-8 | NUMBER | Table 5.1 rows 1:5:5 0.464, 1:10:10 0.613, 1:5:10 0.510 | CORRECT | Kuttruff Table 5.1 | none | – | closed |
+| F5f-9 | NUMBER | CR4 ≈ 1:8.5:8.5, CR3 ≈ 1:4.5:8.7 | CORRECT (ratios); 0.57 interpolation NOT CHECKABLE | box dims | none | – | closed |
+| F5f-10 | FACT | γ² ≈ 0.4 near-cubic; Eq. 5.34 inaccurate at higher γ²; Eq. 5.30 condition | CORRECT | Kuttruff §5.5, Eqs. 5.30–5.31 | none | – | closed |
+| F5f-11 | DECISION | "not adopted" | applied as a recommendation under C2; Maisara decides | phase-05 scope 6 | minor | – | closed |
+| F5f-12 | FACT | reversal ordering T_Eyring < T_γ² < T_Sabine | CORRECT; ±5 % clause later dropped (advocate) | Kuttruff Eq. 5.35 | none | – | closed |
+| F5f-13 | FACT | "diffuse-field T" | IMPRECISE → applied: "T for diffusely reflecting walls (the §5.7 iteration)" | Kuttruff §5.7 | minor | – | closed |
+| F5f-14 | FACT/NUMBER | D2: T longer for every γ² > 0; case 4 ≈ 1.47 / 1.38 / 1.21 s | CORRECT | Kuttruff §5.5, Table 5.2 | none | – | closed |
+| F5f-15 | DECISION | D2 makes γ²-Eyring a B12 candidate; BRAS-only pass input-limited | CONSEQUENCE | Kuttruff §9.4 | minor | – | closed |
+| F5f-16 | NUMBER | γ² sweep 1.56 / 1.83 / 2.87 pts; 0.4 only admissible | NOT CHECKABLE (tool output); consistent | radiosity.gamma2_eyring_t60; report §3 | none | – | closed |
+| F5f-17 | NUMBER | Eq. 5.30 term ≈ 0.55 at −35 dB (case 4) | CORRECT | Kuttruff Eqs. 5.30–5.32 | none | – | closed |
+| F5f-18 | FACT | "not met over the T30 range" | IMPRECISE → applied: "most of the T30 range (≈ 0.08 at −5 dB to ≈ 0.55 at −35 dB)" | Kuttruff Eqs. 5.30–5.32 | minor | – | closed |
+| F5f-19 | FACT | §5.7 uneven absorption; "fixes neither" | IMPRECISE → applied: floor/audience absorption in auditoria; case 6 ≈ −21 % | Kuttruff §5.7, Table 5.2 | minor | – | closed |
+| F5f-20 | NUMBER | room means 16.1 / 21.0 / 22.1 % ≈ 3.2–4.4 working jnd | CORRECT | report §1, §2 | none | – | closed |
+| F5f-21 | FACT | "16–22 % short" | WRONG → applied: room-mean \|error\|; CR2/CR4 short in every band, CR3 mixed | report §2 | major | – | closed |
+| F5f-22 | FACT | "whatever the predictor" | WRONG → applied: no predictor within 10 %; predictor moves error ≤ ≈ 8 pts | report §2–§3 | major | – | closed |
+| F5f-23 | FACT | remaining B12-text numbers | CORRECT | report §3; Kuttruff | none | – | closed |
+| F5f-24 | DECISION | reversal input criterion (≥ 10 % of A, α measured independently; product threshold) | CONSEQUENCE (coherent) | Kuttruff §9.4, §8.7 | none | – | closed |
+| F5f-25 | FACT | largest-face room clause | CORRECT (coherent) | Kuttruff Table 5.2 case 4, §5.7 | none | – | closed |
+| F5f-26 | FACT | D2 final wording | CORRECT | Kuttruff §5.5, §5.7 | none | – | closed |
+| F5f-27 | DECISION | D1 (recommendation: γ²-Eyring not adopted; Eyring stays; AQ2 unchanged) and D2 | decider; interrogator SURVIVES (with corrections applied); advocate PASS ×2 | this section | – | Maisara decides (C2) | applied; vetoable by Maisara |
+
+Finished diff (interrogator, step 5): **CLEAN** — every changed passage matches F5f-2 … F5f-26. Noted for a later check, not
+part of this diff: phase-05 scope 6's unchanged "with low s the true T can fall on the other side of Eyring (Kuttruff §9.4)";
+the §9.4 passages read in round 1 do not contain the low-s statement.
