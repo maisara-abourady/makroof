@@ -78,8 +78,8 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
    wall p99.9 75.5 % (run 42390056623), 609 % (42392204088), 161.8 % (42394370942) and 657.4 %
    (42397114233), with thread-CPU p99.9 109.9 % in 42397114233 (most of the wall overshoot is the runner
    taking the thread off the CPU). Measure it on an Apple-silicon Mac with the `[benchmark]` test (it
-   prints wall and thread-CPU p99.9 per case); if it misses, the remedy is a smaller first partition or
-   non-uniform partitioning (scope 1), not a change to the target.
+   prints wall and thread-CPU p99.9 per case); if it misses, the remedy is P = 256 (allowed under
+   scope 1) or non-uniform partitioning (new AX entry, 13b, per scope 1), not a change to the target.
 
 ## Out of scope
 

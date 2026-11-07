@@ -1489,6 +1489,9 @@ the new row is AX31) → interrogator diff check (nothing WRONG; four IMPRECISE 
 | P06F-9 | FACT | phase-06 AC 3 wording (ramp start = where the new IR enters the output) | CORRECT; same test | code, AX31 | none | – | closed |
 | P06F-10 | FACT | phase-07 threading bullets; phase-13 scope 1 numbers, item 8 | SOFTWARE / NOT CHECKABLE (measurements, CI run 42355829013) | – | none | – | closed |
 | P06F-11 | NUMBER | AQ4 "32 ms at P = 256 or 512" (found by the phase re-review) | IMPRECISE → applied: 32 ms at 48 kHz for P = 128/256/512; at 44.1 kHz ⌈1323/P⌉·P = 1536 samples = 34.8 ms (P = 256, 512), 1408 = 31.9 ms (P = 128) | arithmetic | minor | – | closed |
+| P06F-12 | FACT | phase-13 scope item 9: CI timing figures (Linux 66.6 / 65.9 %, Windows 32.2 %, macOS wall 75.5 / 609 / 161.8 / 657.4 %, thread-CPU 109.9 %) | NOT CHECKABLE (measurements, run ids given) | CI runs 42390056623, 42392204088, 42394370942, 42397114233 | none | – | closed |
+| P06F-13 | FACT | "most of the wall overshoot is the runner taking the thread off the CPU" | CORRECT as an inference (547.5 of 557.4 points above 100 % are not thread-CPU time; separate distributions; CPU p99.9 still misses) | run 42397114233 | none | – | closed |
+| P06F-14 | FACT | item 9 remedy "a smaller first partition or non-uniform partitioning (scope 1)" | IMPRECISE → applied: "P = 256 (allowed under scope 1) or non-uniform partitioning (new AX entry, 13b, per scope 1)" | phase-13 scope 1, AX31 | minor | – | closed |
 
 Finished diff: nothing WRONG; the four IMPRECISE points applied. Noted: Vorländer §15.3 prints 20 ms where
 Table 15.1 gives 35 ms (corpus erratum; neither AQ4 nor AX31 relies on it).
