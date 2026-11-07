@@ -31,7 +31,12 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
    VTune or Superluminal; record findings in `docs/perf/v1.md`). Allowed optimizations: SIMD in
    accumulation loops, image-source grouping parameters, tail-cache hit rate, partition size choice. Not
    allowed without a new AX entry: anything that changes the acoustic output beyond −100 dB, and
-   non-uniform partitioning (if needed, make it 13b).
+   non-uniform partitioning (if needed, make it 13b). Measured motivation (Phase 06, PR #14, CI run
+   42355829013; 2×2, 48 kHz, host buffer 512, mean % of the real-time budget, steady / crossfading):
+   12 s IR at P = 512: macOS 7.3 / 14.0, Linux 11.7 / 26.0, Windows 9.1 / 26.2; 12 s IR at P = 256: up
+   to 59 % while crossfading (Linux/Windows). AQ10 budgets only a 3 s IR (P = 512: 1.6–2.1 % steady,
+   3.3–4.1 % crossfading), so no current criterion needs it; Maisara chose to plan it, not build it
+   (2026-11-07).
 2. **macOS universal binary** (arm64 + x86_64) via `CMAKE_OSX_ARCHITECTURES`. Test both slices in CI (the
    x86_64 slice runs through Rosetta on the arm64 runner).
 3. **Robustness tests** (Catch2 + pluginval options):
@@ -62,6 +67,9 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
    offline bounce, reopen project, sample-rate change, 10 instances. Maisara fills it in.
 7. Placeholder identity (`AX8`: company name, plugin/manufacturer codes, bundle ID) confirmed or changed
    **before** the first beta, since changing it later breaks users' projects.
+8. **Flush-to-zero guard for MSVC on ARM64** (Windows on Arm): `sim/conv/Denormals.h` is a no-op there;
+   implement with `_ReadStatusReg`/`_WriteStatusReg` (FPCR.FZ) together with an ARM64 Windows CI runner
+   that can test it (Phase 06 follow-up).
 
 ## Out of scope
 

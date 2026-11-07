@@ -39,6 +39,13 @@ only through `contract::SceneDescription`.
    - `IrBuilderThread` (a JUCE `Thread`, or a `std::thread` with a condition variable) coalesces dirty
      notifications, builds `contract::SceneDescription` → `sim::buildRoomIR` → `IrSet`, and submits it
      to `RealtimeEngine` (Phase 06 mailbox). It runs at most every 20 ms. The audio thread never waits.
+   - The plugin talks to the convolution engine **only through `sim::RealtimeEngine`**, never the bare
+     `conv::CrossfadingConvolver` (whose `process()` leaves the output untouched when it isn't prepared)
+     (PR #14 follow-up).
+   - The IR builder thread is **stopped or joined (no `submitRoomIR` in flight) before
+     `RealtimeEngine::prepare()` is called again or the engine is destroyed**: `prepare` drops the IRs
+     and reallocates, so a concurrent submit would race it (PR #14 follow-up).
+   - Non-finite host input samples are already zeroed inside the engine (Phase 06).
    - **Non-realtime mode** (`isNonRealtime()`): when a parameter changes during an offline bounce,
      `processBlock` builds the IR synchronously before processing that block, so bounces are deterministic.
    - `prepareToPlay` builds the initial IR synchronously and calls `setLatencySamples(engine.latencySamples())`.

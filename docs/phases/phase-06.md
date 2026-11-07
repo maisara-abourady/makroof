@@ -65,7 +65,8 @@ partitioning (a possible follow-up if 12 s IRs blow the budget).
       room IR within −120 dB.
 - [ ] Crossfade test: switching IR A→B mid-signal equals the analytic result
       `(1−g(t))·(x*A) + g(t)·(x*B)` within −100 dB, with g a 30 ms linear ramp starting at the block
-      boundary where the swap is picked up.
+      boundary where the new IR enters the output (one partition after the boundary where the request
+      is taken, AX31; `fadeStartSample()`).
 - [ ] Back-to-back `requestIr` calls (100 in 1 s) neither crash nor leak (ASan) and the last IR wins.
 - [ ] **Zero heap allocations** in `process` (AllocationTracker) for all block sizes, including during crossfades.
 - [ ] TSan job (Linux) passes on a test that hammers `requestIr` from 2 threads while the audio thread processes.

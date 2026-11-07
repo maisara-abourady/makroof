@@ -1464,3 +1464,30 @@ round 2 (PASS, PASS) → plan-editor applied → interrogator check of the finis
 Finished diff (interrogator, step 5): **CLEAN** — every changed passage matches F5f-2 … F5f-26. Noted for a later check, not
 part of this diff: phase-05 scope 6's unchanged "with low s the true T can fall on the other side of Eyring (Kuttruff §9.4)";
 the §9.4 passages read in round 1 do not contain the low-s statement.
+
+## BUILD_PLAN §2 AQ4 / AX31 / §6, phase-06.md AC 3, phase-07.md scope 3, phase-13.md scope 1 / item 8 — Phase 06 follow-ups (2026-11-07; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Asked by Maisara ("Take care of all the follow-ups"; on non-uniform partitioning: "Spread only, plan later
+(Recommended)"). Decider D1 (pickup timing under work spreading: option A, s0 = (⌊r/P⌋ + 2)·P) → interrogator
+round 1, decision mode (SURVIVES WITH CORRECTIONS: AQ4's interval statement imprecise, restatement proposed;
+L3 NOT CHECKABLE, product judgement) → advocate (PASS; bound to be stated as rebuild + 2P, not one runner's
+number) → decider round 2 (L3 replaced by L3a/L3b: Table 15.1 translational rows, 700 ms, apply; the
+rotation rows don't in v1; the rebuild, not the A/B choice, sets the total delay; AQ4 restatement accepted
+with the 20 ms build-slot wait; the cap's semantics left to a Phase 10 AX) → plan-editor (AX28 was taken:
+the new row is AX31) → interrogator diff check (nothing WRONG; four IMPRECISE points, applied).
+
+| id | type | claim | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| P06F-1 | DECISION | D1: option A (spread; +1 partition for an isolated update; pace and reported latency unchanged) | decider; interrogator SURVIVES WITH CORRECTIONS; advocate PASS | code (CrossfadingConvolver computeBlock), deterministic per-call test | – | vetoable by Maisara | applied (AX31) |
+| P06F-2 | NUMBER | back-to-back period ⌈1440/P⌉·P = 1536 samples = 32 ms at P = 256 and 512 | CORRECT | arithmetic | none | – | closed |
+| P06F-3 | FACT | AQ4 "interval = max(20, 30, rebuild)" | IMPRECISE → applied: each term rounded to whole partitions; isolated-update delay stated (slot wait + rebuild + 2P) | Vorländer Table 15.1 heading "time available for filter update" | minor | – | closed |
+| P06F-4 | FACT | Table 15.1 rows applying to v1 | CORRECT: translational 700 ms / 3 s apply; source rotation (AQ8 omni) and head rotation don't | Vorländer §15 Table 15.1; PRD out of scope | none | Phase 08: HRTF set changes with the centroid yaw (AX3): does the 35 ms "new HRTF" row apply then? | open for Phase 08 |
+| P06F-5 | NUMBER | 28.5 + 2 × 10.67 = 49.8 ms (W2, Linux, P = 512, no slot wait) | IMPRECISE (49.9) → applied 49.8 | arithmetic | minor | – | closed |
+| P06F-6 | FACT | "32 ms at P = 256 or 512" | IMPRECISE → applied: only while the rebuild ≤ 32 ms (Windows W2 41.6 ms → 42.7 ms) | §0 W2 times | minor | – | closed |
+| P06F-7 | FACT | AQ4 rationale "within Table 15.1's 35 ms" | IMPRECISE → applied: reworded to the 700 ms translational row | Vorländer Table 15.1 | minor | – | closed |
+| P06F-8 | FACT | AX31 "§15's 50 ms head-tracked total delay" | IMPRECISE → applied: "§15's 50 ms total delay for interactive virtual environments" | Vorländer §15 | minor | – | closed |
+| P06F-9 | FACT | phase-06 AC 3 wording (ramp start = where the new IR enters the output) | CORRECT; same test | code, AX31 | none | – | closed |
+| P06F-10 | FACT | phase-07 threading bullets; phase-13 scope 1 numbers, item 8 | SOFTWARE / NOT CHECKABLE (measurements, CI run 42355829013) | – | none | – | closed |
+
+Finished diff: nothing WRONG; the four IMPRECISE points applied. Noted: Vorländer §15.3 prints 20 ms where
+Table 15.1 gives 35 ms (corpus erratum; neither AQ4 nor AX31 relies on it).
