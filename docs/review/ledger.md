@@ -1420,7 +1420,7 @@ CR4 max 1.98e-5 m (374 of 1 844 faces > 1e-9 m); CR4's 8 material areas within 0
 | id | kind | item | verdict | evidence | severity | question | status |
 |---|---|---|---|---|---|---|---|
 | F5f-1 | NUMBER | AX30: BRAS SketchUp planarity limit, absolute, for every loop vertex; ≤ 25 µm off-plane is acoustically immaterial | CORRECT (acoustic immateriality); 0.001 in as a SketchUp tolerance NOT CHECKABLE (file-format spec); the limit's value is a product matter | Vorländer §3.3.2, Fig. 3.8 (smooth if h, a ≪ λ/2) and §11.1.1 (0.5 m model resolution; off-plane uncertainty of 4th+ vertices admissible if adjusted onto the plane); Kuttruff Ch. 9 after Eq. 9.9 (irregularities ≪ λ negligible). c = 343 m/s (Kuttruff Eq. 1.1): λ(8 kHz) = 42.9 mm, δ/λ ≈ 6e-4; path change ≤ 2δ ≈ 148 ns; normal tilt ≤ 2.5e-5 rad. Absolute preferred (corpus criteria are absolute lengths vs λ); nothing argues tighter. | none | value → decider | confirmed |
-| F5f-1d | DECISION | AX30 value | decider 2026-11-07: **1.0e-3 m absolute** instead of 2.54e-5 m | 1 mm ≈ 15 × below λ/2 at 11.3 kHz (Vorländer §3.3.2) and ≈ 1/1 870 of the pre-fix misparse (1.87 m); 2.54e-5 m is unverifiable and was proposed after CR4's 1.98e-5 m was seen (looks fitted). Sub-mm reader errors covered by the area check and the CR2/CR3 guard. | none | none | applied; vetoable by Maisara |
+| F5f-1d | DECISION | AX30 value | decider 2026-11-07: **1.0e-3 m absolute** instead of 2.54e-5 m | 1 mm ≈ 15 × below λ/2 at 11.3 kHz (Vorländer §3.3.2) and ≈ 1/1 870 of the pre-fix misparse (1.87 m); 2.54e-5 m is unverifiable and was proposed after CR4's 1.98e-5 m was seen (looks fitted). Sub-mm reader errors covered by the area check and the CR2/CR3 guard. | none | none | applied; accepted by Maisara 2026-11-07 ("I accept all with no vetos") |
 
 ## BUILD_PLAN §5 B12, phase-05.md scope 6 — Phase 05f B12 outcome and the γ²-Eyring wording (2026-11-07; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
 
@@ -1459,7 +1459,7 @@ round 2 (PASS, PASS) → plan-editor applied → interrogator check of the finis
 | F5f-24 | DECISION | reversal input criterion (≥ 10 % of A, α measured independently; product threshold) | CONSEQUENCE (coherent) | Kuttruff §9.4, §8.7 | none | – | closed |
 | F5f-25 | FACT | largest-face room clause | CORRECT (coherent) | Kuttruff Table 5.2 case 4, §5.7 | none | – | closed |
 | F5f-26 | FACT | D2 final wording | CORRECT | Kuttruff §5.5, §5.7 | none | – | closed |
-| F5f-27 | DECISION | D1 (recommendation: γ²-Eyring not adopted; Eyring stays; AQ2 unchanged) and D2 | decider; interrogator SURVIVES (with corrections applied); advocate PASS ×2 | this section | – | Maisara decides (C2) | applied; vetoable by Maisara |
+| F5f-27 | DECISION | D1 (recommendation: γ²-Eyring not adopted; Eyring stays; AQ2 unchanged) and D2 | decider; interrogator SURVIVES (with corrections applied); advocate PASS ×2 | this section | – | Maisara decides (C2) | applied; accepted by Maisara 2026-11-07 ("I accept all with no vetos") |
 
 Finished diff (interrogator, step 5): **CLEAN** — every changed passage matches F5f-2 … F5f-26. Noted for a later check, not
 part of this diff: phase-05 scope 6's unchanged "with low s the true T can fall on the other side of Eyring (Kuttruff §9.4)";
