@@ -31,7 +31,7 @@
     "mat_CR2_plaster": 34.93219703479834,
     "mat_CR2_windows": 9.747035999999998
    },
-   "unpainted_area_m2": 0.6224095478709257,
+   "unpainted_area_m2": 0.0,
    "max_off_plane_m": 7.219114195322618e-16,
    "rotation_deg": -0.08594206645865993,
    "assigned_area_m2": {
@@ -407,6 +407,232 @@
     },
     "LS2_MP5": {
      "z_floor": -2.056031289710661e-30,
+     "floor_found": true
+    }
+   }
+  },
+  "CR4": {
+   "source": {
+    "skp": "CR4.skp",
+    "skp_sha256": "853ebebb8dbcbc6b4c092de358c1fae1609fb54f0bfb682074b95b83676840e5",
+    "reader_skips": 46
+   },
+   "documented": {
+    "areas": {
+     "mat_CR4_linoleum": 637.99,
+     "mat_CR4_concrete": 1773.89,
+     "mat_CR4_seating": 557.42,
+     "mat_CR4_brickwall": 698.5,
+     "mat_CR4_woodPanels": 326.18,
+     "mat_CR4_whitePanels": 1655.39,
+     "mat_CR4_parquet": 193.48,
+     "mat_CR4_windows": 8.5
+    },
+    "d_char": {
+     "mat_CR4_linoleum": 0.005,
+     "mat_CR4_concrete": 0.004,
+     "mat_CR4_seating": 0.5,
+     "mat_CR4_brickwall": 0.03,
+     "mat_CR4_woodPanels": 0.03,
+     "mat_CR4_whitePanels": 0.002,
+     "mat_CR4_parquet": 0.005,
+     "mat_CR4_windows": 0.002
+    },
+    "S": 5851.3,
+    "V": 8656.5
+   },
+   "model_material_area_m2": {
+    "mat_CR4_concrete": 1773.8876865145965,
+    "mat_CR4_whitePanels": 1655.388127059091,
+    "mat_CR4_brickwall": 698.4989233499878,
+    "mat_CR4_linoleum": 637.9916440300244,
+    "mat_CR4_seating": 557.4152292460763,
+    "mat_CR4_woodPanels": 326.1764710319779,
+    "mat_CR4_parquet": 193.47547052716325,
+    "mat_CR4_windows": 8.499272588680801
+   },
+   "unpainted_area_m2": 0.0,
+   "max_off_plane_m": 1.9787307935791885e-05,
+   "rotation_deg": 1.0022430988883893e-06,
+   "assigned_area_m2": {
+    "mat_CR4_brickwall|ceiling": 1.164800000000071,
+    "mat_CR4_brickwall|xMax": 45.03185935116324,
+    "mat_CR4_brickwall|xMin": 1.1960000000781101,
+    "mat_CR4_brickwall|yMax": 325.5536569969456,
+    "mat_CR4_brickwall|yMin": 325.5526070018006,
+    "mat_CR4_concrete|ceiling": 995.3296115984905,
+    "mat_CR4_concrete|xMax": 43.65634640836415,
+    "mat_CR4_concrete|xMin": 259.83921450674285,
+    "mat_CR4_concrete|yMax": 237.53125700049983,
+    "mat_CR4_concrete|yMin": 237.5312570005002,
+    "mat_CR4_linoleum|ceiling": 2.784826976518935,
+    "mat_CR4_linoleum|floor": 524.8971049880948,
+    "mat_CR4_linoleum|xMax": 38.19112159693486,
+    "mat_CR4_linoleum|xMin": 24.207668886516597,
+    "mat_CR4_linoleum|yMax": 23.954936148533402,
+    "mat_CR4_linoleum|yMin": 23.955985433426058,
+    "mat_CR4_parquet|ceiling": 6.347411017363916,
+    "mat_CR4_parquet|floor": 164.23152212591432,
+    "mat_CR4_parquet|xMax": 3.2188956537785707,
+    "mat_CR4_parquet|xMin": 12.177975746625368,
+    "mat_CR4_parquet|yMax": 3.749832991741106,
+    "mat_CR4_parquet|yMin": 3.749832991739918,
+    "mat_CR4_seating|floor": 504.8914397612705,
+    "mat_CR4_seating|xMax": 52.52370371953293,
+    "mat_CR4_seating|yMax": 4.288263640928731e-05,
+    "mat_CR4_seating|yMin": 4.2882636416367536e-05,
+    "mat_CR4_whitePanels|ceiling": 556.760833866723,
+    "mat_CR4_whitePanels|floor": 560.3351600794894,
+    "mat_CR4_whitePanels|xMax": 230.94282954504175,
+    "mat_CR4_whitePanels|xMin": 226.4024100895583,
+    "mat_CR4_whitePanels|yMax": 40.473407807424934,
+    "mat_CR4_whitePanels|yMin": 40.47348567085598,
+    "mat_CR4_windows|xMax": 8.499272588680801,
+    "mat_CR4_woodPanels|xMax": 276.08726980207365,
+    "mat_CR4_woodPanels|xMin": 29.847972188825196,
+    "mat_CR4_woodPanels|yMax": 10.120614520539457,
+    "mat_CR4_woodPanels|yMin": 10.120614520539554
+   },
+   "floor_area_m2": 1754.3552269547688,
+   "floor_bbox_xy": [
+    -7.528947797710804,
+    -16.562550496879858,
+    25.82000022240807,
+    16.562549629912155
+   ],
+   "floor_mean_z": 4.361858888694167,
+   "floor_hull_xy": [
+    [
+     -7.528947798,
+     -11.532506826
+    ],
+    [
+     -2.192032671,
+     -12.494924556
+    ],
+    [
+     0.021306318,
+     -12.839497507
+    ],
+    [
+     24.781165805,
+     -16.562550497
+    ],
+    [
+     25.819999875,
+     -9.920000528
+    ],
+    [
+     25.820000222,
+     9.919999625
+    ],
+    [
+     24.781166385,
+     16.56254963
+    ],
+    [
+     0.021306767,
+     12.839497506
+    ],
+    [
+     -2.192032234,
+     12.494924633
+    ],
+    [
+     -7.528947394,
+     11.532507089
+    ]
+   ],
+   "positions": {
+    "LS1": {
+     "xyz": [
+      7.871598891447081e-08,
+      4.499999999999999,
+      1.38
+     ]
+    },
+    "LS2": {
+     "xyz": [
+      -2.800000078715988,
+      -4.499999951021161,
+      1.38
+     ]
+    },
+    "MP1": {
+     "xyz": [
+      8.499999999999998,
+      -1.4868575683844488e-07,
+      1.09
+     ]
+    },
+    "MP2": {
+     "xyz": [
+      3.329999860935086,
+      -7.950000058249831,
+      0.57
+     ]
+    },
+    "MP3": {
+     "xyz": [
+      9.329999878252602,
+      -6.960000163204483,
+      1.18
+     ]
+    },
+    "MP4": {
+     "xyz": [
+      5.910000110902081,
+      6.339999896619667,
+      0.83
+     ]
+    },
+    "MP5": {
+     "xyz": [
+      11.830000147461284,
+      8.42999979306441,
+      1.43
+     ]
+    }
+   },
+   "pair_floor": {
+    "LS1_MP1": {
+     "z_floor": -0.5691789169611143,
+     "floor_found": true
+    },
+    "LS1_MP2": {
+     "z_floor": -0.8000002417709232,
+     "floor_found": true
+    },
+    "LS1_MP3": {
+     "z_floor": -0.5271640637481168,
+     "floor_found": true
+    },
+    "LS1_MP4": {
+     "z_floor": -0.7002813211089729,
+     "floor_found": true
+    },
+    "LS1_MP5": {
+     "z_floor": -0.4006195818113422,
+     "floor_found": true
+    },
+    "LS2_MP1": {
+     "z_floor": -0.7109136304629247,
+     "floor_found": true
+    },
+    "LS2_MP2": {
+     "z_floor": 4.890106285477985e-07,
+     "floor_found": true
+    },
+    "LS2_MP3": {
+     "z_floor": -0.6688968207334788,
+     "floor_found": true
+    },
+    "LS2_MP4": {
+     "z_floor": -0.8000004215865545,
+     "floor_found": true
+    },
+    "LS2_MP5": {
+     "z_floor": -0.5423510512907262,
      "floor_found": true
     }
    }

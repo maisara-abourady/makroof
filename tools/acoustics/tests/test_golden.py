@@ -68,11 +68,11 @@ def test_update_mode_needs_the_script(monkeypatch):
         golden.update_mode()
 
 
-def _run_update(tmp_path, reason, test_file):
+def _run_update(tmp_path, reason, test_file, *extra):
     env = {k: v for k, v in os.environ.items() if k != "CI"}  # the script refuses to run in CI
     env[golden.ENV_GOLDEN_DIR] = str(tmp_path / "golden")
     return subprocess.run(
-        [sys.executable, str(REPO / "tools" / "ci" / "update_goldens.py"), "--reason", reason, str(test_file), "-q", "-p", "no:cacheprovider"],
+        [sys.executable, str(REPO / "tools" / "ci" / "update_goldens.py"), "--reason", reason, *extra, str(test_file), "-q", "-p", "no:cacheprovider"],
         cwd=REPO, env=env, capture_output=True, text=True, check=False,
     )
 
@@ -156,3 +156,29 @@ def test_update_refuses_to_drop_a_pinned_value(tmp_path):
     assert "bands.63.C80" in result.stdout + result.stderr
     assert json.loads((golden_dir / "example.json").read_text(encoding="utf-8")) == GOLDEN  # untouched
     assert not (golden_dir / "CHANGELOG.md").exists()
+
+
+def test_update_script_extend_adds_new_keys_and_keeps_pinned_ones(tmp_path):
+    """--extend (phase-05f: a validation room added to the baseline) pins new keys too; without it
+    the scope is kept; neither drops a pinned value."""
+    golden_dir = tmp_path / "golden"
+    golden_dir.mkdir()
+    (golden_dir / "example.json").write_text(json.dumps(GOLDEN), encoding="utf-8")
+    test_file = tmp_path / "test_extends.py"
+    test_file.write_text(
+        "import sys\n"
+        f"sys.path.insert(0, {str(REPO)!r})\n"
+        "from tools.acoustics import golden\n"
+        "def test_it():\n"
+        "    golden.assert_golden('example', {'bands': {'63': {'T30': 1.2, 'C80': 2.0}, '1000': {'T30': 1.0, 'label': 'x', 'none': None},"
+        " '2000': {'T30': 0.8}}})\n",
+        encoding="utf-8",
+    )
+    result = _run_update(tmp_path, "Phase 99: room added to the golden", test_file, "--extend")
+    assert result.returncode == 0, result.stdout + result.stderr
+    updated = json.loads((golden_dir / "example.json").read_text(encoding="utf-8"))
+    assert updated["metrics"]["bands"]["2000"] == {"T30": 0.8}
+    assert updated["metrics"]["bands"]["63"] == {"T30": 1.2, "C80": 2.0}  # pinned keys kept (values rewritten)
+    assert updated["tolerances"] == GOLDEN["tolerances"]
+    log = (golden_dir / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "`example`: extended by 1 new key(s): `bands.2000`" in log

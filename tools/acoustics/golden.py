@@ -42,6 +42,9 @@ DEFAULT_GOLDEN_DIR = REPO / "tests" / "golden"
 # Set by tools/ci/update_goldens.py only.
 ENV_UPDATE_REASON = "SPATIAL_GOLDEN_UPDATE_REASON"
 ENV_UPDATE_LOG = "SPATIAL_GOLDEN_UPDATE_LOG"
+# Set by update_goldens.py --extend: the update may also pin keys the golden does not have yet
+# (e.g. a validation room added to a baseline); it still never drops a pinned key.
+ENV_UPDATE_EXTEND = "SPATIAL_GOLDEN_UPDATE_EXTEND"
 # Overrides the golden directory (used by the update script's own tests).
 ENV_GOLDEN_DIR = "SPATIAL_GOLDEN_DIR"
 
@@ -152,17 +155,23 @@ def update_mode() -> str | None:
     return reason
 
 
-def _prune_like(template, actual, path: str = "", missing: list[str] | None = None):
+def _prune_like(template, actual, path: str = "", missing: list[str] | None = None, added: list[str] | None = None):
     """``actual`` restricted to the keys of ``template`` (so an update keeps the golden's scope).
-    Paths the golden pins but ``actual`` lacks are appended to ``missing``."""
+    Paths the golden pins but ``actual`` lacks are appended to ``missing``. With ``added`` (a list;
+    --extend), keys of ``actual`` that ``template`` lacks are kept too and their paths appended."""
     if isinstance(template, dict) and isinstance(actual, dict):
         out = {}
         for k, v in template.items():
             sub = f"{path}.{k}" if path else str(k)
             if k in actual:
-                out[k] = _prune_like(v, actual[k], sub, missing)
+                out[k] = _prune_like(v, actual[k], sub, missing, added)
             elif missing is not None:
                 missing.append(sub)
+        if added is not None:
+            for k, v in actual.items():
+                if k not in template:
+                    out[k] = v
+                    added.append(f"{path}.{k}" if path else str(k))
         return out
     return actual
 
@@ -177,9 +186,10 @@ def check_golden(
     """What tests call. Normally compares and returns the report (assert ``report.ok``).
 
     In update mode (only via tools/ci/update_goldens.py) it rewrites ``metrics`` of the golden
-    (keeping its tolerances, description and the set of keys it pins; a new golden pins
-    everything and gets ``tolerances``, or ``{"default": default_tolerance}``) and records the
-    change in the update log, then returns an OK report.
+    (keeping its tolerances, description and the set of keys it pins, plus the new keys under
+    ``update_goldens.py --extend``; a new golden pins everything and gets ``tolerances``, or
+    ``{"default": default_tolerance}``) and records the change in the update log, then returns an
+    OK report.
     """
     reason = update_mode()
     if reason is None:
@@ -189,7 +199,8 @@ def check_golden(
     old = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
     before = compare_to_golden(name, actual, old) if old is not None else None
     missing: list[str] = []
-    pruned = _prune_like(old["metrics"], actual, "", missing) if old is not None else actual
+    added: list[str] | None = [] if os.environ.get(ENV_UPDATE_EXTEND) == "1" else None
+    pruned = _prune_like(old["metrics"], actual, "", missing, added) if old is not None else actual
     if missing:
         # Never let an update silently drop a pinned value (the golden would lose that check).
         raise RuntimeError(
@@ -210,6 +221,7 @@ def check_golden(
         "name": name,
         "created": old is None,
         "changed": [] if before is None else [m.path for m in before.mismatches],
+        "added": added or [],
     }
     with open(os.environ[ENV_UPDATE_LOG], "a", encoding="utf-8") as log:
         log.write(json.dumps(entry) + "\n")

@@ -68,6 +68,15 @@ within phase-05f's two-session stop rule, CR4 is recorded "pending extraction (r
 reason, and no comparison result, removes CR4 from the selection. Maisara's acceptance of the two-room label
 (phase-05e scope (b), reversal) keeps CR4 selected and pending; it goes through /fix-plan as a phase-05.md change.
 
+**CR4 accepted (phase-05f session 1, 2026-11-07, before any simulated-vs-measured CR4 number).** After two generic
+reader fixes (the CFaceTextureCoords record is 214 + 32 n bytes; the root starts after the last definition's
+thumbnail) every documented CR4 material area reproduces (largest difference 0.005 m²), every loop vertex lies within
+AX30 (max 1.98e-5 m), the enclosed volume is 8 656.51 m³ against the material file's 8 656.5 m³, and the room geometry
+(all 1 844 root faces) parses without re-synchronisation between faces: one index-offset correction at the root's
+start, before its first face, and the parse ends in the style records after the last one
+(`tools/validation/tests/test_skp_reader.py`, CR4 cases). CR4's reduction results are
+in §5; it enters the comparison with the same rules as CR2 and CR3.
+
 Every omni (dodecahedron) RIR the dataset provides for the selected rooms is used: 2 sources ×
 5 receivers per room, 30 source/receiver pairs (`CRx_RIR_LSi_MPj_Dodecahedron.wav`; CR3 also has a
 third source position, measured with the Genelec only, which is not omni and is not used, AQ8).
@@ -77,7 +86,8 @@ third source position, measured with the Genelec only, which is not omni and is 
 - Geometry: `CRx.skp` (SketchUp 2015), read by `tools/validation/skp_reader.py` (this
   repository's own reader). Accepted only if every material's total area reproduces
   `_descr/mat_CRx.txt` to the printed precision (0.01 m², ±0.1 % allowed for rounding of large
-  areas) and every loop vertex lies on its face's plane.
+  areas) and every loop vertex lies on its face's plane (|n·p + d| ≤ 1 mm, AX30, decided 2026-11-07 before any CR4
+  comparison; measured maxima CR2 7.2e-16 m, CR3 3.2e-12 m, CR4 1.98e-5 m).
 - Source and receiver positions: `RIRs/CRx_RIRs_Dodecahedron.sofa` (EmitterPosition,
   ReceiverPosition, model frame, metres), extracted once by
   `tools/validation/extract_bras_geometry.py` into `tools/validation/data/bras_geometry.json`
@@ -166,7 +176,7 @@ count applies (B11 (B)); the B11 (B) result in `report-phase05.md` §6b holds on
 
 ### CR2
 
-Model: V = 146.1 m³, S = 202.53 m² (documented); materials reproduced by the reader: ceiling 51.62 (doc 51.62), concrete 56.94 (doc 56.94), floor 49.29 (doc 49.29), plaster 34.93 (doc 34.93), windows 9.75 (doc 9.75); unpainted faces (not a BRAS material, ignored) 0.62 m²; rotation θ = -0.09°; floor area (floor-assigned) A_floor = 50.48 m².
+Model: V = 146.1 m³, S = 202.53 m² (documented); materials reproduced by the reader: ceiling 51.62 (doc 51.62), concrete 56.94 (doc 56.94), floor 49.29 (doc 49.29), plaster 34.93 (doc 34.93), windows 9.75 (doc 9.75); unpainted faces (not a BRAS material, ignored) 0.00 m²; rotation θ = -0.09°; floor area (floor-assigned) A_floor = 50.48 m².
 
 Box (AX26): W × D × H = 8.371 × 6.031 × 2.894 m (h = V/A_floor, W·D = A_floor); plan ratio ρ = 1.388 from the minimum-area oriented bounding rectangle of the floor faces (8.59 × 6.19 m, long side at 90.1° in the rotated model frame); model long side along y swapped to x: yes.
 
@@ -230,6 +240,39 @@ Total absorption area A (box vs documented surfaces) at 500 Hz / 1 kHz / 2 kHz: 
 | LS2_MP4 | 9.259 | 9.259 | 2.38 / 1.23 | yes | – |
 | LS2_MP5 | 16.135 | 16.135 | 2.38 / 1.23 | yes | – |
 
+### CR4
+
+Model: V = 8656.5 m³, S = 5851.3 m² (documented); materials reproduced by the reader: brickwall 698.50 (doc 698.50), concrete 1773.89 (doc 1773.89), linoleum 637.99 (doc 637.99), parquet 193.48 (doc 193.48), seating 557.42 (doc 557.42), whitePanels 1655.39 (doc 1655.39), windows 8.50 (doc 8.50), woodPanels 326.18 (doc 326.18); unpainted faces (not a BRAS material, ignored) 0.00 m²; rotation θ = 0.00°; floor area (floor-assigned) A_floor = 1754.36 m².
+
+Box (AX26): W × D × H = 42.026 × 41.744 × 4.934 m (h = V/A_floor, W·D = A_floor); plan ratio ρ = 1.007 from the minimum-area oriented bounding rectangle of the floor faces (33.35 × 33.13 m, long side at -0.0° in the rotated model frame); model long side along y swapped to x: no.
+
+S not matched (AX26): S(box) = 4335.41 m² vs documented 5851.3 m² (-25.91 %); mean free path 4V/S = 7.987 m (box) vs 5.918 m (documented). Eyring T60 on the box vs Eyring on the documented V, S, A (AX4 air, initial α), 125 Hz … 8 kHz: 125 Hz 2.816 vs 2.859 s (-1.48 %), 250 Hz 2.158 vs 2.200 s (-1.91 %), 500 Hz 1.812 vs 1.854 s (-2.23 %), 1000 Hz 1.710 vs 1.750 s (-2.28 %), 2000 Hz 1.145 vs 1.184 s (-3.31 %), 4000 Hz 0.875 vs 0.908 s (-3.62 %), 8000 Hz 0.540 vs 0.558 s (-3.19 %).
+
+| face | box area | assigned area | assigned materials | α initial | α fitted | s (AX17) | s 500 / 1k / 2k |
+|---|---|---|---|---|---|---|---|
+| xMin | 206.0 | 553.7 | concrete 259.8, whitePanels 226.4, woodPanels 29.8, linoleum 24.2, parquet 12.2, brickwall 1.2 | 0.200 / 0.219 / 0.263 | 0.178 / 0.180 / 0.161 | 0.062 | 0.053 / 0.058 / 0.075 |
+| xMax | 206.0 | 698.2 | woodPanels 276.1, whitePanels 230.9, seating 52.5, brickwall 45.0, concrete 43.7, linoleum 38.2, windows 8.5, parquet 3.2 | 0.444 / 0.503 / 0.656 | 0.395 / 0.419 / 0.407 | 0.129 | 0.097 / 0.124 / 0.165 |
+| yMin | 207.4 | 641.4 | brickwall 325.6, concrete 237.5, whitePanels 40.5, linoleum 24.0, woodPanels 10.1, parquet 3.7, seating 0.0 | 0.485 / 0.323 / 0.596 | 0.425 / 0.270 / 0.366 | 0.105 | 0.077 / 0.102 / 0.137 |
+| yMax | 207.4 | 641.4 | brickwall 325.6, concrete 237.5, whitePanels 40.5, linoleum 24.0, woodPanels 10.1, parquet 3.7, seating 0.0 | 0.485 / 0.323 / 0.596 | 0.425 / 0.270 / 0.366 | 0.105 | 0.077 / 0.102 / 0.137 |
+| floor | 1754.4 | 1754.4 | whitePanels 560.3, linoleum 524.9, seating 504.9, parquet 164.2 | 0.137 / 0.179 / 0.253 | 0.123 / 0.149 / 0.157 | 0.175 | 0.136 / 0.168 / 0.222 |
+| ceiling | 1754.4 | 1562.4 | concrete 995.3, whitePanels 556.8, parquet 6.3, linoleum 2.8, brickwall 1.2 | 0.064 / 0.065 / 0.069 | 0.057 / 0.054 / 0.042 | 0.057 | 0.050 / 0.053 / 0.069 |
+
+Clamps (AQ3 range [0.01, 1]): yMin 8000 Hz α = 1.025 → 1.0, ΔA = -5.19 m²; yMax 8000 Hz α = 1.025 → 1.0, ΔA = -5.19 m².
+Total absorption area A (box vs documented surfaces) at 500 Hz / 1 kHz / 2 kHz: 686.4 vs 686.4 / 712.0 vs 712.0 / 1001.5 vs 1001.5 m².
+
+| pair | r real (m) | r box (m) | h source / receiver (m) | floor face found under the midpoint | moved (AX6) |
+|---|---|---|---|---|---|
+| LS1_MP1 | 9.622 | 9.622 | 1.95 / 1.66 | yes | – |
+| LS1_MP2 | 12.913 | 12.913 | 2.18 / 1.37 | yes | – |
+| LS1_MP3 | 14.779 | 14.779 | 1.91 / 1.71 | yes | – |
+| LS1_MP4 | 6.214 | 6.214 | 2.08 / 1.53 | yes | – |
+| LS1_MP5 | 12.466 | 12.466 | 1.78 / 1.83 | yes | – |
+| LS2_MP1 | 12.167 | 12.167 | 2.09 / 1.80 | yes | – |
+| LS2_MP2 | 7.081 | 7.081 | 1.38 / 0.57 | yes | – |
+| LS2_MP3 | 12.379 | 12.379 | 2.05 / 1.85 | yes | – |
+| LS2_MP4 | 13.917 | 13.917 | 2.18 / 1.63 | yes | – |
+| LS2_MP5 | 19.525 | 19.525 | 1.92 / 1.97 | yes | – |
+
 ### Classification (Raise with Maisara, item 1)
 
 Absorption unevenness = largest single-face share of the total absorption area and the ratio ᾱ(floor+ceiling)/ᾱ(walls) at 1 kHz; scattering = the broadband s (AX17) of the faces that hold most of the absorption. No threshold is applied (phase-05 scope 6); the statement below reads the numbers.
@@ -238,6 +281,7 @@ Absorption unevenness = largest single-face share of the total absorption area a
 |---|---|---|---|---|
 | CR2 | 0.30 (floor) | 0.87 | 0.056 | 0.105 |
 | CR3 | 0.33 (floor) | 0.55 | 0.207 | 0.167 |
+| CR4 | 0.44 (floor) | 0.36 | 0.175 | 0.113 |
 
 Per material (documented areas from `_descr/mat_CRx.txt`, initial α and s, octave values by AX25; d_char as documented), sorted by share of the total absorption area at 1 kHz:
 
@@ -255,3 +299,12 @@ Per material (documented areas from `_descr/mat_CRx.txt`, initial α and s, octa
 | CR3 | floor | 342.5 (12.4 %) | 0.06 / 0.06 / 0.06 | 0.05 | 0.05 / 0.07 / 0.10 | 0.08 | 0.007 |
 | CR3 | ceiling | 168.5 (6.1 %) | 0.09 / 0.12 / 0.16 | 0.05 | 0.09 / 0.12 / 0.17 | 0.13 | 0.02 |
 | CR3 | windows | 25.4 (0.9 %) | 0.06 / 0.07 / 0.12 | 0.00 | 0.05 / 0.05 / 0.05 | 0.05 | 0.002 |
+| CR4 | seating | 557.4 (9.5 %) | 0.32 / 0.42 / 0.50 | 0.33 | 0.43 / 0.60 / 0.85 | 0.63 | 0.5 |
+| CR4 | whitePanels | 1655.4 (28.3 %) | 0.06 / 0.09 / 0.13 | 0.20 | 0.05 / 0.05 / 0.05 | 0.05 | 0.002 |
+| CR4 | concrete | 1773.9 (30.3 %) | 0.08 / 0.07 / 0.05 | 0.16 | 0.05 / 0.05 / 0.08 | 0.06 | 0.004 |
+| CR4 | brickwall | 698.5 (11.9 %) | 0.23 / 0.13 / 0.31 | 0.13 | 0.11 / 0.15 / 0.21 | 0.16 | 0.03 |
+| CR4 | woodPanels | 326.2 (5.6 %) | 0.16 / 0.18 / 0.20 | 0.08 | 0.11 / 0.15 / 0.21 | 0.15 | 0.03 |
+| CR4 | linoleum | 638.0 (10.9 %) | 0.08 / 0.09 / 0.18 | 0.08 | 0.05 / 0.06 / 0.09 | 0.07 | 0.005 |
+| CR4 | parquet | 193.5 (3.3 %) | 0.04 / 0.06 / 0.14 | 0.02 | 0.05 / 0.06 / 0.09 | 0.07 | 0.005 |
+| CR4 | windows | 8.5 (0.1 %) | 0.06 / 0.07 / 0.12 | 0.00 | 0.05 / 0.05 / 0.05 | 0.05 | 0.002 |
+

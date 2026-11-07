@@ -1,0 +1,132 @@
+{
+  "contractVersion": "1.1",
+  "units": "meters",
+  "room": {
+    "geometry": {
+      "kind": "shoebox",
+      "dimensions": [
+        42.026308,
+        41.744215,
+        4.934291
+      ]
+    },
+    "surfaces": {
+      "floor": {
+        "absorption": [
+          0.119197,
+          0.104344,
+          0.10398,
+          0.122512,
+          0.149434,
+          0.156676,
+          0.160302,
+          0.128257
+        ],
+        "scattering": 0.190383
+      },
+      "ceiling": {
+        "absorption": [
+          0.063972,
+          0.066705,
+          0.054203,
+          0.056732,
+          0.053554,
+          0.042354,
+          0.054987,
+          0.055063
+        ],
+        "scattering": 0.057395
+      },
+      "xMin": {
+        "absorption": [
+          0.208983,
+          0.206928,
+          0.173715,
+          0.177981,
+          0.179754,
+          0.161484,
+          0.188434,
+          0.169763
+        ],
+        "scattering": 0.061998
+      },
+      "xMax": {
+        "absorption": [
+          0.294598,
+          0.312714,
+          0.361248,
+          0.394834,
+          0.419211,
+          0.406659,
+          0.412541,
+          0.345041
+        ],
+        "scattering": 0.133166
+      },
+      "yMin": {
+        "absorption": [
+          0.322067,
+          0.387932,
+          0.373639,
+          0.425031,
+          0.270299,
+          0.366082,
+          0.352926,
+          0.430607
+        ],
+        "scattering": 0.106568
+      },
+      "yMax": {
+        "absorption": [
+          0.322067,
+          0.387932,
+          0.373639,
+          0.425032,
+          0.270299,
+          0.366083,
+          0.352927,
+          0.430608
+        ],
+        "scattering": 0.106568
+      }
+    }
+  },
+  "listener": {
+    "position": [
+      22.857048,
+      30.984294,
+      1.83062
+    ]
+  },
+  "emitters": [
+    {
+      "id": "L",
+      "channel": 0,
+      "position": [
+        11.027048,
+        27.054294,
+        1.78062
+      ],
+      "gainDb": 0.0
+    },
+    {
+      "id": "R",
+      "channel": 1,
+      "position": [
+        11.027048,
+        27.054294,
+        1.78062
+      ],
+      "gainDb": 0.0
+    }
+  ],
+  "render": {
+    "outputMode": "binaural",
+    "hrtfId": "generic-v1",
+    "maxReflectionOrder": 20,
+    "tailSeed": 505204
+  },
+  "extensions": {
+    "bras": "Derived from BRAS (CC BY-SA 4.0), docs/validation/bras_mapping.md; omni analysis of emitter L (R duplicates it)."
+  }
+}

@@ -26,6 +26,28 @@ def pf(p):
     return "–" if p is None else ("pass" if p else "**fail**")
 
 
+SELECTED = ("CR2", "CR3", "CR4")  # bras_mapping.md §1 (pre-committed; never changed after results)
+# B12 "shown separately for uniform and uneven α" (phase-05 scope 6): the grouping is the bras_mapping.md §5
+# classification (Raise with Maisara item 1, read from the area tables before any comparison): CR2 uniform;
+# CR3 and CR4 one strong absorber (the seating).
+ALPHA_GROUP = {"CR2": "uniform", "CR3": "uneven", "CR4": "uneven"}
+
+
+def room_set(res: dict) -> list:
+    return sorted({rk.split("|")[0] for rk in res["rooms"]})
+
+
+def room_set_label(res: dict) -> str:
+    """'three-room' once every selected room is in the results (phase-05f), else the phase-05e
+    provisional label naming what is pending."""
+    rooms = room_set(res)
+    missing = [r for r in SELECTED if r not in rooms]
+    if not missing:
+        return "**Three rooms (" + ", ".join(rooms) + ")**, every selected room (bras_mapping.md §1)"
+    return ("**Provisional, " + {1: "one", 2: "two"}.get(len(rooms), str(len(rooms))) + "-room (" + ", ".join(rooms)
+            + "); " + ", ".join(missing) + " pending**")
+
+
 def write(res: dict, path: pathlib.Path) -> None:
     L = []
     w = L.append
@@ -68,15 +90,19 @@ def write(res: dict, path: pathlib.Path) -> None:
     w(f"**AQ9 met (all three metrics, room mean over pairs): initial α {met['initial'][0]}/{met['initial'][1]} rooms; "
       f"fitted α {met['fitted'][0]}/{met['fitted'][1]} rooms** (fitted: T30 circular by construction, F6).")
     w("")
-    w("**Provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3 only); CR4 pending** (phase-05e scope (b)): "
-      "CR4 stays selected and enters in phase-05f once its geometry passes the bras_mapping.md §2 acceptance test; "
-      "it is not dropped. The B12 replacement and the B11 promotion decisions are deferred until then (pass rules "
-      "unchanged).")
+    if all(r in room_set(res) for r in SELECTED):
+        w(room_set_label(res) + ": CR4 entered in phase-05f after its geometry passed the bras_mapping.md §2 acceptance "
+          "test (AX30). The B12 replacement and the B11 promotion decisions deferred in phase-05e are taken on these rooms "
+          "with phase-05.md's unchanged pass rules (sections 3 and 6b).")
+    else:
+        w(room_set_label(res) + " (phase-05e scope (b)): the pending rooms stay selected and are not dropped. The B12 "
+          "replacement and the B11 promotion decisions are deferred until they enter (pass rules unchanged).")
     w("")
     w("Model volume (AX26 keeps it; bras_mapping.md §1 volume check): with A fixed, predicted T scales with V, so the "
       "model volume raises predicted T against the BRAS sheet volumes by +0.76 % in CR2 (146.1 vs 145 m³; the sheet "
-      "value is rounded) and +41.7 % in CR3 (3 330.6 vs 2 350 m³; the sheet excludes the attic that the model includes). "
-      "BRAS's own fitted α reproduce BRAS's measured T20 with the model volumes (CR2 ≤ 0.45 %, CR3 ≤ 0.23 %).")
+      "value is rounded), +41.7 % in CR3 (3 330.6 vs 2 350 m³; the sheet excludes the attic that the model includes) and "
+      "+0.08 % in CR4 (8 656.5 vs 8 650 m³, rounded). BRAS's own fitted α reproduce BRAS's measured T20 with the model "
+      "volumes (CR2 ≤ 0.45 %, CR3 ≤ 0.23 %, CR4 ≤ 0.29 %).")
     pp = {"initial": [0, 0], "fitted": [0, 0]}
     for p in res["pairs"].values():
         ps = [p["aq9"]["pass"][n] for n in ("T", "EDT", "C80")]
@@ -182,11 +208,61 @@ def write(res: dict, path: pathlib.Path) -> None:
         for pred, s in res["b12"][run].items():
             w(f"| {run} | {pred} | {f(s.get('mean_abs_err_pct'))} | {f(s.get('lowers_by_pts'), 2)} | "
               f"{f(s.get('worst_room_increase_pts'), 2)} | {f(s['meets_margin'])} |")
+    # per room, sorted by the two indicators (phase-05 scope 6: no threshold splits them), and by α group
+    preds = [k for k in ("Eyring", "a_star", "gamma2_table", "gamma2_0.4") if k in res["b12"]["run1_octave"]]
+    ind = {}
+    for rk, r in res["rooms"].items():
+        room, aset = rk.split("|")
+        if aset == "initial" and "absorption_contrast" in r:
+            ind[room] = (sum(r["absorption_contrast"].values()) / len(r["absorption_contrast"]),
+                         sum(r["largest_face_share"].values()) / len(r["largest_face_share"]),
+                         r["predictors"]["gamma2_table"], r["predictors"]["gamma2_how"],
+                         all(b.get("a_star_converged_0.4pct") for k, b in r["predictors"]["bands"].items() if k in AQ9))
+    w("")
+    w("Per room (initial α, mean |T30 error| at 500 Hz–2 kHz in %, run 1 / run 2), with the indicators of section 2 "
+      "(means over 500 Hz–2 kHz) and the γ² admissible for the room (condition ii: the Table 5.1 row where the shape "
+      "is tabulated, else 0.4):")
+    w("")
+    w("| room | absorption contrast | largest face share of A | admissible γ² | a* converged < 0.4 % | "
+      + " | ".join(preds) + " |")
+    w("|---|---|---|---|---|" + "---|" * len(preds))
+    for room in sorted(ind, key=lambda rm: ind[rm][0]):
+        c, sh, g, how, conv = ind[room]
+        cells = []
+        for pr_ in preds:
+            r1 = res["b12"]["run1_octave"].get(pr_, {}).get("by_room", {}).get(room)
+            r2 = res["b12"]["run2_half"].get(pr_, {}).get("by_room", {}).get(room)
+            cells.append(f"{f(r1)} / {f(r2)}")
+        w(f"| {room} | {c:.2f} | {sh:.2f} | " + (f"{g:.3f} (Table 5.1) and 0.4" if g is not None else f"0.4 only ({how})")
+          + f" | {f(conv)} | " + " | ".join(cells) + " |")
+    w("")
+    w("Sorted by absorption contrast: " + ", ".join(sorted(ind, key=lambda rm: ind[rm][0]))
+      + "; by largest single-face share of A: " + ", ".join(sorted(ind, key=lambda rm: ind[rm][1])) + ".")
+    groups = {g: [rm for rm in ind if ALPHA_GROUP.get(rm) == g] for g in ("uniform", "uneven")}
+    for g, rms in groups.items():
+        if not rms:
+            continue
+        w(f"- {g} α ({', '.join(rms)}; bras_mapping.md §5 classification): "
+          + "; ".join(f"{pr_} {sum(res['b12']['run1_octave'][pr_]['by_room'][rm] for rm in rms) / len(rms):.2f} %"
+                      for pr_ in preds if all(rm in res["b12"]["run1_octave"].get(pr_, {}).get("by_room", {}) for rm in rms))
+          + " (run 1).")
+    w("")
+    w("Conditions: (i) a* counts only when converged to < 0.4 % per halving in every band used: "
+      + ("met" if all(v[4] for v in ind.values()) else "not met in " + ", ".join(rm for rm, v in ind.items() if not v[4]))
+      + "; (ii) γ²-Eyring must pass at every admissible γ² (per room above); (iii) the 5 % T jnd is a working value "
+      "from outside the corpus; (iv) only the initial-estimate α set counts (this table); (v) a* may not replace Eyring "
+      "while ledger DB-1 is unresolved (unresolved).")
     e2 = res["b12"]["e2_octave_only"]
     w("")
     w(f"Octave-only branch (E2): {'allowed' if e2['allowed'] else 'not allowed'}"
       + (f" ({'; '.join(e2['reasons'])})" if e2["reasons"] else "") + f"; S_all = {f(e2.get('S_all_pts'), 2)} points.")
     w("Decision: " + "; ".join(f"{k}: {v}" for k, v in res["b12"]["decision"].items()) + f" — {res['b12']['label']}.")
+    if any(v.startswith("replaces") for v in res["b12"]["decision"].values()):
+        w("")
+        w("**Open plan question (/fix-plan):** phase-05.md scope 6 introduces γ²-Eyring \"for information only\" (on Table "
+          "5.2 cases 2 and 4 it moves T away from the iteration result) while its B12 rule (condition ii) treats it as a "
+          "candidate. The rule's outcome is recorded as computed; it is input-limited (BRAS alone), Maisara decides (C2), "
+          "and any replacement is a later AQ2 change (BUILD_PLAN §5 B12). Eyring stays in `src/sim` until then.")
     # ---------------- per pair
     w("")
     w("## 4. Per pair (initial α)")
@@ -333,8 +409,8 @@ def scope6_section(w, res: dict) -> None:
             ch = [abs(x) for p in hv["pairs"].values() for i, x in enumerate(p["delta_lb_change_db"]) if i in (3, 4, 5)]
             ce = [abs(x) for p in hv["pairs"].values() for i, x in enumerate(p["diffuse_energy_change_rel"]) if i in (3, 4, 5)]
             w(f"Patch halving (CR2, initial α, {hv['info']['patches']} patches): ΔL_b changes by ≤ {max(ch):.3f} dB and the "
-              f"diffuse energy before t_mix by ≤ {100 * max(ce):.2f} % at 500 Hz–2 kHz. CR3 was not halved (memory: "
-              f"the dense kernel at 1.1 m needs ≈ 8× the RAM); its a* was not converged at the same size either (section 2).")
+              f"diffuse energy before t_mix by ≤ {100 * max(ce):.2f} % at 500 Hz–2 kHz. CR3 and CR4 were not halved (memory: "
+              f"at half the patch size the dense kernel needs ≈ 8× the RAM); a* convergence per room is in section 2.")
         w("")
     xb = s6.get("xb")
     if xb:
@@ -383,8 +459,8 @@ def scope6_section(w, res: dict) -> None:
     w("Δ̂ = error with the change − error of the base, paired on the same tail seeds. Validity: SE(Δ̂) ≤ δ/3 = 0.083 jnd, "
       "SE per room (and per pair for the handover (a)) ≤ 1/3 jnd; R from the pilot (n = 51) by R ≥ max(144·σ₁,Δ², "
       "9·σ₁,Δ,room², 9·σ₁,Δ,pair²), checked after the run. Jnds: EDT 5 %, C80 1 dB (Vorländer Table 6.1, 500–1000 Hz, "
-      "extended to 2 kHz, AQ9). **Provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3 only); CR4 pending**: "
-      "the B11 promotion and any handover change are deferred (phase-05e scope (b)).")
+      "extended to 2 kHz, AQ9). Room set: " + room_set_label(res) + ("." if all(r in room_set(res) for r in SELECTED)
+      else ": the B11 promotion and any handover change are deferred (phase-05e scope (b))."))
     w("")
     for aset in ("initial", "fitted"):
         if aset not in ens:
@@ -455,4 +531,5 @@ def scope6_section(w, res: dict) -> None:
                                             for rm, ind, ge, gc in sorted(rows, key=lambda x: x[1][i])))
         w("")
     w("**B11 not validated against measurement for uneven-α / low-s rooms**: no BRAS room in this set combines uneven α "
-      "with low s (CR2: uniform α, low s; CR3: one strong absorber; F2; bras_mapping.md).")
+      "with low s (CR2: uniform α, low s; CR3 and CR4: one strong absorber, the seating, whose own s is high, "
+      "0.43 / 0.60 / 0.85–0.87 at 500 Hz / 1 / 2 kHz; F2; bras_mapping.md §5 classification).")

@@ -123,11 +123,11 @@ jobs:
         with:
           path: .bras-cache
           key: bras-${{ hashFiles('tools/validation/bras_manifest.json') }}
-      - name: Listening pack (phase-05e A/B)
+      - name: Listening pack (phase-05f A/B, CR2 CR3 CR4)
         if: runner.os == 'Linux'
         env:
           MAKROOF_BRAS_CACHE: ${{ github.workspace }}/.bras-cache
-        run: python tools/ci/listening_pack.py --phase phase-05e --render-cli build/cli/render_cli
+        run: python tools/ci/listening_pack.py --phase phase-05f --render-cli build/cli/render_cli
 
       - name: Upload listening pack
         if: runner.os == 'Linux'

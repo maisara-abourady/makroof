@@ -1410,3 +1410,14 @@ CR4 owner, gating, stop rules) consistent; P1 phase-05f.md structure complies wi
 main session: F1 "≈ 220" → 220; F4 59 % referred to the profiled run; C1 05e scope (a) and BUILD_PLAN §4 "all selected
 rooms except CR4 (05f)"; C2 §6 row marks that it supersedes the 05e session-2 stop rule; C3 05f criterion for the
 CR4 bias-hook test. Status: applied; vetoable by Maisara.
+
+## Phase 05f session 1 — AX30 planarity tolerance of the BRAS acceptance test (2026-11-07; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Main session proposal: |n·p + d| ≤ 2.54e-5 m (SketchUp's 0.001 in) for every loop vertex. CR2 7.2e-16 m, CR3 3.2e-12 m,
+CR4 max 1.98e-5 m (374 of 1 844 faces > 1e-9 m); CR4's 8 material areas within 0.005 m², enclosed volume 8 656.51 vs
+8 656.5 m³, zero re-synchronisations in the room geometry.
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| F5f-1 | NUMBER | AX30: BRAS SketchUp planarity limit, absolute, for every loop vertex; ≤ 25 µm off-plane is acoustically immaterial | CORRECT (acoustic immateriality); 0.001 in as a SketchUp tolerance NOT CHECKABLE (file-format spec); the limit's value is a product matter | Vorländer §3.3.2, Fig. 3.8 (smooth if h, a ≪ λ/2) and §11.1.1 (0.5 m model resolution; off-plane uncertainty of 4th+ vertices admissible if adjusted onto the plane); Kuttruff Ch. 9 after Eq. 9.9 (irregularities ≪ λ negligible). c = 343 m/s (Kuttruff Eq. 1.1): λ(8 kHz) = 42.9 mm, δ/λ ≈ 6e-4; path change ≤ 2δ ≈ 148 ns; normal tilt ≤ 2.5e-5 rad. Absolute preferred (corpus criteria are absolute lengths vs λ); nothing argues tighter. | none | value → decider | confirmed |
+| F5f-1d | DECISION | AX30 value | decider 2026-11-07: **1.0e-3 m absolute** instead of 2.54e-5 m | 1 mm ≈ 15 × below λ/2 at 11.3 kHz (Vorländer §3.3.2) and ≈ 1/1 870 of the pre-fix misparse (1.87 m); 2.54e-5 m is unverifiable and was proposed after CR4's 1.98e-5 m was seen (looks fitted). Sub-mm reader errors covered by the area check and the CR2/CR3 guard. | none | none | applied; vetoable by Maisara |

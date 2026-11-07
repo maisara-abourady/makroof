@@ -90,6 +90,11 @@ def oriented_bounding_rectangle(hull_xy) -> dict:
     _, lu, lv, phi = best
     if lv > lu:
         lu, lv, phi = lv, lu, phi + math.pi / 2
+    # A direction, not a vector: report it modulo 180° in [-45°, 135°). The minimum is often reached
+    # from two antiparallel hull edges of the same rectangle with areas equal to the last bits, and
+    # which one wins differed between CPUs (CR4, 0° vs 180°; phase-05f). Rule 1 aligns the walls with
+    # the axes, so long axes lie near 0° or 90°, far from the wrap.
+    phi = (phi + math.pi / 4) % math.pi - math.pi / 4 + 0.0
     return {"long": lu, "short": lv, "rho": lu / lv, "long_axis_rad": phi}
 
 
@@ -382,11 +387,15 @@ def write_mapping(g_all, reduction):
 
 
 REDUCTION_RTOL = 1e-9
+# Values that are rounding residue (r_error_m ~ 1e-15 m, z_floor ~ 1e-22 m) have no stable relative
+# difference across CPUs (phase-05f: CR4's added 1e-15 residues read "max relative difference 1.5"
+# on the CI runner); differences at or below this absolute level (SI units) count as equal.
+REDUCTION_ATOL = 1e-12
 
 
 def _max_rel_diff(a, b) -> float:
     """Largest relative difference between two JSON values of the same structure (inf if the
-    structure or a non-numeric value differs)."""
+    structure or a non-numeric value differs); differences <= REDUCTION_ATOL count as none."""
     if isinstance(a, dict) and isinstance(b, dict):
         if a.keys() != b.keys():
             return float("inf")
@@ -397,7 +406,7 @@ def _max_rel_diff(a, b) -> float:
         return max((_max_rel_diff(x, y) for x, y in zip(a, b)), default=0.0)
     if isinstance(a, bool) or isinstance(b, bool) or not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
         return 0.0 if a == b else float("inf")
-    if a == b:
+    if a == b or abs(a - b) <= REDUCTION_ATOL:
         return 0.0
     return abs(a - b) / max(abs(a), abs(b))
 

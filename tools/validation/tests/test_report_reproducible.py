@@ -14,7 +14,8 @@ from tools.validation import run_validation as rv
 
 pytestmark = pytest.mark.nightly
 
-SUBSET = {"bras_cr2_ls1_mp1", "bras_cr2_ls1_mp1_fitted", "bras_cr3_ls1_mp1", "bras_cr3_ls1_mp1_fitted"}
+SUBSET = {"bras_cr2_ls1_mp1", "bras_cr2_ls1_mp1_fitted", "bras_cr3_ls1_mp1", "bras_cr3_ls1_mp1_fitted",
+          "bras_cr4_ls1_mp1", "bras_cr4_ls1_mp1_fitted"}  # one pair per room (phase-05f: three rooms)
 
 
 def test_two_runs_give_identical_numbers_and_report(tmp_path):
