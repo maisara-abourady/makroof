@@ -1,5 +1,6 @@
 # One-off BRAS geometry extraction only (tools/validation/extract_bras_geometry.py): h5py reads the
-# SOFA (HDF5) files for the source/receiver positions. CI and the nightly job do not install it.
+# SOFA (HDF5) files for the source/receiver positions. The nightly job installs it for the re-extraction
+# regression test (tools/validation/tests/test_skp_reader.py, phase-05f); the python CI job does not.
 # Install together with tools/acoustics/requirements.txt (numpy is pinned there). Hash-pinned;
 # regenerate with tools/ci/pin_hashes.py after changing the pin. See docs/THIRD_PARTY.md.
 h5py==3.16.0 \

@@ -300,9 +300,14 @@ hand-tuned.
    errors.
    - **Decay predictors:** beside Eyring, the radiosity effective absorption exponent a* for Lambert
      walls (Kuttruff §5.7 Eqs. 5.53–5.56, T = 0.161·V/(S·a*)) and γ²-Eyring (Kuttruff Eq. 5.34 with
-     Table 5.1), the latter for information only: on Kuttruff Table 5.2 cases 2 and 4 it moves T away
-     from the iteration result. a* assumes s = 1 on all walls; with low s the true T can fall on the
-     other side of Eyring (Kuttruff §9.4). The report gives the mean |T30 error| at 500 Hz–2 kHz (AQ9)
+     Table 5.1), the latter a B12 candidate under condition (ii). Eq. 5.34 gives a T longer than
+     Eyring's for every γ² > 0 (Kuttruff §5.5), so it cannot follow rooms whose T for diffusely
+     reflecting walls (the Kuttruff §5.7 iteration) lies below Eyring's: on Kuttruff Table 5.2 cases
+     2 and 4 it moves T away from the iteration result (case 4: ≈ 1.47 s against Eyring 1.38 s and
+     Iteration 1.21 s). A γ²-Eyring pass on BRAS alone is input-limited (C2); the Phase 05f outcome
+     (recommended: not adopted) is recorded in BUILD_PLAN §5 B12. a* assumes s = 1 on all walls; with
+     low s the true T can fall on the other side of Eyring (Kuttruff §9.4). The report gives the mean
+     |T30 error| at 500 Hz–2 kHz (AQ9)
      for Eyring, a* and γ²-Eyring against BRAS, with the rooms listed sorted by the absorption-contrast
      indicator of scope 3 **and** by the largest single-face share of the total absorption. No
      threshold splits them: the contrast ratio alone cannot separate Kuttruff Table 5.2 cases 5 and 6

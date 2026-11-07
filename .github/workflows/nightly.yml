@@ -42,8 +42,9 @@ jobs:
             tools/ci/requirements.txt
             tools/acoustics/requirements.txt
             tools/validation/requirements.txt
+            tools/validation/requirements-extract.txt
       - name: Install Python dependencies
-        run: python -m pip install -r tools/ci/requirements.txt -r tools/acoustics/requirements.txt -r tools/validation/requirements.txt
+        run: python -m pip install -r tools/ci/requirements.txt -r tools/acoustics/requirements.txt -r tools/validation/requirements.txt -r tools/validation/requirements-extract.txt
       - name: Install build dependencies
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
 
