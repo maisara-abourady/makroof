@@ -72,7 +72,9 @@ reason, and no comparison result, removes CR4 from the selection. Maisara's acce
 reader fixes (the CFaceTextureCoords record is 214 + 32 n bytes; the root starts after the last definition's
 thumbnail) every documented CR4 material area reproduces (largest difference 0.005 m²), every loop vertex lies within
 AX30 (max 1.98e-5 m), the enclosed volume is 8 656.51 m³ against the material file's 8 656.5 m³, and the room geometry
-parses without re-synchronisation (`tools/validation/tests/test_skp_reader.py`, CR4 case). CR4's reduction results are
+(all 1 844 root faces) parses without re-synchronisation between faces: one index-offset correction at the root's
+start, before its first face, and the parse ends in the style records after the last one
+(`tools/validation/tests/test_skp_reader.py`, CR4 cases). CR4's reduction results are
 in §5; it enters the comparison with the same rules as CR2 and CR3.
 
 Every omni (dodecahedron) RIR the dataset provides for the selected rooms is used: 2 sources ×
