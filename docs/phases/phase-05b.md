@@ -1,6 +1,6 @@
 # Phase 05b — Early scattered energy (B11)
 
-Size: **M** (L if gate (A) or the tracer fights back; split the remainder into a further b-phase) · Depends on: 04, 05, 05e · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ4, AQ9, AQ10, AX5, AX16, AX18, AX20, AX21, AX22) and §5 B11, `docs/phases/phase-05.md` scope 6, PRD NFR-1, NFR-3, NFR-8, FR-SIM-6
+Size: **M** (L if gate (A) or the tracer fights back; split the remainder into a further b-phase) · Depends on: 04, 05, 05e, and 05f `done` or Maisara's recorded acceptance of the two-room label (the B11 promotion decision is deferred until CR4 is in, phase-05e scope (b)) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ2, AQ4, AQ9, AQ10, AX5, AX16, AX18, AX20, AX21, AX22) and §5 B11, `docs/phases/phase-05.md` scope 6, PRD NFR-1, NFR-3, NFR-8, FR-SIM-6
 
 Created by decider report 8, accepted by Maisara, 2026-11-05: B11 is a v1 phase, after 05 and before 08.
 

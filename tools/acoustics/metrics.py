@@ -286,6 +286,21 @@ def schroeder_edc(e: np.ndarray, crosspoint: int, compensation: float = 0.0) -> 
     return _db(tail / tail[0])
 
 
+def schroeder_edc_subtracted(e: np.ndarray, crosspoint: int, noise_power: float, compensation: float = 0.0):
+    """AX27 (Phase 05e, decision D-C): the Lundeby noise estimate N̂ is subtracted from the squared
+    band IR before the backward integral up to the crosspoint; the compensation is kept:
+    EDC[n] = compensation + sum_{k=n}^{crosspoint-1} (e[k] - N̂). Returns (EDC in dB, first index at
+    which the integral is <= 0, or None). Where it is <= 0 the EDC is -inf (no decay is read there)."""
+    tail = np.cumsum((e[:crosspoint] - noise_power)[::-1])[::-1] + compensation
+    bad = np.flatnonzero(tail <= 0.0)
+    first_bad = int(bad[0]) if bad.size else None
+    if tail[0] <= 0.0:
+        return np.full(tail.shape, -np.inf), 0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        edc = np.where(tail > 0.0, _db(np.maximum(tail, 1e-300) / tail[0]), -np.inf)
+    return edc, first_bad
+
+
 def decay_time(edc_db: np.ndarray, fs: float, upper_db: float, lower_db: float) -> float | None:
     """Least-squares line through every EDC sample between the first times the EDC reaches
     ``upper_db`` and ``lower_db``, extrapolated to -60 dB. None if the EDC never reaches the range."""
@@ -311,13 +326,19 @@ def _band_metrics(
     energy: np.ndarray | None = None,
     lead: int = 0,
     band_hz: float | None = None,
+    noise_subtraction: bool = False,
 ) -> dict:
     """Metrics of one (band-filtered or broadband) IR given the common onset and direct indices.
 
     ``energy`` (h^2, or an average of h^2 over an ensemble) replaces h when given. ``onset`` and
     ``direct`` index into ``e``; ``lead`` is the number of samples in ``e`` before sample 0 of the
     original IR (the anti-causal part of a zero-phase band filter, ``bands.filter_band_with_lead``),
-    which counts as early energy. ``band_hz`` is the band's nominal centre (None for broadband)."""
+    which counts as early energy. ``band_hz`` is the band's nominal centre (None for broadband).
+    ``noise_subtraction`` (AX27, validation path only; off by default so the Phase 02-04 goldens do
+    not change): the decay times are read on ``schroeder_edc_subtracted``; N̂, the crosspoint and
+    the compensation line come from the unsubtracted envelope (Lundeby as without it); a decay
+    range whose EDC is <= 0 before its first crossing of the range's lower limit gives None.
+    Energy ratios (C50, C80, D50, DRR) are unchanged."""
     e = np.asarray(h, dtype=np.float64) ** 2 if energy is None else np.asarray(energy, dtype=np.float64)
     warnings: list[str] = []
     result: dict = {}
@@ -333,7 +354,11 @@ def _band_metrics(
         }
     lb = lundeby(decay_part, fs)
     warnings += lb.warnings
-    edc = schroeder_edc(decay_part, lb.crosspoint, lb.compensation)
+    first_bad = None
+    if noise_subtraction and lb.noise_power > 0.0:
+        edc, first_bad = schroeder_edc_subtracted(decay_part, lb.crosspoint, lb.noise_power, lb.compensation)
+    else:
+        edc = schroeder_edc(decay_part, lb.crosspoint, lb.compensation)
 
     for name, (upper, lower) in DECAY_RANGES.items():
         value = None
@@ -341,9 +366,13 @@ def _band_metrics(
         if lb.dynamic_range_db < needed:
             warnings.append(f"{name}: dynamic range {lb.dynamic_range_db:.1f} dB < {needed:.0f} dB required")
         else:
-            value = decay_time(edc, fs, upper, lower)
-            if value is None:
-                warnings.append(f"{name}: EDC does not cover {upper:.0f} to {lower:.0f} dB")
+            lower_hits = np.flatnonzero(edc <= lower)
+            if first_bad is not None and (lower_hits.size == 0 or lower_hits[0] >= first_bad):
+                warnings.append(f"{name}: AX27 noise-subtracted EDC is <= 0 before {lower:.0f} dB")
+            else:
+                value = decay_time(edc, fs, upper, lower)
+                if value is None:
+                    warnings.append(f"{name}: EDC does not cover {upper:.0f} to {lower:.0f} dB")
         result[name] = value
 
     # Energy ratios. Early: everything before the boundary (including pre-onset energy).
@@ -384,7 +413,8 @@ def _band_metrics(
     return result
 
 
-def room_metrics(h: np.ndarray, fs: float, bands: tuple[float, ...] = _bands.OCTAVE_BANDS_HZ) -> dict:
+def room_metrics(h: np.ndarray, fs: float, bands: tuple[float, ...] = _bands.OCTAVE_BANDS_HZ,
+                 noise_subtraction: bool = False) -> dict:
     """ISO 3382-1 parameters of a mono IR: EDT, T20, T30 (s), C50, C80 (dB), D50 (ratio), DRR (dB),
     per octave band and broadband, plus the noise-floor diagnostics. JSON-serialisable:
 
@@ -408,8 +438,9 @@ def room_metrics(h: np.ndarray, fs: float, bands: tuple[float, ...] = _bands.OCT
     for fc in bands:
         # With the lead: the band energy a zero-phase filter puts before sample 0 is kept (early).
         band, lead = _bands.filter_band_with_lead(h, fs, fc)
-        out["bands"][_bands.band_key(fc)] = _band_metrics(band, fs, onset + lead, direct + lead, lead=lead, band_hz=fc)
-    out["broadband"] = _band_metrics(h, fs, onset, direct)
+        out["bands"][_bands.band_key(fc)] = _band_metrics(band, fs, onset + lead, direct + lead, lead=lead, band_hz=fc,
+                                                          noise_subtraction=noise_subtraction)
+    out["broadband"] = _band_metrics(h, fs, onset, direct, noise_subtraction=noise_subtraction)
     return out
 
 

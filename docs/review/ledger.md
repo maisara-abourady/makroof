@@ -1317,3 +1317,96 @@ case 6 is borderline. No round 3 needed. Status: D-A, D-B, D-C applied; vetoable
 No rule, threshold or assumption changed; one science statement, checked by the main session: with A fixed, Sabine
 T = 0.161 V/A (Kuttruff Eq. 5.8, and Eyring likewise) scales with V, so 146.1 vs 145 m³ gives +1.1/145 = +0.76 % in
 predicted T for every CR2 pair. CORRECT. Status: applied; 05e establishes the cause before any comparison.
+
+## Phase 05e session 1 — AX27 L_min re-measurement and noise-margin estimator (2026-11-06; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Main session measured AX27's L_min as the rule requires (`tools/acoustics/meter_checks.py` `find_l_min`, R = 51 per
+condition, seeds fixed per condition by `condition_seed`; record `tools/acoustics/data/phase05_meter_checks.json`).
+The noise margin AX27 defines, 10·log10(P_line(t₀)/N̂) (`line_margin_db`), gives worst median − 3·SD (500 Hz, T = 1 s)
+41.9 / 42.6 / 44.6 / 44.3 / 44.5 / 44.7 / 46.8 dB at 51…57 dB, so **L_min = 57 dB** by the rule. The plan's prototype
+numbers (42.8 / 44.7 / 45.7 / 46.8 dB at 48 / 50 / 51 / 52 dB) and its "≈ 1.4 dB below nominal" are reproduced exactly
+by the peak-referred dynamic range (`dynamic_range_db`), not by the defined estimator (which reads 1.2–2.8 dB below
+nominal, SD 2–3 dB at 500 Hz / 1 s against ≈ 1.1 dB). Paired T30 bias with AX27: |mean| ≤ 0.13 %, SE ≤ 0.042 % in all
+18 gated conditions (57, 55, 65 dB); 51 dB +0.06…+0.15 %, 0 unsuitable; 48 dB up to +0.26 %, 7/51 unsuitable at
+500 Hz / 1 s.
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| E5-1 | NUMBER | L_min = 51 dB "of the Lundeby dynamic-range estimate (the noise margin below)" = P_line(t₀)/N̂ | INCONSISTENT | the "≈ 1.4 dB" claim and the prototype values match `dynamic_range_db` (51 − 49.56 = 1.44 dB), not the defined estimator (51 − 48.18 = 2.82 dB); with the defined estimator the rule gives 56–57 dB depending on the seed scheme | major (test gate and BRAS admission) | resolved by option C with corrections (decider 2026-11-06, interrogator diff check); applied: L_min = 51 dB on dynamic_range_db; admission on line_margin_db ≥ 51 dB; option A, 57 dB, rejected |
+| E5-2 | NUMBER | 45 dB margin requirement | NOT CHECKABLE | Kuttruff §8.4, Vorländer §6.4.1 give the −5…−35 dB range re the initial level; no corpus noise-margin rule (ISO 3382-1 would settle it) | none | open |
+| E5-3 | FACT | margin referred to the decay, not the envelope peak | NOT CHECKABLE (leans to the defined estimator) | Kuttruff §8.4 (Eq. 8.29 context): noise bends the lower end of the backward-integrated curve; the reference is the decay's initial level; in a measured IR the envelope peak includes the direct sound (interrogator's inference) | none | open |
+| E5-4 | NUMBER | median − 3·SD over R = 51 in 1 dB steps | NOT CHECKABLE | non-corpus arithmetic: SE(3·SD) ≈ 0.6 dB, SE(median) ≈ 0.35 dB at SD 2 dB: the ±1 dB seed sensitivity observed | none | open |
+| E5-5 | FACT | Begault's 60 dB | CONSEQUENCE | Begault Ch. 4: 60 dB "to capture the whole decay" is an auralization condition, not a T30 condition | minor | open |
+| E5-6 | FACT | "noise term of Kuttruff Eq. 8.29" | WRONG | Kuttruff §8.4: Eq. 8.29 ⟨h²(t)⟩ = ∫ₜ^∞ g² dx has no noise term; noise appears only in the prose and Fig. 8.13 | minor (attribution) | resolved by correction 2 (and E5-D14 in AX23) |
+| E5-7 | FACT | noisy arm "= measured-IR path" | INCONSISTENT | the arm skips D7(2), which would fail in ≈ 5.5 % of realisations at 51 dB; no effect on admission | minor | resolved by correction 3 (main-session product choice; vetoable by Maisara) |
+
+Consequence on BRAS (measured `line_margin_db`, AQ9 bands): CR2 500 Hz 51.8–61.2 dB, CR4 500 Hz 55.7–59.6 dB, CR4
+2 kHz 56.7–62.1 dB, CR3 ≥ 65.5 dB. At 57 dB a large share of CR2/CR4 AQ9 bands leaves the gated mean; at 51 dB nearly
+all enter. Status: L_min = 51 dB (option C, decider 2026-11-06 with interrogator diff check; vetoable by Maisara); 57 dB
+is the result of the rejected option A (non-monotone, SD 2.2–3.0 dB, ±1 dB seed-sensitive, E5-4, no measured bias
+benefit).
+
+### Decision: option C (decider, 2026-11-06; /fix-plan, corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Decider (medium confidence): L_min = 51 dB with one estimator per job. The test-level rule (median − 3·SD ≥ 45 dB, 1 dB
+steps) is read on the peak-referred `dynamic_range_db` (D7(1) quantity; worst 45.75 dB at 500 Hz / 1 s at 51 dB,
+44.74 dB at 50 dB). Measured bands are admitted to the gated AQ9 mean and B12 only at a decay-referred
+`line_margin_db` ≥ 51 dB (it reads below nominal: median 48.18 dB, SD 1.99 dB at nominal 51 dB; below the peak-referred
+value on BRAS, e.g. CR2 500 Hz 51.8 vs 59.9 dB). Option A (57 dB on the line margin) rejected: non-monotone, seed-
+sensitive (E5-4), no measured bias benefit (bias with AX27 0.26 % at 48, ≤ 0.15 % at 51, ≤ 0.13 % at 57 dB).
+Reversal: a case A condition at 51 dB fails the 0.6 % gate in the 05e CI run; a nominal-48 dB band reads line ≥ 51 dB
+in > 1 % of realisations (normal approx. 0.44 %: z = (51 − 46.21)/1.83 = 2.62, outside the corpus); or ISO 3382-1
+requires a decay-referred 45 dB margin → test-level rule on the line margin (57 dB).
+
+Interrogator diff check of the proposal: adoptable with three corrections (E5-6 Eq. 8.29 has no noise term; drop "both
+refer to the same decay", state the measured offset; E5-7 noisy arm "= measured-IR path except the D7(2) test, which
+cannot fire for a band admitted at line_margin_db ≥ L_min" — the alternative, applying D7(2), would move the
+suitability gate towards 57 dB; main-session product choice, vetoable by Maisara).
+
+### Diff check of the applied text (interrogator; two rounds)
+
+Round 1 (E5-D1…D15): D1–D8, D10, D13, D15 CORRECT; D9 IMPRECISE (Fig. 8.13 illustrates, the reference level follows
+from the Eq. 8.29 derivation); D11 NOT CHECKABLE (the 0.44 % inputs were not stated); D12 INCONSISTENT ("any
+condition" vs "every case A condition"); D14 IMPRECISE (AX23 row repeated the E5-6 attribution). Round 2 after the
+fixes: D9, D10, D11, D12, D14 CORRECT (0.44 %: z = 4.79/1.83 = 2.62; L_min: 48.56 − 3.81 = 44.75 < 45, 49.56 − 3.81 =
+45.75 ≥ 45). One labelling note, not an error: "≤ 0.15 %" (05e session 1) vs "≤ +0.14 %" (prototype) at 51 dB come
+from different runs. Status: applied (BUILD_PLAN AX23, AX27, §6 row; phase-05.md scope 7 and criterion; phase-05e.md
+item 6 and criterion); vetoable by Maisara.
+
+## phase-05e.md, BUILD_PLAN §6, bras_mapping.md §1 — CR4 handling (decider, 2026-11-06, at Maisara's request; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Facts: CR4 extraction unfinished in Phase 05 (> 40 min) and in 05e session 1 (a detached run died after ≥ 41 min with
+an empty log, most likely at container reclamation); CR4.skp 17.1 MB vs CR3.skp 12.7 MB (CR3 parsed in ≈ 25 s), so a
+reader pathology is suspected (re-synchronisation fallback scanning to the end of file), not measured.
+
+Decision (decider, option D; vetoable by Maisara): CR4 stays selected; exclusion criteria pre-committed in
+bras_mapping.md §1 before any simulated-vs-measured number; ≤ 1 h profile, then a generic reader fix allowed under the
+CR2/CR3 regression guard (test_skp_reader.py, area reproduction, make_bras_scenes.py --check); foreground extraction
+with progress output; main track on CR2 + CR3 labelled 'provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3
+only); CR4 pending'; the B12 replacement and B11 promotion decisions deferred (pass rules unchanged); stop rule at the
+end of 05e session 2 → 05e `done` with 'CR4 pending extraction (reader), not dropped' and phase-05f. No acoustic claim.
+
+Interrogator diff check, round 1: C1 (Maisara's two-room acceptance would drop CR4 after results are seen) INCONSISTENT,
+major; C2 (holding B11 promotion vs phase-05.md B11 (B) "no minimum count applies") INCONSISTENT, major; C3 (one room per
+α group) IMPRECISE; C4 (acceptance test is also face planarity) IMPRECISE; C5 (status at the stop rule unstated)
+INCONSISTENT, minor. Fixes: C1 the acceptance keeps CR4 selected and goes through /fix-plan as a phase-05.md change; C2
+deferral of the decision time, pass rules unchanged; C3 full label; C4 "the bras_mapping.md §2 acceptance test"; C5
+status `done` with the note. Round 2: C1, C2, C4, C5 resolved; C3 label and the reversal's acceptance wording completed
+by the main session. Status: applied; vetoable by Maisara.
+
+## phase-05f.md (new), phase-05e.md, phase-05b.md, phase-13.md, BUILD_PLAN §0/§4/§6, bras_mapping.md §1 — phase-05f for CR4 (Maisara, 2026-11-06; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Maisara: "Go for setting 5f dedicated for whatever CR4 needs". Phase-05f created: decode the CFaceTextureCoords layout
+variant(s) in skp_reader.py (generic, regression guard), extract and accept CR4 only by the bras_mapping §2 test, then
+the three-room report, baseline extension and the deferred B12/B11 decisions; two-session stop rule →
+`blocked (reader: CR4 not extracted)`, CR4 pending, not dropped. 05e completes on CR2 + CR3 (provisional two-room).
+Following from the CR4-handling deferral (above): 05b and 13 wait for 05f `done` or Maisara's recorded two-room
+acceptance. Facts (05e session 1, measured): reader fixes; CR4 parses in ≈ 1 min, ≈ 1 083 of 5 851 m²; 1 547 of 1 767
+CFaceTextureCoords records fit 214 bytes, 220 do not; parse stops at 16.46 of 17.08 MB; the dict copy was 59 % (209 of
+353 s) of the profiled run.
+
+Interrogator diff check: no acoustic claim; C4, C5 (no room dropped, selection before comparison, B11 (B), B12, one
+CR4 owner, gating, stop rules) consistent; P1 phase-05f.md structure complies with CLAUDE.md; minor items fixed by the
+main session: F1 "≈ 220" → 220; F4 59 % referred to the profiled run; C1 05e scope (a) and BUILD_PLAN §4 "all selected
+rooms except CR4 (05f)"; C2 §6 row marks that it supersedes the 05e session-2 stop rule; C3 05f criterion for the
+CR4 bias-hook test. Status: applied; vetoable by Maisara.

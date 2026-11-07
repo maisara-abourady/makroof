@@ -20,7 +20,9 @@ def main(argv=None):
     ap.add_argument("--out", default=str(OUT))
     a = ap.parse_args(argv)
     res = {"simulated_edc": m.simulated_edc_check(),
+           "ax27_l_min": m.find_l_min(log=print),
            "paired_noise_case_A": m.paired_noise_test(m.CASE_A, log=print),
+           "paired_noise_case_A_reported": m.paired_noise_test(m.CASE_A_REPORTED, log=print),
            "paired_noise_case_B": m.paired_noise_test(m.CASE_B, seed=8080, log=print, r_max=200)}
     if not a.no_leak:
         res["leak_calibration"] = m.leak_calibration(log=print)

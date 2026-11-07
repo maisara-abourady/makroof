@@ -41,8 +41,11 @@ Maisara which decisions it applied, so she can veto.
    the B12 decision rule's use of a* (scope (e)).
 6. **(D-C) Scope 7 paired noise test: decided 2026-11-06 (§6 row; vetoable by Maisara).** AX27:
    Lundeby noise-power subtraction before the Schroeder integral in the validation decay path; gated
-   levels L_min = 51 dB, 55, 65 dB (48 dB reported); measured bands enter AQ9/B12 only at a noise
-   margin ≥ L_min; the hull stays (phase-05.md scope 7). The xfails in
+   levels L_min = 51 dB, 55, 65 dB (48 dB reported); L_min by the test-level rule on the peak-referred
+   `dynamic_range_db`; measured bands enter AQ9/B12 only at a decay-referred noise margin
+   (`line_margin_db`) ≥ L_min (option C, decider 2026-11-06 with the interrogator diff check, ledger
+   E5-1, E5-6, E5-7; option A, 57 dB on the line margin, rejected; the noisy arm skipping D7(2) is a
+   main-session product choice; vetoable by Maisara); the hull stays (phase-05.md scope 7). The xfails in
    `tools/acoustics/tests/test_noise_handling.py` resolve under AX27. Unblocks the paired noise
    criterion below and the measured-IR noise handling of scope (d), (e).
 
@@ -101,14 +104,14 @@ pytest tools/validation
 # nightly: .github/workflows/nightly.yml (schedule + workflow_dispatch)
 ```
 
-Known state: CR2 parses in seconds, CR3 in ≈ 15 min, CR4 in > 40 min (not finished; run it
-detached, see scope (b)).
+Known state: CR2 parses in seconds, CR3 in ≈ 15 min in Phase 05 (≈ 25 s in 05e session 1), CR4 in
+> 40 min in Phase 05 (not finished); CR4 is now phase-05f (scope (b)).
 
 ## Scope
 
 All of it as specified in phase-05.md, unchanged; this list says what is left.
 
-a. **D-A (AX26) applied:** regenerate the scenes for all selected rooms (`make_bras_scenes.py`), with the
+a. **D-A (AX26) applied:** regenerate the scenes for all selected rooms except CR4 (phase-05f), i.e. CR2 and CR3 (`make_bras_scenes.py`), with the
    reduction results appended to `bras_mapping.md` before any comparison (phase-05.md Data). No room
    is dropped after results are seen. If after D-A no room qualifies, phase-05.md Data's zero-room
    branch applies unchanged.
@@ -122,11 +125,21 @@ a. **D-A (AX26) applied:** regenerate the scenes for all selected rooms (`make_b
      after results are seen.
    - CR3: the documentation gives 2 350 m³ excluding the attic, the model 3 330.6 m³ including it
      (`bras_mapping.md`); the same check applies and is reported.
-b. **CR4:** the geometry extraction is a one-off developer step, never run at run time (Maisara,
-   2026-11-06). Run it detached with no time limit, outside the 40-minute tool timeouts, e.g.
-   `nohup python tools/validation/extract_bras_geometry.py --rooms CR4 > extract-cr4.log 2>&1 &`.
-   Speeding up `skp_reader.py`'s re-synchronisation is optional, not required. Accept CR4 only if
-   every documented material area reproduces (the same check as for CR2 and CR3).
+b. **CR4:** CR4 extraction work and everything that needs CR4 belong to `docs/phases/phase-05f.md`
+   (created 2026-11-06 at Maisara's request), not to a 05e session 2. 05e session 1 profiled the
+   extraction and committed three generic `skp_reader.py` fixes under the CR2/CR3 regression guard
+   (`test_skp_reader.py`, CR2/CR3 area reproduction, `make_bras_scenes.py --check`); where CR4 stands
+   is in phase-05f.md "Start here". 05e completes on CR2 + CR3 with the provisional two-room label.
+   - **Main track without CR4** (decider, 2026-11-06, at Maisara's request; vetoable by
+     Maisara): scopes (a), (c)–(f) run on CR2 + CR3; AQ9 per room, B12 and
+     the B11 (B) evidence are computed but labelled 'provisional, two-room (CR2, CR3; uniform α: CR2,
+     uneven α: CR3 only); CR4 pending', and the B12 replacement and the B11 promotion decisions are
+     deferred (taken once CR4 is in, in phase-05f, or once Maisara accepts the two-room label); the
+     pass rules of phase-05.md are unchanged, including B11 (B)'s 'no minimum count applies'. Adding
+     CR4 (scenes, reduction results, three-room report, baseline extension) is phase-05f scope (c).
+   - Reversal: if Maisara accepts the two-room label, B12/B11 may proceed on two rooms (CR4 stays
+     selected and pending; the acceptance goes through /fix-plan as a phase-05.md change,
+     bras_mapping.md §1); otherwise they wait for phase-05f.
 c. **Baseline and nightly gate:** create `tests/golden/validation_baseline.json` through
    `tools/ci/update_goldens.py` with a reason, and make the nightly gate (phase-05.md scope 4) and the
    `MAKROOF_TEST_BIAS_T60` test green.
@@ -164,8 +177,8 @@ unchanged:
       as decided in D-B).
 - [ ] AX26 unit test on a synthetic rotated L-shaped room and `make_bras_scenes.py --check`
       (phase-05.md criterion, added by D-A).
-- [ ] Scope 7 paired noise test with AX27, each of the 18 case A conditions at L_min, 55, 65 dB
-      (phase-05.md criterion, as decided in D-C).
+- [ ] Scope 7 paired noise test with AX27, each of the 18 case A conditions at L_min = 51, 55, 65 dB
+      (48 dB reported; phase-05.md criterion, as decided in D-C).
 - [ ] The report contains the scope 6 comparisons (decay predictors, reference hybrid, handover,
       humidity bound); reported, not gated.
 - [ ] The report prints per band the octave and half-octave readings, r, the "meter-dependent",
@@ -198,7 +211,7 @@ a* against Table 5.2), and whether the conclusions in the report follow from the
 
 ## Risks
 
-As phase-05.md "Risks", unchanged. Also: CR4 extraction time (scope (b)); D-A (AX26) changes the
+As phase-05.md "Risks", unchanged. Also: CR4 is not in 05e (phase-05f, scope (b)), so 05e's results stay provisional, two-room; D-A (AX26) changes the
 scenes of CR2, so nothing built on the 20 CR2 scenes from Phase 05 is final; regenerate them first. The ±1 % a* gate may be borderline on Table 5.2 case 6 (the solver at 1.25 m, 5.787 s,
 is ≈ 1.2 % below a from-scratch particle simulation, 5.860 s, and still converging: last halving 0.42 %); 05e establishes it with the project MC at
 SE ≤ 0.25 %; a failure is a finding for /fix-plan, not a reason to retune either implementation.
@@ -208,3 +221,10 @@ SE ≤ 0.25 %; a failure is a finding for /fix-plan, not a reason to retune eith
 Automated criteria green; report committed; status row 05e `done` with an "AQ9 met in x/y" note per
 room and per pair, by α set (BRAS: evidence, not validation);
 the PR summarizes findings for the Spatial Audio Expert.
+
+05e completes on CR2 + CR3 (CR4 criteria pre-committed in `docs/validation/bras_mapping.md` §1): the
+status row 05e is `done` with the note 'AQ9 met x/y on CR2, CR3; CR4 in phase-05f (pending
+extraction, not dropped)', B12/B11 stay labelled 'provisional, two-room (CR2, CR3; uniform α: CR2,
+uneven α: CR3 only); CR4 pending', the B12 replacement and the B11 promotion decisions are deferred
+(taken once CR4 is in, in phase-05f, or once Maisara accepts the two-room label; Eyring stays until
+then); the pass rules of phase-05.md are unchanged, including B11 (B)'s 'no minimum count applies'.

@@ -145,8 +145,23 @@ def _user_inputs(log) -> dict[str, tuple[np.ndarray, int]]:
     return found
 
 
+# Phases whose pack is not "every test scene through render_cli": the builder is called instead.
+# phase-05e: the BRAS A/B pack (tools/validation/ab_pack.py; measured vs simulated, loudness-matched,
+# key in key.txt; needs the BRAS RIRs, fetched by checksum by tools/validation/fetch_bras.py).
+def _phase_05e(pack: pathlib.Path, binary: pathlib.Path) -> None:
+    from tools.validation import ab_pack
+
+    ab_pack.build(pack, binary=binary)
+
+
+SPECIAL_BUILDERS = {"phase-05e": _phase_05e}
+
+
 def build(out_root: pathlib.Path, phase: str, binary: pathlib.Path, log=print) -> pathlib.Path:
     pack = out_root / phase
+    if phase in SPECIAL_BUILDERS:
+        SPECIAL_BUILDERS[phase](pack, binary)
+        return pack
     dry_dir = pack / "dry"
     dry_dir.mkdir(parents=True, exist_ok=True)
     scenes = sorted(p for p in SCENES_DIR.glob("*.json") if not p.name.startswith("_"))

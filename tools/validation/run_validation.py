@@ -61,7 +61,7 @@ CONDITIONS = {"CR2": (19.5, 41.7), "CR3": (22.4, 40.9), "CR4": (20.9, 37.5)}  # 
 
 def analyse(h: np.ndarray, fs: float) -> dict:
     """Per-band T30 / T20 / EDT / C80 with the usable-range tests, both meters, and diagnostics."""
-    m = metrics.room_metrics(h, fs)
+    m = metrics.room_metrics(h, fs, noise_subtraction=True)  # AX27: the validation decay path
     out = {"onset_s": m["onset_s"], "bands": {}}
     onset = metrics.onset_index(h)
     pre = h[:onset]
@@ -77,7 +77,7 @@ def analyse(h: np.ndarray, fs: float) -> dict:
                "T20": b["T20"] if ok("T20") else None, "dynamic_range_db": dr, "line_margin_db": lm,
                "noise_floor_db": b["noise_floor_db"], "crosspoint_s": b["crosspoint_s"]}
         if fc in HALF_BANDS:
-            hm = ensembles.band_metrics_half_octave_ensemble(np.asarray(h)[None, :], fs, fc)
+            hm = ensembles.band_metrics_half_octave_ensemble(np.asarray(h)[None, :], fs, fc, noise_subtraction=True)
             row["T30_half"], row["EDT_half"] = hm["T30"], hm["EDT"]
         # "noise not verified" inputs: mean square of the last 10 % of the band-filtered IR
         y, _ = bands.filter_band_with_lead(h, fs, fc)
@@ -125,6 +125,11 @@ def compare_pair(sim: dict, meas: dict) -> dict:
             sig = math.hypot(4.34 / math.sqrt(B * t1), 4.34 / math.sqrt(B * t2))
             d["noise_not_verified"] = abs(nf - l10) > 3 * sig
         d["low_band_BT_lt_16"] = fc <= 125 and tm is not None and 0.71 * fc * tm < 16
+        # AX27: a measured band enters the gated AQ9 mean and B12 only at a noise margin >= L_min
+        lm = mrow["line_margin_db"]
+        d["noise_margin_db"] = lm
+        d["admitted"] = lm is None or lm >= meter_checks.L_MIN_DB
+        d["noise_not_verified_margin"] = not d["admitted"]
         per_band[k] = d
     return per_band
 
@@ -132,7 +137,8 @@ def compare_pair(sim: dict, meas: dict) -> dict:
 def aq9(per_band: dict, bands_hz=AQ9_BANDS, half=False) -> dict:
     """Mean of the absolute per-band errors (AQ9); None when no band is evaluable."""
     def mean_abs(key, bs):
-        v = [abs(per_band[bands.band_key(f)][key]) for f in bs if per_band[bands.band_key(f)][key] is not None]
+        v = [abs(per_band[bands.band_key(f)][key]) for f in bs
+             if per_band[bands.band_key(f)][key] is not None and per_band[bands.band_key(f)].get("admitted", True)]
         return (float(np.mean(v)), len(v)) if v else (None, 0)
     tkey = "T_err_pct"
     res = {}
@@ -143,7 +149,7 @@ def aq9(per_band: dict, bands_hz=AQ9_BANDS, half=False) -> dict:
             for f in bands_hz:
                 kk = f"{q}_half_err_pct" if f in HALF_BANDS else key
                 v = per_band[bands.band_key(f)].get(kk)
-                if v is not None:
+                if v is not None and per_band[bands.band_key(f)].get("admitted", True):
                     vals.append(abs(v))
             res[name] = float(np.mean(vals)) if vals else None
             res[name + "_n"] = len(vals)
@@ -281,16 +287,23 @@ def humidity_bound(red: dict) -> dict:
 # ------------------------------------------------------------------------------------------
 
 
-def run(binary, cache, log=print) -> dict:
+def run(binary, cache, log=print, only=None, plots=True) -> dict:
+    """The comparison. ``only``: a set of scene names to restrict the run to (reproducibility test)."""
     reduction = json.loads(REDUCTION.read_text())
     res = {"pairs": {}, "rooms": {}}
     for sc in scene_list():
+        if only is not None and sc["name"] not in only:
+            continue
         log(f"{sc['name']}")
         hs = render(binary, sc["path"])
         hm = measured(cache, sc["room"], sc["src"], sc["rcv"])
         a_s, a_m = analyse(hs, FS), analyse(hm, FS)
         pb = compare_pair(a_s, a_m)
-        entry = {"room": sc["room"], "alpha_set": sc["alpha_set"], "src": sc["src"], "rcv": sc["rcv"],
+        def ratios(an):  # each IR's own octave neighbour ratio r at the AQ9 bands (scope 3)
+            T = {f: an["bands"][bands.band_key(f)]["T30"] for f in BANDS}
+            return {bands.band_key(fc): neighbour_ratio(T, fc) for fc in AQ9_BANDS}
+        r_ir = {"sim": ratios(a_s), "meas": ratios(a_m)}
+        entry = {"room": sc["room"], "alpha_set": sc["alpha_set"], "src": sc["src"], "rcv": sc["rcv"], "r_ir": r_ir,
                  "sim": a_s, "meas": a_m, "bands": pb, "aq9": aq9(pb), "aq9_500_1k": aq9(pb, (500.0, 1000.0)),
                  "aq9_half": aq9(pb, half=True)}
         if sc["alpha_set"] == "initial":
@@ -303,7 +316,7 @@ def run(binary, cache, log=print) -> dict:
             e0 = dg["emitters"][0]
             entry["diagnostics"] = {k: e0.get(k) for k in ("handoverS", "expectedMixS", "ismFallback", "realisedKeffAtMix",
                                                            "axisShares", "directS", "realisedKeff")}
-            entry["edc_plot"] = plot_edc(sc["name"], hs, hm)
+            entry["edc_plot"] = plot_edc(sc["name"], hs, hm) if plots else None
         res["pairs"][sc["name"]] = entry
     for room in sorted({p["room"] for p in res["pairs"].values()}):
         for alpha_set in ("initial", "fitted"):
@@ -343,6 +356,17 @@ def run(binary, cache, log=print) -> dict:
             room_res["leakage_sensitive"] = any((r or 0) > 1.1 for r in room_res["r_meas"].values())
             if alpha_set == "initial":
                 V = red["dims"]["W"] * red["dims"]["D"] * red["dims"]["H"]
+                S_doc = 4 * V / red["dims"]["mean_free_path_documented_m"]
+                # perceptual mixing times (Lindau, Kosanke & Weinzierl 2012, JAES 60(11), Eqs. 12-14; researcher
+                # F20; binaural, near-shoebox rooms, V up to about 10 000 m^3): context beside t_mix,e only
+                tmix = [p["diagnostics"]["handoverS"] - p["diagnostics"]["directS"] for p in ps if p.get("diagnostics")]
+                room_res["mixing_times_ms"] = {
+                    "t_mp50_VS": 20 * V / S_doc + 12, "t_mp50_sqrtV": 0.58 * math.sqrt(V) + 21.2, "t_mp95": 0.0117 * V + 50.1,
+                    "t_mix_e_minus_t_dir_e": [1000 * min(tmix), 1000 * max(tmix)] if tmix else None}
+                room_res["box"] = {"V": V, "S_documented": S_doc, "S_box": red["dims"]["S_box"],
+                                   "S_error_pct": red["dims"]["S_error_pct"], "eyring_error_pct": red["eyring_error_pct"]}
+                n_adm = sum(p["bands"][bands.band_key(f)]["admitted"] for p in ps for f in AQ9_BANDS)
+                room_res["noise_admission"] = {"admitted": n_adm, "of": len(ps) * len(AQ9_BANDS), "L_min_dB": meter_checks.L_MIN_DB}
                 tmid = np.mean([Tm[500.0], Tm[1000.0]]) if Tm[500.0] and Tm[1000.0] else None
                 room_res["schroeder_hz"] = {"1200": 1200 * math.sqrt(tmid / V) if tmid else None,
                                             "2000": 2000 * math.sqrt(tmid / V) if tmid else None}
@@ -455,10 +479,11 @@ def b12(res: dict) -> dict:
                         continue
                     if pred == "a_star" and not r["predictors"]["bands"][k].get("a_star_converged_0.4pct"):
                         conv[rk] = False
+                    adm = [p for p in pairs if p["bands"][k].get("admitted", True)]  # AX27 noise margin
                     if use_half and fc in HALF_BANDS:
-                        tm = [p["meas"]["bands"][k]["T30_half"] for p in pairs if p["meas"]["bands"][k]["T30_half"]]
+                        tm = [p["meas"]["bands"][k]["T30_half"] for p in adm if p["meas"]["bands"][k]["T30_half"]]
                     else:
-                        tm = [p["meas"]["bands"][k]["T30"] for p in pairs if p["meas"]["bands"][k]["T30"]]
+                        tm = [p["meas"]["bands"][k]["T30"] for p in adm if p["meas"]["bands"][k]["T30"]]
                     if tm:
                         vals.append(abs(100 * (tp / np.mean(tm) - 1)))
                 if vals:

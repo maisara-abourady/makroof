@@ -133,7 +133,7 @@ def half_octave_fir(nominal_hz: float, fs: float) -> np.ndarray:
                      window=("kaiser", beta))
 
 
-def band_metrics_half_octave_ensemble(irs: np.ndarray, fs: float, nominal_hz: float) -> dict:
+def band_metrics_half_octave_ensemble(irs: np.ndarray, fs: float, nominal_hz: float, noise_subtraction: bool = False) -> dict:
     """AX23 meter: metrics (``metrics._band_metrics`` format) of the ensemble-averaged energy of the
     onset-aligned IRs, each filtered by ``half_octave_fir`` before squaring."""
     taps = half_octave_fir(nominal_hz, fs)
@@ -144,7 +144,7 @@ def band_metrics_half_octave_ensemble(irs: np.ndarray, fs: float, nominal_hz: fl
     for a in aligned:
         energy += sg.fftconvolve(a[:length], taps) ** 2
     energy /= len(aligned)
-    return metrics._band_metrics(np.empty(0), fs, half, half, energy=energy, lead=half)
+    return metrics._band_metrics(np.empty(0), fs, half, half, energy=energy, lead=half, noise_subtraction=noise_subtraction)
 
 
 def eyring_t30_readings(irs: np.ndarray, fs: float, bands_hz=bands.OCTAVE_BANDS_HZ) -> dict:

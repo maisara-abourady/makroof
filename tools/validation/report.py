@@ -67,6 +67,16 @@ def write(res: dict, path: pathlib.Path) -> None:
     w("")
     w(f"**AQ9 met (all three metrics, room mean over pairs): initial α {met['initial'][0]}/{met['initial'][1]} rooms; "
       f"fitted α {met['fitted'][0]}/{met['fitted'][1]} rooms** (fitted: T30 circular by construction, F6).")
+    w("")
+    w("**Provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3 only); CR4 pending** (phase-05e scope (b)): "
+      "CR4 stays selected and enters in phase-05f once its geometry passes the bras_mapping.md §2 acceptance test; "
+      "it is not dropped. The B12 replacement and the B11 promotion decisions are deferred until then (pass rules "
+      "unchanged).")
+    w("")
+    w("Model volume (AX26 keeps it; bras_mapping.md §1 volume check): with A fixed, predicted T scales with V, so the "
+      "model volume raises predicted T against the BRAS sheet volumes by +0.76 % in CR2 (146.1 vs 145 m³; the sheet "
+      "value is rounded) and +41.7 % in CR3 (3 330.6 vs 2 350 m³; the sheet excludes the attic that the model includes). "
+      "BRAS's own fitted α reproduce BRAS's measured T20 with the model volumes (CR2 ≤ 0.45 %, CR3 ≤ 0.23 %).")
     pp = {"initial": [0, 0], "fitted": [0, 0]}
     for p in res["pairs"].values():
         ps = [p["aq9"]["pass"][n] for n in ("T", "EDT", "C80")]
@@ -123,6 +133,24 @@ def write(res: dict, path: pathlib.Path) -> None:
               + f"; decay curvature C = 100(T30/T20 − 1): measured {f(r['curvature_pct']['meas'])} %, simulated {f(r['curvature_pct']['sim'])} % "
               "(> ≈ 10 % marks a markedly non-straight decay). Broadband s per face (AX17): "
               + ", ".join(f"{k} {v:.3f}" for k, v in r["scattering"].items()) + ".")
+        if "box" in r:
+            bx = r["box"]
+            w("")
+            w(f"Box (AX26): V = {bx['V']:.1f} m³, S(box) = {bx['S_box']:.1f} m² vs documented {bx['S_documented']:.1f} m² "
+              f"({bx['S_error_pct']:+.1f} %); Eyring on the box vs on the documented V, S, A at 500 Hz / 1 kHz / 2 kHz: "
+              + " / ".join(f"{bx['eyring_error_pct'][i]:+.2f} %" for i in (3, 4, 5)) + " (bras_mapping.md §5).")
+        if "noise_admission" in r:
+            na = r["noise_admission"]
+            w(f"Noise-margin admission (AX27): {na['admitted']} of {na['of']} measured AQ9 bands (pairs × 3) have a "
+              f"decay-referred noise margin ≥ L_min = {na['L_min_dB']:.0f} dB and enter the gated AQ9 mean and B12; the others "
+              "are flagged 'noise not verified (margin)'.")
+        if "mixing_times_ms" in r:
+            mt = r["mixing_times_ms"]
+            tm = mt["t_mix_e_minus_t_dir_e"]
+            w(f"Mixing times (context; Lindau, Kosanke & Weinzierl 2012, Eqs. 12–14, binaural, near-shoebox rooms, "
+              f"V ≤ ≈ 10 000 m³): t_mp50 = 20·V/S + 12 = {mt['t_mp50_VS']:.0f} ms, 0.58·√V + 21.2 = {mt['t_mp50_sqrtV']:.0f} ms; "
+              f"t_mp95 = 0.0117·V + 50.1 = {mt['t_mp95']:.0f} ms; Phase 04 rule t_mix,e − t_dir,e over the pairs: "
+              + (f"{tm[0]:.0f}–{tm[1]:.0f} ms." if tm else "–."))
         if "predictors" in r:
             w("")
             w("Decay predictors for the reduced box (T60, s; AX4 air):")
@@ -180,6 +208,8 @@ def write(res: dict, path: pathlib.Path) -> None:
                 flags.append(f"{k}: meter-dependent")
             if b[k].get("noise_not_verified"):
                 flags.append(f"{k}: noise not verified")
+            if b[k].get("noise_not_verified_margin"):
+                flags.append(f"{k}: noise not verified (margin)")
         a = p["aq9"]["pass"]
         plot = p.get("edc_plot")
         w(f"| {name} | " + " / ".join(f(b[k]["T_err_pct"]) for k in AQ9) + " | " + " / ".join(f(b[k]["EDT_err_pct"]) for k in AQ9)
@@ -189,8 +219,34 @@ def write(res: dict, path: pathlib.Path) -> None:
     w("Flags: 'T20' = the T30 usable-range test failed (peak-referred dynamic range or the Lundeby late line < 45 dB); "
       "measured T20 is compared with simulated T20. 'meter-dependent' = octave and half-octave errors differ by > 5 points. "
       "'noise not verified' = the Lundeby noise estimate and the last-10 % mean square differ by more than 3·√(σ₁² + σ₂²), "
-      "σᵢ = 4.34/√(B·T_seg) dB. AX17 input error: every per-band delta in the AQ9 bands includes the broadband-s "
+      "σᵢ = 4.34/√(B·T_seg) dB. 'noise not verified (margin)' = decay-referred noise margin < L_min (AX27): excluded from "
+      "the gated AQ9 mean and B12. AX17 input error: every per-band delta in the AQ9 bands includes the broadband-s "
       "reduction (BRAS s rises as √f: +47 % at 500 Hz, −26 % at 2 kHz).")
+    # ---------------- per pair and band (detail)
+    w("")
+    w("### 4b. Per pair and band, initial α (both meters, r, usable-range margins, flags)")
+    w("")
+    w("T: the decay time compared (T30, or T20 when T30 is not usable); half: the AX23(b) half-octave Kaiser FIR reading "
+      "(1, 2 kHz), secondary; r: each IR's octave neighbour ratio T(slower neighbour)/T(band); margins of the measured "
+      "band: peak-referred dynamic range / decay-referred Lundeby line at t₀ above the noise (dB; T30 needs both ≥ 45 dB, "
+      "AQ9/B12 admission needs the line ≥ L_min).")
+    w("")
+    w("| pair | band | T meas / sim (s) | T err (%) | half T30 meas / sim (s) | half err (%) | EDT meas / sim (s) | r meas / sim | margins meas (dB) | admitted | flags |")
+    w("|---|---|---|---|---|---|---|---|---|---|---|")
+    for name in sorted(res["pairs"]):
+        p = res["pairs"][name]
+        if p["alpha_set"] != "initial":
+            continue
+        for k in AQ9:
+            b, sm, ms = p["bands"][k], p["sim"]["bands"][k], p["meas"]["bands"][k]
+            fl = [x for x, on in (("meter-dependent", b.get("meter_dependent")), ("noise not verified", b.get("noise_not_verified")),
+                                  ("noise not verified (margin)", b.get("noise_not_verified_margin")),
+                                  ("T20", b["kind"] == "T20"), ("T not evaluable", b["kind"] == "none")) if on]
+            ri = p.get("r_ir", {})
+            w(f"| {name} | {k} | {f(b['T_meas'], 3)} / {f(b['T_sim'], 3)} | {f(b['T_err_pct'])} | "
+              f"{f(ms.get('T30_half'), 3)} / {f(sm.get('T30_half'), 3)} | {f(b.get('T30_half_err_pct'))} | "
+              f"{f(b['EDT_meas'], 3)} / {f(b['EDT_sim'], 3)} | {f(ri.get('meas', {}).get(k), 3)} / {f(ri.get('sim', {}).get(k), 3)} | "
+              f"{f(ms['dynamic_range_db'])} / {f(ms['line_margin_db'])} | {f(b.get('admitted'))} | {', '.join(fl) or '–'} |")
     # ---------------- meter checks
     w("")
     w("## 5. Meter checks (scope 7)")
@@ -199,7 +255,15 @@ def write(res: dict, path: pathlib.Path) -> None:
         w("")
         w(f"Simulated EDC (N1): metrics path vs integration to the end at −35 dB: {mc['simulated_edc']['difference_dB']:.2e} dB (criterion ≤ 0.01 dB).")
         w("")
-        w("Paired noise test, case A (gate |mean paired T30 bias| ≤ 0.6 %, SE ≤ 0.15 %):")
+        lm = mc.get("ax27_l_min")
+        if lm:
+            w(f"AX27 L_min = {lm['L_min_dB']:.0f} dB: the lowest level (1 dB steps from 51 dB) with median − 3·SD ≥ 45 dB of the "
+              "peak-referred Lundeby dynamic range in every case A condition (ledger E5-1, option C); worst condition per level: "
+              + "; ".join(f"{x['level_dB']:.0f} dB: {x['worst']['dynamic_range_median_minus_3sd_dB']:.2f} dB "
+                          f"({x['worst']['f_c']:.0f} Hz, T = {x['worst']['T']} s)" for x in lm["levels"]) + ".")
+            w("")
+        w("Paired noise test, case A, with AX27 noise subtraction (gate |mean paired T30 bias| ≤ 0.6 %, SE ≤ 0.15 %, "
+          "no unsuitable realisation):")
         w("")
         w("| band | T (s) | noise below decay (dB) | R | mean bias (%) | SE (%) | EDT (%) | C80 (dB) | gate |")
         w("|---|---|---|---|---|---|---|---|---|")
@@ -207,6 +271,11 @@ def write(res: dict, path: pathlib.Path) -> None:
             ok = c["mean_bias_pct"] is not None and abs(c["mean_bias_pct"]) <= 0.6 and c["se_pct"] <= 0.15
             w(f"| {c['f_c']:.0f} | {c['T']} | {c['noise_below_dB']:.0f} | {c['R']} | {c['mean_bias_pct']:+.3f} | {c['se_pct']:.3f} | "
               f"{c['edt_mean_pct']:+.3f} | {c['c80_mean_dB']:+.4f} | {'pass' if ok else '**fail**'} |")
+        if mc.get("paired_noise_case_A_reported"):
+            w("")
+            w("Reported, not gated (the former 48 dB level): " + "; ".join(
+                f"{c['f_c']:.0f} Hz / {c['T']} s: {c['mean_bias_pct']:+.3f} % (SE {c['se_pct']:.3f}), {c['unsuitable']} of {c['R']} unsuitable"
+                for c in mc["paired_noise_case_A_reported"]) + ".")
         w("")
         w("Case B (125 Hz, T = 0.3 s, plateau regime; reported): " + "; ".join(
             f"{c['noise_below_dB']:.0f} dB: mean {c['mean_bias_pct']:+.1f} %, SD {c['sd_pct']:.0f} %, {c['unsuitable']} of {c['R']} unsuitable"
@@ -220,14 +289,170 @@ def write(res: dict, path: pathlib.Path) -> None:
             for c in mc["leak_calibration"]:
                 w(f"| {c['f_c']:.0f} | {c['variant']} | {c['r']} | {c['R']} | {f(c['octave_bias_pct'], 2)} | {f(c['half_octave_bias_pct'], 2)} | "
                   f"{c['D_dB']:.1f} | {c['D1_dB']:.1f} | {c['model_bias_pct']:.2f} | {f(c['residual_pct'], 2)} |")
-    # ---------------- not done
-    w("")
-    w("## 6. Not in this report (phase remainder)")
-    w("")
-    w("The reference hybrid with early Lambert-scattered energy (AX21) and its per-band-s run (B10), the X-b bound ΔL_b "
-      "(AX16), the mixing-time handover comparison against t_dir,e + 80 / 140 ms floors with seed-paired ensembles, "
-      "the perceptual mixing times t_mp50/t_mp95, and the B11 (B) promotion evidence are not computed in this session; "
-      "they are split into the remainder phase (see the PR). The validation-only render_cli overrides they need "
-      "(`--mix-floor-ms`, `--atmosphere`) exist.")
-    w("")
+    # ---------------- scope 6 remainder (phase-05e session 2)
+    scope6_section(w, res)
     path.write_text("\n".join(L) + "\n", encoding="utf-8")
+
+
+SCOPE6 = HERE / "data" / "phase05_scope6.json"
+COMP_TITLE = {
+    "B11_B": "B11 (B): reference hybrid vs Phase 04 IR (rule handover)",
+    "B10": "B10: hybrid with BRAS per-band s (diffuse and specular) vs broadband s",
+    "B11_B_simE": "B11 (B) sensitivity (AX29): envelope scaled by the simulator's band energies (reported)",
+    "handover80_hybrid": "Handover floor t_dir,e + 80 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter)",
+    "handover140_hybrid": "Handover floor t_dir,e + 140 ms vs Phase 04 rule, on the reference-hybrid IR (arbiter)",
+    "handover80_phase04": "Handover floor + 80 ms vs rule, on the Phase 04 IR (reported)",
+    "handover140_phase04": "Handover floor + 140 ms vs rule, on the Phase 04 IR (reported)",
+}
+
+
+def scope6_section(w, res: dict) -> None:
+    """Phase-05 scope 6 comparisons that need the reference hybrid (tools/validation/scope6.py)."""
+    w("")
+    w("## 6. Reference hybrid (AX21), X-b bound (AX16), handover and the B11 (B) / B10 evidence (scope 6)")
+    w("")
+    if not SCOPE6.exists():
+        w("Not computed (run `python tools/validation/scope6.py all`).")
+        return
+    s6 = json.loads(SCOPE6.read_text())
+    w("Generated by `tools/validation/scope6.py` (data: `tools/validation/data/phase05_scope6.json`). Model against model "
+      "and against BRAS: the reference hybrid (`tools/acoustics/ref_hybrid.py`) injects s(1−α) of the incident energy into "
+      "the Lambert patch hit at each specular hit (Kuttruff Eq. 4.24; Gilbert, §4.6), propagates it with the mixed "
+      "specular/diffuse form (Joyce's reflection matrix, Kuttruff §4.6 Eq. 4.35, with the §5.2 split: s re-radiated per "
+      "Lambert, 1−s continuing specularly over the image patches) and gathers it at the listener (Eq. 4.29); 1 ms bins, "
+      "AX4 air, patches as for a*. Checks: s = 1 decay equals a* and the particle Monte Carlo within 2 %; the Python "
+      "t_mix,e and AX16 E_target equal `render_cli` (tools/acoustics/tests/test_ref_hybrid.py).")
+    w("")
+    bras = s6.get("bras", {})
+    if bras:
+        w("Hybrid runs: " + "; ".join(
+            f"{room}: {r['info']['patches']} patches ({r['info']['patch_size_m']:.2f} m), {r['info']['bins']} bins, "
+            f"{r['info']['lattice_images']} image cells, {r['info']['seconds']:.0f} s" for room, r in bras.items()) + ".")
+        hv = bras.get("CR2", {}).get("halving")
+        if hv:
+            ch = [abs(x) for p in hv["pairs"].values() for i, x in enumerate(p["delta_lb_change_db"]) if i in (3, 4, 5)]
+            ce = [abs(x) for p in hv["pairs"].values() for i, x in enumerate(p["diffuse_energy_change_rel"]) if i in (3, 4, 5)]
+            w(f"Patch halving (CR2, initial α, {hv['info']['patches']} patches): ΔL_b changes by ≤ {max(ch):.3f} dB and the "
+              f"diffuse energy before t_mix by ≤ {100 * max(ce):.2f} % at 500 Hz–2 kHz. CR3 was not halved (memory: "
+              f"the dense kernel at 1.1 m needs ≈ 8× the RAM); its a* was not converged at the same size either (section 2).")
+        w("")
+    xb = s6.get("xb")
+    if xb:
+        w("### 6a. X-b bound ΔL_b = 10·log10(E_target(AX16) / E_target(hybrid)) (dB; Hann window [t_dir,e + 2.5 ms, t_mix,e], "
+          "both referred to t_mix,e; deterministic, no statistical margin)")
+        w("")
+        verdict = ("**|ΔL_b| ≤ 1 dB everywhere: X-b accepted as is** (the bound is recorded in AX16)" if xb["accepted"] else
+                   f"**|ΔL_b| > 1 dB in {xb['cases_over_1db']} of {xb['evaluated']} case-bands (500 Hz–2 kHz): phase-05b (B11) "
+                   "switches tail-level matching to the hybrid's propagated diffuse energy** (AX16; even if early rendering is "
+                   "not promoted, under the same independent-reference validation)")
+        w(f"Reading: {verdict}. Largest |ΔL_b|: {xb['max_abs_db']:.2f} dB ({xb['max_case']}). This is model against "
+          "model: it bounds what B11 would change, not a measured truth.")
+        w("")
+        w("| case | 63 | 125 | 250 | 500 | 1000 | 2000 | 4000 | 8000 | t_mix,e (ms) |")
+        w("|---|---|---|---|---|---|---|---|---|---|")
+
+        def row(label, d):
+            w(f"| {label} | " + " | ".join(f(x, 2) for x in d["delta_lb_db"]) + f" | {1000 * d['mix_s']:.1f}"
+              + (" (AX22 fallback)" if d.get("fallback") else "") + " |")
+        for room, r in bras.items():
+            for n, vs in r["pairs"].items():
+                for vk in ("initial", "initial_bands_s", "fitted"):
+                    if vk in vs:
+                        row(f"{n} ({vk.replace('_', ' ')})", vs[vk])
+        for n, d in s6.get("phase04_rooms", {}).items():
+            row(f"{n} (Phase 04 test room, emitter L)", d)
+        syn = s6.get("synthetic", {})
+        for case, r in syn.get("table_5_2", {}).items():
+            for k, d in r.items():
+                if k.startswith("s="):
+                    row(f"Table 5.2 layout {case}, {k} (all faces)", d)
+        for k, d in (syn.get("s_cases") or {}).items():
+            if k.startswith("s="):
+                row(f"uniform α = 0.15, 20×30×10 m, {k} (AX16 exact: hit-count residual only)", d)
+        w("")
+        w("Positions of the synthetic cases: AX28 (the AQ10 benchmark room's listener and emitter L, scaled per axis for the "
+          "10 m cube). Bands outside 500 Hz–2 kHz are for information; the 1 dB is G's jnd (Vorländer Table 6.1, stated for "
+          "500–1000 Hz, applied by extension to 2 kHz).")
+        w("")
+    ens = s6.get("ensembles")
+    if not ens:
+        return
+    w("### 6b. Seed-paired comparisons (EDT and C80, AQ9 error in jnd: mean of |sim − meas|/jnd over 500 Hz, 1 kHz, 2 kHz "
+      "per pair, mean over pairs per room, then over rooms with equal weight)")
+    w("")
+    w("Δ̂ = error with the change − error of the base, paired on the same tail seeds. Validity: SE(Δ̂) ≤ δ/3 = 0.083 jnd, "
+      "SE per room (and per pair for the handover (a)) ≤ 1/3 jnd; R from the pilot (n = 51) by R ≥ max(144·σ₁,Δ², "
+      "9·σ₁,Δ,room², 9·σ₁,Δ,pair²), checked after the run. Jnds: EDT 5 %, C80 1 dB (Vorländer Table 6.1, 500–1000 Hz, "
+      "extended to 2 kHz, AQ9). **Provisional, two-room (CR2, CR3; uniform α: CR2, uneven α: CR3 only); CR4 pending**: "
+      "the B11 promotion and any handover change are deferred (phase-05e scope (b)).")
+    w("")
+    for aset in ("initial", "fitted"):
+        if aset not in ens:
+            continue
+        e = ens[aset]
+        w(f"**{aset} α**" + (" (counted)" if aset == "initial" else " (reported only)") + f": R per arm = "
+          f"{e['R_history'][-1]['R']} (pilot 51; R needed per comparison after the run: "
+          + ", ".join(f"{k} {v}" for k, v in e["R_history"][-1]["by_comparison"].items()) + ").")
+        w("")
+        w("| comparison | metric | error base → with (jnd) | Δ̂ (jnd) | SE | per room Δ̂ (SE) | valid | reading |")
+        w("|---|---|---|---|---|---|---|---|")
+        for comp, c in e["comparisons"].items():
+            rd = c["readings"]
+            if comp == "B11_B":
+                reading = "not worse (B11 (B) passes)" if rd["not_worse"] else "**worse or not valid** (B11 (B) fails)"
+            elif comp == "B11_B_simE":
+                reading = f"reported; not worse: {f(rd['not_worse'])}"
+            elif comp == "B10":
+                reading = "**B10 moves ahead of phase-05b**" if rd["b10_moves_ahead"] else "B10 stays after phase 12"
+            elif comp.endswith("hybrid"):
+                reading = ("**floor replaces the lower bound**" if rd["floor_replaces"] else
+                           f"rule stands ((a) {f(rd['a_some_pair_moves'])}, (b) {f(rd['b_lowers'])}, (c) {f(rd['c_no_room_worse'])})")
+            else:
+                reading = f"reported; some pair moves > 1 jnd: {f(rd['a_some_pair_moves'])}"
+            for met in ("EDT", "C80"):
+                m = c["metrics"][met]
+                rooms = "; ".join(f"{rm} {r['delta']:+.3f} ({r['se']:.3f})" for rm, r in m["room"].items())
+                w(f"| {COMP_TITLE.get(comp, comp)} | {met} | {m['error_base_jnd']:.3f} → {m['error_with_jnd']:.3f} | "
+                  f"{m['delta']:+.3f} | {m['se']:.3f} | {rooms} | {f(c['R_ok'])} | {reading if met == 'EDT' else ''} |")
+        w("")
+        w("In-range figure (500–1000 Hz mean; Vorländer Table 6.1 states these jnds for 500–1000 Hz only) and per-band Δ̂ "
+          "(room-averaged; for the handover, per band whether the two handovers differ by more than 1 jnd):")
+        w("")
+        w("| comparison | metric | Δ̂ 500–1000 Hz (SE) | Δ̂ 500 Hz | Δ̂ 1 kHz | Δ̂ 2 kHz | bands with \\|Δ̂\\| > 1 jnd | pairs > 1 jnd per band (500 / 1k / 2k) |")
+        w("|---|---|---|---|---|---|---|---|")
+        for comp, c in e["comparisons"].items():
+            if "in_range_500_1000" not in c:
+                continue
+            for met in ("EDT", "C80"):
+                ir = c["in_range_500_1000"][met]
+                pb = {k: c["per_band"][k][met] for k in ("500", "1000", "2000")}
+                over = [k for k, v in pb.items() if abs(v["delta"]) > 1.0]
+                w(f"| {COMP_TITLE.get(comp, comp)} | {met} | {ir['delta']:+.3f} ({ir['se']:.3f}) | "
+                  + " | ".join(f"{pb[k]['delta']:+.3f}" for k in ("500", "1000", "2000"))
+                  + f" | {', '.join(over) if over else 'none'} | "
+                  + " / ".join(str(len(pb[k]["pairs_over_1jnd"])) for k in ("500", "1000", "2000")) + " |")
+        w("")
+        big = [(n, met, p["delta"]) for comp, c in e["comparisons"].items() if comp.startswith("handover")
+               for met in ("EDT", "C80") for n, p in c["metrics"][met]["pair"].items() if abs(p["delta"]) > 1.0]
+        if big:
+            w("Pairs whose handover Δ̂ exceeds 1 jnd: " + "; ".join(f"{n} {met} {d:+.2f}" for n, met, d in big[:20]) + ".")
+            w("")
+    b11 = ens.get("initial", {}).get("comparisons", {}).get("B11_B")
+    if b11:
+        w("Per-room gain with the hybrid (B11 (B), initial α; gain = −Δ̂, jnd), sorted by each indicator (section 2; no threshold):")
+        w("")
+        rows = []
+        for rk, r in res["rooms"].items():
+            room, aset = rk.split("|")
+            if aset != "initial" or room not in b11["metrics"]["EDT"]["room"]:
+                continue
+            ind = (sum(r["absorption_contrast"].values()) / 3, sum(r["largest_face_share"].values()) / 3,
+                   sum(r["scattering"].values()) / 6)
+            rows.append((room, ind, -b11["metrics"]["EDT"]["room"][room]["delta"], -b11["metrics"]["C80"]["room"][room]["delta"]))
+        for i, lab in enumerate(("absorption contrast (mean 500 Hz–2 kHz)", "largest single-face share of A (mean 500 Hz–2 kHz)",
+                                 "broadband s (mean over faces)")):
+            w(f"- by {lab}: " + "; ".join(f"{rm} {ind[i]:.2f}: EDT {ge:+.3f}, C80 {gc:+.3f}"
+                                            for rm, ind, ge, gc in sorted(rows, key=lambda x: x[1][i])))
+        w("")
+    w("**B11 not validated against measurement for uneven-α / low-s rooms**: no BRAS room in this set combines uneven α "
+      "with low s (CR2: uniform α, low s; CR3: one strong absorber; F2; bras_mapping.md).")

@@ -108,11 +108,26 @@ jobs:
           # -rP prints the margins some tests log (click detector, pyroomacoustics agreement).
           # The Phase 04 ensemble gates run in the tail-gates job.
           # The Phase 05 validation gate (marker nightly) runs in .github/workflows/nightly.yml.
-          python -m pytest tools -v -rP -m "not ensemble and not nightly"
+          # The full D-B a* gate recomputation (marker slow) runs in nightly.yml; its committed record is gated here.
+          python -m pytest tools -v -rP -m "not ensemble and not nightly and not slow"
 
       - name: Listening pack
         if: runner.os == 'Linux'
         run: python tools/ci/listening_pack.py --phase phase-04 --render-cli build/cli/render_cli
+
+      # Phase 05e A/B pack (measured BRAS RIR vs simulated): needs the BRAS RIRs, verified by SHA-256
+      # on every use (tools/validation/fetch_bras.py), cached like the nightly job.
+      - name: Cache BRAS files (listening pack)
+        if: runner.os == 'Linux'
+        uses: actions/cache@v6.1.0
+        with:
+          path: .bras-cache
+          key: bras-${{ hashFiles('tools/validation/bras_manifest.json') }}
+      - name: Listening pack (phase-05e A/B)
+        if: runner.os == 'Linux'
+        env:
+          MAKROOF_BRAS_CACHE: ${{ github.workspace }}/.bras-cache
+        run: python tools/ci/listening_pack.py --phase phase-05e --render-cli build/cli/render_cli
 
       - name: Upload listening pack
         if: runner.os == 'Linux'

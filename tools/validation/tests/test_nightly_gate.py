@@ -33,9 +33,8 @@ DESCRIPTION = ("Phase 05 nightly gate: simulated T30/T20/EDT (octave, and half-o
 
 
 def _need_baseline():
-    if not golden.golden_path(NAME).exists():
-        pytest.skip("baseline tests/golden/validation_baseline.json not created yet: the next Phase 05 phase creates it "
-                    "(tools/ci/update_goldens.py) once the reduction-rule decision gives a valid scene set (BUILD_PLAN §0)")
+    if not golden.golden_path(NAME).exists() and not os.environ.get(golden.ENV_UPDATE_REASON):
+        pytest.skip("baseline tests/golden/validation_baseline.json not created yet (tools/ci/update_goldens.py)")
 
 
 def _binary():
@@ -61,20 +60,50 @@ def _bias_scenes():
     return out
 
 
+BIAS_ENSEMBLE = 32  # tail seeds per arm for the rise (Phase 05e: one realisation scatters, SD 0.23-0.56 %)
+BIAS_SEED_BASE = 1000
+
+
+def _ensemble(binary, scene_path, n, bias=None):
+    import tempfile
+
+    import numpy as np
+
+    from tools.acoustics import wav
+
+    if bias is not None:
+        os.environ["MAKROOF_TEST_BIAS_T60"] = bias
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            out = pathlib.Path(td) / "e.wav"
+            r = render_cli.run(binary, "--scene", scene_path, "--mode", "omni", "--rate", str(rv.FS), "--tail-seed",
+                               str(BIAS_SEED_BASE), "--ensemble", str(n), "--ensemble-emitter", "0", "--ir", out)
+            assert r.returncode == 0, r.stderr
+            data, _ = wav.read_float32(out)
+    finally:
+        os.environ.pop("MAKROOF_TEST_BIAS_T60", None)
+    return [np.asarray(data[:, i], dtype=np.float64) for i in range(data.shape[1])]
+
+
 def test_t60_bias_hook_fails_the_gate_on_t30():
-    """With MAKROOF_TEST_BIAS_T60=1.05 (debug builds only) the gate fails on T30, and the octave
-    T30 at 500 Hz / 1 kHz / 2 kHz rises by +3 ... +5.5 % in every band with
-    T30 >= 3 (t_mix,e - t_dir,e); at least one band per scene must qualify."""
+    """With MAKROOF_TEST_BIAS_T60=1.05 (debug builds only) the gate fails on T30 (the deterministic
+    render against the baseline), and the octave T30 at 500 Hz / 1 kHz / 2 kHz rises by
+    +3 ... +5.5 % in every band with T30 >= 3 (t_mix,e - t_dir,e); at least one band per scene must
+    qualify. The rise is read on the ensemble-averaged decay of BIAS_ENSEMBLE tail seeds per arm
+    (same seeds in both arms): Phase 05e found that one realisation's paired rise scatters with
+    SD 0.23-0.56 % about +4.9 ... +5.0 %, so a single render exceeds +5.5 % in 3-19 % of seeds
+    (Phase 05's +5.79 % on bras_cr2_ls1_mp1 was one); the criterion is unchanged."""
     _need_baseline()
     dbg = os.environ.get("MAKROOF_DEBUG_RENDER_CLI")
     if not dbg:
         if os.environ.get("MAKROOF_REQUIRE_BRAS") == "1":
             pytest.fail("MAKROOF_DEBUG_RENDER_CLI not set")
         pytest.skip("needs a debug render_cli (MAKROOF_DEBUG_RENDER_CLI)")
+    from tools.acoustics import metrics
+
     dbg = pathlib.Path(dbg)
     baseline = json.loads(golden.golden_path(NAME).read_text())["metrics"]
     for sc in _bias_scenes():
-        unbiased = rv.analyse(rv.render(dbg, sc["path"]), rv.FS)
         os.environ["MAKROOF_TEST_BIAS_T60"] = "1.05"
         try:
             biased = rv.analyse(rv.render(dbg, sc["path"]), rv.FS)
@@ -86,13 +115,16 @@ def test_t60_bias_hook_fails_the_gate_on_t30():
         assert any(m.path.endswith(".T30") for m in report.mismatches), f"{sc['name']}: the gate did not fail on T30"
         e0 = rv.diagnostics(dbg, sc["path"])["emitters"][0]
         span = e0["handoverS"] - e0["directS"]
+        u = metrics.room_metrics_ensemble(_ensemble(dbg, sc["path"], BIAS_ENSEMBLE), rv.FS, rv.AQ9_BANDS)
+        b = metrics.room_metrics_ensemble(_ensemble(dbg, sc["path"], BIAS_ENSEMBLE, "1.05"), rv.FS, rv.AQ9_BANDS)
         qualifying = 0
         for fc in rv.AQ9_BANDS:
             k = rv.bands.band_key(fc)
-            t0, t1 = unbiased["bands"][k]["T30"], biased["bands"][k]["T30"]
+            t0, t1 = u["bands"][k]["T30"], b["bands"][k]["T30"]
             if t0 is None or t1 is None or t0 < 3 * span:
                 continue
             qualifying += 1
             rise = 100 * (t1 / t0 - 1)
+            print(f"{sc['name']} {k} Hz: ensemble T30 {t0:.4f} -> {t1:.4f} s, rise {rise:+.2f} %")
             assert 3.0 <= rise <= 5.5, f"{sc['name']} {k} Hz: T30 rose {rise:.2f} %"
         assert qualifying >= 1, f"{sc['name']}: no band with T30 >= 3 (t_mix - t_dir): unsuitable test scene"

@@ -30,7 +30,7 @@ GEOMETRY = HERE / "data" / "bras_geometry.json"
 REDUCTION = HERE / "data" / "bras_reduction.json"
 SCENES = REPO / "tests" / "scenes" / "validation"
 FACES = ("xMin", "xMax", "yMin", "yMax", "floor", "ceiling")
-from tools.acoustics import bands  # noqa: E402
+from tools.acoustics import air, bands  # noqa: E402
 
 OCTAVES = tuple(int(f) for f in bands.OCTAVE_BANDS_HZ)  # contract::kOctaveBandsHz
 THIRDS = (20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000,
@@ -71,21 +71,52 @@ def to_octaves(alpha3: np.ndarray, s3: np.ndarray):
     return np.array(a_oct), np.array(s_oct)
 
 
-def dimensions(V: float, S: float, A_floor: float):
-    """Rule 2: keep h = V / A_floor; a b = V/h, a + b = (S - 2V/h)/(2h); longer side along x."""
+def oriented_bounding_rectangle(hull_xy) -> dict:
+    """Minimum-area oriented bounding rectangle of a convex polygon (AX26). The optimum has one side
+    collinear with a hull edge (Freeman & Shapira 1975), so every edge direction is tried.
+    Returns the long and short side, ρ = long/short ≥ 1 and the long side's direction (rad)."""
+    P = np.asarray(hull_xy, dtype=float)
+    best = None
+    for i in range(len(P)):
+        e = P[(i + 1) % len(P)] - P[i]
+        if np.hypot(*e) < 1e-12:
+            continue
+        u = e / np.hypot(*e)
+        v = np.array([-u[1], u[0]])
+        pu, pv = P @ u, P @ v
+        lu, lv = pu.max() - pu.min(), pv.max() - pv.min()
+        if best is None or lu * lv < best[0] - 1e-12:
+            best = (lu * lv, lu, lv, math.atan2(u[1], u[0]))
+    _, lu, lv, phi = best
+    if lv > lu:
+        lu, lv, phi = lv, lu, phi + math.pi / 2
+    return {"long": lu, "short": lv, "rho": lu / lv, "long_axis_rad": phi}
+
+
+def dimensions(V: float, S: float, A_floor: float, hull_xy) -> dict:
+    """Rule 2 (AX26, decision D-A 2026-11-06): keep V and h = V / A_floor; plan ratio ρ from the
+    minimum-area oriented bounding rectangle of the floor-assigned faces' horizontal projection;
+    a = √(A_floor·ρ) along x (AQ1), b = √(A_floor/ρ). S is not matched; its error is reported."""
     h = V / A_floor
-    P = V / h
-    half_sum = (S - 2 * P) / (4 * h)  # (a + b)/2
-    disc = half_sum**2 - P
-    if disc >= 0:
-        a = half_sum + math.sqrt(disc)
-        b = half_sum - math.sqrt(disc)
-        fallback = False
-    else:
-        a = b = math.sqrt(P)
-        fallback = True
+    obb = oriented_bounding_rectangle(hull_xy)
+    a = math.sqrt(A_floor * obb["rho"])
+    b = math.sqrt(A_floor / obb["rho"])
     S_box = 2 * (a * b + a * h + b * h)
-    return {"W": a, "D": b, "H": h, "square_floor_fallback": fallback, "S_box": S_box, "S_error_pct": 100 * (S_box / S - 1)}
+    return {"W": a, "D": b, "H": h, "rho": obb["rho"], "obb_long_m": obb["long"], "obb_short_m": obb["short"],
+            "obb_long_axis_deg": math.degrees(obb["long_axis_rad"]),
+            "S_box": S_box, "S_error_pct": 100 * (S_box / S - 1),
+            "mean_free_path_box_m": 4 * V / S_box, "mean_free_path_documented_m": 4 * V / S}
+
+
+def eyring_t60(V: float, S: float, A, m_air) -> np.ndarray:
+    """Eyring T60 (Kuttruff Eq. 5.24 with air): 0.161·V / (−S·ln(1 − A/S) + 4mV)."""
+    A = np.asarray(A, dtype=float)
+    return 0.161 * V / (-S * np.log1p(-A / S) + 4 * np.asarray(m_air) * V)
+
+
+def air_m_per_m() -> np.ndarray:
+    """Power attenuation m (1/m) of the AX4 atmosphere per octave band: m = α_dB / (10·log10 e)."""
+    return np.asarray(air.attenuation_db_per_m(np.array(OCTAVES, dtype=float))) / 4.343
 
 
 def face_areas(W, D, H):
@@ -94,10 +125,11 @@ def face_areas(W, D, H):
 
 def reduce_room(room: str, g: dict, cache: pathlib.Path, alpha_set: str) -> dict:
     doc = g["documented"]
-    dims = dimensions(doc["V"], doc["S"], g["floor_area_m2"])
-    # the model's horizontal axes: the longer floor extent goes along x (AQ1)
-    x0, y0, x1, y1 = g["floor_bbox_xy"]
-    swap = (y1 - y0) > (x1 - x0)
+    dims = dimensions(doc["V"], doc["S"], g["floor_area_m2"], g["floor_hull_xy"])
+    # the longer side of the oriented rectangle goes along x (AQ1); the model frame is already
+    # wall-aligned by rule 1, so the long side is closer to model x or to model y
+    phi = math.radians(dims["obb_long_axis_deg"])
+    swap = abs(math.sin(phi)) > abs(math.cos(phi))
     areas_box = face_areas(dims["W"], dims["D"], dims["H"])
     mats = {}
     for name in doc["areas"]:
@@ -135,8 +167,16 @@ def reduce_room(room: str, g: dict, cache: pathlib.Path, alpha_set: str) -> dict
                        "alpha": alpha.tolist(), "scattering_bands": s_band.tolist(), "scattering": s_broad}
     total_A = sum(np.array(faces[f]["alpha"]) * faces[f]["area_m2"] for f in FACES)
     doc_A = sum(np.array(mats[n][0]) * a for n, a in doc["areas"].items())
-    return {"dims": dims, "swap_xy": swap, "faces": faces, "clamps": clamps,
-            "absorption_area_box_m2": total_A.tolist(), "absorption_area_documented_m2": doc_A.tolist()}
+    # AX26: S is not matched, so ᾱ and the Eyring T shift at second order; both on the AX4 air
+    m = air_m_per_m()
+    t_box = eyring_t60(doc["V"], dims["S_box"], total_A, m)
+    t_doc = eyring_t60(doc["V"], doc["S"], doc_A, m)
+    materials = {n: {"area_m2": a, "alpha": mats[n][0].tolist(), "scattering_bands": mats[n][1].tolist(),
+                     "d_char": doc.get("d_char", {}).get(n)} for n, a in doc["areas"].items()}
+    return {"dims": dims, "swap_xy": swap, "faces": faces, "clamps": clamps, "materials": materials,
+            "absorption_area_box_m2": total_A.tolist(), "absorption_area_documented_m2": doc_A.tolist(),
+            "eyring_t60_box_s": t_box.tolist(), "eyring_t60_documented_s": t_doc.tolist(),
+            "eyring_error_pct": (100 * (t_box / t_doc - 1)).tolist()}
 
 
 def map_positions(g: dict, red: dict) -> dict:
@@ -259,11 +299,19 @@ def mapping_section(g_all: dict, reduction: dict) -> str:
         L.append("")
         if red.get("contract_invalid"):
             L.append(f"**Not rendered:** the box violates the contract ({'; '.join(red['contract_invalid'])}), so no scene is written "
-                     "for this room. The reduction rule (rule 2) needs a plan decision (BUILD_PLAN §0, Phase 05 notes).")
+                     "for this room (AX26: a room whose box has a side outside AX6 is not written and is reported).")
             L.append("")
-        L.append(f"Box: W × D × H = {d['W']:.3f} × {d['D']:.3f} × {d['H']:.3f} m (h = V/A_floor); square-floor fallback: "
-                 f"{'yes' if d['square_floor_fallback'] else 'no'}; S(box) = {d['S_box']:.2f} m² ({d['S_error_pct']:+.2f} % vs documented S); "
+        L.append(f"Box (AX26): W × D × H = {d['W']:.3f} × {d['D']:.3f} × {d['H']:.3f} m (h = V/A_floor, W·D = A_floor); plan ratio "
+                 f"ρ = {d['rho']:.3f} from the minimum-area oriented bounding rectangle of the floor faces "
+                 f"({d['obb_long_m']:.2f} × {d['obb_short_m']:.2f} m, long side at {d['obb_long_axis_deg']:.1f}° in the rotated model frame); "
                  f"model long side along y swapped to x: {'yes' if red['swap_xy'] else 'no'}.")
+        L.append("")
+        L.append(f"S not matched (AX26): S(box) = {d['S_box']:.2f} m² vs documented {doc['S']} m² ({d['S_error_pct']:+.2f} %); "
+                 f"mean free path 4V/S = {d['mean_free_path_box_m']:.3f} m (box) vs {d['mean_free_path_documented_m']:.3f} m (documented). "
+                 "Eyring T60 on the box vs Eyring on the documented V, S, A (AX4 air, initial α), 125 Hz … 8 kHz: "
+                 + ", ".join(f"{f} Hz {tb:.3f} vs {td:.3f} s ({e:+.2f} %)" for f, tb, td, e in
+                             zip(OCTAVES[1:], red['eyring_t60_box_s'][1:], red['eyring_t60_documented_s'][1:], red['eyring_error_pct'][1:]))
+                 + ".")
         L.append("")
         L.append("| face | box area | assigned area | assigned materials | α initial | α fitted | s (AX17) | s 500 / 1k / 2k |")
         L.append("|---|---|---|---|---|---|---|---|")
@@ -309,6 +357,21 @@ def mapping_section(g_all: dict, reduction: dict) -> str:
         ms = sum(fs_[f]["scattering"] * fs_[f]["area_m2"] for f in FACES) / sum(fs_[f]["area_m2"] for f in FACES)
         L.append(f"| {room} | {A[top] / sum(A.values()):.2f} ({top}) | {fc / wl:.2f} | {fs_[top]['scattering']:.3f} | {ms:.3f} |")
     L.append("")
+    L.append("Per material (documented areas from `_descr/mat_CRx.txt`, initial α and s, octave values by AX25; d_char as documented), "
+             "sorted by share of the total absorption area at 1 kHz:")
+    L.append("")
+    L.append("| room | material | area (m², % of S) | α 500 / 1k / 2k | share of A (1 kHz) | s 500 / 1k / 2k | s (AX17) | d_char (m) |")
+    L.append("|---|---|---|---|---|---|---|---|")
+    for room in sorted(reduction):
+        m = reduction[room]["initial"]["materials"]
+        S = sum(v["area_m2"] for v in m.values())
+        A1k = sum(v["area_m2"] * v["alpha"][4] for v in m.values())
+        for n, v in sorted(m.items(), key=lambda t: -t[1]["area_m2"] * t[1]["alpha"][4]):
+            al, sc = v["alpha"], v["scattering_bands"]
+            L.append(f"| {room} | {n.replace('mat_' + room + '_', '')} | {v['area_m2']:.1f} ({100 * v['area_m2'] / S:.1f} %) | "
+                     f"{al[3]:.2f} / {al[4]:.2f} / {al[5]:.2f} | {v['area_m2'] * al[4] / A1k:.2f} | {sc[3]:.2f} / {sc[4]:.2f} / {sc[5]:.2f} | "
+                     f"{sum(sc[3:6]) / 3:.2f} | {v['d_char'] if v['d_char'] is not None else '–'} |")
+    L.append("")
     return "\n".join(L) + "\n"
 
 
@@ -316,6 +379,27 @@ def write_mapping(g_all, reduction):
     text = MAPPING.read_text(encoding="utf-8")
     head = text.split(SECTION)[0]
     MAPPING.write_text(head + mapping_section(g_all, reduction), encoding="utf-8")
+
+
+REDUCTION_RTOL = 1e-9
+
+
+def _max_rel_diff(a, b) -> float:
+    """Largest relative difference between two JSON values of the same structure (inf if the
+    structure or a non-numeric value differs)."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        if a.keys() != b.keys():
+            return float("inf")
+        return max((_max_rel_diff(a[k], b[k]) for k in a), default=0.0)
+    if isinstance(a, list) and isinstance(b, list):
+        if len(a) != len(b):
+            return float("inf")
+        return max((_max_rel_diff(x, y) for x, y in zip(a, b)), default=0.0)
+    if isinstance(a, bool) or isinstance(b, bool) or not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
+        return 0.0 if a == b else float("inf")
+    if a == b:
+        return 0.0
+    return abs(a - b) / max(abs(a), abs(b))
 
 
 def main(argv=None):
@@ -330,8 +414,14 @@ def main(argv=None):
     if a.check:
         bad = [n for n, t in texts.items() if not (SCENES / n).exists() or (SCENES / n).read_text() != t]
         bad += [p.name for p in SCENES.glob("bras_*.json") if p.name not in texts]
-        if REDUCTION.read_text() != red_text:
-            bad.append(REDUCTION.name)
+        # The reduction stores full-precision floats; their last bits can differ between runner CPUs
+        # (numpy SIMD paths), so it is compared numerically (relative 1e-9), not as text. The scenes
+        # are rounded and compared exactly.
+        worst = _max_rel_diff(json.loads(REDUCTION.read_text()), json.loads(red_text))
+        if worst > REDUCTION_RTOL:
+            bad.append(f"{REDUCTION.name} (max relative difference {worst:.3g})")
+        elif worst > 0:
+            print(f"{REDUCTION.name}: float differences up to {worst:.3g} (within {REDUCTION_RTOL:g})")
         if bad:
             raise SystemExit(f"out of date: {bad}")
         print("scenes up to date")

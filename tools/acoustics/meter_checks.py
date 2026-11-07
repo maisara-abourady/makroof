@@ -164,15 +164,17 @@ def _schroeder_to_end_t30(e: np.ndarray, onset: int, fs: float) -> float | None:
 
 
 def paired_noise_condition(fc: float, t60: float, noise_below_db: float, R: int, seed: int,
-                           fs: float = BRAS_FS, length_s: float = 3.5) -> dict:
+                           fs: float = BRAS_FS, length_s: float = 3.5, noise_subtraction: bool = True) -> dict:
     """Paired T30 bias of the measured-IR path for one condition (per realisation
-    bias_i = T30_noisy,i / T30_clean,i - 1). EDT and C80 are reported too."""
+    bias_i = T30_noisy,i / T30_clean,i - 1). EDT and C80 are reported too. The noisy arm is the
+    validation path with AX27 noise subtraction (Phase 05e, decision D-C); the noise margin
+    (Lundeby late-decay line at t0 above N̂, AX27) is recorded per realisation, median and SD."""
     rng = np.random.default_rng(seed)
     n = int(round(length_s * fs))
     t = np.arange(n) / fs
     pre = int(0.005 * fs)  # a few ms of lead-in before the decay starts
     env = np.exp(-LN_1000 * np.maximum(t - pre / fs, 0) / t60) * (t >= pre / fs)
-    biases, edt_d, c80_d, unsuitable = [], [], [], 0
+    biases, edt_d, c80_d, unsuitable, margins, dyn = [], [], [], 0, [], []
     for _ in range(R):
         decay = rng.standard_normal(n) * env
         decay[pre] = 0.0
@@ -184,7 +186,9 @@ def paired_noise_condition(fc: float, t60: float, noise_below_db: float, R: int,
         # noisy arm: the metrics path, octave band
         yb, lead = bands.filter_band_with_lead(noisy, fs, fc)
         onset = metrics.onset_index(noisy) + lead
-        mn = metrics._band_metrics(yb, fs, onset, onset, lead=lead, band_hz=fc)
+        mn = metrics._band_metrics(yb, fs, onset, onset, lead=lead, band_hz=fc, noise_subtraction=noise_subtraction)
+        margins.append(mn["line_margin_db"] if mn["line_margin_db"] is not None else float("nan"))
+        dyn.append(mn["dynamic_range_db"] if mn["dynamic_range_db"] is not None else float("nan"))
         # clean arm: same band filter, Schroeder to the end of the file (N1)
         yc, lead_c = bands.filter_band_with_lead(clean, fs, fc)
         onset_c = metrics.onset_index(clean) + lead_c
@@ -193,14 +197,25 @@ def paired_noise_condition(fc: float, t60: float, noise_below_db: float, R: int,
             unsuitable += 1
             continue
         biases.append(mn["T30"] / t_clean - 1.0)
-        mc = metrics._band_metrics(yc, fs, onset_c, onset_c, lead=lead_c, band_hz=fc)
+        mc = metrics._band_metrics(yc, fs, onset_c, onset_c, lead=lead_c, band_hz=fc, noise_subtraction=noise_subtraction)
         if mn["EDT"] and mc["EDT"]:
             edt_d.append(mn["EDT"] / mc["EDT"] - 1.0)
         if mn["C80"] is not None and mc["C80"] is not None:
             c80_d.append(mn["C80"] - mc["C80"])
     b = np.array(biases) * 100
+    mg = np.array(margins)
+    dyn = np.array(dyn)
     return {
         "f_c": fc, "T": t60, "noise_below_dB": noise_below_db, "R": R, "unsuitable": unsuitable,
+        "noise_subtraction": noise_subtraction,
+        "margin_median_dB": float(np.nanmedian(mg)) if np.isfinite(mg).any() else None,
+        "margin_sd_dB": float(np.nanstd(mg, ddof=1)) if np.isfinite(mg).sum() > 1 else None,
+        "margin_median_minus_3sd_dB": (float(np.nanmedian(mg) - 3 * np.nanstd(mg, ddof=1))
+                                       if np.isfinite(mg).sum() > 1 else None),
+        "dynamic_range_median_dB": float(np.nanmedian(dyn)) if np.isfinite(dyn).any() else None,
+        "dynamic_range_sd_dB": float(np.nanstd(dyn, ddof=1)) if np.isfinite(dyn).sum() > 1 else None,
+        "dynamic_range_median_minus_3sd_dB": (float(np.nanmedian(dyn) - 3 * np.nanstd(dyn, ddof=1))
+                                              if np.isfinite(dyn).sum() > 1 else None),
         "mean_bias_pct": float(b.mean()) if b.size else None,
         "sd_pct": float(b.std(ddof=1)) if b.size > 1 else None,
         "se_pct": float(b.std(ddof=1) / math.sqrt(b.size)) if b.size > 1 else None,
@@ -209,8 +224,43 @@ def paired_noise_condition(fc: float, t60: float, noise_below_db: float, R: int,
     }
 
 
-CASE_A = [(fc, T, L) for fc in (500.0, 1000.0, 2000.0) for T in (1.0, 2.0) for L in (48.0, 55.0, 65.0)]
-CASE_B = [(125.0, 0.3, L) for L in (48.0, 55.0, 65.0)]
+# AX27 (decision D-C; E5-1 resolved by option C, 2026-11-06): L_min is the lowest noise level (1 dB
+# steps from 51 dB) with median - 3 SD >= 45 dB in every case A condition of the peak-referred Lundeby
+# dynamic range (``dynamic_range_db``, the D7(1) quantity); re-measured in Phase 05e: 51 dB. Measured
+# bands are admitted to the AQ9 mean and B12 at the decay-referred noise margin
+# 10 log10(P_line(t0) / N̂) (``line_margin_db``) >= L_min (tools/validation/run_validation.py).
+L_MIN_PLAN_DB = 51.0
+L_MIN_DB = 51.0
+MARGIN_REQUIRED_DB = 45.0  # ISO 3382-1 §4.2.1, T30
+CASE_A_FC_T = [(fc, T) for fc in (500.0, 1000.0, 2000.0) for T in (1.0, 2.0)]
+CASE_A = [(fc, T, L) for fc, T in CASE_A_FC_T for L in (L_MIN_DB, 55.0, 65.0)]  # gated (18 conditions)
+CASE_A_REPORTED = [(fc, T, 48.0) for fc, T in CASE_A_FC_T]  # the former lowest level: reported, not gated
+CASE_B = [(125.0, 0.3, L) for L in (48.0, 55.0, L_MIN_DB, 65.0)]  # plateau regime, reported
+
+
+def condition_seed(fc: float, T: float, L: float, base: int = 7070) -> int:
+    """Seed of a paired-noise condition, fixed by the condition itself (not its list position)."""
+    return base + 1000 * CASE_A_FC_T.index((fc, T)) + int(round(L)) if (fc, T) in CASE_A_FC_T else base + int(round(10 * L))
+
+
+def find_l_min(start_db: float = L_MIN_PLAN_DB, stop_db: float = 70.0, R: int = 51, log=None) -> dict:
+    """AX27 rule: the lowest level >= start_db, in 1 dB steps, at which median - 3 SD of the
+    peak-referred dynamic range is >= 45 dB in every case A (f_c, T); per level, the worst condition
+    is recorded (with the decay-referred noise margin beside it, reported)."""
+    levels = []
+    L = start_db
+    while L <= stop_db:
+        rows = [paired_noise_condition(fc, T, L, R, condition_seed(fc, T, L)) for fc, T in CASE_A_FC_T]
+        worst = min(rows, key=lambda r: r["dynamic_range_median_minus_3sd_dB"])
+        levels.append({"level_dB": L, "worst": {k: worst[k] for k in ("f_c", "T", "margin_median_dB", "margin_sd_dB",
+                                                                        "margin_median_minus_3sd_dB", "dynamic_range_median_dB",
+                                                                        "dynamic_range_sd_dB", "dynamic_range_median_minus_3sd_dB")}})
+        if log:
+            log(levels[-1])
+        if worst["dynamic_range_median_minus_3sd_dB"] >= MARGIN_REQUIRED_DB:
+            return {"L_min_dB": L, "levels": levels}
+        L += 1.0
+    return {"L_min_dB": None, "levels": levels}
 
 
 def paired_noise_test(conditions=CASE_A, pilot: int = 51, se_target_pct: float = 0.15, seed: int = 7070, log=None,
@@ -219,8 +269,8 @@ def paired_noise_test(conditions=CASE_A, pilot: int = 51, se_target_pct: float =
     count towards R (the run is repeated with R realisations from the same seed). R is capped at
     ``r_max`` (case B, reported only, is far from Gaussian in the plateau regime)."""
     out = []
-    for k, (fc, T, L) in enumerate(conditions):
-        s = seed + 1000 * k
+    for fc, T, L in conditions:
+        s = condition_seed(fc, T, L, seed)
         res = paired_noise_condition(fc, T, L, pilot, s)
         if res["sd_pct"] is not None:
             R = min(r_max, max(pilot, math.ceil((res["sd_pct"] / se_target_pct) ** 2)))
@@ -248,7 +298,8 @@ def simulated_edc_check(fs: float = 48000.0, t60: float = 1.0, fc: float = 1000.
     onset = metrics.onset_index(h) + lead
     e = (y**2)[onset:]
     lb = metrics.lundeby(e, fs)
-    edc_m = metrics.schroeder_edc(e, lb.crosspoint, lb.compensation)
+    # AX27 on (phase-05 scope 7: "run with AX27 on")
+    edc_m, _ = metrics.schroeder_edc_subtracted(e, lb.crosspoint, lb.noise_power, lb.compensation)
     edc_end = metrics.schroeder_edc(e, e.size, 0.0)
     i35 = int(np.flatnonzero(edc_end <= -35.0)[0])
     return {"edc_metrics_dB": float(edc_m[i35]), "edc_to_end_dB": float(edc_end[i35]),

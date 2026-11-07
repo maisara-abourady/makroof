@@ -71,6 +71,9 @@ jobs:
           export MAKROOF_DEBUG_RENDER_CLI="$PWD/build/clidebug/render_cli"
           python -m pytest tools/validation -v -rP
 
+      - name: Full a* gate recomputation (phase-05e D-B, minutes)
+        run: python -m pytest tools/acoustics/tests/test_radiosity.py -v -rP -m slow
+
       - name: Comparison report
         if: always()
         run: RENDER_CLI="$PWD/build/cli/render_cli" python tools/validation/run_validation.py
