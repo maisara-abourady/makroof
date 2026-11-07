@@ -68,6 +68,13 @@ within phase-05f's two-session stop rule, CR4 is recorded "pending extraction (r
 reason, and no comparison result, removes CR4 from the selection. Maisara's acceptance of the two-room label
 (phase-05e scope (b), reversal) keeps CR4 selected and pending; it goes through /fix-plan as a phase-05.md change.
 
+**CR4 accepted (phase-05f session 1, 2026-11-07, before any simulated-vs-measured CR4 number).** After two generic
+reader fixes (the CFaceTextureCoords record is 214 + 32 n bytes; the root starts after the last definition's
+thumbnail) every documented CR4 material area reproduces (largest difference 0.005 m²), every loop vertex lies within
+AX30 (max 1.98e-5 m), the enclosed volume is 8 656.51 m³ against the material file's 8 656.5 m³, and the room geometry
+parses without re-synchronisation (`tools/validation/tests/test_skp_reader.py`, CR4 case). CR4's reduction results are
+in §5; it enters the comparison with the same rules as CR2 and CR3.
+
 Every omni (dodecahedron) RIR the dataset provides for the selected rooms is used: 2 sources ×
 5 receivers per room, 30 source/receiver pairs (`CRx_RIR_LSi_MPj_Dodecahedron.wav`; CR3 also has a
 third source position, measured with the Genelec only, which is not omni and is not used, AQ8).
@@ -77,7 +84,8 @@ third source position, measured with the Genelec only, which is not omni and is 
 - Geometry: `CRx.skp` (SketchUp 2015), read by `tools/validation/skp_reader.py` (this
   repository's own reader). Accepted only if every material's total area reproduces
   `_descr/mat_CRx.txt` to the printed precision (0.01 m², ±0.1 % allowed for rounding of large
-  areas) and every loop vertex lies on its face's plane.
+  areas) and every loop vertex lies on its face's plane (|n·p + d| ≤ 1 mm, AX30, decided 2026-11-07 before any CR4
+  comparison; measured maxima CR2 7.2e-16 m, CR3 3.2e-12 m, CR4 1.98e-5 m).
 - Source and receiver positions: `RIRs/CRx_RIRs_Dodecahedron.sofa` (EmitterPosition,
   ReceiverPosition, model frame, metres), extracted once by
   `tools/validation/extract_bras_geometry.py` into `tools/validation/data/bras_geometry.json`

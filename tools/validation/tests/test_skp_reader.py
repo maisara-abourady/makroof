@@ -4,7 +4,7 @@ fetch_bras.py --groups materials geometry; skipped otherwise, required in the ni
 The bras_mapping.md §2 acceptance test, one rule for every selected room (no per-room logic):
 every documented material area reproduces (one-to-one, to the printed 0.01 m², ±0.1 % for large
 areas, the tolerance of extract_bras_geometry.match_materials) and every loop vertex lies on its
-face's plane within AX30 (SketchUp's geometric tolerance, 0.001 inch).
+face's plane within AX30 (1 mm absolute).
 """
 
 import os
@@ -14,9 +14,10 @@ import pytest
 from tools.validation import extract_bras_geometry as ex, fetch_bras, skp_reader
 
 CACHE = fetch_bras.cache_dir()
-# AX30: planarity limit |n.p + d| for every loop vertex = SketchUp's geometric tolerance, 0.001 in.
-# CR2 and CR3 meet 1e-9 m (7.2e-16, 3.2e-12 m); CR4's textured model reads up to 1.98e-5 m.
-OFF_PLANE_TOL_M = 0.001 * skp_reader.INCH
+# AX30: planarity limit |n.p + d| <= 1 mm for every loop vertex (absolute, one rule for all rooms;
+# a misparse gives metres, 1 mm is ~15 x below lambda/2 at 11.3 kHz). Measured: CR2 7.2e-16 m,
+# CR3 3.2e-12 m, CR4 1.98e-5 m (bras_geometry.json max_off_plane_m).
+OFF_PLANE_TOL_M = 1.0e-3
 
 
 def _need(path):
