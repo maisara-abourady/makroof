@@ -44,7 +44,9 @@ The follow-ups are the ones listed in PR #14 ("Follow-ups (not done here)"):
 |---|---|---|---|---|
 | 1 | 2026-11-07 | BRIEF GAPS | G1 (Maisara: F1), G2–G10 | G1 (answered: spread only, plan later), G2–G10 (objectives amended) |
 | 2 | 2026-11-07 | BRIEF GAPS | G11 (brief not on origin), G12 (s0 change without a decision record), G13–G17 | G11 (6a8c027 on origin merges cdd421a), G12 (decision loop: decider D1 → interrogator SURVIVES WITH CORRECTIONS → advocate PASS → plan-editor AX31, AQ4, AC 3; diff check applied; ledger P06F-1..11), G13 (U = M·N·(K−1) per state; per-call bound in the tests), G14 (NaN test: −120 dB against the zeroed-input render over the whole output; guard in sim because the engine owns the FDL), G15 (O9 met by a code change, no keep-decision needed), G16 (phase-13 scope 1 wording kept, numbers added), G17 (code committed after the decision loop) |
+| 3 | 2026-11-07 | CONTINUE (BRIEF OK given this round) | G1 (O3(b) macOS), G2 (figures vs runs), G3 (benchmark tag) | — |
+| 4 | 2026-11-07 | CONTINUE | G4 (no CI run on head 46bdfc5) | G1 (O3(b) restated, phase-13 item 9, P06F-12..14), G2 (runs cited), G3 (thread-CPU + met/MISSED, run 42397114233) |
+| 5 | 2026-11-07 | READY TO REPORT | G5 (log rows 4–5 missing, non-blocking; closed by this edit) | G4 (main merged 1a9094a, tsan gated; head CI 42399733475 and nightly 42399733461 green) |
 
 ## Phase re-review (not a steward round)
 - `/review-phase-pr` procedure, independent agent, at 31894b6: lane bookkeeping correct, 12 of 13 non-equivalent mutants killed; Major: reset() × lanes untested (fixed: mid-block reset test, mutant now killed); stale PR description (updated); minors: renderB simplified, per-call bound for straddling blocks tested, AQ4 sample-rate wording (P06F-11), comment; big finite inputs and IrSet finiteness, the Catch2 abort hang, and pinning the summation order noted as follow-ups. Kept at `docs/review/phase-06/review-PR14-followups-at-31894b6.md`.
-| 3 | 2026-11-07 | CONTINUE (BRIEF OK given this round) | G1 (O3(b) macOS), G2 (figures vs runs), G3 (benchmark tag) | — |
