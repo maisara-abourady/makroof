@@ -20,11 +20,17 @@ NaN/Inf output samples over both channels.
 | 1024, 4096 | 1e36 | finite at P = 128 | **188 928 non-finite** |
 | 1024, 4096 | ≥ 3e36 | **non-finite** | **non-finite** |
 
-Reading: an isolated sample up to 1e38 does not overflow; a run of large samples does, once the
-forward FFT's DC bin, Σ over 2P samples ≈ 2P·A, exceeds FLT_MAX = 3.40e38 (P = 512: 2P·A ≥ 3.4e38 at
-A ≥ 3.3e35; observed: 3e35 finite, 1e36 not). Once poisoned, the FDL spectrum stays in the delay line
-and the output is non-finite for the IR length (≈ 189 000 samples ≈ the 188 360-sample IR). The
-re-review's claim (Minor 2) is confirmed for runs, not for isolated samples.
+Reading (corrected after the interrogator's option check, ledger P06B-15, P06B-16): an isolated sample
+up to 1e38 does not overflow (this IR). For a same-sign run of R samples the forward FFT's DC bin is
+min(R, 2P)·A, so a run overflows once min(R, 2P)·A ≥ FLT_MAX = 3.40e38: R = 64 at 1e37 (6.4e38) but not
+at 3e36 (1.9e38); R ≥ 2P at A ≥ 3.32e35 (P = 512) or 1.33e36 (P = 128), matching 1e36 finite at P = 128
+and not at P = 512. (The non-finite counts in the table are summed over both channels of a 96 000-sample
+render, shorter than the IR, so they do not show how long the poison lasts.)
+
+**Duration (re-measured):** the same IR, a run of 1 024 samples at 1e37, rendered for 3 × the IR length
+(565 080 samples): per channel, non-finite output from sample 1 152 to 190 591 (P = 128) and 1 536 to
+190 975 (P = 512), **189 440 samples each = the 188 360-sample IR + the 1 024-sample run, rounded to whole
+partitions**; finite again after that. A poisoned spectrum stays in the FDL for the IR's K partitions.
 
 Analytic bounds (N = 2 inputs, P ≤ 512, so 2P ≤ 1024), with |x| ≤ B after the bound:
 - forward FFT of [previous P | newest P]: every bin |X| ≤ Σ|x| ≤ 2P·B ≤ 1024·B (radix-2/4 partial

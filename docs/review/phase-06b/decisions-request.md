@@ -29,17 +29,19 @@ instance in Phase 13), the 12 s case.
 Facts: BUILD_PLAN §2 AX31 (and the alternatives it records), ledger P06F-1 (decider D1, interrogator
 SURVIVES WITH CORRECTIONS, advocate PASS), AQ4, phase-06 AC 3. An isolated update reaches the output one
 partition later (10.7 ms at P = 512, 5.3 ms at P = 256) in exchange for spreading the k ≥ 1 work over the
-host callbacks (worst-callback cost at host 64, 12 s IR: Linux p99.9 66.6 %, Windows 32.2 %). Options:
+host callbacks (worst-callback cost at host 64, 12 s IR, P = 512, crossfading: Linux p99.9 66.6 %, Windows 32.2 %; macOS wall 657.4 % / thread-CPU 109.9 %, not provable on the shared runner, phase-13 item 9; no measured cost for the alternatives). Options:
 **confirm** AX31; **replace** it with one of its recorded alternatives (catch-up at pickup, or computing
 the whole first block at pickup).
 
 ## D3 — Bound on finite input samples (scope 3; new AX row)
 
-Facts: M1 (runs of samples ≥ 1e37, or ≥ 1e36 at P = 512, overflow the forward FFT's DC bin and poison the
-FDL for the IR length; the poison threshold is 2P·A ≥ FLT_MAX = 3.40e38); the existing guard zeroes
+Facts: M1 (a same-sign run of R samples at A overflows the forward FFT's DC bin once min(R, 2P)·A ≥ FLT_MAX =
+3.40e38 and poisons the FDL for the IR length, measured 189 440 samples per channel; |x| ≤ B bounds every
+FDL bin by 2P·B for any IR); the existing guard zeroes
 NaN/±Inf (CrossfadingConvolver input guard, phase-06 non-finite test: −120 dB against the render of the
 input with those samples zeroed); output growth |y| ≤ B·Σ_n Σ|h_{n,m}|, largest Σ|h| per path over the
-test scenes 90.9; FLT_MAX 3.40e38. Phase-06b risk: "A bound set too low would change in-range audio; the
+12 test scenes 90.9 (not a bound over all valid scenes or IRs given to submitIrSet; output finiteness needs
+2P·N·B·Σ|h| < FLT_MAX, i.e. Σ|h| < 1.6e29 at B = 2²⁰); FLT_MAX 3.40e38. Phase-06b risk: "A bound set too low would change in-range audio; the
 phase-06 null tests at their unchanged gates are the guard." The AX row must fix:
 1. **the bound B** (a magnitude on |x|; options to weigh, not limited to: a level far above any audio,
    e.g. 2²⁰ ≈ 1.05e6 ≈ +120 dBFS, or larger values derived from FLT_MAX / (2P·N·Σ|h|_max) with margin, or
@@ -63,3 +65,14 @@ rounding" (contractor review focus). Options to weigh: test on (a) with a thresh
 measured distributions (which rule: midpoint, a margin from the descending side, …); test on (b) with a
 threshold in ulp (which rule: e.g. ≤ some fraction of the mutant's error, or bit-exact, or a stated
 margin for FMA / compiler differences); or both.
+
+## Interrogator option check (round 0, 2026-11-07): ledger P06B-7 … P06B-30
+
+D1, D2: product matters (several valid). D3: product matter inside the window fixed by arithmetic
+(lower edge: at least the largest level that must pass exactly, ≥ +40 dBFS by this request; upper edges
+3.32e35 (FDL, P = 512) and 1.83e33 (output, Σ|h| ≤ 90.9)); +24 dBFS CONDITIONS VIOLATED; clamp vs zero
+product matter; the −120 dB null against the treated-input render is valid under zeroing but not under
+clamping (P06B-24: the clamped burst dominates the reference energy), while "output after the IR length
+equals the clean render" is valid under both. D4: option family (b) verified (exact products, any
+threshold in [0, 25) ulp separates; no FMA margin needed, P06B-29); (a) alone CONDITIONS VIOLATED;
+the exact rule is the decider's.
