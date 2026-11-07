@@ -21,7 +21,8 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
 
 ## Assumptions in force
 
-- **AQ10** budget (latency ≤ 512 samples at 48 kHz; ≤ 15% of one core per instance for a 3 s tail;
+- **AQ10** budget (partition P ≤ 512 samples at 48 kHz; reported latency P + 32 = 544 samples (11.3 ms)
+  at the default P = 512 (phase-06b D1); ≤ 15% of one core per instance for a 3 s tail;
   IR rebuild ≤ 50 ms for the AQ10 workloads W1 and W2 (position-only), in every output mode
   (decider report 8, accepted by Maisara, 2026-11-05)). **AX5**: the definition of "exactly as saved" across machines.
 
@@ -78,8 +79,10 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
    wall p99.9 75.5 % (run 42390056623), 609 % (42392204088), 161.8 % (42394370942) and 657.4 %
    (42397114233), with thread-CPU p99.9 109.9 % in 42397114233 (most of the wall overshoot is the runner
    taking the thread off the CPU). Measure it on an Apple-silicon Mac with the `[benchmark]` test (it
-   prints wall and thread-CPU p99.9 per case); if it misses, the remedy is P = 256 (allowed under
-   scope 1) or non-uniform partitioning (new AX entry, 13b, per scope 1), not a change to the target.
+   prints wall and thread-CPU p99.9 per case); if it misses, the remedy is non-uniform partitioning
+   (new AX entry, 13b, per scope 1) or another scope 1 optimisation that leaves the output unchanged
+   within −100 dB (e.g. SIMD in the accumulation loops), not P = 256 (it raises convolution work per
+   sample 1.5–2.1×, run 42397114233, host 512) and not a change to the target (phase-06b D1).
 
 ## Out of scope
 

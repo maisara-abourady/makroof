@@ -67,6 +67,11 @@ the Phase 06 convolver.
    moves change the HRTF set; check whether Vorländer Table 15.1's head-rotation row (35 ms; filter
    content 'new HRTF') applies and, if so, whether the AQ4/AX31 isolated-update delay (slot wait +
    rebuild + 2P) meets it; record the result (an AX through /fix-plan if a change is needed).
+   Before measuring, state which limit is applied (Table 15.1's 35 ms or the 20 ms printed in Vorländer
+   §15 prose) and whether the 30 ms fade counts toward it (ledger P06B-66, phase-06b advocate). W1
+   (20.6 ms on the Linux runner) lies in (13.7, 24.3] ms at P = 512, where AX31's extra partition decides
+   the row (31.3 vs 41.9 ms); so if the row applies, AX31's reversal clause applies (AX31 note, phase-06b
+   D2).
 
 ## Out of scope
 
