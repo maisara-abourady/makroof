@@ -34,3 +34,4 @@
 |---|---|---|---|---|
 | 0 | 2026-11-07 | BRIEF GAPS | G1 (O3 criterion vs. likely BUILD_PLAN.md conflict), G2 (O5 trigger/evidence: run on merge SHA) | — |
 | 0b | 2026-11-07 | BRIEF OK | — | G1, G2 |
+| 1 | 2026-11-07 | READY TO REPORT | — | — (O1–O5 MET; CI run 42379113616 on cdd421a still in progress, follow-up) |
