@@ -193,7 +193,7 @@
    "source": {
     "skp": "CR3.skp",
     "skp_sha256": "41acf16d78476fedfdadce3c66235e7b8e91ee925264ec738a23c56cfb73041b",
-    "reader_skips": 45
+    "reader_skips": 34
    },
    "documented": {
     "areas": {
@@ -415,7 +415,7 @@
    "source": {
     "skp": "CR4.skp",
     "skp_sha256": "853ebebb8dbcbc6b4c092de358c1fae1609fb54f0bfb682074b95b83676840e5",
-    "reader_skips": 46
+    "reader_skips": 34
    },
    "documented": {
     "areas": {

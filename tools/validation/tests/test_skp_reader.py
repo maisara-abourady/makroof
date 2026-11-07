@@ -2,9 +2,10 @@
 fetch_bras.py --groups materials geometry; skipped otherwise, required in the nightly job).
 
 The bras_mapping.md §2 acceptance test, one rule for every selected room (no per-room logic):
-every documented material area reproduces (one-to-one, to the printed 0.01 m², ±0.1 % for large
-areas, the tolerance of extract_bras_geometry.match_materials) and every loop vertex lies on its
-face's plane within AX30 (1 mm absolute).
+every documented material area reproduces (one-to-one, to within 1.1 × its printed unit, absolute:
+0.011 m², extract_bras_geometry.AREA_TOL_M2; phase-05g, ledger T5g-1…T5g-18), the reader's total
+over all faces reproduces the documented S to within 1.1 × S's printed unit, and every loop vertex
+lies on its face's plane within AX30 (1 mm absolute).
 """
 
 import os
@@ -33,6 +34,8 @@ def test_material_areas_match_the_documentation(room):
     _need(skp)
     descr = (CACHE / "materials" / "descr" / f"mat_{room}.txt").read_text(encoding="utf-8", errors="replace")
     doc = ex.documented_materials(descr)
+    units = ex.documented_units(descr)
+    assert set(units["areas"].values()) == {ex.AREA_UNIT_M2}  # every BRAS area printed to 0.01 m²
     model = skp_reader.read(skp.read_bytes())
     polys = skp_reader.world_polygons(model)
     acc = {}
@@ -42,8 +45,11 @@ def test_material_areas_match_the_documentation(room):
     names = ex.match_materials(acc, doc["areas"])  # one-to-one; raises on any unmatched area
     assert sorted(names.values()) == sorted(doc["areas"])
     for k, name in names.items():
-        assert acc[k] == pytest.approx(doc["areas"][name], abs=max(0.011, 1e-3 * doc["areas"][name]))
-    assert sum(doc["areas"].values()) == pytest.approx(doc["S"], abs=0.06)
+        assert acc[k] == pytest.approx(doc["areas"][name], abs=ex.AREA_TOL_M2)
+    # the reader's total over every face, unpainted included, against the documented S (1.1 × its printed unit)
+    assert sum(p.area_m2 for p in polys) == pytest.approx(doc["S"], abs=ex.AREA_TOL_FACTOR * units["S"])
+    # the documentation's own consistency: Σ documented areas vs S, to the worst-case rounding n·u/2 + u_S/2
+    assert sum(doc["areas"].values()) == pytest.approx(doc["S"], abs=ex.documentation_sum_bound_m2(units))
     assert max(p.off_plane_m for p in polys) < OFF_PLANE_TOL_M
     assert model.faces_not_resolved == 0
 
@@ -76,3 +82,96 @@ def test_extraction_reproduces_the_committed_geometry(room):
     committed = json.loads(ex.OUT.read_text(encoding="utf-8"))["rooms"][room]
     fresh = json.loads(json.dumps(ex.extract_room(room, CACHE, log=lambda *_: None)))
     assert m._max_rel_diff(committed, fresh) <= m.REDUCTION_RTOL
+
+
+# ---------------------------------------------------------------- phase-05g scope 4: area tolerance (no cache needed)
+
+
+def test_printed_unit_and_absolute_area_tolerance():
+    assert ex._printed_unit("178.90") == 0.01 and ex._printed_unit("2763.0") == 0.1 and ex._printed_unit("8") == 1.0
+    assert ex.AREA_TOL_M2 == pytest.approx(0.011)
+    doc = {"mat_CR4_concrete": 1773.89, "mat_CR4_windows": 8.50}
+    assert ex.match_materials({1: 1773.89 + 0.0105, 2: 8.50 - 0.0105}, doc) == {1: "mat_CR4_concrete", 2: "mat_CR4_windows"}
+    with pytest.raises(SystemExit):  # the 05f review's case: a reader bug losing ~1 m^2 of CR4 concrete
+        ex.match_materials({1: 1773.89 - 1.0, 2: 8.50}, doc)
+    with pytest.raises(SystemExit):  # absolute at any size: 0.012 m^2 fails on the largest area too
+        ex.match_materials({1: 1773.89 + 0.012, 2: 8.50}, doc)
+
+
+def test_documented_units_and_total_checks():
+    descr = ("(Room surface/volume S = 2763.0 m² / V = 3330.6 m³ - based on provided 3d models)\n"
+             "Surface Areas:\tmat_CR3_floor\t342.53 m²\n\tmat_CR3_seating\t178.90 m²\nCharacteristic depths:\n")
+    u = ex.documented_units(descr)
+    assert u == {"areas": {"mat_CR3_floor": 0.01, "mat_CR3_seating": 0.01}, "S": 0.1}
+    assert ex.documentation_sum_bound_m2(u) == pytest.approx(2 * 0.005 + 0.05)
+    ex.check_total_area(2763.0 + 0.10, 2763.0, 0.1)
+    with pytest.raises(SystemExit):
+        ex.check_total_area(2763.0 + 0.12, 2763.0, 0.1)
+
+
+# ---------------------------------------------------------------- phase-05g scope 5: declared vs found definitions
+
+
+def test_definition_trailer_detection_and_count_check():
+    pad = b"\x55" * 40
+    tr = skp_reader.DEFINITION_TRAILER
+    data = pad + tr + b"\x03\x80" + pad + tr + b"\x00\x00" + pad + tr + b"\x07\x80" + pad
+    assert [has_png for _, has_png in skp_reader.definition_records(data, 0)] == [True, False]  # 0x8007: not a trailer end
+
+
+@pytest.mark.parametrize("room,declared,with_png", [("CR2", 1, 1), ("CR3", 19, 17), ("CR4", 19, 17)])
+def test_declared_definition_count_matches_the_definition_records(room, declared, with_png):
+    """CR3 and CR4 declare 19 definitions: 17 records end with a PNG thumbnail, the group definitions
+    'Group#1' and 'Group#2' with an image-less CThumbnail (skp_reader.definition_records). read()
+    raises SkpFormatError when the counts differ."""
+    skp = CACHE / room / "geometry" / f"{room}.skp"
+    _need(skp)
+    data = skp.read_bytes()
+    model = skp_reader.read(data)
+    assert model.definitions == declared == len(model.definition_records)
+    assert sum(has_png for _, has_png in model.definition_records) == with_png
+    for pos, has_png in model.definition_records:
+        if not has_png:  # the image-less records are the group definitions (their name precedes the trailer)
+            assert "Group#".encode("utf-16-le") in data[pos - 400 : pos]
+
+
+def test_count_mismatch_is_an_error(monkeypatch):
+    skp = CACHE / "CR3" / "geometry" / "CR3.skp"
+    _need(skp)
+    real = skp_reader.definition_records
+    monkeypatch.setattr(skp_reader, "definition_records", lambda d, s: real(d, s)[:-1])
+    with pytest.raises(skp_reader.SkpFormatError, match="19 definitions declared, 18"):
+        skp_reader.read(skp.read_bytes())
+
+
+# ---------------------------------------------------------------- phase-05g scope 6: exact index offsets
+
+
+@pytest.mark.parametrize("room", ["CR3", "CR4"])
+def test_no_under_counted_index_offset_after_a_definition_header(room):
+    """Before phase-05g, crossing a definition header could pick an index offset one too small, which
+    showed up a few KB later as a 'bad reference' skip (11 in CR3, 11 in CR4 plus one
+    'index offset corrected' replay). With the strict extended
+    trial (skp_reader._exact_offset) no such skip remains, and a strict (type-checked) parse of the whole
+    file meets no type mismatch, i.e. the type rules hold on the real data."""
+    skp = CACHE / room / "geometry" / f"{room}.skp"
+    _need(skp)
+    data = skp.read_bytes()
+    model = skp_reader.read(data)
+    assert not [s for s in model.skips if s[2].startswith("bad reference")]
+    assert len(model.skips) == 34
+
+
+def test_strict_parse_meets_no_type_mismatch(monkeypatch):
+    skp = CACHE / "CR3" / "geometry" / "CR3.skp"
+    _need(skp)
+    init = skp_reader._Parser.__init__
+
+    def strict_init(self, *a, **k):
+        init(self, *a, **k)
+        self.strict = True
+
+    monkeypatch.setattr(skp_reader._Parser, "__init__", strict_init)
+    model = skp_reader.read(skp.read_bytes())
+    assert not [s for s in model.skips if "type mismatch" in s[2]]
+    assert len(model.faces) == 47360

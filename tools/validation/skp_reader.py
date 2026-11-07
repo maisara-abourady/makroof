@@ -41,7 +41,21 @@ then searches forward for the next
 position at which a new object of a geometry class (or a class definition) starts and the next
 60 references parse with every back-reference resolving, trying index offsets 0-63 for objects
 created in the skipped bytes. Skips are logged; any back-reference that fails after a skip would
-show up as a failed parse, and the area checks catch silently wrong geometry.
+show up as a failed parse, and the area checks catch silently wrong geometry. When several offsets
+pass that trial, the exact one is the offset that parses furthest under a strict, type-checked
+extended trial (an edge's ends must be vertices, an edge-use's edge an edge, a loop's first element
+an edge-use, a face's loops loops; _exact_offset, Phase 05g scope 6): the 60-reference trial alone
+could accept an offset one too small, which showed up kilobytes later as a 'bad reference' skip
+(11 in CR3; 11 in CR4, plus one 'index offset corrected' replay; all gone: reader_skips 45 -> 34
+and 46 -> 34, geometry identical). A strict parse of the whole of CR2, CR3 and CR4 meets no type mismatch.
+
+Definition count (Phase 05g scope 5). The u32 before the CComponentDefinition class declares the
+number of definitions; read() checks it against the definition records found
+(definition_records: every record ends with the same CThumbnail field tail, followed by a CDib with
+a PNG or by a null reference). CR2 declares 1 (1 record, with a PNG); CR3 and CR4 declare 19: 17
+records end with a PNG thumbnail and two, the group definitions 'Group#1' and 'Group#2' (a SketchUp
+group is an instance of a definition of its own and is counted in the model's definition list),
+with an image-less thumbnail. Counting PNGs alone (Phase 05f) therefore found 17.
 """
 
 from __future__ import annotations
@@ -76,6 +90,7 @@ class _Parser:
         self.cur_def = None
         self.root = False
         self.root_start = None  # file position where the root entities begin
+        self.strict = False  # type-check back-references (re-synchronisation trials only; see _typed)
 
     # primitives
     def u8(self):
@@ -152,6 +167,18 @@ class _Parser:
         return o
 
 
+_OPAQUE = ("skipped", "pre")
+
+
+def _typed(p, o, *classes):
+    """In a strict (trial) parse, a reference must name an object of one of ``classes`` (or an opaque
+    one, whose class is unknown). Under a wrong index offset a back-reference resolves to a neighbouring
+    object of another class; this is what tells offsets apart (Phase 05g, scope 6)."""
+    if p.strict and o is not None and o["_c"] not in classes and o["_c"] not in _OPAQUE:
+        raise _Stop(f"type mismatch: {o['_c']} where {'/'.join(classes)} expected at {p.pos}")
+    return o
+
+
 def _entity(p, o):
     o["attr"] = p.ref()
     o["mat"] = p.ref()
@@ -165,9 +192,9 @@ def _vertex(p, o):
 
 def _edge(p, o):
     _entity(p, o)
-    o["v0"] = p.ref()
-    o["v1"] = p.ref()
-    p.ref()  # curve
+    o["v0"] = _typed(p, p.ref(), "CVertex")
+    o["v1"] = _typed(p, p.ref(), "CVertex")
+    _typed(p, p.ref(), "CCurve", "CArcCurve")  # curve
 
 
 def _curve(p, o):
@@ -182,16 +209,16 @@ def _arc(p, o):
 
 def _edgeuse(p, o):
     p.u16()
-    o["edge"] = p.ref()
+    o["edge"] = _typed(p, p.ref(), "CEdge")
     o["rev"] = p.u8()
-    p.ref()  # loop
-    o["next"] = p.ref()
+    _typed(p, p.ref(), "CLoop")  # loop
+    o["next"] = _typed(p, p.ref(), "CEdgeUse")
 
 
 def _loop(p, o):
     p.u16()
     p.u16()
-    o["first"] = p.ref()
+    o["first"] = _typed(p, p.ref(), "CEdgeUse")
 
 
 def _face(p, o):
@@ -201,7 +228,7 @@ def _face(p, o):
     k = p.u32()
     if k > 10000:
         raise _Stop(f"implausible loop count at {p.pos}")
-    o["loops"] = [p.ref() for _ in range(k)]
+    o["loops"] = [_typed(p, p.ref(), "CLoop") for _ in range(k)]
 
 
 def _attr_container(p, o):
@@ -271,7 +298,8 @@ class Model:
     instances: list = field(default_factory=list)   # dicts with owner, def, xf, mat
     material_refs: set = field(default_factory=set)
     skips: list = field(default_factory=list)
-    definitions: int = 0
+    definitions: int = 0  # declared (the u32 before the CComponentDefinition class)
+    definition_records: list = field(default_factory=list)  # (trailer position, has a PNG thumbnail)
 
 
 def _class_definitions(d: bytes):
@@ -319,7 +347,11 @@ def read(data: bytes, log=None) -> Model:
         if k >= len(iends):
             raise SkpFormatError(f"{n_defs} definitions: no thumbnail ends the last one")
         p.root_start = iends[k]
-    model = Model(definitions=n_defs)
+    records = definition_records(data, first_geom)
+    if len(records) != n_defs:
+        raise SkpFormatError(f"{n_defs} definitions declared, {len(records)} definition records found "
+                             f"(thumbnail trailers after the first geometry class)")
+    model = Model(definitions=n_defs, definition_records=records)
     next_report = 1 << 20
     last = None  # state at the last re-synchronisation, for the index-offset correction below
     while p.pos < len(data) - 2:
@@ -378,6 +410,36 @@ def read(data: bytes, log=None) -> Model:
     if log:
         log(f"skp: {len(model.faces)} faces, {len(model.instances)} instances, {n_defs} definitions, {len(model.skips)} skips")
     return model
+
+
+# The fixed tail of a definition record's CThumbnail fields: u16 1, an empty string, two doubles 0.0 and
+# 1.0, two doubles 0.0 (39 bytes). It is followed by the thumbnail image, a new CDib object (class 3, as
+# in every BRAS file: tag 0x8003) whose PNG ends the record, or by a null reference (no image: the
+# record ends there and the next definition, or the root, follows). Found on every definition of CR2,
+# CR3 and CR4 (Phase 05g scope 5): 1 / 17 / 17 with a PNG, 0 / 2 / 2 without.
+DEFINITION_TRAILER = b"\x01\x00\xff\xfe\xff\x00" + bytes(15) + b"\xf0\x3f" + bytes(16)
+_CDIB_TAG = b"\x03\x80"
+
+
+def definition_records(data: bytes, start: int) -> list:
+    """(position, has PNG) of every definition-record trailer after ``start`` (see DEFINITION_TRAILER).
+
+    The consistency check of read(): their count equals the declared definition count. In CR3 and CR4,
+    which declare 19, 17 records end with a PNG thumbnail; the other two are the group definitions
+    'Group#1' and 'Group#2' (a SketchUp group is an instance of a definition of its own, counted in the
+    model's definition list), whose CThumbnail has no image. The former PNG count therefore saw 17.
+    The root-start rule (read) only needs the PNG-ended records: in all three files the last
+    definition record before the root has a PNG."""
+    out = []
+    i = data.find(DEFINITION_TRAILER, start)
+    while i >= 0:
+        nxt = data[i + len(DEFINITION_TRAILER) : i + len(DEFINITION_TRAILER) + 2]
+        if nxt == _CDIB_TAG:
+            out.append((i, True))
+        elif nxt == b"\x00\x00":
+            out.append((i, False))
+        i = data.find(DEFINITION_TRAILER, i + 1)
+    return out
 
 
 def _offset_correction(p, last, err) -> int:
@@ -475,11 +537,60 @@ def _scan(p, data, q, stop):
             else:
                 ok = name in GEOMETRY_CLASSES and (data[q + 7 : q + 9] == b"\x01\x01" or data[q + 2 : q + 4] == b"\x05\x80")
         if ok:
-            for delta in range(0, 64):
-                if _trial(p, data, q, p.idx + delta):
-                    return q, delta
+            passing = [delta for delta in range(0, 64) if _trial(p, data, q, p.idx + delta)]
+            if passing:
+                return q, _exact_offset(p, data, q, passing)
         q += 1
     return None
+
+
+# Objects an extended trial parses at most (Phase 05g scope 6): enough to cross the next few
+# kilobytes, where an under-counted offset used to show up as a 'bad reference' skip.
+EXTENDED_TRIAL_OBJECTS = 2000
+
+
+def _reach(p, data, pos, idx, k=EXTENDED_TRIAL_OBJECTS):
+    """How many new objects a strict parse from ``pos`` with index base ``idx`` creates before its first
+    reference error (an unresolved back-reference, an unknown class tag or a reference of the wrong
+    class); ``k`` if none within ``k`` objects. Other stops (a record this reader has no layout for,
+    a definition body, the end of the data) end the count without counting as an error."""
+    objs = collections.ChainMap({}, p.objs)
+    _opaque(objs, p.idx + 1, idx)
+    q = _Parser(data, pos, idx, p.cls, objs)
+    q.defs_seen = p.defs_seen
+    q.root_start = p.root_start
+    q.cur_def = p.cur_def
+    q.strict = True
+    try:
+        while q.idx - idx < k and q.pos < len(data) - 2:
+            q.ref()
+    except _Stop as e:
+        m = str(e)
+        if m.startswith(("bad reference", "unknown class", "type mismatch")):
+            return q.idx - idx - 1  # the object being read when the error came is not counted
+    except Exception:
+        return q.idx - idx - 1
+    return min(q.idx - idx, k)
+
+
+def _exact_offset(p, data, q, passing):
+    """Index offset for a re-synchronisation at ``q`` (Phase 05g scope 6). Every offset in ``passing``
+    survived the 60-reference trial, which can accept an offset that is one too small: nothing in its
+    window referenced the last object created in the skipped bytes, so the error showed up kilobytes
+    later as a 'bad reference' skip (CR3, CR4: a few KB after each 'definition body' skip). The exact
+    offset is the one under which every back-reference resolves to an object of the class its field
+    expects; it is taken as the passing offset that parses furthest under the strict, type-checked
+    extended trial (ties: the smallest). One rule for every file, no per-room logic."""
+    if len(passing) == 1:
+        return passing[0]
+    best, best_reach = passing[0], -1
+    for delta in passing:
+        r = _reach(p, data, q, p.idx + delta)
+        if r > best_reach:
+            best, best_reach = delta, r
+        if r >= EXTENDED_TRIAL_OBJECTS:
+            break  # cannot be beaten; a larger offset would only tie
+    return best
 
 
 def _calibrate(data, start):
