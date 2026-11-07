@@ -72,7 +72,7 @@ def build(out: pathlib.Path, seed: int = 2026, binary=None) -> None:
     for room, s, r in PAIRS:
         scene = rv.SCENES / f"bras_{room.lower()}_{s.lower()}_{r.lower()}.json"
         if not scene.exists():  # no valid reduction for this room yet (bras_mapping.md §5)
-            key.append(f"{room}_{s}_{r}: no scene yet (CR4: geometry extraction pending, phase-05f; not dropped)")
+            key.append(f"{room}_{s}_{r}: no scene yet (geometry not accepted by bras_mapping.md §2; the room stays selected)")
             continue
         h_sim = rv.render(binary, scene)
         h_meas = rv.measured(cache, room, s, r)

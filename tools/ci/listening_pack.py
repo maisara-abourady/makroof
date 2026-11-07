@@ -154,7 +154,8 @@ def _phase_05e(pack: pathlib.Path, binary: pathlib.Path) -> None:
     ab_pack.build(pack, binary=binary)
 
 
-SPECIAL_BUILDERS = {"phase-05e": _phase_05e}
+# phase-05f: the same A/B pack, now with the CR4 pair (CR4 accepted in phase-05f).
+SPECIAL_BUILDERS = {"phase-05e": _phase_05e, "phase-05f": _phase_05e}
 
 
 def build(out_root: pathlib.Path, phase: str, binary: pathlib.Path, log=print) -> pathlib.Path:

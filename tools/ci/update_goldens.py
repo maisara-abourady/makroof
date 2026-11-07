@@ -34,13 +34,16 @@ from tools.acoustics import golden  # noqa: E402
 def changelog_entry(reason: str, entries: list[dict], today: str) -> str:
     lines = [f"## {today}", "", f"Reason: {reason}", ""]
     for e in entries:
+        if e.get("added"):
+            lines.append(f"- `{e['name']}`: extended by {len(e['added'])} new key(s): "
+                         + ", ".join(f"`{p}`" for p in e["added"][:40]) + (" …" if len(e["added"]) > 40 else ""))
         if e["created"]:
             lines.append(f"- `{e['name']}`: created")
         elif e["changed"]:
             moved = ", ".join(f"`{p}`" for p in e["changed"])
             lines.append(f"- `{e['name']}`: changed {moved}")
         else:
-            lines.append(f"- `{e['name']}`: rewritten, within tolerance")
+            lines.append(f"- `{e['name']}`: rewritten, " + ("pinned values within tolerance" if e.get("added") else "within tolerance"))
     return "\n".join(lines) + "\n\n"
 
 
@@ -52,6 +55,11 @@ def main(argv: list[str] | None = None) -> int:
         type=pathlib.Path,
         default=None,
         help="changelog file (default: <golden dir>/CHANGELOG.md)",
+    )
+    parser.add_argument(
+        "--extend",
+        action="store_true",
+        help="also pin keys the goldens do not have yet (e.g. a validation room added); pinned keys are never dropped",
     )
     parser.add_argument(
         "pytest_args",
@@ -75,6 +83,8 @@ def main(argv: list[str] | None = None) -> int:
         log_path = pathlib.Path(tmp) / "updates.jsonl"
         log_path.touch()
         env = dict(os.environ, **{golden.ENV_UPDATE_REASON: reason, golden.ENV_UPDATE_LOG: str(log_path)})
+        if args.extend:
+            env[golden.ENV_UPDATE_EXTEND] = "1"
         result = subprocess.run([sys.executable, "-m", "pytest", *pytest_args], cwd=REPO, env=env, check=False)
         entries = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
