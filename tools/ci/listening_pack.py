@@ -255,7 +255,8 @@ def _phase_06(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
     (pack / "README.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-SPECIAL_BUILDERS = {"phase-05e": _phase_05e, "phase-06": _phase_06}
+# phase-05f: the same A/B pack, now with the CR4 pair (CR4 accepted in phase-05f).
+SPECIAL_BUILDERS = {"phase-05e": _phase_05e, "phase-05f": _phase_05e, "phase-06": _phase_06}
 
 
 def build(out_root: pathlib.Path, phase: str, binary: pathlib.Path, log=print) -> pathlib.Path:

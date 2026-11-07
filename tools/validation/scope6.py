@@ -87,6 +87,11 @@ def air_m() -> np.ndarray:
     return rv.air_m()
 
 
+def bras_rooms() -> list[str]:
+    """Every room with validation scenes (bras_mapping.md §1 selection; CR4 since phase-05f)."""
+    return sorted({p.stem.split("_")[1].upper() for p in rv.SCENES.glob("bras_*.json")})
+
+
 def pair_names(room: str) -> list[str]:
     return sorted(p.stem for p in rv.SCENES.glob(f"bras_{room.lower()}_*.json") if not p.stem.endswith("_fitted"))
 
@@ -113,6 +118,31 @@ def _xb(plan, env_vb) -> dict:
             "target_ax16": plan["target_ax16"].tolist(), "target_hybrid": rh.target_hybrid(plan, env_vb).tolist()}
 
 
+KERNEL_BUDGET_BYTES = 6e9  # the dense float32 kernel (N² · T · V · 8 bands); above it, one variant at a time
+
+
+def run_pairs_in_budget(dims, variants, pairs, t_end, size):
+    """rh.run_pairs, building the kernel for all variants at once when it fits KERNEL_BUDGET_BYTES and
+    one variant at a time otherwise (phase-05f: CR4's three-variant kernel is ≈ 11 GB). Geometry fields
+    of ``info`` (patches, bins, image cells) are the same for every variant; ``generations`` lists all. The variants
+    are independent columns of the kernel (same geometry, own specular factors and air), so the
+    envelopes are the same either way."""
+    n = len(radiosity.box_patches(tuple(float(x) for x in dims), size).areas)
+    T = int(np.ceil(t_end / rh.DT))
+    if n * n * T * len(variants) * 8 * 4 <= KERNEL_BUDGET_BYTES:
+        return rh.run_pairs(dims, variants, pairs, t_end, size, log=log)
+    envs, gens, info = [], [], None
+    for k, var in enumerate(variants):
+        log(f"kernel above the memory budget ({n} patches, {T} bins): variant {k + 1}/{len(variants)} alone")
+        e, i = rh.run_pairs(dims, [var], pairs, t_end, size, log=log)
+        envs.append(e)
+        gens += i["generations"]
+        info = i
+    info["generations"] = gens
+    info["variants_built_separately"] = True
+    return np.concatenate(envs, axis=0), info
+
+
 def bras_room(room: str, halving: bool) -> dict:
     """Envelopes (cached as npz) and ΔL_b for one BRAS room, three variants."""
     reduction = json.loads(rv.REDUCTION.read_text())[room]["initial"]
@@ -131,7 +161,7 @@ def bras_room(room: str, halving: bool) -> dict:
     t_end = t_end_for(dims, pairs)
     size = min(dims) / 2  # the a* start size (scope 6: patches as for a*)
     t0 = time.time()
-    env, info = rh.run_pairs(dims, list(variants.values()), pairs, t_end, size, log=log)
+    env, info = run_pairs_in_budget(dims, list(variants.values()), pairs, t_end, size)
     info["seconds"] = time.time() - t0
     log(f"{room}: hybrid {info}")
     CACHE.mkdir(parents=True, exist_ok=True)
@@ -504,7 +534,7 @@ def run_ensembles(alpha_sets=("initial", "fitted"), workers: int = 4) -> dict:
     results = json.loads(rv.RESULTS.read_text())
     out = {}
     for aset in alpha_sets:
-        names = [n for room in ("CR2", "CR3") for n in pair_names(room)]
+        names = [n for room in bras_rooms() for n in pair_names(room)]
         meas = {n: {k: {"EDT": results["pairs"][n + ("_fitted" if aset == "fitted" else "")]["meas"]["bands"][k]["EDT"],
                         "C80": results["pairs"][n + ("_fitted" if aset == "fitted" else "")]["meas"]["bands"][k]["C80"],
                         "admitted": results["pairs"][n + ("_fitted" if aset == "fitted" else "")]["bands"][k]["admitted"]}
@@ -544,12 +574,21 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("part", choices=("hybrid", "ensembles", "all"))
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--rooms", nargs="+", default=None,
+                    help="hybrid: (re)compute these BRAS rooms only and keep the others from the existing file "
+                         "(the envelopes are deterministic); default: every room with scenes")
     a = ap.parse_args(argv)
     res = json.loads(OUT.read_text()) if OUT.exists() else {}
     if a.part in ("hybrid", "all"):
-        res["bras"] = {"CR2": bras_room("CR2", halving=True), "CR3": bras_room("CR3", halving=False)}
-        res["phase04_rooms"] = phase04_rooms()
-        res["synthetic"] = table52_and_s_cases()
+        # The patch-halving convergence check runs on CR2 only: at the halved size the dense kernel of the larger
+        # rooms needs ~8x the RAM (CR3: reported in the report; CR4 is larger still).
+        keep = {} if a.rooms is None else {k: v for k, v in res.get("bras", {}).items() if k not in a.rooms}
+        todo = a.rooms or bras_rooms()
+        res["bras"] = dict(sorted({**keep, **{r: bras_room(r, halving=r == "CR2") for r in todo}}.items()))
+        if a.rooms is None or "phase04_rooms" not in res:  # room-independent, deterministic
+            res["phase04_rooms"] = phase04_rooms()
+        if a.rooms is None or "synthetic" not in res:
+            res["synthetic"] = table52_and_s_cases()
         res["xb"] = xb_reading(res)
         OUT.write_text(json.dumps(res, indent=1, default=float) + "\n")
     if a.part in ("ensembles", "all"):

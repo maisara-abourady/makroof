@@ -55,3 +55,10 @@ Reason: Phase 05e: create the nightly-gate baseline of the BRAS validation scene
 
 - `validation_baseline`: created
 
+## 2026-11-07
+
+Reason: CR4 added, pre-committed room (phase-05f: CR4 geometry accepted by the bras_mapping.md §2 test under AX30; CR2/CR3 entries unchanged)
+
+- `validation_baseline`: extended by 20 new key(s): `bras_cr4_ls1_mp1`, `bras_cr4_ls1_mp1_fitted`, `bras_cr4_ls1_mp2`, `bras_cr4_ls1_mp2_fitted`, `bras_cr4_ls1_mp3`, `bras_cr4_ls1_mp3_fitted`, `bras_cr4_ls1_mp4`, `bras_cr4_ls1_mp4_fitted`, `bras_cr4_ls1_mp5`, `bras_cr4_ls1_mp5_fitted`, `bras_cr4_ls2_mp1`, `bras_cr4_ls2_mp1_fitted`, `bras_cr4_ls2_mp2`, `bras_cr4_ls2_mp2_fitted`, `bras_cr4_ls2_mp3`, `bras_cr4_ls2_mp3_fitted`, `bras_cr4_ls2_mp4`, `bras_cr4_ls2_mp4_fitted`, `bras_cr4_ls2_mp5`, `bras_cr4_ls2_mp5_fitted`
+- `validation_baseline`: rewritten, pinned values within tolerance
+

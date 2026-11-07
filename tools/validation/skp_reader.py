@@ -28,7 +28,7 @@ Classes read (layouts as found):
 - CAttributeContainer: u16, references until null (named dictionaries, texture coordinates).
 - CAttributeNamed: u16, u32, name, (key, u8 type, value) until an empty key, u32 child count,
   children. Value types 0x0a string, 0x06 double, 0x07 u8, 0x04 u32.
-- CFaceTextureCoords: 214 bytes.
+- CFaceTextureCoords: 6 bytes, 24 doubles, u32 n, n x 4 doubles, 12 bytes (214 + 32 n).
 - CGroup, CComponentInstance: entity header, definition, transform (x axis, y axis, z axis,
   origin, w: 13 doubles), name, 16-byte GUID.
 - CComponentDefinition: the entity header is read; the rest of its record (behaviour fields,
@@ -232,7 +232,14 @@ def _named(p, o):
 
 
 def _texcoords(p, o):
-    p.pos += 214
+    # 6 bytes, 24 doubles, u32 n, n x 4 doubles, 12 bytes: 214 + 32 n bytes. n = 0 in CR2/CR3;
+    # CR4's textured faces have n = 0 (1 548 records) or 4 (220) (Phase 05f; checked on every
+    # record: each ends where its attribute container's null terminator follows).
+    p.pos += 198
+    n = p.u32()
+    if n > 64:
+        raise _Stop(f"implausible texture-coordinate count {n} at {p.pos - 4}")
+    p.pos += 32 * n + 12
 
 
 def _instance(p, o):
@@ -296,13 +303,22 @@ def read(data: bytes, log=None) -> Model:
     else:
         p.defs_seen = 0
         p.root = True
-    # Every definition record ends with its thumbnail PNG, so the root entities start after the
-    # n_defs-th PNG end (IEND chunk + CRC); checked: the BRAS files have exactly n_defs of them.
-    iends = [m.start() + 8 for m in re.finditer(rb"IEND\xaeB`\x82", data)]
-    if n_defs and len(iends) >= n_defs:
-        p.root_start = iends[n_defs - 1]
-    elif n_defs:
-        raise SkpFormatError(f"{n_defs} definitions but only {len(iends)} thumbnails")
+    # Every definition record ends with its thumbnail PNG, and every definition after the first
+    # starts right after the previous one's thumbnail with a new object of CComponentDefinition;
+    # the root entities start after the thumbnail of the last definition, i.e. after the first
+    # PNG end (IEND chunk + CRC) behind the last PNG that is followed by a definition tag. Only
+    # PNGs after the first geometry class count: the ones before it are the model preview and
+    # material textures (CR4 has a textured material). Phase 05f: the former rule (the n_defs-th
+    # PNG of the whole file) counted those and put CR4's root at the start of its last definition
+    # and CR2's at its preview image.
+    iends = [m.start() + 8 for m in re.finditer(rb"IEND\xaeB`\x82", data) if m.start() > first_geom]
+    if n_defs:
+        tag = struct.pack("<H", 0x8000 | cls_idx) if cls_idx is not None else None
+        tagged = [k for k, e in enumerate(iends) if tag is not None and data[e : e + 2] == tag]
+        k = tagged[-1] + 1 if tagged else 0
+        if k >= len(iends):
+            raise SkpFormatError(f"{n_defs} definitions: no thumbnail ends the last one")
+        p.root_start = iends[k]
     model = Model(definitions=n_defs)
     next_report = 1 << 20
     last = None  # state at the last re-synchronisation, for the index-offset correction below

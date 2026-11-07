@@ -152,6 +152,7 @@ python tools/ci/listening_pack.py --phase phase-04
 
 # golden files: the ONLY way to update them (appends the reason to tests/golden/CHANGELOG.md)
 python tools/ci/update_goldens.py --reason "<why>" -- <pytest args selecting the tests>
+# --extend also pins keys the golden lacks (e.g. a BRAS room added to validation_baseline); never drops one
 
 # pluginval strictness 10 (downloads the pinned release by checksum on first run; xvfb on Linux)
 tools/ci/run_pluginval.sh build/release/SpatialScene_artefacts/Release/VST3/SpatialScene.vst3
