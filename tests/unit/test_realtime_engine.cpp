@@ -178,6 +178,90 @@ TEST_CASE("RealtimeEngine refuses IRs that don't fit", "[conv][engine]")
     CHECK(engine.submitRoomIR(emptyIr(48000.0, sim::RealtimeEngine::maxIrLengthSamples(48000.0))));
 }
 
+// Phase 06b scope 3 (AX32): input samples with |x| > 2^20, and NaN / +-Inf, are taken in as 0, before the
+// forward FFT, so a huge finite burst cannot overflow the FDL. (a) With bursts that overflow the FDL
+// without the bound (an isolated +1e38, an isolated -FLT_MAX, a same-sign run of 2P samples at +1e38:
+// 2P * 1e38 > FLT_MAX), every output sample is finite and the output nulls (-120 dB, phase-06 AC 2 gate)
+// against renderOffline of the input with exactly those samples zeroed. (b) From output sample
+// s_last + L + 4P on, the output nulls against the render of the burst-free input (recovery; valid under
+// any treatment). (c) A sample of exactly +-B is kept and one of nextafter(B, +inf) /
+// nextafter(-B, -inf) is zeroed, each against the matching reference.
+TEST_CASE("RealtimeEngine bounds input samples at 2^20 (AX32)", "[conv][engine]")
+{
+    const int p = GENERATE(128, 256, 512);
+    constexpr float kB = sim::conv::CrossfadingConvolver::kInputBound;
+    STATIC_REQUIRE(kB == 1048576.0f);
+    constexpr std::size_t kTaps = 5000;
+    auto ir = emptyIr(48000.0, kTaps);
+    for (std::size_t path = 0; path < 4; ++path)
+        ir.taps[path] = conv_test::noise(kTaps, 90u + path, 0.2);
+    const auto pp = static_cast<std::size_t>(p);
+    const auto runOne = [&](const sim::MultiChannel& in, std::size_t frames) {
+        sim::RealtimeEngine engine(p);
+        engine.prepare(48000.0, 512);
+        REQUIRE(engine.submitRoomIR(ir));
+        return runEngine(engine, in, frames, 0, 512);
+    };
+    const auto nullDb = [&](const std::vector<float>& y, const std::vector<float>& ref, std::size_t from) {
+        const std::vector<float> yw(y.begin() + static_cast<std::ptrdiff_t>(from + pp), y.end());
+        const std::vector<double> rw(ref.begin() + static_cast<std::ptrdiff_t>(from), ref.end());
+        return conv_test::residualDb(yw, rw, 0);
+    };
+
+    SECTION("(a) overflowing bursts: finite output, null against the zeroed input; (b) recovery")
+    {
+        const sim::MultiChannel clean = {conv_test::noise(20000, 95u, 0.2),
+                                         conv_test::noise(20000, 96u, 0.2)};
+        sim::MultiChannel x = clean, zeroed = clean;
+        const auto put = [&](std::size_t c, std::size_t i, float v) {
+            x[c][i] = v;
+            zeroed[c][i] = 0.0f;
+        };
+        put(0, 1000, 1e38f);
+        put(1, 1500, -std::numeric_limits<float>::max());
+        const std::size_t runStart = 2000;
+        for (std::size_t i = 0; i < 2 * pp; ++i)
+        {
+            put(0, runStart + i, 1e38f);
+            put(1, runStart + i, 1e38f);
+        }
+        const std::size_t sLast = runStart + 2 * pp - 1;
+        const auto refZeroed = sim::renderOffline(ir, zeroed);
+        const auto refClean = sim::renderOffline(ir, clean);
+        const auto out = runOne(x, refZeroed[0].size() + pp);
+        const std::size_t recoveryFrom = sLast + kTaps + 4 * pp;
+        REQUIRE(refClean[0].size() >= recoveryFrom + 4096);
+        for (std::size_t m = 0; m < 2; ++m)
+        {
+            INFO("P " << p << ", output " << m);
+            CHECK(std::all_of(out[m].begin(), out[m].end(), [](float v) { return std::isfinite(v); }));
+            CHECK(nullDb(out[m], refZeroed[m], 0) <= -120.0);
+            CHECK(nullDb(out[m], refClean[m], recoveryFrom) <= -120.0);
+        }
+    }
+
+    SECTION("(c) +-B is kept, the next float beyond it is zeroed")
+    {
+        for (const float v : {kB, -kB, std::nextafter(kB, std::numeric_limits<float>::infinity()),
+                              std::nextafter(-kB, -std::numeric_limits<float>::infinity())})
+        {
+            const bool kept = std::fabs(v) <= kB;
+            sim::MultiChannel x = {conv_test::noise(12000, 97u, 0.2), conv_test::noise(12000, 98u, 0.2)};
+            x[0][3000] = v;
+            sim::MultiChannel expected = x;
+            if (!kept)
+                expected[0][3000] = 0.0f;
+            const auto ref = sim::renderOffline(ir, expected);
+            const auto out = runOne(x, ref[0].size() + pp);
+            for (std::size_t m = 0; m < 2; ++m)
+            {
+                INFO("P " << p << ", sample " << v << (kept ? " (kept)" : " (zeroed)") << ", output " << m);
+                CHECK(nullDb(out[m], ref[m], 0) <= -120.0);
+            }
+        }
+    }
+}
+
 // Phase 06b scope 4: an IR with a NaN, +Inf or -Inf tap is refused (makeIrSet gives nullptr,
 // submitRoomIR returns false) and the engine keeps playing its current IR: the output still nulls
 // against the offline render of that IR (-120 dB) and no fade starts.

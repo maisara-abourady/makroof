@@ -38,8 +38,10 @@
 // with no current IR fades in from silence (y_A = 0) like any other change, so a late first IR never
 // starts with a step.
 //
-// Input guard: non-finite input samples (NaN, +-Inf) are replaced by 0 as they are taken in, so a
-// bad host sample cannot poison the FDL (and with it the output for a whole IR length).
+// Input bound (AX32): an input sample is taken in unchanged iff |x| <= kInputBound = 2^20 (+120.4 dB
+// re 1.0); NaN, +-Inf and larger samples are replaced by 0 as they are taken in, before the forward FFT.
+// So a bad host sample cannot poison the FDL (and with it the output for a whole IR length): every FDL
+// bin is at most 2P * kInputBound for any IR.
 //
 // Memory reclamation: the audio thread never frees. A retired request goes into a fixed-size
 // lock-free single-producer (audio) / single-consumer queue; releaseRetired() pops and frees them
@@ -111,6 +113,9 @@ public:
     std::uint64_t fadeCount() const noexcept { return fades_; }
     // 2P-bin complex multiply-adds done by the latest process() call (work-spreading tests).
     std::uint64_t lastProcessMultiplyAdds() const noexcept { return macs_; }
+
+    // AX32: the largest input magnitude taken in unchanged (2^20); larger, NaN and +-Inf become 0.
+    static constexpr float kInputBound = 1048576.0f;
 
     // Capacity of the deferred-release queue.
     static constexpr std::size_t kReleaseQueueSize = 64;
