@@ -24,7 +24,7 @@ Linux, macOS and Windows, and Maisara has gone through its listening checklist.
 | 05f | CR4 geometry and three-room re-run | M | not started | | | |
 | 05b | Early scattered energy (B11) | M | not started | | | |
 | 05d | Second measured dataset (Arni, dEchorate) | M | not started | | | |
-| 06 | Real-time partitioned convolution + latency | M | not started | | | |
+| 06 | Real-time partitioned convolution + latency | M | in progress | | 2026-11-07 | |
 | 07 | Plugin integration: parameters, state, IR pipeline | M | not started | | | |
 | 08 | Binaural output with a generic HRTF | L | not started | | | |
 | 09 | Stereo-speaker output mode | S | not started | | | |
