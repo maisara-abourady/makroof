@@ -178,6 +178,56 @@ TEST_CASE("RealtimeEngine refuses IRs that don't fit", "[conv][engine]")
     CHECK(engine.submitRoomIR(emptyIr(48000.0, sim::RealtimeEngine::maxIrLengthSamples(48000.0))));
 }
 
+// Phase 06b scope 4: an IR with a NaN, +Inf or -Inf tap is refused (makeIrSet gives nullptr,
+// submitRoomIR returns false) and the engine keeps playing its current IR: the output still nulls
+// against the offline render of that IR (-120 dB) and no fade starts.
+TEST_CASE("RealtimeEngine refuses an IR with a non-finite tap and keeps the current IR", "[conv][engine]")
+{
+    const float bad = GENERATE(std::numeric_limits<float>::quiet_NaN(),
+                               std::numeric_limits<float>::infinity(),
+                               -std::numeric_limits<float>::infinity());
+    sim::RealtimeEngine engine(256);
+    engine.prepare(48000.0, 512);
+    auto ir = emptyIr(48000.0, 5000);
+    for (std::size_t path = 0; path < 4; ++path)
+        ir.taps[path] = conv_test::noise(5000, 80u + path, 0.2);
+    REQUIRE(engine.submitRoomIR(ir));
+    auto poisoned = ir;
+    poisoned.taps[2][4321] = bad;
+    INFO("bad tap " << bad);
+    CHECK(engine.makeIrSet(poisoned) == nullptr);
+
+    const sim::MultiChannel x = {conv_test::noise(20000, 85u), conv_test::noise(20000, 86u)};
+    const auto ref = sim::renderOffline(ir, x);
+    const std::size_t total = ref[0].size() + 256;
+    std::vector<std::vector<float>> in(2, std::vector<float>(total, 0.0f)),
+        out(2, std::vector<float>(total, 0.0f));
+    for (std::size_t c = 0; c < 2; ++c)
+        std::copy(x[c].begin(), x[c].end(), in[c].begin());
+    std::size_t pos = 0;
+    bool refused = false;
+    for (const int n : conv_test::blockSchedule(total, 0, 19u, 512))
+    {
+        if (!refused && pos >= 6000) // mid-stream, with the first IR playing
+        {
+            CHECK_FALSE(engine.submitRoomIR(poisoned));
+            refused = true;
+        }
+        const float* ins[2] = {in[0].data() + pos, in[1].data() + pos};
+        float* outs[2] = {out[0].data() + pos, out[1].data() + pos};
+        engine.process(ins, outs, n);
+        pos += static_cast<std::size_t>(n);
+    }
+    REQUIRE(refused);
+    CHECK(engine.convolver().fadeCount() == 0); // the first IR was installed at once; nothing faded
+    for (std::size_t m = 0; m < 2; ++m)
+    {
+        CHECK(std::all_of(out[m].begin(), out[m].end(), [](float v) { return std::isfinite(v); }));
+        const std::vector<double> r(ref[m].begin(), ref[m].end());
+        CHECK(conv_test::residualDb(out[m], r, 256) <= -120.0);
+    }
+}
+
 TEST_CASE("RealtimeEngine::process allocates nothing, including IR swaps", "[conv][engine][alloc]")
 {
     if (!test_support::trackerActive())

@@ -38,7 +38,8 @@ class IrSet
 {
 public:
     // Built OFF the audio thread. Throws std::invalid_argument for an unsupported partition size, a
-    // matrix with no inputs or outputs, or taps of different lengths.
+    // matrix with no inputs or outputs, taps of different lengths, or a non-finite (NaN, +-Inf) tap
+    // (phase 06b scope 4).
     static std::shared_ptr<const IrSet> create(const RoomIR& ir, int partitionSize);
     static std::shared_ptr<const IrSet> create(int numInputs, int numOutputs,
                                                const std::vector<std::vector<float>>& taps, int partitionSize,
