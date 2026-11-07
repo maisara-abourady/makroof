@@ -8,6 +8,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -280,4 +281,64 @@ TEST_CASE("render_cli --ensemble writes N realisations at the requested rate", "
     CHECK(rOnly.channels[1] == ensemble.channels[3]);
     CHECK(run({"--scene", scene("dead_booth.json"), "--ensemble", "3", "--ir", path.string()}).exitCode
           == cli::kExitUsage); // needs --mode omni
+}
+
+// Phase 06: --realtime-emulation renders through sim::RealtimeEngine with the offline render's
+// length and alignment, so the two null (the python job checks the -120 dB criterion on the
+// binary; here: deterministic, and close to the offline render).
+TEST_CASE("render_cli --realtime-emulation matches the offline render and is deterministic", "[cli][conv]")
+{
+    TempDir dir;
+    const auto in = (dir.path / "in.wav").string();
+    std::string error;
+    REQUIRE(cli::writeWavFloat32(in, randomStereo(48000, 20000, 77u), error));
+    const auto off = (dir.path / "off.wav").string(), rt1 = (dir.path / "rt1.wav").string(),
+               rt2 = (dir.path / "rt2.wav").string();
+    const std::string room = scene("small_room.json");
+    REQUIRE(run({"--scene", room, "--mode", "omni", "--in", in, "--out", off}).exitCode == cli::kExitOk);
+    for (const auto& out : {rt1, rt2})
+    {
+        const auto r = run({"--scene", room, "--mode", "omni", "--in", in, "--out", out,
+                            "--realtime-emulation", "--block", "random", "--partition", "256"});
+        REQUIRE(r.exitCode == cli::kExitOk);
+    }
+    cli::Audio a, b, c;
+    REQUIRE(cli::readWav(off, a, error));
+    REQUIRE(cli::readWav(rt1, b, error));
+    REQUIRE(cli::readWav(rt2, c, error));
+    REQUIRE(a.channels.size() == 2);
+    REQUIRE(b.numFrames() == a.numFrames());
+    for (std::size_t ch = 0; ch < 2; ++ch)
+    {
+        CHECK(bitIdentical(b.channels[ch], c.channels[ch]));
+        double err = 0.0, sig = 0.0;
+        for (std::size_t i = 0; i < a.numFrames(); ++i)
+        {
+            const double d = static_cast<double>(b.channels[ch][i]) - a.channels[ch][i];
+            err += d * d;
+            sig += static_cast<double>(a.channels[ch][i]) * a.channels[ch][i];
+        }
+        CHECK(10.0 * std::log10(err / sig) <= -120.0);
+    }
+}
+
+TEST_CASE("render_cli realtime-emulation argument errors", "[cli][conv]")
+{
+    const std::string room = scene("small_room.json");
+    const auto usageError = [&](const std::vector<std::string>& args, const std::string& text) {
+        const auto r = run(args);
+        CHECK(r.exitCode == cli::kExitUsage);
+        CHECK(r.err.find(text) != std::string::npos);
+    };
+    usageError({"--scene", room, "--ir", "x.wav", "--realtime-emulation"}, "--realtime-emulation needs --in");
+    usageError({"--scene", room, "--in", "a.wav", "--out", "b.wav", "--block", "64"},
+               "need --realtime-emulation");
+    usageError({"--scene", room, "--in", "a.wav", "--out", "b.wav", "--realtime-emulation", "--block", "0"},
+               "--block must be");
+    usageError(
+        {"--scene", room, "--in", "a.wav", "--out", "b.wav", "--realtime-emulation", "--partition", "1024"},
+        "--partition must be");
+    usageError(
+        {"--scene", room, "--in", "a.wav", "--out", "b.wav", "--realtime-emulation", "--switch-every", "0.5"},
+        "must be given together");
 }
