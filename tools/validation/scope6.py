@@ -123,7 +123,8 @@ KERNEL_BUDGET_BYTES = 6e9  # the dense float32 kernel (N² · T · V · 8 bands)
 
 def run_pairs_in_budget(dims, variants, pairs, t_end, size):
     """rh.run_pairs, building the kernel for all variants at once when it fits KERNEL_BUDGET_BYTES and
-    one variant at a time otherwise (phase-05f: CR4's three-variant kernel is ≈ 16 GB). The variants
+    one variant at a time otherwise (phase-05f: CR4's three-variant kernel is ≈ 11 GB). Geometry fields
+    of ``info`` (patches, bins, image cells) are the same for every variant; ``generations`` lists all. The variants
     are independent columns of the kernel (same geometry, own specular factors and air), so the
     envelopes are the same either way."""
     n = len(radiosity.box_patches(tuple(float(x) for x in dims), size).areas)

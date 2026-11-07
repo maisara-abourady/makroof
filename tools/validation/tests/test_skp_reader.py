@@ -60,3 +60,19 @@ def test_texture_coordinate_record_layout():
     bad = bytes(198) + struct.pack("<I", 1000) + bytes(64)
     with pytest.raises(skp_reader._Stop):
         skp_reader._texcoords(skp_reader._Parser(bad, 0, 0, {}, {}), {})
+
+
+@pytest.mark.parametrize("room", ["CR2", "CR3", "CR4"])
+def test_extraction_reproduces_the_committed_geometry(room):
+    """The reader regression guard (phase-05f scope (a)): re-extracting a room gives the committed
+    tools/validation/data/bras_geometry.json entry (areas, off-plane maximum, reduction inputs,
+    reader skip count), compared numerically as make_bras_scenes.py --check does (last-bit float
+    differences between CPUs allowed, nothing else)."""
+    import json
+
+    from tools.validation import make_bras_scenes as m
+
+    _need(CACHE / room / "geometry" / f"{room}.skp")
+    committed = json.loads(ex.OUT.read_text(encoding="utf-8"))["rooms"][room]
+    fresh = json.loads(json.dumps(ex.extract_room(room, CACHE, log=lambda *_: None)))
+    assert m._max_rel_diff(committed, fresh) <= m.REDUCTION_RTOL
