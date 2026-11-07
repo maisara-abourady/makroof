@@ -115,6 +115,11 @@ jobs:
         if: runner.os == 'Linux'
         run: python tools/ci/listening_pack.py --phase phase-04 --render-cli build/cli/render_cli
 
+      # Phase 06: offline vs real-time drum renders and the IR-switch demo (render_cli --realtime-emulation).
+      - name: Listening pack (phase-06)
+        if: runner.os == 'Linux'
+        run: python tools/ci/listening_pack.py --phase phase-06 --render-cli build/cli/render_cli
+
       # Phase 05e A/B pack (measured BRAS RIR vs simulated): needs the BRAS RIRs, verified by SHA-256
       # on every use (tools/validation/fetch_bras.py), cached like the nightly job.
       - name: Cache BRAS files (listening pack)
@@ -367,3 +372,32 @@ jobs:
         run: cmake --build --preset asan
       - name: Test
         run: xvfb-run -a ctest --preset asan
+
+  # Phase 06 (and 07, 10): ThreadSanitizer on the real-time convolver's lock-free IR handover. The
+  # "[conv]" tests include one that hammers requestIr from two threads while the audio thread
+  # processes. The plugin isn't needed for them, so it isn't built here (much faster).
+  tsan:
+    name: TSan (linux)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install Linux dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1.2.24
+        with:
+          key: tsan
+          max-size: 500M
+      - name: Cache FetchContent (tsan)
+        uses: actions/cache@v6.1.0
+        with:
+          path: build/tsan/_deps
+          key: deps-linux-tsan-${{ hashFiles('CMakeLists.txt', 'cmake/**', 'CMakePresets.json') }}
+      - name: Configure
+        run: cmake --preset tsan -DSPATIAL_BUILD_PLUGIN=OFF
+      - name: Build
+        run: cmake --build --preset tsan --target spatial_tests
+      - name: Test (real-time convolution, TSan)
+        env:
+          TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
+        run: build/tsan/tests/unit/spatial_tests "[conv]"

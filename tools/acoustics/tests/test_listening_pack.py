@@ -61,3 +61,17 @@ def test_phase_04_pack_renders_the_full_room(render_cli_path, tmp_path):
     booth, _ = wav.read_float32(pack / "dead_booth" / "clicks.wav")
     assert stone.shape[0] - dry.shape[0] > 5 * 48000
     assert booth.shape[0] - dry.shape[0] < 48000
+
+
+def test_phase_06_pack_has_the_real_time_renders(render_cli_path, tmp_path):
+    from tools.acoustics import wav
+
+    lp = _load()
+    pack = lp.build(tmp_path, "phase-06", render_cli_path, log=lambda *_: None)
+    readme = (pack / "README.txt").read_text(encoding="utf-8")
+    assert "REAL-TIME" in readme
+    off, fs = wav.read_float32(pack / "drums_medium_room_offline.wav")
+    rt, _ = wav.read_float32(pack / "drums_medium_room_realtime.wav")
+    assert off.shape == rt.shape
+    assert (pack / "ir_switch_demo.wav").is_file()
+    assert (pack / "dry" / "drums.wav").is_file()

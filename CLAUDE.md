@@ -175,9 +175,19 @@ build/cli/render_cli --scene tests/scenes/valid/medium_room.json --mode omni --i
 # Phase 04: sigma1(EDT), sigma1(C80) of the hybrid IR (AX19) -> tools/acoustics/data/phase04_sigma1.json
 python -m tools.acoustics.measure_sigma1
 
-# ISM and AQ10 W1/W2 benchmarks (hidden Catch2 tests, CI runs them from the release build; the Linux
-# runner's W2 sweep sets N_cap, AX22)
+# Phase 06: render --in through the real-time engine (sim::RealtimeEngine, partitioned convolution) in
+# host blocks of N or random sizes 1..2048; same length/alignment as the offline render, so the two null.
+# --switch-scene/--switch-every alternate two rooms' IRs (the listening pack's ir_switch_demo)
+build/debug/render_cli --scene tests/scenes/valid/medium_room.json --mode omni --in in.wav --out rt.wav --realtime-emulation --block random [--partition 256]
+build/debug/render_cli --scene tests/scenes/valid/living_room.json --switch-scene tests/scenes/valid/concert_hall_box.json --switch-every 0.5 --mode omni --in tone.wav --out sw.wav --realtime-emulation
+
+# ISM, AQ10 W1/W2 and Phase 06 real-time convolution benchmarks (hidden Catch2 tests, CI runs them from
+# the release build; the Linux runner's W2 sweep sets N_cap, AX22)
 build/release/tests/unit/spatial_tests "[benchmark]" --benchmark-samples 10
+
+# TSan on the real-time convolver (CI job `tsan`, Linux; the plugin isn't needed)
+cmake --preset tsan -DSPATIAL_BUILD_PLUGIN=OFF && cmake --build --preset tsan --target spatial_tests
+build/tsan/tests/unit/spatial_tests "[conv]"
 ```
 
 Binary dirs are `build/<preset>/`. Plugin bundles land in
