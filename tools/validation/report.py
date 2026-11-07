@@ -93,7 +93,7 @@ def write(res: dict, path: pathlib.Path) -> None:
     if all(r in room_set(res) for r in SELECTED):
         w(room_set_label(res) + ": CR4 entered in phase-05f after its geometry passed the bras_mapping.md §2 acceptance "
           "test (AX30). The B12 replacement and the B11 promotion decisions deferred in phase-05e are taken on these rooms "
-          "with phase-05.md's unchanged pass rules (sections 5 and 6b).")
+          "with phase-05.md's unchanged pass rules (sections 3 and 6b).")
     else:
         w(room_set_label(res) + " (phase-05e scope (b)): the pending rooms stay selected and are not dropped. The B12 "
           "replacement and the B11 promotion decisions are deferred until they enter (pass rules unchanged).")
