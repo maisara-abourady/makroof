@@ -162,8 +162,9 @@ def test_no_under_counted_index_offset_after_a_definition_header(room):
     assert len(model.skips) == 34
 
 
-def test_strict_parse_meets_no_type_mismatch(monkeypatch):
-    skp = CACHE / "CR3" / "geometry" / "CR3.skp"
+@pytest.mark.parametrize("room,faces", [("CR2", 258), ("CR3", 47360), ("CR4", 48465)])
+def test_strict_parse_meets_no_type_mismatch(monkeypatch, room, faces):
+    skp = CACHE / room / "geometry" / f"{room}.skp"
     _need(skp)
     init = skp_reader._Parser.__init__
 
@@ -174,4 +175,4 @@ def test_strict_parse_meets_no_type_mismatch(monkeypatch):
     monkeypatch.setattr(skp_reader._Parser, "__init__", strict_init)
     model = skp_reader.read(skp.read_bytes())
     assert not [s for s in model.skips if "type mismatch" in s[2]]
-    assert len(model.faces) == 47360
+    assert len(model.faces) == faces
