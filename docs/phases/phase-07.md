@@ -9,6 +9,14 @@ parameters**. The scene is saved in the DAW project and restored with an identic
 first phase where the 3D Module (`src/module3d`) and the Simulator (`src/sim`) meet, and they do so
 only through `contract::SceneDescription`.
 
+## Raise with Maisara (she does not track these herself)
+
+The session raises each item in its **first message** and again in the **PR description**.
+
+1. **Latency decision gate.** Before `prepareToPlay` reports latency (`setLatencySamples`), phase-06b
+   decision 1 (the AQ10 latency reading, `docs/phases/phase-06b.md`) must be recorded; until then 07
+   may build everything else.
+
 ## Assumptions in force
 
 - **AQ4**: background IR rebuild, at most one per 20 ms; **synchronous rebuild in non-realtime

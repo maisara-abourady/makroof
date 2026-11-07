@@ -62,6 +62,10 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
 7. CI job `automation` (Linux in every PR; macOS/Windows too, since it's fast with short renders) runs all
    scenarios × 2 modes × {offline, realtime-sim} through `render_cli` with the sustained-tone input and
    runs `clicks.py`.
+8. **Isolated-update cap (AQ4):** settle by an AX entry whether the 20 ms update cap (AQ4) delays an
+   isolated request until its slot or only spaces build starts (recommendation, decider D1 Q2,
+   2026-11-07: a minimum spacing between build starts; an isolated request starts at once), and state
+   the resulting isolated-update delay.
 
 ## Out of scope
 

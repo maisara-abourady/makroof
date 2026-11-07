@@ -1481,7 +1481,7 @@ the new row is AX31) → interrogator diff check (nothing WRONG; four IMPRECISE 
 | P06F-1 | DECISION | D1: option A (spread; +1 partition for an isolated update; pace and reported latency unchanged) | decider; interrogator SURVIVES WITH CORRECTIONS; advocate PASS | code (CrossfadingConvolver computeBlock), deterministic per-call test | – | vetoable by Maisara | applied (AX31) |
 | P06F-2 | NUMBER | back-to-back period ⌈1440/P⌉·P = 1536 samples = 32 ms at P = 256 and 512 | CORRECT | arithmetic | none | – | closed |
 | P06F-3 | FACT | AQ4 "interval = max(20, 30, rebuild)" | IMPRECISE → applied: each term rounded to whole partitions; isolated-update delay stated (slot wait + rebuild + 2P) | Vorländer Table 15.1 heading "time available for filter update" | minor | – | closed |
-| P06F-4 | FACT | Table 15.1 rows applying to v1 | CORRECT: translational 700 ms / 3 s apply; source rotation (AQ8 omni) and head rotation don't | Vorländer §15 Table 15.1; PRD out of scope | none | Phase 08: HRTF set changes with the centroid yaw (AX3): does the 35 ms "new HRTF" row apply then? | open for Phase 08 |
+| P06F-4 | FACT | Table 15.1 rows applying to v1 | CORRECT: translational 700 ms / 3 s apply; source rotation (AQ8 omni) and head rotation don't | Vorländer §15 Table 15.1; PRD out of scope | none | Phase 08: HRTF set changes with the centroid yaw (AX3): does the head-rotation row (35 ms; filter content "new HRTF") apply then? (wording corrected, P06B-4) | open for Phase 08 (phase-08.md scope item 8) |
 | P06F-5 | NUMBER | 28.5 + 2 × 10.67 = 49.8 ms (W2, Linux, P = 512, no slot wait) | IMPRECISE (49.9) → applied 49.8 | arithmetic | minor | – | closed |
 | P06F-6 | FACT | "32 ms at P = 256 or 512" | IMPRECISE → applied: only while the rebuild ≤ 32 ms (Windows W2 41.6 ms → 42.7 ms) | §0 W2 times | minor | – | closed |
 | P06F-7 | FACT | AQ4 rationale "within Table 15.1's 35 ms" | IMPRECISE → applied: reworded to the 700 ms translational row | Vorländer Table 15.1 | minor | – | closed |
@@ -1495,3 +1495,22 @@ the new row is AX31) → interrogator diff check (nothing WRONG; four IMPRECISE 
 
 Finished diff: nothing WRONG; the four IMPRECISE points applied. Noted: Vorländer §15.3 prints 20 ms where
 Table 15.1 gives 35 ms (corpus erratum; neither AQ4 nor AX31 relies on it).
+
+## phase-06b.md (new), phase-07.md, phase-08.md, phase-10.md, BUILD_PLAN §0/§2 AX31/§6 — Phase 06b created (Maisara, 2026-11-07; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Asked by Maisara ("Create a phase for the two pending decisions and what is left for later"). Brief
+`docs/sessions/2026-11-07-phase-06b-plan.md` (steward BRIEF OK, round 2). Plan-editor wrote phase-06b.md and
+the phase-07 gate / phase-08 / phase-10 items; no acoustic or numeric choice was made (open values are
+marked "decided through /fix-plan in the 06b session"). Interrogator diff check: nothing WRONG; four
+IMPRECISE points, applied. The P = 256 CPU figures were checked by the main session against the saved CI
+logs of run 42397114233 (Linux 7.0 / 12.6 %, macOS 3.5 / 6.5 %, Windows 3.2 / 5.4 %: match).
+
+| id | type | claim | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| P06B-1 | NUMBER | every number in phase-06b.md cited or marked for the 06b session | CORRECT (P = 256 CPU figures NOT CHECKABLE by the interrogator; matched the CI logs) | §0 row 06, re-review, PR #14, CMakePresets.json, CI run 42397114233 | none | – | closed |
+| P06B-2 | FACT | "Assumptions in force" AQ4 summary (32 ms at 48 kHz) | IMPRECISE → applied: "while the rebuild is ≤ 32 ms" | BUILD_PLAN §2 AQ4 | minor | – | closed |
+| P06B-3 | FACT | AX1 bullet cites the 32-sample value to AX1 | IMPRECISE → applied: value cited to AX31 and §0 row 06 | BUILD_PLAN §2 AX1, AX31 | minor | – | closed |
+| P06B-4 | FACT | "Table 15.1 'new HRTF' row (35 ms)" | IMPRECISE → applied: "head-rotation row (35 ms; filter content 'new HRTF')" in phase-08, phase-06b, AX31; P06F-4 reworded | Vorländer §15 Table 15.1 | minor | – | closed |
+| P06B-5 | FACT | "12 s IR, P = 256: over budget while crossfading" | IMPRECISE (overstated) → applied: over budget on Linux (103.2 %); Windows 64.2 %, macOS 48.9 % | PR #14 "For the Expert", run 42397114233 | minor | – | closed |
+| P06B-6 | FACT | arithmetic 544 / 288 / 10.7 / 5.3 ms / 32 ms; AQ10, AX18, AX31 summaries; phase-07 gate; phase-10 item; §6 row | CORRECT | BUILD_PLAN §2, phase-06.md | none | – | closed |
+
