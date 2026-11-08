@@ -331,6 +331,18 @@ def step_ell(max_rung: int = 2):
                                               for n, v in vals.items() if str(ELL_LADDER[1]) + "_factorised" in v}
     result["steps"] = steps
     result["ell_m"] = ell
+    result["factorisation"] = {
+        "used_from_m": ELL_LADDER[2],
+        "kernel": "tools/validation/hybrid_fast.FastRoomKernel (compiled; same terms as ref_hybrid.RoomKernel, "
+                  "agreement <= 1e-7 relative, tools/validation/tests/test_hybrid_fast.py)",
+        "argument": "rungs from 1.25 m are computed per case with the air factored out (one band column without air, "
+                    "then exp(-m_b c t) per 1 ms bin); exact for the continuous model when alpha and s do not depend on "
+                    "the band, because every diffuse path's air factor is exp(-m R) with R = c t; the discrete hybrid "
+                    "applies air per whole delay bin, so the two differ by the binning (factorisation_check_2.5)",
+        "band_flat": {c["name"]: bool(np.all(np.ptp(variant_of(c).alpha, axis=1) == 0)
+                                      and np.all(np.ptp(variant_of(c).scattering, axis=1) == 0)) for c in cases()}}
+    result.pop("per_group", None)
+    result.pop("halving_5_to_2.5_max_change", None)
     d["ell"] = result
     save(d)
     log(f"ℓ = {ell}")
@@ -374,7 +386,10 @@ def hybrid_env_factorised(c, size, t_end) -> np.ndarray:
     whole delay bin in the kernel, so the two differ by the binning (checked against the full run at
     ℓ = 2.5 m, `factorisation_check` in phase05b.json)."""
     v0 = variant_of(c, np.zeros(8))
-    rk = rh.RoomKernel(c["dims"], size, t_end, [v0], bands=[3], log=log)
+    # the compiled kernel (tools/validation/hybrid_fast.py: the same terms as ref_hybrid.RoomKernel, agreement
+    # ≤ 1e-7 relative in test_hybrid_fast.py); numba is an offline dependency (requirements-offline.txt)
+    from tools.validation import hybrid_fast
+    rk = hybrid_fast.FastRoomKernel(c["dims"], size, t_end, v0, 3, log=log)
     inc = rh.injection(rk, c["src"])[None]
     gat = rh.gather_kernel(rk, c["rcv"])[None]
     env0 = lean_solve(rk, inc, gat)[0]  # (T,)
