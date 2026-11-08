@@ -1632,7 +1632,7 @@ the verdict (none this round).
 
 The interrogator rated no row **blocker** (its scale: a WRONG item that code, a test gate or a golden will be
 built on). Under `/interrogate`, re-rounds run only for open blockers, so **no re-round needed**. Statuses above
-are final for this session: 8 resolved, 21 open, 0 disputed.
+are final for this session: 7 resolved, 22 open, 0 disputed.
 
 ### Unresolved (each closes through /fix-plan on phase-07, Maisara's decision)
 
