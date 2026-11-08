@@ -130,10 +130,10 @@ bool ScenePipeline::hasWork() const noexcept
 
 bool ScenePipeline::decide(Source source)
 {
+    // The generation is read BEFORE the snapshot: a change after it is a later generation.
+    const std::uint64_t gen = dirty_.load(std::memory_order_acquire);
     try
     {
-        // The generation is read BEFORE the snapshot: a change after it is a later generation.
-        const std::uint64_t gen = dirty_.load(std::memory_order_acquire);
         const module3d::ParameterValues values = parameterValues();
         contract::SceneDescription scene;
         std::function<void()> hook;
@@ -181,7 +181,9 @@ bool ScenePipeline::decide(Source source)
                                          : sim::conv::CrossfadeLaw::EqualGain;
         if (!irSet || !engine_.submitIrSet(irSet, law))
         {
-            failed_.store(gen, std::memory_order_release); // records nothing as handled
+            // Records nothing as handled (D7). Marks this generation only, so the same scene is not
+            // retried in a loop; any later change is a new generation and is built.
+            failed_.store(gen, std::memory_order_release);
             return false;
         }
         lastIr_ = ir;
@@ -194,8 +196,10 @@ bool ScenePipeline::decide(Source source)
     }
     catch (const std::exception&)
     {
-        // std::bad_alloc or an unexpected build failure: nothing is recorded, the current IR keeps playing.
-        failed_.store(dirty_.load(std::memory_order_acquire), std::memory_order_release);
+        // std::bad_alloc or an unexpected build failure: nothing is recorded as handled and the current IR
+        // keeps playing. Only THIS generation is marked failed (so the builder doesn't retry the same
+        // scene every 20 ms); any later change is a new generation and is built.
+        failed_.store(gen, std::memory_order_release);
         return false;
     }
 }
@@ -219,7 +223,7 @@ void ScenePipeline::resetSequence(bool restartBuilder)
     }
     decide(Source::ResetStep3); // 3. reuses the last built IrSet when its scene is current
     snapTrim();                 // 4.
-    if (restartBuilder)         // 5.
+    if (restartBuilder && active_.load(std::memory_order_acquire)) // 5.
         builder_->restart();
 }
 
@@ -255,9 +259,11 @@ void ScenePipeline::prepare(double sampleRate, int maxBlock, bool nonRealtime)
         // AX34: unsupported host rate. Input delayed by latencySamples(), no IR built anywhere, the
         // builder stays stopped until a prepare() at a supported rate.
         fallback_.store(true, std::memory_order_release);
+        active_.store(false, std::memory_order_release);
         return;
     }
     fallback_.store(false, std::memory_order_release);
+    active_.store(true, std::memory_order_release);
     trimRampSamples_ = std::max(1, static_cast<int>(std::lround(kTrimRampS * sampleRate)));
     snapTrim();
     if (!nonRealtime)
@@ -280,12 +286,13 @@ void ScenePipeline::setNonRealtime(bool nonRealtime)
         return;
     if (nonRealtime)
         resetSequence(false); // enter: the reset sequence, builder kept quiesced
-    else if (!fallback_.load(std::memory_order_acquire) && engine_.isPrepared())
+    else if (active_.load(std::memory_order_acquire))
         builder_->restart(); // leave: the builder takes over again
 }
 
 void ScenePipeline::release()
 {
+    active_.store(false, std::memory_order_release); // stays released until the next prepare()
     builder_->quiesce();
 }
 
@@ -310,14 +317,13 @@ void ScenePipeline::restore(const contract::SceneDescription& base, const module
         std::lock_guard<std::mutex> lock(stateMutex_);
         restoreGen_ = gR; // the restore flag
     }
-    const bool prepared = !fallback_.load(std::memory_order_acquire) && engine_.isPrepared();
-    if (prepared && !nonRealtime_.load(std::memory_order_acquire))
+    if (active_.load(std::memory_order_acquire) && !nonRealtime_.load(std::memory_order_acquire))
     {
         decide(Source::Synchronous); // the restore's decision: EqualPower, or a skip
         builder_->restart();
     }
-    // Before prepare(), offline or in the AX34 fallback: stored only; the next prepare() (realtime) or
-    // process() (offline) makes the decision.
+    // Before prepare(), after release(), offline or in the AX34 fallback: stored only; the next prepare()
+    // (realtime) or process() (offline) makes the decision.
 }
 
 contract::SceneDescription ScenePipeline::baseScene() const
@@ -437,6 +443,14 @@ void ScenePipeline::setAfterSnapshotHook(std::function<void()> hook)
 {
     std::lock_guard<std::mutex> lock(stateMutex_);
     afterSnapshot_ = std::move(hook);
+}
+
+double ScenePipeline::tailLengthSeconds() const noexcept
+{
+    // The longest IR the builder can produce (the 12 s cap of Phase 04 plus the AX1 pre-roll): hosts
+    // keep processing (and bounces keep rendering) for this long after the input stops.
+    const double rate = sampleRate_ > 0.0 ? sampleRate_ : 48000.0;
+    return static_cast<double>(sim::RealtimeEngine::maxIrLengthSamples(rate)) / rate;
 }
 
 bool ScenePipeline::builderIdle() const

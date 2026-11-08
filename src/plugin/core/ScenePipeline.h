@@ -78,7 +78,7 @@ public:
     // Entering non-realtime mode runs the reset sequence (the builder stays quiesced); leaving it
     // restarts the builder.
     void setNonRealtime(bool nonRealtime);
-    // Quiesces the builder (host releaseResources()).
+    // Quiesces the builder (host releaseResources()); it stays stopped until the next prepare().
     void release();
 
     // ---- state (non-audio thread) ----
@@ -104,6 +104,10 @@ public:
     int latencySamples() const noexcept { return kPartitionSize + sim::kAlignPreRollSamples; }
     bool unsupportedRateFallback() const noexcept { return fallback_.load(std::memory_order_acquire); }
     bool isNonRealtime() const noexcept { return nonRealtime_.load(std::memory_order_acquire); }
+
+    // The reverb tail hosts must keep rendering after the input stops (AudioProcessor::
+    // getTailLengthSeconds): the longest IR the builder can produce at the prepared rate.
+    double tailLengthSeconds() const noexcept;
 
     // For tests and diagnostics.
     const sim::RealtimeEngine& engine() const noexcept { return engine_; }
@@ -152,6 +156,7 @@ private:
     std::atomic<std::uint64_t> failed_{kNone};  // a generation whose submit failed (not retried)
     std::atomic<bool> fallback_{false};
     std::atomic<bool> nonRealtime_{false};
+    std::atomic<bool> active_{false}; // prepared at a supported rate and not released
 
     mutable std::mutex stateMutex_;
     contract::SceneDescription base_;

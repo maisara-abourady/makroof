@@ -96,6 +96,7 @@ TEST_CASE("Parameter ID freeze: the plugin's parameters equal tests/state/parame
         REQUIRE(ranged != nullptr);
         INFO("parameter " << i << ": " << ranged->getParameterID());
         REQUIRE(ranged->getParameterID() == f["id"].toString());
+        REQUIRE(ranged->getVersionHint() == static_cast<int>(doc["version"]));
         REQUIRE(ranged->getName(100) == f["name"].toString());
         if (f["type"].toString() == "choice")
         {
@@ -230,37 +231,38 @@ TEST_CASE("No allocation in processBlock while 50 parameter changes per second a
     setParam(p, "room_h", 2.5f);
     p.setPlayConfigDetails(2, 2, 48000.0, 256);
     p.prepareToPlay(48000.0, 256);
+    auto* listenerY = p.parameters().getParameter("listener_y");
+    auto* listenerX = p.parameters().getParameter("listener_x");
+    REQUIRE(listenerY != nullptr);
+    REQUIRE(listenerX != nullptr);
 
-    std::atomic<bool> done{false};
-    std::thread host([&] {
-        float y = 0.2f;
-        while (!done.load())
-        {
-            setParam(p, "listener_y", y);
-            y = y > 0.7f ? 0.2f : y + 0.05f;
-            std::this_thread::sleep_for(std::chrono::milliseconds(20)); // 50 per second
-        }
-    });
+    // Host automation as the VST3/AU wrappers apply it: on the audio thread, right before the block
+    // (setValueNotifyingHost -> JUCE's parameter notification), inside the tracked scope. A change every
+    // 4 blocks of 256 samples at 48 kHz is 47 changes per second of audio; blocks run at about real time.
     juce::AudioBuffer<float> buffer(2, 256);
     juce::MidiBuffer midi;
     std::size_t allocs = 0, frees = 0;
     const auto fades0 = p.pipeline().engine().convolver().fadeCount();
-    const auto end = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
-    while (std::chrono::steady_clock::now() < end)
+    float y = 0.2f;
+    for (int block = 0; block < 400; ++block)
     {
         for (int c = 0; c < 2; ++c)
             juce::FloatVectorOperations::fill(buffer.getWritePointer(c), 0.1f, 256);
         {
             test_support::ScopedTracking tracking;
+            if (block % 4 == 0)
+            {
+                y = y > 0.7f ? 0.2f : y + 0.05f;
+                listenerY->setValueNotifyingHost(listenerY->convertTo0to1(y));
+                listenerX->setValueNotifyingHost(listenerX->convertTo0to1(1.0f - y));
+            }
             p.processBlock(buffer, midi);
             allocs += tracking.allocations();
             frees += tracking.deallocations();
         }
-        std::this_thread::sleep_for(std::chrono::microseconds(500));
+        std::this_thread::sleep_for(std::chrono::microseconds(5333)); // ~ one 256-sample block
     }
-    done.store(true);
-    host.join();
-    REQUIRE(p.pipeline().engine().convolver().fadeCount() > fades0);
+    REQUIRE(p.pipeline().engine().convolver().fadeCount() > fades0); // IRs did change
     REQUIRE(allocs == 0);
     REQUIRE(frees == 0);
 }

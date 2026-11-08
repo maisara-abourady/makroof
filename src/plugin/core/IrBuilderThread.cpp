@@ -87,7 +87,14 @@ void IrBuilderThread::run()
     const auto interrupted = [this] { return stop_ || !accepting_; };
     while (!stop_)
     {
-        if (!accepting_ || !hasWork_())
+        if (!accepting_)
+        {
+            // Released, offline, AX34 fallback or not yet prepared: sleep until restart() or stop.
+            waiting_ = true;
+            cv_.wait(lock, [this] { return stop_ || accepting_; });
+            continue;
+        }
+        if (!hasWork_())
         {
             waiting_ = true;
             const std::function<bool()> wake = [this] { return stop_ || (accepting_ && hasWork_()); };
