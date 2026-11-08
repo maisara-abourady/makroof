@@ -198,8 +198,12 @@ class RoomKernel:
     emitted diffusely by patch k that arrives on patch l after τ bins."""
 
     def __init__(self, dims, patch_size: float, t_end_s: float, variants: list[Variant], dt: float = DT,
-                 q_dist: int = 2, near_factor: float = 3.0, log=None):
+                 q_dist: int = 2, near_factor: float = 3.0, log=None, bands=None):
         self.dims = tuple(float(x) for x in dims)
+        # phase-05b: an optional subset of the octave bands (indices into the 8), to fit finer patch
+        # sizes into memory; every band axis of the outputs then follows this list
+        self.bands = tuple(range(N_BANDS)) if bands is None else tuple(int(b) for b in bands)
+        nb = len(self.bands)
         self.dt = dt
         self.T = int(np.ceil(t_end_s / dt))
         self.p = radiosity.box_patches(self.dims, patch_size)
@@ -212,9 +216,9 @@ class RoomKernel:
         lat = lattice(self.dims, reach)
         p = self.p
         diag = np.linalg.norm(p.u + p.v, axis=1)
-        spec = np.stack([specular_factor(lat.hits, v.spec) for v in variants])  # (V, 8, M)
-        m_air = np.stack([v.m_air for v in variants])  # (V, 8)
-        Kf = np.zeros((N * N * T, V * N_BANDS), dtype=np.float32)
+        spec = np.stack([specular_factor(lat.hits, v.spec[list(self.bands)]) for v in variants])  # (V, nb, M)
+        m_air = np.stack([v.m_air[list(self.bands)] for v in variants])  # (V, nb)
+        Kf = np.zeros((N * N * T, V * nb), dtype=np.float32)
         sub = _sub_points(p, q_dist)  # (N, m, 3)
         m = q_dist * q_dist
         x, w = np.polynomial.legendre.leggauss(2)
@@ -272,7 +276,7 @@ class RoomKernel:
             dly = imin[pair] + nz % W
             uk = (kk[pair] * N + ll[pair]) * T + dly
             air = np.exp(-m_air[:, :, None] * C_SOUND * dt * dly[None, None, :])  # (V, 8, U)
-            fac = (spec[:, :, mi][:, :, None] * air).reshape(V * N_BANDS, -1).T  # (U, V*8)
+            fac = (spec[:, :, mi][:, :, None] * air).reshape(V * nb, -1).T  # (U, V*nb)
             Kf[uk] += (agg[:, None] * fac).astype(np.float32)
             if log and mi % 50 == 0:
                 log(f"kernel: image {mi}/{len(lat.gap)}")
@@ -280,7 +284,8 @@ class RoomKernel:
         self.lattice_size = len(lat.gap)
 
     def kernel(self, v: int, b: int) -> np.ndarray:
-        return self.K[:, v * N_BANDS + b].reshape(self.N, self.N, self.T)
+        """Kernel of variant v and band position b in ``self.bands``."""
+        return self.K[:, v * len(self.bands) + b].reshape(self.N, self.N, self.T)
 
 
 def injection(rk: RoomKernel, src, q: int = 4) -> np.ndarray:
@@ -291,8 +296,8 @@ def injection(rk: RoomKernel, src, q: int = 4) -> np.ndarray:
     src = np.asarray(src, float)
     imgs = lat.map(src)  # (M, 3)
     V = len(rk.variants)
-    out = np.zeros((V, N_BANDS, N * T))
-    spec = np.stack([specular_factor(lat.hits, v.spec) for v in rk.variants])  # (V, 8, M)
+    out = np.zeros((V, len(rk.bands), N * T))
+    spec = np.stack([specular_factor(lat.hits, v.spec[list(rk.bands)]) for v in rk.variants])  # (V, nb, M)
     sub = _sub_points(p, q)  # (N, q², 3)
     for mi, I in enumerate(imgs):
         d = p.centers - I
@@ -308,7 +313,7 @@ def injection(rk: RoomKernel, src, q: int = 4) -> np.ndarray:
         wj = cosl / dist**2
         wj = wj / np.maximum(wj.sum(axis=1, keepdims=True), 1e-300)
         _scatter_bins(out, ll, omega[:, None] * wj, dist, spec[:, :, mi], rk, absolute=True)
-    return out.reshape(V, N_BANDS, N, T)
+    return out.reshape(V, len(rk.bands), N, T)
 
 
 def gather_kernel(rk: RoomKernel, rcv, q: int = 4) -> np.ndarray:
@@ -318,8 +323,8 @@ def gather_kernel(rk: RoomKernel, rcv, q: int = 4) -> np.ndarray:
     lat = lattice(rk.dims, rk.reach)
     rcv = np.asarray(rcv, float)
     V = len(rk.variants)
-    out = np.zeros((V, N_BANDS, N * T))
-    spec = np.stack([specular_factor(lat.hits, v.spec) for v in rk.variants])
+    out = np.zeros((V, len(rk.bands), N * T))
+    spec = np.stack([specular_factor(lat.hits, v.spec[list(rk.bands)]) for v in rk.variants])
     sub = _sub_points(p, q)
     diag = np.linalg.norm(p.u + p.v, axis=1)
     for mi in range(len(lat.gap)):
@@ -341,7 +346,7 @@ def gather_kernel(rk: RoomKernel, rcv, q: int = 4) -> np.ndarray:
         wj = cosk / dist**2
         wj = wj / np.maximum(wj.sum(axis=1, keepdims=True), 1e-300)
         _scatter_bins(out, kk, g[:, None] * wj, dist, spec[:, :, mi], rk, absolute=False)
-    return out.reshape(V, N_BANDS, N, T)
+    return out.reshape(V, len(rk.bands), N, T)
 
 
 def _scatter_bins(out, idx, weight, dist, spec_m, rk: RoomKernel, absolute: bool):
@@ -352,8 +357,8 @@ def _scatter_bins(out, idx, weight, dist, spec_m, rk: RoomKernel, absolute: bool
     i0, w0, i1, w1 = _deposit(u, T)
     base = idx[:, None] * T
     for v, var in enumerate(rk.variants):
-        air = np.exp(-var.m_air[:, None, None] * dist[None])  # (8, L, q²)
-        for b in range(N_BANDS):
+        air = np.exp(-var.m_air[list(rk.bands)][:, None, None] * dist[None])  # (nb, L, q²)
+        for b in range(len(rk.bands)):
             x = weight * spec_m[v, b] * air[b]
             out[v, b] += np.bincount((base + i0).ravel(), weights=(x * w0).ravel(), minlength=out.shape[2])
             out[v, b] += np.bincount((base + i1).ravel(), weights=(x * w1).ravel(), minlength=out.shape[2])
@@ -368,7 +373,7 @@ def solve(rk: RoomKernel, inc: np.ndarray, gath: np.ndarray, tol: float = 1e-9, 
     out = np.zeros((V, B, P, T))
     gens = np.zeros((V, B), dtype=np.int64)
     for v in range(V):
-        D = np.stack([rk.variants[v].diffuse[b][rk.p.face] for b in range(B)])  # (8, N)
+        D = np.stack([rk.variants[v].diffuse[b][rk.p.face] for b in rk.bands])  # (nb, N)
         for b in range(B):
             Kf = np.fft.rfft(rk.kernel(v, b), n=L, axis=2).astype(np.complex64)  # (N, N, F)
             Kf = np.ascontiguousarray(np.transpose(Kf, (2, 1, 0)))  # (F, l, k)
@@ -535,9 +540,10 @@ def delta_lb(plan: dict, diffuse_bins: np.ndarray) -> np.ndarray:
         return 10 * np.log10(plan["target_ax16"] / th)
 
 
-def run_pairs(dims, variants: list[Variant], pairs, t_end_s: float, patch_size: float, log=None):
-    """Diffuse envelopes (V, 8, P, T) for (source, listener) pairs in one room, plus the kernel."""
-    rk = RoomKernel(dims, patch_size, t_end_s, variants, log=log)
+def run_pairs(dims, variants: list[Variant], pairs, t_end_s: float, patch_size: float, log=None, bands=None):
+    """Diffuse envelopes (V, nb, P, T) for (source, listener) pairs in one room, plus the kernel
+    (nb = 8, or len(bands) for a band subset)."""
+    rk = RoomKernel(dims, patch_size, t_end_s, variants, log=log, bands=bands)
     inc = np.stack([injection(rk, s) for s, _ in pairs])
     gat = np.stack([gather_kernel(rk, r) for _, r in pairs])
     env, gens = solve(rk, inc, gat)
