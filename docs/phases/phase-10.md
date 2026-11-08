@@ -1,6 +1,6 @@
 # Phase 10 — Artifact-free movement under automation
 
-Size: **M** · Depends on: 06, 07, 08, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ4, AQ10, AX1, AX18, AX20, AX22), PRD FR-SIM-6, NFR-3, Q4
+Size: **M** · Depends on: 06, 07, 08, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ4, AQ10, AX1, AX18, AX20, AX22, AX33), PRD FR-SIM-6, NFR-3, Q4
 
 ## Goal
 
@@ -14,7 +14,8 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
   effective update interval is max(20 ms cap, 30 ms crossfade, rebuild time): at most one new IR per
   30 ms while rebuilds stay under 30 ms, one per rebuild time otherwise (reference: Vorländer Table 15.1).
 - **AX18**: equal-gain crossfade for position updates; **equal-power** for large jumps (e.g. the
-  corner-to-corner step scenarios) and output-mode toggles, where the IRs are unrelated.
+  corner-to-corner step scenarios) and output-mode toggles, where the IRs are unrelated. Equal-gain
+  for position updates is a placeholder (AX18 amendment); this phase sets the law.
 - **AX22**: Phase 04's realised-k switch. t_mix,e is continuous in position, but the fallback to
   ISM-only up to the image-count cap is a single jump point in source position. Across it the IR segment
   between t_mix,e and t_cap,e is ISM in one IR and noise in the other, so AX18's equal-gain premise
@@ -62,10 +63,9 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
 7. CI job `automation` (Linux in every PR; macOS/Windows too, since it's fast with short renders) runs all
    scenarios × 2 modes × {offline, realtime-sim} through `render_cli` with the sustained-tone input and
    runs `clicks.py`.
-8. **Isolated-update cap (AQ4):** settle by an AX entry whether the 20 ms update cap (AQ4) delays an
-   isolated request until its slot or only spaces build starts (recommendation, decider D1 Q2,
-   2026-11-07: a minimum spacing between build starts; an isolated request starts at once), and state
-   the resulting isolated-update delay.
+8. **Isolated-update cap:** confirm or replace AX33 (Phase 07: minimum 20 ms spacing between build
+   starts; an isolated request starts at once) and state the resulting isolated-update delay (at most
+   rebuild + 2P, AX31).
 
 ## Out of scope
 
@@ -101,6 +101,18 @@ image list while moving (it would change AX20; needs an AX entry if introduced).
       proposes a time-segment-split crossfade as a new AX (decider report 8; measurement and formula:
       decider report 11, FR-01, with the interrogator's corrections, report 12; accepted by Maisara,
       2026-11-05).
+- [ ] **Position-fade gate (AX18 amendment):** every movement scenario states its speed in m/s and its
+      measured update interval. At each IR switch, per output channel and octave band 500 Hz, 1 kHz,
+      2 kHz (AX14 rule as above): P(g) = a(g)²E₁ + b(g)²E₂ + 2a(g)b(g)C₁₂ for the law's ramps a, b,
+      against R(g) = (1−g)E₁ + gE₂ at every ramp sample. **Gate:** max_g |10·log10(P/R)| ≤ 1 dB (dips
+      and bumps; G's jnd, Vorländer Table 6.1, 500–1000 Hz, extended to 2 kHz and a 30 ms fade).
+      Report ρ_b = C₁₂/√(E₁E₂) per band. If equal-gain fails, propose a law as a new AX, e.g. a
+      per-band or time-segment crossfade, or a correlation-matched law applied per band (Fink, Holters,
+      Zölzer 2016, DAFx-16, Eq. 11, ρ from the two IRs; researcher F20). Known limit: at ρ = 1 a band
+      step ≳ 8.5 dB between consecutive IRs exceeds 1 dB under any single-gain law (Fink's
+      equal-power-assumption law included); this phase either defines the gate's domain or proposes an
+      energy-aware law. Each scenario reports its largest band step (Phase 07 decision loop
+      2026-11-08, decider round 2 §4, advocate round 2).
 - [ ] Worst-case IR staleness in realtime-sim ≤ **100 ms** in all scenarios (recorded in the CI log;
       failing it fails the job). The hybrid IR's image list is time-bounded (AX20), so its size follows
       t_mix,e and the room, not `maxReflectionOrder`. If the ≤ 100 ms staleness gate fails only because

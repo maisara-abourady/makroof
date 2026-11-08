@@ -83,6 +83,13 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
    (new AX entry, 13b, per scope 1) or another scope 1 optimisation that leaves the output unchanged
    within −100 dB (e.g. SIMD in the accumulation loops), not P = 256 (it raises convolution work per
    sample 1.5–2.1×, run 42397114233, host 512) and not a change to the target (phase-06b D1).
+10. **End treatment at the 12 s cap** (Phase 07 D3). Answer first: (Q1) audibility threshold of a
+    rectangular cut at a given remaining decay depth, per band, for music; (Q2) fade length that removes
+    cut artefacts without shortening the perceived decay; (Q3) CPU and memory of a 20–30 s cap at
+    96 kHz. Then choose: keep the cut; an end fade (new AX, goldens via update_goldens.py, §6 row); or a
+    longer cap.
+11. **AX34:** decide whether to add internal resampling for unsupported rates (quality verifiable),
+    replacing the bypass-like fallback (Phase 07 D8).
 
 ## Out of scope
 

@@ -1,6 +1,6 @@
 # Phase 11 — Minimal placement UI
 
-Size: **M** · Depends on: 07, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ3, AX3, AX6, AX7), PRD "Overview & vision", FR-3D-1 (deferred in full), FR-3D-4, FR-3D-5, FR-3D-8
+Size: **M** · Depends on: 07, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ3, AX2, AX3, AX6, AX7, AX34), PRD "Overview & vision", FR-3D-1 (deferred in full), FR-3D-4, FR-3D-5, FR-3D-8
 
 ## Goal
 
@@ -38,6 +38,10 @@ PRD's vision. It is **not** the full 3D editor (deferred, B8).
    between pixels and metres.
 3. Resizable editor with a fixed aspect ratio, minimum 800×500, HiDPI-correct. Remember the size in state.
 4. Remove the generic editor.
+5. **Room-resize gesture** that keeps absolute listener and emitter positions by rewriting the position
+   parameters (automation of `room_*` still scales them; Phase 07 D2).
+6. **"Output above 0 dB" indicator:** display only, no auto-gain (AX2; Phase 07 D4).
+7. Show the **AX34 unsupported-rate warning flag** with the supported rates listed (Phase 07 D8).
 
 ## Out of scope
 

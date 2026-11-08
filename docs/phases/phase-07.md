@@ -1,6 +1,6 @@
 # Phase 07 — Plugin integration: parameters, state, scene → IR pipeline
 
-Size: **M** · Depends on: 01, 04, 06 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ4, AQ5, AX2, AX5, AX7), PRD FR-3D-5, FR-3D-8, FR-3D-10, FR-LIC-1, NFR-2, NFR-6
+Size: **M** · Depends on: 01, 04, 06 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ4, AQ5, AX2, AX5, AX6, AX7, AX18, AX33, AX34), PRD FR-3D-5, FR-3D-8, FR-3D-10, FR-LIC-1, NFR-2, NFR-6
 
 ## Goal
 
@@ -21,10 +21,16 @@ The session raises each item in its **first message** and again in the **PR desc
 
 ## Assumptions in force
 
-- **AQ4**: background IR rebuild, at most one per 20 ms; **synchronous rebuild in non-realtime
-  (offline bounce) mode**. **AQ5**: everything runs locally.
+- **AQ4**: background IR rebuild, at most one per 20 ms (AX33: a minimum spacing between build
+  starts); **synchronous rebuild in non-realtime (offline bounce) mode**. **AQ5**: everything runs locally.
 - **AX2**: 0 dB at 1 m plus a user output trim. AX2 holds **per emitter path**; the mono preview sums
-  both paths (L and R emitters) in each output. **AX5**: determinism. **AX7**: two emitters, L and R.
+  both paths (L and R emitters) in each output. The plugin's band-mean gain can exceed 0 dB: up to
+  +28.5 dB direct (gainDb +12, both emitters at 0.3 m) and ≈ +44 dB in the 63 Hz band in a 1.5 m
+  α = 0.01 booth (Kuttruff Eq. 5.45, a diffuse-field estimate); `output_trim_db` −48…+24 covers
+  programme level, and +24 covers the ≈ 19–22 dB mid-band drop at maximum room (4–8 kHz fall further
+  by air absorption, AX4, not compensated). Single-mode peaks above the band mean are not bounded by
+  any source below the Schroeder frequency; float does not clip before the master (Izhaki Ch. 11).
+  **AX5**: determinism. **AX7**: two emitters, L and R.
 - Output is still the **omni** IR (mono room preview, same signal on both outputs). Binaural is Phase 08.
   07 ignores `outputMode` / `output_mode` and always renders omni (`Kind::Omni`); the stored
   `outputMode` is kept unchanged. Phase 08 changes the render of 07-era states by design (nothing has
@@ -38,15 +44,46 @@ The session raises each item in its **first message** and again in the **PR desc
    `toContract() const`. Pure C++, no JUCE.
 2. `src/module3d/ParameterMap.h/.cpp` — the mapping between normalized host parameters and the scene:
    - Positions are normalized 0–1 **within the room** per axis, so the 0.1 m wall margin maps to 0 and 1.
-     Resizing the room keeps relative positions. Document this in `docs/contract/README.md` as a 3D Module
+     Resizing the room keeps relative positions. Consequence (documented in the README): resizing
+     scales distances and heights with the room (approximately: positions are normalized inside the
+     0.1 m margins, so a uniform resize scales them only up to that offset). The default scene
+     stretched to 100 × 100 × 100 m puts the listener 52.9 m from L at 42.1 m ear height: direct sound
+     −18.8 dB re the default scene (−34.5 dB re 1 m, AX2). DRR is unchanged only for uniform scaling
+     without air absorption (Kuttruff Eqs. 5.44/5.45); per-axis resizing or air changes it. With
+     absolute positions the in-room share of a 0.1–99.9 m slider would be 1.3 % in a 1.5 m room and
+     3.8 % for the default height. A UI resize that keeps absolute positions is a Phase 11 gesture, not
+     a mapping change. Document this in `docs/contract/README.md` as a 3D Module
      behaviour, not a contract rule.
    - Frozen parameter IDs (strings, never renamed): `listener_x`, `listener_y`, `listener_z`, `emL_x`,
      `emL_y`, `emL_z`, `emR_x`, `emR_y`, `emR_z`, `room_w`, `room_d`, `room_h` (in metres, range
-     1.5–100, skewed), `output_trim_db` (−24…+24), `output_mode` (choice: binaural, stereoSpeakers;
+     1.5–100, mapping below), `output_trim_db` (−48…+24 dB, linear in dB, default 0; AX2 note under
+     "Assumptions in force"), `output_mode` (choice: binaural, stereoSpeakers;
      wired in 08/09), `dry_wet` is **not** included (the PRD wants the space, not a reverb send; note it
      as a possible follow-up).
-   - Listener-to-emitter distances below 0.3 m are resolved by pushing the emitter away along the
-     listener→emitter direction (and documented). The engine never sees an invalid scene.
+   - room_w/d/h: L = 1.5·(100/1.5)^x with explicit endpoints (x ≤ 0 → 1.5, x ≥ 1 → 100), interior
+     clamped to [1.5, 100]; the inverse likewise; formula recorded in parameter_ids_v1.json. One per
+     cent of travel = ×1.0429 in L, the smallest possible largest relative step for any map onto
+     [1.5, 100]; per axis it changes T by 0 … +4.3 % under Sabine (Kuttruff Eq. 5.26 with 4mV), at
+     most ≈ one T jnd (4 %, §7.6); Eyring (Eq. 5.24, AQ2) can differ slightly, ≈ −1.1 % … +4.9 % in
+     extreme absorption layouts. Test (ctest, all three OSes): x = 0 and x = 1 give exactly 1.5 and
+     100.0, the inverse of 1.5 and 100 gives exactly 0 and 1, and the map is strictly monotone on 10⁴
+     points.
+   - Listener–emitter distances below 0.3 m: each emitter e is replaced by the point p of the margin
+     box B with |p − l| ≥ 0.3 m that is nearest to e; the listener never moves; the two emitters are
+     treated independently. If |e − l| ≥ 0.3 m, p = e. Otherwise p = l + 0.3·u, where u maximises u·d
+     over unit vectors with l + 0.3·u ∈ B, d = (e − l)/|e − l|, or d = +y (AQ1 forward) if e = l
+     exactly; exact ties are broken by the largest u·ŷ, then u·x̂, then u·ẑ. When l + 0.3·d lies in B
+     this is the push along the listener→emitter direction. p moves the least possible distance; it
+     jumps only where two nearest points tie (up to 0.6 m, the sphere diameter; 0.52 m in example (c);
+     e.g. across the line through l normal to a wall). Tests: (a) 10⁵ seeded cases (1.5 m rooms, l in
+     corners, e = l): toContract() validates; (b) independent reference: |p − e| ≤ bruteMin + 1e−9 m,
+     bruteMin over 10⁵ Fibonacci points of the 0.3 m sphere inside B plus 10⁴ points on each circle
+     where a face plane of B cuts the sphere (with (a) this bounds p between the true minimum and the
+     sampled one); (c) 1.5 m cube, l = (0.25, 0.75, 0.75), e = (0.1, 0.75, 0.75) →
+     p = (0.1, 0.75 + 0.15√3, 0.75) within 1e−12 m. Reversal: Phase 10 traversal scenarios or Phase 08
+     listening find the tie jumps objectionable → Phase 10 proposes an AX. The phase session mirrors
+     this rule in `docs/contract/README.md` (as a 3D Module behaviour). The engine never sees an
+     invalid scene.
    - The scene is a **pure function** of (current parameter values, non-parameter scene fields). The
      push-away is recomputed on every change; it is never stored and never written back to a host
      parameter.
@@ -56,9 +93,11 @@ The session raises each item in its **first message** and again in the **PR desc
      increment (lock-free fetch_add) only: no allocation, no lock).
    - `IrBuilderThread` (a JUCE `Thread`, or a `std::thread` with a condition variable) coalesces dirty
      notifications, builds `contract::SceneDescription` → `sim::buildRoomIR` → `IrSet`, and submits it
-     to `RealtimeEngine` (Phase 06 mailbox). It rebuilds while the generation counter has changed since
-     its last build start, so the final state is always built (no lost wake-up; FR-3D-10). It runs at
-     most every 20 ms. The audio thread never waits.
+     to `RealtimeEngine` (Phase 06 mailbox). It rebuilds while the generation counter differs from the
+     recorded submitted generation (its own last successful submit, or reset step 3), so the final
+     state is always built (no lost wake-up; FR-3D-10) and a scene already submitted is not rebuilt.
+     It applies AX33. Test (injected clock): an isolated request starts at 0 ms; requests 5 ms apart
+     start ≥ 20 ms apart; the final state is built. The audio thread never waits.
    - The plugin talks to the convolution engine **only through `sim::RealtimeEngine`**, never the bare
      `conv::CrossfadingConvolver` (whose `process()` leaves the output untouched when it isn't prepared)
      (PR #14 follow-up).
@@ -78,8 +117,10 @@ The session raises each item in its **first message** and again in the **PR desc
         cleared; buffers reused, not reallocated. `CrossfadingConvolver::reset()` keeps the current IR
         today, so this phase adds the drop (code change in this phase).
      3. Submit the current scene's IR (reuse the last built `IrSet` through `submitIrSet` when its
-        parameter generation is current, otherwise build it) and record that generation as submitted,
-        so neither `processBlock`'s dirty check nor the builder submits the same scene again.
+        parameter generation is current, otherwise build it) and, only if the submit returned true,
+        record that generation as submitted, so neither `processBlock`'s dirty check nor the builder
+        submits the same scene again. Every `RealtimeEngine::prepare()` (it drops the IRs) clears the
+        record.
      4. Snap the output-trim smoother to its target.
      5. In realtime mode, restart the builder; in non-realtime mode, keep it quiesced.
 
@@ -109,6 +150,17 @@ The session raises each item in its **first message** and again in the **PR desc
      reset sequence with the builder quiesced)" (code change in this phase).
    - `prepareToPlay` builds the initial IR synchronously and calls `setLatencySamples(engine.latencySamples())`.
      Latency stays constant for the life of the instance at a given sample rate.
+   - **Unsupported host sample rate (AX34):** if `prepareToPlay` gets a rate outside AX6, the plugin
+     catches the engine's refusal and enters AX34's fallback (output = input delayed by the reported
+     latency, 544 samples at every rate, no output trim, no AX32 guard; warning flag set; no IR built
+     anywhere; the builder stopped before prepare and not restarted). A later `prepareToPlay` at a
+     supported rate runs the normal path. Test (Catch2, three OSes): at 11025, 22050, 176400,
+     192000 Hz with output_trim_db = −12 and one NaN input sample: no throw; every output sample
+     bit-equals the input delayed by getLatencySamples() (= 544), NaN at the delayed index (isnan);
+     flag set; prepareToPlay(48000) then renders the room (output differs from the delayed input) and
+     clears the flag; also 48 → 96 → 44.1 → 192 → 48 kHz without re-instantiation.
+   - **Crossfade laws / switch rule (D7): PENDING.** Placeholder: the decided text (Phase 07 decision
+     loop 2026-11-08, D7) is applied separately. Do not implement a switch rule from this line.
    - Output trim is applied with a smoothed gain (20 ms).
    - Bus layout: stereo in → stereo out only.
 4. **State (FR-LIC-1, NFR-6):** `getStateInformation` writes XML (or JSON in a `MemoryBlock`) with
@@ -159,6 +211,8 @@ custom UI (11), presets (12).
 - [ ] TSan passes on a test where one thread fires parameter changes, the builder runs, and the audio
       thread processes.
 - [ ] Boundary check still passes (`module3d` and `sim` don't include each other).
+- [ ] The tests named in scope 2 and 3 pass on 3 OSes: room-size map (D9), push-away (a)–(c) (D1),
+      AX33 injected-clock test (D6), AX34 unsupported-rate test (D8).
 
 ## Listening / manual checklist (Maisara)
 
@@ -169,7 +223,11 @@ In **Logic (AU)** and **one VST3 host**, put a drum loop or vocal on a stereo tr
       paths have different lengths and the mono preview sums them in one output). This is expected with
       the mono preview for coherent L/R material; in Phase 08's binaural render it is less audible or
       inaudible (binaural timbre compensation, Blauert Ch. 4). Don't report it as a defect.
-- [ ] Shrink `room_w/d/h` to minimum, then maximum: small booth vs large hall.
+- [ ] Shrink `room_w/d/h` to minimum, then maximum: small booth vs very large hall. At maximum size the
+      IR is cut at 12 s (AX6): every band with T60 > 8 s is cut; with the default materials the 63 Hz
+      band is only ≈ 12 dB below its start when it stops. Expected in 07; describe what you hear.
+      Positions scale with the room, so at maximum size everything is ≈ 19–22 dB quieter; restore it
+      with `output_trim_db`.
 - [ ] Draw automation on `listener_y` and play it. The change follows the automation. Some stepping or
       zipper noise is acceptable here; Phase 10 removes it. Report anything harsher than that.
 - [ ] Save, close and reopen the project: it sounds the same.
@@ -186,10 +244,19 @@ versioning and migration, and parameter normalization choices (these get frozen)
 ## Risks
 
 - Host quirks: Logic calls `setStateInformation` before `prepareToPlay`, and some hosts change sample
-  rate without re-instantiating. Handle both, and test the second with pluginval's sample-rate test.
+  rate without re-instantiating. Handle both. pluginval's default rates are 44.1/48/96 kHz only
+  (research dossier F1); unsupported rates are covered by the AX34 test and auval (M1).
 - Room-size changes make IR length vary, so memory gets allocated on the builder thread, never the audio thread.
+- In the 1.5 m minimum room the field is modal below ≈ 520–1040 Hz (Schroeder frequency, Kuttruff §3.6
+  Eq. 3.44, default materials); the diffuse tail model does not describe it there. A known model
+  limit; raising the minimum would not remove it (f_s ≤ 125 Hz needs ≳ 10.5 m).
 
 ## Definition of done
 
 All automated criteria green; status row 07 `done`; checklist in the PR. The PR records the peak memory
-(RSS) per instance at 96 kHz with the maximum room (recorded, not gated).
+(RSS) per instance at 96 kHz with the maximum room (recorded, not gated). It also records (not gated):
+- the full-rebuild time at the default and the maximum room, entered in BUILD_PLAN §0 with the status
+  update (D6);
+- the extreme scene (1.5 m cube, α = 0.01, gainDb +12 on both emitters, L and R at the same point,
+  0.3 m from the listener, identical L = R input): the maximum octave-band gain of the summed omni IR
+  (AX14 bands); if it exceeds 48 dB, widen before release (D4).
