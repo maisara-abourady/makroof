@@ -52,8 +52,8 @@ The session raises each item in its **first message** and again in the **PR desc
      parameter.
 3. `src/plugin/`:
    - `PluginProcessor` creates `juce::AudioProcessorValueTreeState` from `ParameterMap`. A parameter
-     listener marks the scene dirty by incrementing an atomic dirty generation counter (an atomic store
-     only: no allocation, no lock).
+     listener marks the scene dirty by incrementing an atomic dirty generation counter (an atomic
+     increment (lock-free fetch_add) only: no allocation, no lock).
    - `IrBuilderThread` (a JUCE `Thread`, or a `std::thread` with a condition variable) coalesces dirty
      notifications, builds `contract::SceneDescription` → `sim::buildRoomIR` → `IrSet`, and submits it
      to `RealtimeEngine` (Phase 06 mailbox). It rebuilds while the generation counter has changed since
@@ -67,15 +67,27 @@ The session raises each item in its **first message** and again in the **PR desc
      and reallocates, so a concurrent submit would race it (PR #14 follow-up).
    - Non-finite host input samples and finite samples with |x| > 2²⁰ are already zeroed inside the
      engine (Phase 06, AX32).
-   - Add `RealtimeEngine::reset()`: it forwards to `CrossfadingConvolver::reset()` (clears the input
-     history and the sample counter, keeps the current IR). Call it from `AudioProcessor::reset()` and on
-     entering non-realtime mode.
+   - Add `RealtimeEngine::reset()`: it returns the engine to the state right after a successful
+     `prepare()` at the same sample rate and block size: no current or pending IR; input history,
+     pending output and sample counter cleared; the history buffers are reused, not reallocated. The
+     next submitted IR is therefore installed at once. It is not called concurrently with `process()`.
+     A `reset()` that kept the current IR would break offline determinism: the next bounce's first IR
+     would then be faded in from s0 = 2P (`CrossfadingConvolver::computeBlock` step 4) instead of being
+     installed at once (step 1 requires `current_ == nullptr && blockStart_ == 0`), so it could not
+     equal a fresh instance. `CrossfadingConvolver::reset()` keeps the current IR today, so this phase
+     adds the drop (code change in this phase). `AudioProcessor::reset()` and the entry into
+     non-realtime mode call `RealtimeEngine::reset()` and then resubmit the IR of the current scene
+     immediately (before the next `processBlock`), so playback after a host reset is not silent and
+     every bounce starts identically.
    - **Non-realtime mode** (`isNonRealtime()`): the builder thread is quiesced: it takes no new work,
      and any in-flight build is joined and drained before the first offline block. When a parameter
      changes during an offline bounce, `processBlock` builds the IR and calls `submitRoomIR` itself
-     before processing that block; it is the only submitter then, so bounces are deterministic.
-     "Synchronous" means the IR is submitted before the block; under AX31 it enters the output up to
-     2P later, identically in every run. Leaving non-realtime mode restarts the builder thread. Widen
+     before processing that block; it is the only submitter during a bounce: `setStateInformation`
+     and `prepareToPlay` do not submit mid-bounce (if a host calls them, their submit is deferred to the
+     next `processBlock`), so bounces are deterministic. "Synchronous" means the IR is submitted before
+     the block; under AX31 it enters the output up to 2P later for an isolated update (no fade
+     running); a change during a running fade is taken after that fade ends (AX31); identical across
+     runs for the same block partitioning. Leaving non-realtime mode restarts the builder thread. Widen
      the `submitRoomIR` thread comment in `RealtimeEngine.h` from "any non-audio thread" to "any
      non-audio thread, or the processing thread when nothing else submits" (code change in this phase).
    - `prepareToPlay` builds the initial IR synchronously and calls `setLatencySamples(engine.latencySamples())`.
@@ -111,8 +123,8 @@ custom UI (11), presets (12).
       `tests/state/parameter_ids_v1.json`. Changing it fails CI.
 - [ ] **State round trip:** headless test processes 5 s of noise offline, saves state, creates a new
       instance, restores state, and processes again. The outputs are **bit-identical** (same platform).
-      The saved state differs from the default in at least one parameter (e.g. `listener_y`) and one
-      non-parameter field (`tailSeed` and one α), and the test asserts that the restored output differs
+      The saved state differs from the default in at least one parameter (e.g. `listener_y`) and at least
+      one non-parameter field (e.g. `tailSeed` and one α), and the test asserts that the restored output differs
       from a default instance's output.
 - [ ] **Offline determinism:** an offline render with a parameter change at 2.0 s is bit-identical
       across two bounces in **one** instance with a reset between them, and a third bounce in a fresh
@@ -124,7 +136,7 @@ custom UI (11), presets (12).
       α = 1) produces its first peak at exactly `getLatencySamples()` samples (±0).
 - [ ] **No allocation / lock** in `processBlock` in realtime mode, including while 50 parameter changes
       per second arrive: no allocation is tested (AllocationTracker through the processor); no lock holds
-      by construction (the parameter listener only does an atomic store; reviewed), and the TSan
+      by construction (the parameter listener only does an atomic increment (lock-free fetch_add); reviewed), and the TSan
       criterion below covers the cross-thread part.
 - [ ] Corrupt-state fuzz test (1 000 random byte blobs) never crashes and always ends in a valid scene.
 - [ ] TSan passes on a test where one thread fires parameter changes, the builder runs, and the audio
@@ -137,8 +149,9 @@ In **Logic (AU)** and **one VST3 host**, put a drum loop or vocal on a stereo tr
 - [ ] Insert the plugin. You hear the default room (mono preview for now, so both speakers are the same).
 - [ ] Move `listener_y` from near the emitters to the far wall: the sound gets more distant and roomier.
 - [ ] Move `listener_x` off-centre: the sound becomes coloured (comb filtering, because the L and R
-      paths have different lengths and the mono preview sums them in one output). This is expected and
-      goes away in Phase 08; don't report it as a defect.
+      paths have different lengths and the mono preview sums them in one output). This is expected with
+      the mono preview for coherent L/R material; in Phase 08's binaural render it is much less audible
+      (binaural timbre compensation, Blauert Ch. 4), not removed. Don't report it as a defect.
 - [ ] Shrink `room_w/d/h` to minimum, then maximum: small booth vs large hall.
 - [ ] Draw automation on `listener_y` and play it. The change follows the automation. Some stepping or
       zipper noise is acceptable here; Phase 10 removes it. Report anything harsher than that.
