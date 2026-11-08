@@ -397,6 +397,36 @@ def hybrid_env_factorised(c, size, t_end) -> np.ndarray:
     return env0[None, :] * np.exp(-np.outer(scope6.air_m(), rh.C_SOUND * tb))
 
 
+def step_dtcheck():
+    """Interrogator Q3 (ledger P05B-04): is the gated-bin drift between rungs an ℓ effect or the Δt delay
+    quantisation (Kuttruff Eq. 4.32, n' = Int(R/cΔt))? Halve Δt at ℓ = 2.5 m (hybrid alone, no comparison)
+    in the three s = 1 layouts and compare with the 2.5 -> 1.25 m change."""
+    from tools.validation import hybrid_fast
+    d = load()
+    out = {}
+    for name in ("t52_layout4_s1.0", "t52_layout5_s1.0", "t52_layout6_s1.0"):
+        c = next(x for x in cases() if x["name"] == name)
+        plan = plan_of(c)
+        nbg = n_gate_bins(plan)
+        gated = d["tracer"]["cases"][name]["gated"]
+        vals = {}
+        for dt in (1e-3, 5e-4):
+            rk = hybrid_fast.FastRoomKernel(c["dims"], PREV_ELL_M, _case_t_end(c), variant_of(c, np.zeros(8)), 3, dt=dt)
+            env0 = lean_solve(rk, rh.injection(rk, c["src"])[None], rh.gather_kernel(rk, c["rcv"])[None])[0]
+            tb = (np.arange(rk.T) + 0.5) * dt
+            env = env0[None] * np.exp(-np.outer(scope6.air_m(), rh.C_SOUND * tb))
+            j = np.arange(rk.T) // int(round(BIN_S / dt))
+            keep = j < nbg
+            dif = np.stack([np.bincount(j[keep], weights=env[b][keep], minlength=nbg)[:nbg] for b in range(8)])
+            rb = ism_bins(c["dims"], variant_of(c), c["src"], c["rcv"], plan["mix"]["mixS"] + 0.02, nbg) + dif
+            vals[dt] = np.array([rb[b, jj] for b in range(8) for jj in gated[b]])
+        out[name] = {"dt_halving_change_at_2.5m": float(np.max(np.abs(vals[5e-4] / vals[1e-3] - 1))),
+                     "ell_halving_change_2.5_to_1.25": d["ell"]["steps"][f"{PREV_ELL_M}->{GATE_ELL_M}"]["cases"][name]["gated_bin_change"]}
+        log(f"{name}: {out[name]}")
+    d["ell"]["dt_check"] = out
+    save(d)
+
+
 # ------------------------------------------------------------------------------------------
 # Step 4: gate (A), window-level check, branch, bias trigger
 # ------------------------------------------------------------------------------------------
@@ -496,13 +526,13 @@ def step_gate():
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["tracer", "selfcheck", "ell", "gate"])
+    ap.add_argument("step", choices=["tracer", "selfcheck", "ell", "dtcheck", "gate"])
     ap.add_argument("--max-rung", type=int, default=1, help="ell: deepest ladder rung to compute (0 = 5 m ... 3 = 0.625 m)")
     a = ap.parse_args(argv)
     if a.step == "ell":
         step_ell(a.max_rung)
     else:
-        {"tracer": step_tracer, "selfcheck": step_selfcheck, "gate": step_gate}[a.step]()
+        {"tracer": step_tracer, "selfcheck": step_selfcheck, "dtcheck": step_dtcheck, "gate": step_gate}[a.step]()
 
 
 if __name__ == "__main__":
