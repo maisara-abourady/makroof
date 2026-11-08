@@ -436,6 +436,64 @@ def db(x):
     return float(10 * np.log10(x))
 
 
+R1_MEMORY_BUDGET_GB = 12.0  # kernel + its complex64 transform on the 15 GB session machine
+
+
+def step_r1():
+    """AX35 (c), R1: E_target (500 Hz-2 kHz) and a* at 2.5 and 1.25 m in the selected BRAS rooms (initial α,
+    Phase 05 positions), from the hybrid alone. Per band with the air factored out (exact per band: every
+    path's air factor is exp(-m_b R) with R = c t, whatever α and s are). A rung whose dense kernel plus
+    transform exceeds R1_MEMORY_BUDGET_GB is recorded as not computed (compute limit)."""
+    from tools.validation import hybrid_fast
+    d = load()
+    m = scope6.air_m()
+    out = {"rungs_m": [PREV_ELL_M, GATE_ELL_M], "bands_hz": [500, 1000, 2000], "rooms": {}}
+    for room in scope6.bras_rooms():
+        names = scope6.pair_names(room)
+        sis = {n: scope6.scene_inputs(scope6.rv.SCENES / f"{n}.json") for n in names}
+        dims = tuple(float(x) for x in sis[names[0]]["dims"])
+        var = rh.variant(sis[names[0]]["alpha"], sis[names[0]]["s"], m)
+        var0 = rh.variant(sis[names[0]]["alpha"], sis[names[0]]["s"], np.zeros(8))
+        plans = {n: rh.phase04_plan(dims, var, sis[n]["src"], sis[n]["rcv"]) for n in names}
+        t_end = max(pl["mix"]["mixS"] for pl in plans.values()) + rh.CROSSFADE_HALF_S + 2e-3
+        T = int(np.ceil(t_end / rh.DT))
+        r = {"dims": list(dims), "pairs": len(names), "bins": T, "rungs": {}}
+        for size in (PREV_ELL_M, GATE_ELL_M):
+            p_ = radiosity.box_patches(dims, size)
+            N = len(p_.areas)
+            need = N * N * T * 4 / 1e9 + N * N * (T + 1) * 8 / 1e9
+            a_star = [radiosity.a_star(dims, (1 - var.alpha[:, b])[p_.face], p_) for b in AQ9_IDX]
+            rung = {"patches": N, "memory_gb": need, "a_star": a_star}
+            if need > R1_MEMORY_BUDGET_GB:
+                rung["e_target"] = None
+                rung["note"] = f"not computed (compute limit: {need:.1f} GB > {R1_MEMORY_BUDGET_GB} GB)"
+                log(f"R1 {room} {size} m: {rung['note']}")
+                r["rungs"][str(size)] = rung
+                continue
+            env = {n: np.zeros((8, T)) for n in names}
+            tb = (np.arange(T) + 0.5) * rh.DT
+            for b in AQ9_IDX:
+                rk = hybrid_fast.FastRoomKernel(dims, size, t_end, var0, b)
+                for n in names:
+                    e0 = lean_solve(rk, rh.injection(rk, sis[n]["src"])[None], rh.gather_kernel(rk, sis[n]["rcv"])[None])[0]
+                    env[n][b] = e0 * np.exp(-m[b] * rh.C_SOUND * tb)
+            rung["e_target"] = {n: [float(x) for x in rh.target_hybrid(plans[n], env[n])[list(AQ9_IDX)]] for n in names}
+            r["rungs"][str(size)] = rung
+            log(f"R1 {room} {size} m: {N} patches done")
+        a, b_ = r["rungs"][str(PREV_ELL_M)], r["rungs"][str(GATE_ELL_M)]
+        r["a_star_change"] = float(max(abs(x / y - 1) for x, y in zip(a["a_star"], b_["a_star"])))
+        if a["e_target"] is not None and b_["e_target"] is not None:
+            r["e_target_change"] = float(max(abs(x / y - 1) for n in names for x, y in zip(a["e_target"][n], b_["e_target"][n])))
+            r["certified_at_2.5"] = bool(r["e_target_change"] < ELL_TOL and r["a_star_change"] < ELL_TOL)
+        else:
+            r["e_target_change"] = None
+            r["certified_at_2.5"] = None
+        out["rooms"][room] = r
+        log(f"R1 {room}: E_target change {r['e_target_change']}, a* change {r['a_star_change']:.4%}")
+    d["r1"] = out
+    save(d)
+
+
 # AX35 (phase 05b, D1; vetoable by Maisara): the ladder stops at a compute limit (0.625 m does not fit in
 # memory), not at the c·Δt floor; scope 0's < 1 % rule is applied per quantity. The window check uses the
 # hybrid's E_target, certified at 2.5 m (2.5 -> 1.25 m ≤ 0.324 %) and evaluated at 1.25 m. Gate (A) per bin
@@ -505,13 +563,13 @@ def step_gate():
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["tracer", "selfcheck", "ell", "dtcheck", "gate"])
+    ap.add_argument("step", choices=["tracer", "selfcheck", "ell", "dtcheck", "gate", "r1"])
     ap.add_argument("--max-rung", type=int, default=1, help="ell: deepest ladder rung to compute (0 = 5 m ... 3 = 0.625 m)")
     a = ap.parse_args(argv)
     if a.step == "ell":
         step_ell(a.max_rung)
     else:
-        {"tracer": step_tracer, "selfcheck": step_selfcheck, "dtcheck": step_dtcheck, "gate": step_gate}[a.step]()
+        {"tracer": step_tracer, "selfcheck": step_selfcheck, "dtcheck": step_dtcheck, "gate": step_gate, "r1": step_r1}[a.step]()
 
 
 if __name__ == "__main__":
