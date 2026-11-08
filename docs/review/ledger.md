@@ -1789,3 +1789,47 @@ Maisara 2026-11-08: "Have we recorded those follow ups in a phase? Otherwise the
 | P07F-10 | BUILD_PLAN §4 summaries (10, 13), §6 row | CORRECT; mirror the phase text, no assumption/threshold/golden changed |
 
 Context noted by the interrogator (not a defect): the default-room full rebuild (133–184 ms at 48 kHz) includes tail-noise generation and is not the AQ10 W1/W2 position-only workload; phase-10's acceptance already allows phase-13 optimisation or `blocked (AQ10 miss)`. Status: applied, verified, committed.
+
+## Phase 05b: patch size at a compute limit (D1 → AX35, 2026-11-08; decision loop + /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Decider D1 (rounds 1–2), interrogator (decision mode, three rounds), advocate GO (round 1 REDIRECT on D1c settled by D1c′). Applied as AX35 (BUILD_PLAN §2), phase-05b scope 0 / scope 4 notes, AX16 count fix; vetoable by Maisara. Departures from accepted text listed for her: scope 0's joint certification of one ℓ, the Definition of done "all automated criteria evaluated", scope 4 (i)/AX16 "switches".
+
+| id | claim | verdict | status |
+|---|---|---|---|
+| P05B-01 | E_target meets scope 0 at 1.25 m | IMPRECISE → restated: certified at 2.5 m, evaluated at 1.25 m | applied |
+| P05B-02 | a* ≤ 0.42 % | CORRECT value; scope = the four (A) geometries only, BRAS rooms are R1 | applied |
+| P05B-03 | gated-bin changes 3.230→3.181 % (layouts 5/6 s = 1), 14.6→5.36 % (layout 4 s = 1) | CORRECT | — |
+| P05B-04 | non-convergence attributed to ℓ | open → resolved by P05B-27 | resolved |
+| P05B-05 | 0.625 m rung 15–49 GB: compute limit, not the c·Δt floor | CORRECT (computed) | — |
+| P05B-06 | air-factored rungs comparable with the full run | CORRECT (≤ 1.02e-4) | — |
+| P05B-07 | ΔL_b,tr independent of ℓ | CORRECT | — |
+| P05B-08 | (B) fails → not promoted regardless of (A) | CORRECT (plan logic) | — |
+| P05B-09 | corpus gives no patch-size criterion (Kuttruff §4.5 Eqs. 4.32/4.33; Vorländer Eqs. 10.26/10.27) | CORRECT | — |
+| P05B-10 | labelling vs skipping (A), per-quantity reading | NOT CHECKABLE (product) | listed for Maisara |
+| P05B-11 | ℓ-sensitive flag as a bound | IMPRECISE (minor) → "heuristic flag, not an error bound" | applied |
+| P05B-12 | no src/sim ℓ in every branch | FALLS under branch (i) → replaced by D1c′ (switch waits for R1, R2, Maisara) | applied |
+| P05B-13 | bias trigger evaluable at 1.25 m | UNDERINFORMED → moot: not evaluated (AX35 (b)) | applied |
+| P05B-14 | joint vs per-quantity certification | holds on plan text, survives on science | listed for Maisara |
+| P05B-15 | AX16 "26 of 255" vs three-room "26 of 345" | INCONSISTENT (minor) → AX16 aligned | applied |
+| P05B-16 | E_target certified at 2.5 m by the halving rule | CORRECT | — |
+| P05B-17 | margin rule | IMPRECISE (minor) → heuristic, per case-band | applied |
+| P05B-18 | one reading must govern D1a and D1b | INCONSISTENT → per-quantity reading for both | applied |
+| P05B-19 | per-bin (A) uncertifiable on available compute | CORRECT | — |
+| P05B-20 | "(A) not evaluated" vs brief/DoD text | plan point → listed for Maisara (vetoable) | listed |
+| P05B-21 | not promoted on (B); bias "not evaluated" | CORRECT | — |
+| P05B-22 | tracer self-checks ℓ-independent | CORRECT (s = 1 diagnosis still rests on DB-1, open) | — |
+| P05B-23 | "≈ 3 TB" framing | NOT CHECKABLE as stated → 9 600²·1 035·4 B·8 bands of this implementation; R2 per formulation | applied |
+| P05B-24 | D1c′ inference, research named | CORRECT (UNDERINFORMED, gap named: R1, R2) | — |
+| P05B-25 | D1e conditional on the Δt diagnostic | resolved by P05B-27 | resolved |
+| P05B-26 | count aside | resolved (= P05B-15) | resolved |
+| P05B-27 | Δt halving at 2.5 m ≤ 0.126 % vs ℓ halving 3.18–5.36 % (`ell.dt_check`, commit 98baa04) | CORRECT: the cause is ℓ | — |
+| P05B-28 | D1e "certified ℓ" | IMPRECISE → re-worded: < 1 % rule at 1.25 m, else scope 0's floor branch at 0.625 m | applied |
+| P05B-29 | compute limit 15–49 GB, floor 0.343 m | CORRECT | — |
+| P05B-30 | per-quantity rule | NOT CHECKABLE (product), survives | listed for Maisara |
+| P05B-31 | D1a text | CORRECT | — |
+| P05B-32 | D1b ground | CORRECT | — |
+| P05B-33 | record wording ("not evaluated (compute limit, AX35)") | CORRECT | — |
+| P05B-34 | scope 4 (i)/AX16 "switches" departure | IMPRECISE (minor) → added to Maisara's list | applied |
+| P05B-35 | 3 052 GB arithmetic | CORRECT | — |
+| P05B-36 | "≥ 49 GB" for the dense route | IMPRECISE (minor) → "≈ 147 GB with the current dense solver" | applied |
+| P05B-37 | re-run rule | CORRECT | — |

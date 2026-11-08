@@ -37,6 +37,7 @@ t_mix,e. This phase promotes the Phase 05 reference hybrid's early Lambert-scatt
    delays by tens of ms). The Table 15.1 option (the scattering part updated every 3 s or 1 m) is not
    adopted; if W1 with the diffuse part goes above 700 ms, it is the first remedy Phase 10 may propose
    as an AX. A coarser ℓ is not a remedy.
+   **Compute limit (AX35, 2026-11-08, vetoable by Maisara):** the ladder stops at ℓ = 1.25 m because the 0.625 m rung exceeds the session machine, so the < 1 % rule is applied per quantity and the per-bin gate (A) is recorded 'not evaluated (compute limit, AX35)' until the AX35 re-run rule holds.
 1. **Port the reference hybrid into `src/sim`** (generic, NFR-8). At each specular hit, s(1−α) of the
    incident energy goes into the Lambert boundary patch hit, at the hit time (Kuttruff Eq. 4.24). It is
    propagated with the mixed specular/diffuse form: at each later hit, s is re-radiated per Lambert and
@@ -84,6 +85,7 @@ t_mix,e. This phase promotes the Phase 05 reference hybrid's early Lambert-scatt
    - The switch is valid only with SE(ΔL_b,tr) = 4.34/√k_tr ≤ 1/3 dB (threshold/3, AX11); k ≥ 684 gives ≤ 0.17 dB. Realised k and SE are printed. The tracer seed is fixed, so the decision reproduces on re-run. Near 1 dB either branch leaves the level error within about 1 dB + 3·SE (decider report 11, FR-04; the trigger uses |ΔL_b,tr|, C1, accepted by Maisara, 2026-11-05).
    - Independently of these, if Phase 05's |ΔL_b| exceeded 1 dB anywhere, tail-level matching switches
      to the hybrid's propagated diffuse energy (AX16), under the same validation.
+   - **Compute limit (AX35, 2026-11-08, vetoable by Maisara):** E_target is certified at ℓ = 2.5 m and evaluated at 1.25 m with an ℓ-sensitive flag per case-band, and any tail-level switch from (i) or the bullet above waits for R1, R2 and Maisara's decision, with ΔL_b,tr recorded in AX16 as a known deficit meanwhile.
 5. **Tracer-bias diagnosis** (BUILD_PLAN §5 B11, decider report 8, item 2e). If the per-bin difference
    converges to a bias above 0.3 dB, diagnose with two tracer self-checks against independent anchors:
    - s = 0 against the ISM image energies in 10 ms bins (the lattice is exact, Kuttruff §4.1);

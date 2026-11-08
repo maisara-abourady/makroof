@@ -70,12 +70,11 @@ def write() -> str:
     w(f"- **Gate (B)** (BRAS, three rooms, initial α): **{'pass' if gb['pass'] else 'fails'}** → early rendering "
       f"{'may be promoted if (A) passes' if gb['pass'] else '**not promoted**'} (section 6).")
     if g:
-        w(f"- **Gate (A)** (tracer, 15 cases, reference hybrid as the rendered model; {g.get('gate_A_label', 'certified')}): "
-          f"{'passes in every case' if g['gate_A_pass_all'] else 'fails in ' + ', '.join(g['gate_A_failed_cases'])} (section 4).")
+        w(f"- **Gate (A)** (per bin): **{g['gate_A']}** (section 4).")
         w(f"- **Window-level check** (scope 4): hybrid E_target vs tracer within ±1 dB everywhere: "
           f"{'yes' if g['window_pass'] else 'no'} (max |Δ| {g['max_abs_hybrid_vs_tracer_db']:.2f} dB; SE ≤ "
           f"{g['max_se_db']:.3f} dB); max |ΔL_b,tr| {g['max_abs_delta_lb_tr_db']:.2f} dB → branch **{g['branch']}**, "
-          f"tail-level switch to the hybrid's propagated diffuse energy: **{'due' if g['tail_level_switch'] else 'no'}** (section 5).")
+          f"tail-level switch to the hybrid's propagated diffuse energy: **{g['tail_level_switch']}** (section 5).")
     else:
         w("- Gate (A) and the window-level check: not computed yet.")
     w("")
@@ -138,41 +137,36 @@ def write() -> str:
         w("")
     gate = d.get("gate")
     if gate:
-        w("## 4. Gate (A): rendered envelope (ISM specular + reference-hybrid diffuse) vs tracer, ±1 dB per gated 10 ms bin")
+        w("## 4. Gate (A): per-bin envelope against the tracer")
         w("")
-        if not gate.get("ell_certified_for_gate_A", True):
-            w(f"**Not ℓ-certified (AX35):** evaluated at ℓ = {gate['ell_m']} m, the finest rung that fits in memory; the gated "
-              "bins changed by up to 5.36 % between 2.5 and 1.25 m (section 3), so scope 0 is unmet for them. The difference "
-              "at 2.5 m is printed beside it; a bin is ℓ-sensitive when its pass/fail differs between the two rungs or "
-              "its |Δ| is within the case's last change (dB) of 1 dB. No residual is credited; the tolerance is unchanged. "
-              "The outcome does not depend on it: gate (B) fails (section 6).")
-            w("")
-        w("| case | gated bins per band | max \\|Δ\\| (dB) | worst bin (band, ms, Δ dB at ℓ / at 2.5 m, k) | ℓ-sensitive bins | pass |")
-        w("|---|---|---|---|---|---|")
-        for n, c in gate["cases"].items():
-            wb = max(c["bins"], key=lambda b: abs(b["delta_db"])) if c["bins"] else None
-            wtxt = (f"{BANDS[wb['band']]} Hz, {wb['bin'] * 10}–{wb['bin'] * 10 + 10}, {wb['delta_db']:+.2f} / "
-                    f"{wb['delta_db_prev_rung']:+.2f}, {wb['k']:.0f}") if wb else "–"
-            w(f"| {n} | {min(c['gated_per_band'])} | {c['max_abs_db']:.2f} | {wtxt} | {c['ell_sensitive_bins']} | "
-              f"{'pass' if c['gate_A_pass'] else '**fail**'} |")
+        w(f"**{gate['gate_A']}.** The gated 10 ms bins converge at no computable patch size (section 3: 2.5 → 1.25 m changes "
+          "them by up to 5.36 %; 3.23 → 3.18 % in Table 5.2 layouts 5 and 6 at s = 1; halving Δt changes them by ≤ 0.13 %, so "
+          "the cause is ℓ), and 0.625 m does not fit in memory. Under AX35 (b) no per-bin tracer-vs-hybrid number is "
+          "computed, and the scope 5 bias trigger is not evaluated either; (A) is never recorded as passing. The outcome "
+          "'not promoted' rests on gate (B) alone (section 6). Re-run rule: AX35 (e).")
         w("")
         w("## 5. Window-level check (scope 4)")
         w("")
         w("ΔL_b,tr = 10·log10(E_target(AX16)/E_target(tracer)); hybrid vs tracer = 10·log10(E_target(hybrid)/E_target(tracer)); "
           "same Hann window; SE = 4.34/√k_tr (must be ≤ 1/3 dB).")
         w("")
-        w("| case | band | ΔL_b,tr (dB) | hybrid vs tracer (dB) | ΔL_b (AX16 vs hybrid, dB) | k_tr | SE (dB) |")
-        w("|---|---|---|---|---|---|---|")
+        w(f"Hybrid E_target certified at {gate['e_target_certified_at_m']} m and evaluated at {gate['ell_m']} m (AX35 (a)); "
+          "margin = 1 dB − |hybrid vs tracer|; a margin smaller than the case-band's 2.5 → 1.25 m E_target change marks the "
+          "branch ℓ-sensitive (heuristic flag, not an error bound).")
+        w("")
+        w("| case | band | ΔL_b,tr (dB) | hybrid vs tracer (dB) | margin (dB) | E_target change 2.5→1.25 m (dB) | ΔL_b (AX16 vs hybrid, dB) | k_tr | SE (dB) |")
+        w("|---|---|---|---|---|---|---|---|---|")
         for n, c in gate["cases"].items():
             for b, v in c["window"].items():
-                w(f"| {n} | {b} | {v['delta_lb_tr_db']:+.2f} | {v['hybrid_vs_tracer_db']:+.2f} | {v['delta_lb_db']:+.2f} | "
-                  f"{v['k_tr']:.0f} | {v['se_db']:.3f} |")
+                w(f"| {n} | {b} | {v['delta_lb_tr_db']:+.2f} | {v['hybrid_vs_tracer_db']:+.2f} | {v['margin_db']:.2f}"
+                  f"{' (ℓ-sensitive)' if v['ell_sensitive'] else ''} | {v['e_target_change_2.5_to_1.25_db']:.4f} | "
+                  f"{v['delta_lb_db']:+.2f} | {v['k_tr']:.0f} | {v['se_db']:.3f} |")
         w("")
         s = gate["summary"]
-        w(f"Branch **{s['branch']}**. Phase 05 X-b had |ΔL_b| > 1 dB (26 of 345 case-bands), so (iii) does not arise; "
-          f"|ΔL_b,tr| > 1 dB here: {'yes' if s['any_abs_delta_lb_tr_over_1db'] else 'no'}. Tail-level switch: "
-          f"**{'due' if s['tail_level_switch'] else 'no'}**. Tracer-bias diagnosis triggered (any gated bin |Δ| > 0.3 dB): "
-          f"{'yes' if s['bias_diagnosis_triggered'] else 'no'}.")
+        w(f"Branch **{s['branch']}** (any branch ℓ-sensitive: {'yes' if s['any_ell_sensitive'] else 'no'}). Phase 05 X-b had "
+          f"|ΔL_b| > 1 dB (26 of 345 case-bands), so (iii) does not arise; |ΔL_b,tr| > 1 dB here: "
+          f"{'yes' if s['any_abs_delta_lb_tr_over_1db'] else 'no'}. Tail-level switch: **{s['tail_level_switch']}**. "
+          f"Tracer-bias diagnosis: {s['bias_diagnosis']}.")
         w("")
     # 6 gate B
     w("## 6. Gate (B) on the Phase 05 numbers (scope 6; `report-phase05.md` §6b)")

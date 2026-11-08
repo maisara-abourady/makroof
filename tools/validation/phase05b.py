@@ -436,89 +436,68 @@ def db(x):
     return float(10 * np.log10(x))
 
 
-# AX35 (phase 05b, D1): the ladder stops at a compute limit (0.625 m does not fit in memory), not at the
-# c·Δt floor. The window check runs at the finest computed rung, where E_target meets scope 0 (≤ 0.33 %
-# per halving); gate (A) is evaluated there too but recorded as "not ℓ-certified" (gated bins up to 5.36 %
-# per halving), with the 2.5 m values printed beside it. No residual is credited, the tolerance is unchanged.
+# AX35 (phase 05b, D1; vetoable by Maisara): the ladder stops at a compute limit (0.625 m does not fit in
+# memory), not at the c·Δt floor; scope 0's < 1 % rule is applied per quantity. The window check uses the
+# hybrid's E_target, certified at 2.5 m (2.5 -> 1.25 m ≤ 0.324 %) and evaluated at 1.25 m. Gate (A) per bin
+# and the scope 5 bias trigger are NOT evaluated (the gated bins converge at no computable rung): no per-bin
+# tracer-vs-hybrid number is computed here.
 GATE_ELL_M = 1.25
 PREV_ELL_M = 2.5
+NOT_EVALUATED = "not evaluated (compute limit, AX35)"
 
 
 def step_gate():
     d = load()
     e_ = d["ell"]
-    if e_["ell_m"] is None and GATE_ELL_M not in [float(k.split("->")[1]) for k in e_["steps"]]:
-        raise SystemExit("the gate rung was not computed in the ladder (phase05b.json 'ell')")
-    ell = e_["ell_m"] if e_["ell_m"] is not None else GATE_ELL_M
-    certified = e_["ell_m"] is not None
-    out = {"ell_m": ell, "ell_certified_for_gate_A": certified,
-           "ell_note": None if certified else "AX35: window check at 1.25 m (E_target meets scope 0); gate (A) not "
-                                               "ℓ-certified (scope 0 unmet for the gated bins at 2.5 -> 1.25 m)",
-           "cases": {}}
+    st = e_["steps"][f"{PREV_ELL_M}->{GATE_ELL_M}"]
+    if max(c["target_change"] for c in st["cases"].values()) >= ELL_TOL or max(st["a_star_change"].values()) >= ELL_TOL:
+        raise SystemExit("E_target / a* not certified at 2.5 m (AX35 (a)): no window comparison")
+    vals = e_["values"]
+    out = {"ell_m": GATE_ELL_M, "e_target_certified_at_m": PREV_ELL_M, "gate_A": NOT_EVALUATED,
+           "bias_diagnosis": NOT_EVALUATED, "cases": {}}
     for c in cases():
         plan = plan_of(c)
-        nbg = n_gate_bins(plan)
         z = np.load(CACHE / f"tracer_{c['name']}.npz")
-        e, e2 = z["e"][:, :nbg], z["e2"][:, :nbg]
-        with np.errstate(divide="ignore", invalid="ignore"):
-            k = np.where(e2 > 0, e * e / np.where(e2 > 0, e2, 1), 0.0)
-        env_c = factorised_env(c, ell)
-        rb = rendered_bins(c, plan, env_c, nbg)
-        rb_prev = rendered_bins(c, plan, factorised_env(c, PREV_ELL_M), nbg)
-        last_change_db = abs(db(1 + e_["steps"][f"{PREV_ELL_M}->{ell}"]["cases"][c["name"]]["gated_bin_change"])) \
-            if not certified else 0.0
-        bins = []
-        worst = 0.0
-        n_gated = []
-        for b in range(8):
-            gb = np.nonzero(k[b] >= tr.K_GATE)[0]
-            n_gated.append(len(gb))
-            for j in gb:
-                dd = db(rb[b, j] / e[b, j])
-                dprev = db(rb_prev[b, j] / e[b, j])
-                worst = max(worst, abs(dd))
-                sens = (abs(dd) <= GATE_DB) != (abs(dprev) <= GATE_DB) or abs(abs(dd) - GATE_DB) <= last_change_db
-                bins.append({"band": b, "bin": int(j), "delta_db": dd, "delta_db_prev_rung": dprev,
-                             "ell_sensitive": bool(sens), "k": float(k[b, j]), "sigma_db": 4.34 / np.sqrt(k[b, j])})
-        enough = min(n_gated) >= 3
-        gate_pass = bool(enough and worst <= GATE_DB)
         win = window_of(plan)
         e_tr = win.norm * z["s1"]
         k_tr = z["s1"] ** 2 / z["s2"]
         se = 4.34 / np.sqrt(k_tr)
+        env_c = factorised_env(c, GATE_ELL_M)
         e_hyb = rh.target_hybrid(plan, env_c)
         e_ax16 = plan["target_ax16"]
-        wl = {str(rh_b): {"delta_lb_tr_db": db(e_ax16[i] / e_tr[i]), "hybrid_vs_tracer_db": db(e_hyb[i] / e_tr[i]),
-                          "delta_lb_db": db(e_ax16[i] / e_hyb[i]), "k_tr": float(k_tr[i]), "se_db": float(se[i])}
-              for i, rh_b in zip(AQ9_IDX, (500, 1000, 2000))}
-        out["cases"][c["name"]] = {
-            "mix_s": plan["mix"]["mixS"], "fallback": plan["fallback"], "gate_bins": nbg, "gated_per_band": n_gated,
-            "bins": bins, "max_abs_db": worst, "enough_gated_bins": enough, "gate_A_pass": gate_pass,
-            "ell_sensitive_bins": sum(b["ell_sensitive"] for b in bins), "window": wl}
-        log(f"{c['name']}: (A) {'pass' if gate_pass else 'FAIL'} max |Δ| {worst:.2f} dB; window "
-            + "; ".join(f"{k_}: ΔL_tr {v['delta_lb_tr_db']:+.2f} hyb-tr {v['hybrid_vs_tracer_db']:+.2f}" for k_, v in wl.items()))
+        t_prev = np.asarray(vals[c["name"]][f"{PREV_ELL_M}_factorised"]["target"])
+        t_here = np.asarray(vals[c["name"]][str(GATE_ELL_M)]["target"])
+        wl = {}
+        for i, band in zip(AQ9_IDX, (500, 1000, 2000)):
+            hv = db(e_hyb[i] / e_tr[i])
+            change_db = abs(db(t_here[i] / t_prev[i]))
+            margin = WINDOW_DB - abs(hv)
+            wl[str(band)] = {"delta_lb_tr_db": db(e_ax16[i] / e_tr[i]), "hybrid_vs_tracer_db": hv,
+                             "delta_lb_db": db(e_ax16[i] / e_hyb[i]), "k_tr": float(k_tr[i]), "se_db": float(se[i]),
+                             "margin_db": margin, "e_target_change_2.5_to_1.25_db": change_db,
+                             "ell_sensitive": bool(abs(margin) < change_db)}
+        out["cases"][c["name"]] = {"mix_s": plan["mix"]["mixS"], "fallback": plan["fallback"], "window": wl}
+        log(f"{c['name']}: " + "; ".join(f"{k_}: ΔL_tr {v['delta_lb_tr_db']:+.2f} hyb-tr {v['hybrid_vs_tracer_db']:+.2f}"
+                                         for k_, v in wl.items()))
     allw = [w for c in out["cases"].values() for w in c["window"].values()]
     window_pass = all(abs(w["hybrid_vs_tracer_db"]) <= WINDOW_DB for w in allw)
     se_ok = all(w["se_db"] <= SE_MAX_DB for w in allw)
     over = any(abs(w["delta_lb_tr_db"]) > WINDOW_DB for w in allw)
-    xb_over_phase05 = True  # phase 05e/05f X-b: |ΔL_b| > 1 dB in 26 of 345 case-bands (report-phase05.md §6a)
-    if window_pass and se_ok:
-        branch = "(i)"
-        switch = over or xb_over_phase05
-    else:
-        branch = "(ii)"
-        switch = False
-    bias_trigger = any(abs(b["delta_db"]) > BIAS_DIAG_DB for c in out["cases"].values() for b in c["bins"])
+    sensitive = any(w["ell_sensitive"] for w in allw)
+    xb_over_phase05 = True  # phase 05f X-b: |ΔL_b| > 1 dB in 26 of 345 case-bands (report-phase05.md §6a)
+    branch = "(i)" if window_pass and se_ok else "(ii)"
     out["summary"] = {
-        "gate_A_pass_all": all(c["gate_A_pass"] for c in out["cases"].values()),
-        "gate_A_label": "certified" if certified else "not ℓ-certified (AX35)",
-        "gate_A_failed_cases": [n for n, c in out["cases"].items() if not c["gate_A_pass"]],
+        "gate_A": NOT_EVALUATED, "bias_diagnosis": NOT_EVALUATED,
         "window_pass": window_pass, "se_ok": se_ok, "any_abs_delta_lb_tr_over_1db": over,
+        "any_ell_sensitive": sensitive,
         "max_abs_hybrid_vs_tracer_db": max(abs(w["hybrid_vs_tracer_db"]) for w in allw),
         "max_abs_delta_lb_tr_db": max(abs(w["delta_lb_tr_db"]) for w in allw),
         "max_se_db": max(w["se_db"] for w in allw),
-        "branch": branch, "phase05_xb_over_1db": xb_over_phase05, "tail_level_switch": switch,
-        "bias_diagnosis_triggered": bias_trigger}
+        "branch": branch, "phase05_xb_over_1db": xb_over_phase05,
+        # AX35 (c): under (i) the switch is due by scope 4 but waits for R1 (BRAS convergence), R2 (formulation,
+        # memory and rebuild cost) and Maisara; meanwhile AX16 records ΔL_b,tr as a known deficit
+        "tail_level_switch": ("due, waits for R1/R2/Maisara (AX35 (c))" if branch == "(i)" and (over or xb_over_phase05)
+                              else "no (branch (ii): ΔL_b,tr recorded as a known deficit)")}
     d["gate"] = out
     save(d)
     log(json.dumps(out["summary"], indent=1))

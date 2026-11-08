@@ -41,7 +41,7 @@ def test_self_checks_recorded_outcome():
     assert sc["s1_max_abs_rel_vs_mc_05e"] < 0.02  # diagnosis record (reported, not a gate)
 
 
-def test_ell_certified_before_comparison_and_consistent():
+def test_ell_ladder_consistent():
     e = D["ell"]
     assert e["ladder_m"] == list(p.ELL_LADDER) and e["tolerance_rel"] == p.ELL_TOL and e["dt_s"] == 1e-3
     steps = e["steps"]
@@ -58,27 +58,27 @@ def test_ell_certified_before_comparison_and_consistent():
         assert max(max(v.values()) for v in e["factorisation_check_2.5"].values()) < 1e-3
 
 
-@pytest.mark.skipif("gate" not in D, reason="gate (A) not run (ℓ not certified)")
-def test_gate_summary_follows_the_rules():
+@pytest.mark.skipif("gate" not in D, reason="window check not run")
+def test_window_check_follows_ax35():
     g = D["gate"]
-    # AX35: with no certified rung the gate runs at the finest computed rung and (A) is labelled
-    assert g["ell_m"] == (D["ell"]["ell_m"] if D["ell"]["ell_m"] is not None else p.GATE_ELL_M)
-    assert g["ell_certified_for_gate_A"] == (D["ell"]["ell_m"] is not None)
-    if not g["ell_certified_for_gate_A"]:
-        # the window check reads E_target only, which meets scope 0 at the gate rung
-        st = D["ell"]["steps"][f"{p.PREV_ELL_M}->{p.GATE_ELL_M}"]
-        assert max(c["target_change"] for c in st["cases"].values()) < p.ELL_TOL
-        assert max(st["a_star_change"].values()) < p.ELL_TOL
-        assert g["summary"]["gate_A_label"].startswith("not ℓ-certified")
-    for c in g["cases"].values():
-        assert c["gate_A_pass"] == (min(c["gated_per_band"]) >= 3 and c["max_abs_db"] <= p.GATE_DB)
+    # AX35 (b): gate (A) per bin and the bias trigger are not evaluated; no per-bin numbers are stored
+    assert g["gate_A"] == p.NOT_EVALUATED and g["bias_diagnosis"] == p.NOT_EVALUATED
+    assert all("bins" not in c for c in g["cases"].values())
+    # AX35 (a): E_target certified at 2.5 m (2.5 -> 1.25 m < 1 %), evaluated at 1.25 m
+    st = D["ell"]["steps"][f"{p.PREV_ELL_M}->{p.GATE_ELL_M}"]
+    assert max(c["target_change"] for c in st["cases"].values()) < p.ELL_TOL
+    assert max(st["a_star_change"].values()) < p.ELL_TOL
+    assert g["ell_m"] == p.GATE_ELL_M and g["e_target_certified_at_m"] == p.PREV_ELL_M
     s = g["summary"]
     allw = [w for c in g["cases"].values() for w in c["window"].values()]
+    for w in allw:
+        assert w["ell_sensitive"] == (abs(w["margin_db"]) < w["e_target_change_2.5_to_1.25_db"])
+        assert abs(w["margin_db"] - (p.WINDOW_DB - abs(w["hybrid_vs_tracer_db"]))) < 1e-12
     assert s["window_pass"] == all(abs(w["hybrid_vs_tracer_db"]) <= p.WINDOW_DB for w in allw)
     assert s["se_ok"] == all(w["se_db"] <= p.SE_MAX_DB for w in allw)
     assert s["branch"] == ("(i)" if s["window_pass"] and s["se_ok"] else "(ii)")
-    assert s["tail_level_switch"] == (s["branch"] == "(i)")  # Phase 05 X-b > 1 dB: switch whenever validated
-    assert s["bias_diagnosis_triggered"] == any(abs(b["delta_db"]) > p.BIAS_DIAG_DB for c in g["cases"].values() for b in c["bins"])
+    # AX35 (c): never "switched" in this phase
+    assert "switched" not in s["tail_level_switch"]
 
 
 def test_gate_b_fails_on_the_phase05_numbers():
