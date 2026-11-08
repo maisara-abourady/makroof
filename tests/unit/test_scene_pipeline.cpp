@@ -11,6 +11,9 @@
 #include "sim/RealtimeEngine.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
+#include <cstdio>
+#include <memory>
 
 #include <atomic>
 #include <cstring>

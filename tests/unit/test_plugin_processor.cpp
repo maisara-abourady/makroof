@@ -7,6 +7,8 @@
 #include "plugin/PluginProcessor.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
+#include <limits>
 
 #include <atomic>
 #include <cmath>
