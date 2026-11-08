@@ -70,7 +70,7 @@ def write() -> str:
     w(f"- **Gate (B)** (BRAS, three rooms, initial α): **{'pass' if gb['pass'] else 'fails'}** → early rendering "
       f"{'may be promoted if (A) passes' if gb['pass'] else '**not promoted**'} (section 6).")
     if g:
-        w(f"- **Gate (A)** (tracer, 15 cases, reference hybrid as the rendered model): "
+        w(f"- **Gate (A)** (tracer, 15 cases, reference hybrid as the rendered model; {g.get('gate_A_label', 'certified')}): "
           f"{'passes in every case' if g['gate_A_pass_all'] else 'fails in ' + ', '.join(g['gate_A_failed_cases'])} (section 4).")
         w(f"- **Window-level check** (scope 4): hybrid E_target vs tracer within ±1 dB everywhere: "
           f"{'yes' if g['window_pass'] else 'no'} (max |Δ| {g['max_abs_hybrid_vs_tracer_db']:.2f} dB; SE ≤ "
@@ -140,12 +140,21 @@ def write() -> str:
     if gate:
         w("## 4. Gate (A): rendered envelope (ISM specular + reference-hybrid diffuse) vs tracer, ±1 dB per gated 10 ms bin")
         w("")
-        w("| case | gated bins per band | max \\|Δ\\| (dB) | worst bin (band, ms, Δ dB, k) | pass |")
-        w("|---|---|---|---|---|")
+        if not gate.get("ell_certified_for_gate_A", True):
+            w(f"**Not ℓ-certified (AX35):** evaluated at ℓ = {gate['ell_m']} m, the finest rung that fits in memory; the gated "
+              "bins changed by up to 5.36 % between 2.5 and 1.25 m (section 3), so scope 0 is unmet for them. The difference "
+              "at 2.5 m is printed beside it; a bin is ℓ-sensitive when its pass/fail differs between the two rungs or "
+              "its |Δ| is within the case's last change (dB) of 1 dB. No residual is credited; the tolerance is unchanged. "
+              "The outcome does not depend on it: gate (B) fails (section 6).")
+            w("")
+        w("| case | gated bins per band | max \\|Δ\\| (dB) | worst bin (band, ms, Δ dB at ℓ / at 2.5 m, k) | ℓ-sensitive bins | pass |")
+        w("|---|---|---|---|---|---|")
         for n, c in gate["cases"].items():
             wb = max(c["bins"], key=lambda b: abs(b["delta_db"])) if c["bins"] else None
-            wtxt = f"{BANDS[wb['band']]} Hz, {wb['bin'] * 10}–{wb['bin'] * 10 + 10}, {wb['delta_db']:+.2f}, {wb['k']:.0f}" if wb else "–"
-            w(f"| {n} | {min(c['gated_per_band'])} | {c['max_abs_db']:.2f} | {wtxt} | {'pass' if c['gate_A_pass'] else '**fail**'} |")
+            wtxt = (f"{BANDS[wb['band']]} Hz, {wb['bin'] * 10}–{wb['bin'] * 10 + 10}, {wb['delta_db']:+.2f} / "
+                    f"{wb['delta_db_prev_rung']:+.2f}, {wb['k']:.0f}") if wb else "–"
+            w(f"| {n} | {min(c['gated_per_band'])} | {c['max_abs_db']:.2f} | {wtxt} | {c['ell_sensitive_bins']} | "
+              f"{'pass' if c['gate_A_pass'] else '**fail**'} |")
         w("")
         w("## 5. Window-level check (scope 4)")
         w("")

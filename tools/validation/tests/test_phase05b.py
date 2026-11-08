@@ -61,7 +61,15 @@ def test_ell_certified_before_comparison_and_consistent():
 @pytest.mark.skipif("gate" not in D, reason="gate (A) not run (ℓ not certified)")
 def test_gate_summary_follows_the_rules():
     g = D["gate"]
-    assert g["ell_m"] == D["ell"]["ell_m"]
+    # AX35: with no certified rung the gate runs at the finest computed rung and (A) is labelled
+    assert g["ell_m"] == (D["ell"]["ell_m"] if D["ell"]["ell_m"] is not None else p.GATE_ELL_M)
+    assert g["ell_certified_for_gate_A"] == (D["ell"]["ell_m"] is not None)
+    if not g["ell_certified_for_gate_A"]:
+        # the window check reads E_target only, which meets scope 0 at the gate rung
+        st = D["ell"]["steps"][f"{p.PREV_ELL_M}->{p.GATE_ELL_M}"]
+        assert max(c["target_change"] for c in st["cases"].values()) < p.ELL_TOL
+        assert max(st["a_star_change"].values()) < p.ELL_TOL
+        assert g["summary"]["gate_A_label"].startswith("not ℓ-certified")
     for c in g["cases"].values():
         assert c["gate_A_pass"] == (min(c["gated_per_band"]) >= 3 and c["max_abs_db"] <= p.GATE_DB)
     s = g["summary"]

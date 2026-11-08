@@ -34,10 +34,10 @@ HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO))
 
-from tools.acoustics import radiosity  # noqa: E402
-from tools.acoustics import ref_hybrid as rh  # noqa: E402
-from tools.acoustics import tracer as tr  # noqa: E402
-from tools.validation import scope6  # noqa: E402
+from tools.acoustics import radiosity
+from tools.acoustics import ref_hybrid as rh
+from tools.acoustics import tracer as tr
+from tools.validation import scope6
 
 OUT = HERE / "data" / "phase05b.json"
 A_STAR_05E = REPO / "tools" / "acoustics" / "data" / "phase05e_a_star.json"
@@ -406,52 +406,67 @@ def db(x):
     return float(10 * np.log10(x))
 
 
+# AX35 (phase 05b, D1): the ladder stops at a compute limit (0.625 m does not fit in memory), not at the
+# c·Δt floor. The window check runs at the finest computed rung, where E_target meets scope 0 (≤ 0.33 %
+# per halving); gate (A) is evaluated there too but recorded as "not ℓ-certified" (gated bins up to 5.36 %
+# per halving), with the 2.5 m values printed beside it. No residual is credited, the tolerance is unchanged.
+GATE_ELL_M = 1.25
+PREV_ELL_M = 2.5
+
+
 def step_gate():
     d = load()
-    ell = d["ell"]["ell_m"]
-    if ell is None:
-        raise SystemExit("ℓ is not certified (phase05b.json 'ell'): no comparison on an uncertified ℓ (scope 0)")
-    groups = {}
+    e_ = d["ell"]
+    if e_["ell_m"] is None and GATE_ELL_M not in [float(k.split("->")[1]) for k in e_["steps"]]:
+        raise SystemExit("the gate rung was not computed in the ladder (phase05b.json 'ell')")
+    ell = e_["ell_m"] if e_["ell_m"] is not None else GATE_ELL_M
+    certified = e_["ell_m"] is not None
+    out = {"ell_m": ell, "ell_certified_for_gate_A": certified,
+           "ell_note": None if certified else "AX35: window check at 1.25 m (E_target meets scope 0); gate (A) not "
+                                               "ℓ-certified (scope 0 unmet for the gated bins at 2.5 -> 1.25 m)",
+           "cases": {}}
     for c in cases():
-        groups.setdefault(c["group"], []).append(c)
-    out = {"ell_m": ell, "cases": {}}
-    for g, cs in groups.items():
-        env = hybrid_env(cs, ell)
-        for vi, c in enumerate(cs):
-            plan = plan_of(c)
-            nbg = n_gate_bins(plan)
-            z = np.load(CACHE / f"tracer_{c['name']}.npz")
-            e, e2 = z["e"][:, :nbg], z["e2"][:, :nbg]
-            with np.errstate(divide="ignore", invalid="ignore"):
-                k = np.where(e2 > 0, e * e / np.where(e2 > 0, e2, 1), 0.0)
-            rb = rendered_bins(c, plan, env[vi], nbg)
-            bins = []
-            worst = 0.0
-            n_gated = []
-            for b in range(8):
-                gb = np.nonzero(k[b] >= tr.K_GATE)[0]
-                n_gated.append(len(gb))
-                for j in gb:
-                    dd = db(rb[b, j] / e[b, j])
-                    worst = max(worst, abs(dd))
-                    bins.append({"band": b, "bin": int(j), "delta_db": dd, "k": float(k[b, j]),
-                                 "sigma_db": 4.34 / np.sqrt(k[b, j])})
-            enough = min(n_gated) >= 3
-            gate_pass = bool(enough and worst <= GATE_DB)
-            win = window_of(plan)
-            e_tr = win.norm * z["s1"]
-            k_tr = z["s1"] ** 2 / z["s2"]
-            se = 4.34 / np.sqrt(k_tr)
-            e_hyb = rh.target_hybrid(plan, env[vi])
-            e_ax16 = plan["target_ax16"]
-            wl = {str(rh_b): {"delta_lb_tr_db": db(e_ax16[i] / e_tr[i]), "hybrid_vs_tracer_db": db(e_hyb[i] / e_tr[i]),
-                              "delta_lb_db": db(e_ax16[i] / e_hyb[i]), "k_tr": float(k_tr[i]), "se_db": float(se[i])}
-                  for i, rh_b in zip(AQ9_IDX, (500, 1000, 2000))}
-            out["cases"][c["name"]] = {
-                "mix_s": plan["mix"]["mixS"], "fallback": plan["fallback"], "gate_bins": nbg, "gated_per_band": n_gated,
-                "bins": bins, "max_abs_db": worst, "enough_gated_bins": enough, "gate_A_pass": gate_pass, "window": wl}
-            log(f"{c['name']}: (A) {'pass' if gate_pass else 'FAIL'} max |Δ| {worst:.2f} dB; window "
-                + "; ".join(f"{k_}: ΔL_tr {v['delta_lb_tr_db']:+.2f} hyb-tr {v['hybrid_vs_tracer_db']:+.2f}" for k_, v in wl.items()))
+        plan = plan_of(c)
+        nbg = n_gate_bins(plan)
+        z = np.load(CACHE / f"tracer_{c['name']}.npz")
+        e, e2 = z["e"][:, :nbg], z["e2"][:, :nbg]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            k = np.where(e2 > 0, e * e / np.where(e2 > 0, e2, 1), 0.0)
+        env_c = factorised_env(c, ell)
+        rb = rendered_bins(c, plan, env_c, nbg)
+        rb_prev = rendered_bins(c, plan, factorised_env(c, PREV_ELL_M), nbg)
+        last_change_db = abs(db(1 + e_["steps"][f"{PREV_ELL_M}->{ell}"]["cases"][c["name"]]["gated_bin_change"])) \
+            if not certified else 0.0
+        bins = []
+        worst = 0.0
+        n_gated = []
+        for b in range(8):
+            gb = np.nonzero(k[b] >= tr.K_GATE)[0]
+            n_gated.append(len(gb))
+            for j in gb:
+                dd = db(rb[b, j] / e[b, j])
+                dprev = db(rb_prev[b, j] / e[b, j])
+                worst = max(worst, abs(dd))
+                sens = (abs(dd) <= GATE_DB) != (abs(dprev) <= GATE_DB) or abs(abs(dd) - GATE_DB) <= last_change_db
+                bins.append({"band": b, "bin": int(j), "delta_db": dd, "delta_db_prev_rung": dprev,
+                             "ell_sensitive": bool(sens), "k": float(k[b, j]), "sigma_db": 4.34 / np.sqrt(k[b, j])})
+        enough = min(n_gated) >= 3
+        gate_pass = bool(enough and worst <= GATE_DB)
+        win = window_of(plan)
+        e_tr = win.norm * z["s1"]
+        k_tr = z["s1"] ** 2 / z["s2"]
+        se = 4.34 / np.sqrt(k_tr)
+        e_hyb = rh.target_hybrid(plan, env_c)
+        e_ax16 = plan["target_ax16"]
+        wl = {str(rh_b): {"delta_lb_tr_db": db(e_ax16[i] / e_tr[i]), "hybrid_vs_tracer_db": db(e_hyb[i] / e_tr[i]),
+                          "delta_lb_db": db(e_ax16[i] / e_hyb[i]), "k_tr": float(k_tr[i]), "se_db": float(se[i])}
+              for i, rh_b in zip(AQ9_IDX, (500, 1000, 2000))}
+        out["cases"][c["name"]] = {
+            "mix_s": plan["mix"]["mixS"], "fallback": plan["fallback"], "gate_bins": nbg, "gated_per_band": n_gated,
+            "bins": bins, "max_abs_db": worst, "enough_gated_bins": enough, "gate_A_pass": gate_pass,
+            "ell_sensitive_bins": sum(b["ell_sensitive"] for b in bins), "window": wl}
+        log(f"{c['name']}: (A) {'pass' if gate_pass else 'FAIL'} max |Δ| {worst:.2f} dB; window "
+            + "; ".join(f"{k_}: ΔL_tr {v['delta_lb_tr_db']:+.2f} hyb-tr {v['hybrid_vs_tracer_db']:+.2f}" for k_, v in wl.items()))
     allw = [w for c in out["cases"].values() for w in c["window"].values()]
     window_pass = all(abs(w["hybrid_vs_tracer_db"]) <= WINDOW_DB for w in allw)
     se_ok = all(w["se_db"] <= SE_MAX_DB for w in allw)
@@ -466,6 +481,7 @@ def step_gate():
     bias_trigger = any(abs(b["delta_db"]) > BIAS_DIAG_DB for c in out["cases"].values() for b in c["bins"])
     out["summary"] = {
         "gate_A_pass_all": all(c["gate_A_pass"] for c in out["cases"].values()),
+        "gate_A_label": "certified" if certified else "not ℓ-certified (AX35)",
         "gate_A_failed_cases": [n for n, c in out["cases"].items() if not c["gate_A_pass"]],
         "window_pass": window_pass, "se_ok": se_ok, "any_abs_delta_lb_tr_over_1db": over,
         "max_abs_hybrid_vs_tracer_db": max(abs(w["hybrid_vs_tracer_db"]) for w in allw),
