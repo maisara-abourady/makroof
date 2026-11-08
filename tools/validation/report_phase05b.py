@@ -168,6 +168,21 @@ def write() -> str:
           f"{'yes' if s['any_abs_delta_lb_tr_over_1db'] else 'no'}. Tail-level switch: **{s['tail_level_switch']}**. "
           f"Tracer-bias diagnosis: {s['bias_diagnosis']}.")
         w("")
+    r1 = d.get("r1")
+    if r1:
+        w("## 5b. R1: tail-path ℓ in the selected BRAS rooms (AX35 (c); hybrid alone, initial α, Phase 05 positions)")
+        w("")
+        w("| room | patches 2.5 / 1.25 m | E_target change 2.5→1.25 m (max over pairs, 500 Hz–2 kHz) | a* change | certified at 2.5 m |")
+        w("|---|---|---|---|---|")
+        for room, r in r1["rooms"].items():
+            a, b = r["rungs"]["2.5"], r["rungs"]["1.25"]
+            ch = f"{r['e_target_change']:.3%}" if r["e_target_change"] is not None else b.get("note", "–")
+            cert = {True: "yes", False: "no", None: "open (compute limit)"}[r["certified_at_2.5"]]
+            w(f"| {room} | {a['patches']} / {b['patches']} | {ch} | {r['a_star_change']:.3%} | {cert} |")
+        w("")
+        w("R2 (formulation, memory and rebuild cost across the supported room range) and Maisara's decision are still "
+          "needed before any `src/sim` switch (AX35 (c)); until then AX16 records ΔL_b,tr (section 5) as a known deficit.")
+        w("")
     # 6 gate B
     w("## 6. Gate (B) on the Phase 05 numbers (scope 6; `report-phase05.md` §6b)")
     w("")

@@ -113,6 +113,16 @@ Hybrid E_target certified at 2.5 m and evaluated at 1.25 m (AX35 (a)); margin = 
 
 Branch **(i)** (any branch ℓ-sensitive: no). Phase 05 X-b had |ΔL_b| > 1 dB (26 of 345 case-bands), so (iii) does not arise; |ΔL_b,tr| > 1 dB here: yes. Tail-level switch: **due, waits for R1/R2/Maisara (AX35 (c))**. Tracer-bias diagnosis: not evaluated (compute limit, AX35).
 
+## 5b. R1: tail-path ℓ in the selected BRAS rooms (AX35 (c); hybrid alone, initial α, Phase 05 positions)
+
+| room | patches 2.5 / 1.25 m | E_target change 2.5→1.25 m (max over pairs, 500 Hz–2 kHz) | a* change | certified at 2.5 m |
+|---|---|---|---|---|
+| CR2 | 52 / 142 | 0.354% | 0.300% | yes |
+| CR3 | 352 / 1368 | 0.366% | 0.104% | yes |
+| CR4 | 714 / 2856 | not computed (compute limit: 15.2 GB > 12.0 GB) | 0.044% | open (compute limit) |
+
+R2 (formulation, memory and rebuild cost across the supported room range) and Maisara's decision are still needed before any `src/sim` switch (AX35 (c)); until then AX16 records ΔL_b,tr (section 5) as a known deficit.
+
 ## 6. Gate (B) on the Phase 05 numbers (scope 6; `report-phase05.md` §6b)
 
 Reference hybrid vs Phase 04 IR, seed-paired, AQ9 error in jnd (EDT 5 %, C80 1 dB), 500 Hz–2 kHz, three rooms with equal weight. Not worse: Δ̂ ≤ δ = 0.25 jnd room-averaged and no room above +1 jnd, each with SE ≤ threshold/3. 05d context: phase 05d has no results (not started).
