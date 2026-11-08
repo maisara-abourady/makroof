@@ -1689,3 +1689,9 @@ CORRECT, others not). **L** = decision loop (researcher → decider → interrog
 
 Totals for the 22 rows: 20 resolved, 1 resolved for 07 with a follow-up (P07-8), 1 follow-up (P07-10); none needs
 Maisara for correctness. Proposals she can veto: D1, D2, D3, D4, D6 (AX33), D7 (AX18 amendment), D8 (AX34), D9.
+
+Diff check of the applied decisions (interrogator, 3 rounds; `docs/review/phase-07/interrogator-decision-diff-check-1/2/3.md`):
+round 1 found nothing acoustic WRONG but three software INCONSISTENT items in the new skip rule / restore flag (DC-1
+endless rebuild on a bit-identical skip, DC-2 no-lost-update AC, DC-3 realtime restore decision) plus minors; fixed
+(f6dfc2f); round 2 closed them with minor N1–N5; fixed (f9fc41e); round 3: nothing WRONG or INCONSISTENT remains.
+Final state of the 22 rows as in the table above.
