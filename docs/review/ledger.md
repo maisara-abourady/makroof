@@ -1697,3 +1697,6 @@ round 1 found nothing acoustic WRONG but three software INCONSISTENT items in th
 endless rebuild on a bit-identical skip, DC-2 no-lost-update AC, DC-3 realtime restore decision) plus minors; fixed
 (f6dfc2f); round 2 closed them with minor N1–N5; fixed (f9fc41e); round 3: nothing WRONG or INCONSISTENT remains.
 Final state of the 22 rows as in the table above.
+
+**Accepted by Maisara 2026-11-08 ("accepted, merge with no ci"): D1, D2, D3, D4, D6 (AX33), D7 (AX18 amendment), D8
+(AX34), D9, no vetoes.** Merged to main without a CI run at her instruction.
