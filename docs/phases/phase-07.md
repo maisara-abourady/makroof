@@ -164,7 +164,7 @@ The session raises each item in its **first message** and again in the **PR desc
      clears the flag; also 48 → 96 → 44.1 → 192 → 48 kHz without re-instantiation.
    - **Switch rule and crossfade law** (Phase 07 decision loop 2026-11-08, decider D7 (rounds 1–3),
      interrogator SURVIVES WITH CORRECTIONS, advocate round 2 REDIRECT (narrow), cleared on interrogator
-     confirmation; proposal, vetoable by Maisara).
+     confirmation; final advocate screen of the applied text PASS; proposal, vetoable by Maisara).
 
      *Skip rule.* A submit is skipped when the built RoomIR is bit-identical (length and taps) to the IR
      of the last successful submit since the last `prepare()` or reset. Step 3 of the reset sequence
