@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <functional>
 
+#include <cmath>
 #include <cstring>
 #include <random>
 #include <string>
@@ -318,6 +319,33 @@ TEST_CASE("State: an unknown version falls back to the default scene with the wa
         restore(b, out);
         REQUIRE(b.stateWarning());
         REQUIRE(b.pipeline().currentScene() == plugin::SpatialSceneProcessor().pipeline().currentScene());
+    }
+}
+
+TEST_CASE("State: NaN and out-of-range parameter values in PARAMS still give a valid scene",
+          "[plugin][state][fuzz]")
+{
+    juce::ScopedJuceInitialiser_GUI juceInitialiser;
+    plugin::SpatialSceneProcessor a;
+    const auto block = stateOf(a);
+    for (const char* bad : {"nan", "inf", "-inf", "1e30", "-5", "garbage"})
+    {
+        CAPTURE(bad);
+        auto xml = juce::AudioProcessor::getXmlFromBinary(block.getData(), static_cast<int>(block.getSize()));
+        auto* params = xml->getChildByName("PARAMS");
+        REQUIRE(params != nullptr);
+        for (auto* e : params->getChildIterator())
+            e->setAttribute("value", bad);
+        juce::MemoryBlock out;
+        juce::AudioProcessor::copyXmlToBinary(*xml, out);
+        plugin::SpatialSceneProcessor b;
+        restore(b, out);
+        REQUIRE(contract::validate(b.pipeline().currentScene()).ok());
+        prepare(b, true);
+        const auto rendered = render(b, noise(0.2, 81));
+        for (const auto& c : rendered)
+            for (const float s : c)
+                REQUIRE(std::isfinite(s));
     }
 }
 

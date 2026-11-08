@@ -4,11 +4,11 @@
 // which owns the scene -> IR -> convolution pipeline and its threading rules.
 //
 //   - Host parameters: an AudioProcessorValueTreeState built from module3d::parameterSpecs() (frozen IDs,
-//     tests/state/parameter_ids_v1.json). syncParameters() compares the APVTS raw values (atomics) with the
-//     last forwarded ones and forwards each change to ScenePipeline::setParameter (an atomic store and one
-//     lock-free fetch_add; no lock, no allocation). It runs at the start of every processBlock and in the
-//     host-thread calls (prepare, reset, state), so no listener of ours runs inside JUCE's parameter
-//     notification (which takes a lock: AudioProcessorParameter::listenerLock).
+//     tests/state/parameter_ids_v1.json). One listener per parameter forwards the plain value to
+//     ScenePipeline::setParameter (an atomic store and one lock-free fetch_add; no lock, no allocation).
+//     JUCE's own notification path around it (AudioProcessorParameter::sendValueChangedMessageToListeners)
+//     takes JUCE's uncontended listenerLock on whatever thread the host automates from, with or without
+//     our listener; the constructor primes it once so it does not allocate later.
 //   - State (FR-LIC-1, NFR-6): XML with pluginStateVersion, the full scene contract JSON and the APVTS
 //     state. On restore the APVTS values win for every field that has a parameter; the scene JSON gives
 //     every other field. Invalid or corrupt state falls back to the default scene and sets a warning flag.
@@ -78,10 +78,9 @@ public:
     // The known plugin state versions, oldest first.
     static const std::vector<int>& knownStateVersions();
 
-    // Forwards changed APVTS values to the pipeline (lock-free; see the header comment). Public for tests.
-    void syncParameters() noexcept;
-
 private:
+    struct ParameterForwarder;
+
     template <typename SampleType>
     void clearExtraChannels(juce::AudioBuffer<SampleType>& buffer) noexcept;
     void setAllParameters(const module3d::ParameterValues& values);
@@ -89,8 +88,7 @@ private:
 
     ScenePipeline pipeline_;
     juce::AudioProcessorValueTreeState apvts_;
-    std::array<std::atomic<float>*, module3d::kNumParams> raw_{};
-    std::array<std::atomic<float>, module3d::kNumParams> forwarded_{}; // the last values forwarded
+    std::vector<std::unique_ptr<ParameterForwarder>> forwarders_;
     std::atomic<bool> stateWarning_{false};
     std::vector<float> doubleScratch_[2]; // the double-precision path's float buffers (maxBlock)
 

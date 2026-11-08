@@ -13,6 +13,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstring>
+#include <memory>
 #include <thread>
 #include <vector>
 
@@ -74,6 +75,17 @@ TEST_CASE("SpatialScene accepts only stereo in and stereo out", "[plugin][layout
 
     layout.outputBuses.getReference(0) = juce::AudioChannelSet::stereo();
     REQUIRE(processor.checkBusesLayoutSupported(layout));
+}
+
+TEST_CASE("SpatialScene: generic editor; reports the reverb tail", "[plugin][editor]")
+{
+    juce::ScopedJuceInitialiser_GUI juceInitialiser;
+    plugin::SpatialSceneProcessor p;
+    REQUIRE(p.hasEditor());
+    std::unique_ptr<juce::AudioProcessorEditor> editor(p.createEditor());
+    REQUIRE(dynamic_cast<juce::GenericAudioProcessorEditor*>(editor.get()) != nullptr);
+    editor.reset();
+    REQUIRE(p.getTailLengthSeconds() >= 12.0);
 }
 
 TEST_CASE("Parameter ID freeze: the plugin's parameters equal tests/state/parameter_ids_v1.json",

@@ -64,6 +64,22 @@ bool migrateState(int version, juce::XmlElement& /*state*/)
 
 } // namespace
 
+// One per parameter: forwards the plain value to the pipeline (atomic store + one fetch_add).
+struct SpatialSceneProcessor::ParameterForwarder final : juce::AudioProcessorValueTreeState::Listener
+{
+    ParameterForwarder(ScenePipeline& p, std::size_t i)
+        : pipeline(p)
+        , index(i)
+    {}
+    void parameterChanged(const juce::String&, float newValue) override
+    {
+        pipeline.setParameter(index, newValue);
+    }
+
+    ScenePipeline& pipeline;
+    std::size_t index;
+};
+
 const std::vector<int>& SpatialSceneProcessor::knownStateVersions()
 {
     static const std::vector<int> versions{1};
@@ -84,34 +100,21 @@ SpatialSceneProcessor::SpatialSceneProcessor(BuilderClock* clock)
     const auto& specs = module3d::parameterSpecs();
     for (std::size_t i = 0; i < specs.size(); ++i)
     {
-        raw_[i] = apvts_.getRawParameterValue(toJuce(specs[i].id));
-        jassert(raw_[i] != nullptr);
-        forwarded_[i].store(raw_[i]->load(), std::memory_order_relaxed);
-        // Prime JUCE's own notification path once here (the APVTS adapter's listener list grows its
-        // iterator vector on the first call), so host automation applied on the audio thread does not
-        // allocate there later.
+        forwarders_.push_back(std::make_unique<ParameterForwarder>(pipeline_, i));
+        apvts_.addParameterListener(toJuce(specs[i].id), forwarders_.back().get());
+        // Prime JUCE's notification path once (the APVTS adapter's listener list grows its iterator vector
+        // on the first call), so host automation applied on the audio thread does not allocate there.
         if (auto* p = apvts_.getParameter(toJuce(specs[i].id)))
             p->sendValueChangedMessageToListeners(p->getValue());
     }
     setLatencySamples(pipeline_.latencySamples());
 }
 
-SpatialSceneProcessor::~SpatialSceneProcessor() = default;
-
-void SpatialSceneProcessor::syncParameters() noexcept
+SpatialSceneProcessor::~SpatialSceneProcessor()
 {
-    for (std::size_t i = 0; i < raw_.size(); ++i)
-    {
-        if (raw_[i] == nullptr)
-            continue;
-        const float v = raw_[i]->load(std::memory_order_relaxed);
-        const float last = forwarded_[i].load(std::memory_order_relaxed);
-        if (std::memcmp(&v, &last, sizeof(float)) != 0) // bitwise, so a NaN is forwarded once
-        {
-            forwarded_[i].store(v, std::memory_order_relaxed);
-            pipeline_.setParameter(i, v);
-        }
-    }
+    const auto& specs = module3d::parameterSpecs();
+    for (std::size_t i = 0; i < specs.size(); ++i)
+        apvts_.removeParameterListener(toJuce(specs[i].id), forwarders_[i].get());
 }
 
 bool SpatialSceneProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
@@ -125,7 +128,6 @@ void SpatialSceneProcessor::prepareToPlay(double sampleRate, int maximumExpected
     const int maxBlock = std::max(1, maximumExpectedSamplesPerBlock);
     for (auto& s : doubleScratch_)
         s.assign(static_cast<std::size_t>(maxBlock), 0.0f);
-    syncParameters();
     pipeline_.prepare(sampleRate, maxBlock, isNonRealtime());
     // P + 32 = 544 samples at P = 512 (phase-06b D1, AX1); the same in the AX34 fallback, at every rate.
     setLatencySamples(pipeline_.latencySamples());
@@ -138,7 +140,6 @@ void SpatialSceneProcessor::releaseResources()
 
 void SpatialSceneProcessor::reset()
 {
-    syncParameters();
     pipeline_.reset();
 }
 
@@ -147,7 +148,6 @@ void SpatialSceneProcessor::setNonRealtime(bool isNonRealtime) noexcept
     juce::AudioProcessor::setNonRealtime(isNonRealtime);
     try
     {
-        syncParameters();
         pipeline_.setNonRealtime(isNonRealtime);
     }
     catch (...) // std::system_error from the builder's lock; nothing sensible to do but keep going
@@ -164,7 +164,6 @@ void SpatialSceneProcessor::clearExtraChannels(juce::AudioBuffer<SampleType>& bu
 void SpatialSceneProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& /*midiMessages*/)
 {
     juce::ScopedNoDenormals noDenormals;
-    syncParameters();
     clearExtraChannels(buffer);
     if (buffer.getNumChannels() < 2)
     {
@@ -180,7 +179,6 @@ void SpatialSceneProcessor::processBlock(juce::AudioBuffer<double>& buffer,
                                          juce::MidiBuffer& /*midiMessages*/)
 {
     juce::ScopedNoDenormals noDenormals;
-    syncParameters();
     clearExtraChannels(buffer);
     if (buffer.getNumChannels() < 2 || doubleScratch_[0].empty())
     {
@@ -237,7 +235,6 @@ void SpatialSceneProcessor::setAllParameters(const module3d::ParameterValues& va
 
 void SpatialSceneProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
-    syncParameters();
     juce::XmlElement root(kStateTag);
     root.setAttribute(kVersionAttribute, kPluginStateVersion);
     const std::string json = contract::toJson(pipeline_.currentScene()); // the full scene contract JSON
@@ -283,10 +280,6 @@ void SpatialSceneProcessor::setStateInformation(const void* data, int sizeInByte
     if (!ok)
         setAllParameters(values); // the defaults
     stateWarning_.store(!ok, std::memory_order_release);
-    // The restore installs every value itself; mark them forwarded so no stray change follows it.
-    for (std::size_t i = 0; i < raw_.size(); ++i)
-        if (raw_[i] != nullptr)
-            forwarded_[i].store(raw_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
     values = readParameters();
     pipeline_.restore(base, values);
 }

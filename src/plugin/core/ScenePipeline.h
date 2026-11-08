@@ -120,6 +120,8 @@ public:
     std::shared_ptr<const sim::conv::IrSet> lastSubmittedIrSet() const;
     // Called on the deciding thread right after a decision's scene snapshot (test hook for D7 (d)).
     void setAfterSnapshotHook(std::function<void()> hook);
+    // Test hook: the next `count` decisions fail as a build failure would (nothing recorded).
+    void injectBuildFailures(int count) noexcept;
     // True when the builder has nothing to do (for tests that wait for it).
     bool builderIdle() const;
     // The builder's current trim gain target and value (tests).
@@ -153,7 +155,7 @@ private:
     std::array<std::atomic<float>, module3d::kNumParams> params_{};
     std::atomic<std::uint64_t> dirty_{0};
     std::atomic<std::uint64_t> handled_{kNone}; // written under stateMutex_; read by hasWork()
-    std::atomic<std::uint64_t> failed_{kNone};  // a generation whose submit failed (not retried)
+    std::atomic<int> injectedFailures_{0};      // test hook: decisions that fail before building
     std::atomic<bool> fallback_{false};
     std::atomic<bool> nonRealtime_{false};
     std::atomic<bool> active_{false}; // prepared at a supported rate and not released

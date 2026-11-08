@@ -125,7 +125,7 @@ module3d::ParameterValues ScenePipeline::parameterValues() const noexcept
 bool ScenePipeline::hasWork() const noexcept
 {
     const auto d = dirty_.load(std::memory_order_acquire);
-    return d != handled_.load(std::memory_order_acquire) && d != failed_.load(std::memory_order_acquire);
+    return d != handled_.load(std::memory_order_acquire);
 }
 
 bool ScenePipeline::decide(Source source)
@@ -151,6 +151,11 @@ bool ScenePipeline::decide(Source source)
         }
         if (hook)
             hook();
+        if (injectedFailures_.load(std::memory_order_acquire) > 0)
+        {
+            injectedFailures_.fetch_sub(1, std::memory_order_acq_rel);
+            throw std::runtime_error("injected build failure (test hook)");
+        }
         if (!irSet)
         {
             auto built = std::make_shared<const sim::RoomIR>(buildIr(scene, sampleRate_));
@@ -181,9 +186,8 @@ bool ScenePipeline::decide(Source source)
                                          : sim::conv::CrossfadeLaw::EqualGain;
         if (!irSet || !engine_.submitIrSet(irSet, law))
         {
-            // Records nothing as handled (D7). Marks this generation only, so the same scene is not
-            // retried in a loop; any later change is a new generation and is built.
-            failed_.store(gen, std::memory_order_release);
+            // Records nothing as handled (D7): the generation still differs from the handled one, so it is
+            // built again (by the builder after its AX33 slot, or by the next offline block).
             return false;
         }
         lastIr_ = ir;
@@ -197,9 +201,7 @@ bool ScenePipeline::decide(Source source)
     catch (const std::exception&)
     {
         // std::bad_alloc or an unexpected build failure: nothing is recorded as handled and the current IR
-        // keeps playing. Only THIS generation is marked failed (so the builder doesn't retry the same
-        // scene every 20 ms); any later change is a new generation and is built.
-        failed_.store(gen, std::memory_order_release);
+        // keeps playing; the generation is built again like a failed submit (D7).
         return false;
     }
 }
@@ -219,7 +221,6 @@ void ScenePipeline::resetSequence(bool restartBuilder)
         lastIrSet_.reset();
         lastScene_.reset();
         handled_.store(kNone, std::memory_order_release);
-        failed_.store(kNone, std::memory_order_release);
     }
     decide(Source::ResetStep3); // 3. reuses the last built IrSet when its scene is current
     snapTrim();                 // 4.
@@ -242,7 +243,6 @@ void ScenePipeline::prepare(double sampleRate, int maxBlock, bool nonRealtime)
         builtScene_.reset();
         builtGen_ = kNone;
         handled_.store(kNone, std::memory_order_release);
-        failed_.store(kNone, std::memory_order_release);
     }
     nonRealtime_.store(nonRealtime, std::memory_order_release);
     maxBlock_ = std::max(1, maxBlock);
@@ -437,6 +437,11 @@ std::shared_ptr<const sim::conv::IrSet> ScenePipeline::lastSubmittedIrSet() cons
 {
     std::lock_guard<std::mutex> lock(stateMutex_);
     return lastIrSet_;
+}
+
+void ScenePipeline::injectBuildFailures(int count) noexcept
+{
+    injectedFailures_.store(count, std::memory_order_release);
 }
 
 void ScenePipeline::setAfterSnapshotHook(std::function<void()> hook)

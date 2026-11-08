@@ -185,6 +185,65 @@ TEST_CASE("Pipeline: no lost update (FR-3D-10)", "[pipeline][lost-update]")
     REQUIRE(sameSpectra(*current, *expected));
 }
 
+TEST_CASE("Pipeline: a failed build records nothing and is built again (D7)", "[pipeline][lost-update]")
+{
+    plugin::ScenePipeline p;
+    restoreScene(p, pipeline_test::loadScene("dead_booth.json"));
+    p.prepare(kRate, 256, false);
+    const auto before = p.handledGeneration();
+
+    // Realtime: the builder fails three times on the same generation, then builds it.
+    p.injectBuildFailures(3);
+    p.setParameter(module3d::kListenerY, 0.6f);
+    waitBuilt(p);
+    REQUIRE(p.handledGeneration() != before);
+    REQUIRE(pipeline_test::sameIr(*p.lastSubmittedIr(), irOf(p.parameterValues(), p.baseScene())));
+
+    // A failure at generation g followed by a change to g + 1: g + 1 is built.
+    p.injectBuildFailures(1);
+    p.setParameter(module3d::kListenerY, 0.3f);
+    p.setParameter(module3d::kListenerY, 0.35f);
+    waitBuilt(p);
+    REQUIRE(pipeline_test::sameIr(*p.lastSubmittedIr(), irOf(p.parameterValues(), p.baseScene())));
+
+    // Offline: the failed block records nothing; the next block builds.
+    p.setNonRealtime(true);
+    Recorder rec{p};
+    p.injectBuildFailures(1);
+    p.setParameter(module3d::kListenerY, 0.5f);
+    rec.run(256, 256);
+    REQUIRE(p.handledGeneration() != p.dirtyGeneration());
+    rec.run(256, 256);
+    REQUIRE(p.handledGeneration() == p.dirtyGeneration());
+}
+
+TEST_CASE("Pipeline: the default scene is medium_room; the tail covers the longest IR", "[pipeline]")
+{
+    plugin::ScenePipeline p;
+    const auto medium = pipeline_test::loadScene("medium_room.json");
+    const auto s = p.currentScene();
+    REQUIRE(contract::validate(s).ok());
+    REQUIRE(s.room.geometry.dimensions == medium.room.geometry.dimensions);
+    REQUIRE(s.room.surfaces == medium.room.surfaces);
+    REQUIRE(s.render == medium.render);
+    REQUIRE(s.emitters.size() == 2);
+    const auto near = [](const contract::Vec3& a, const contract::Vec3& b) {
+        return std::fabs(a.x - b.x) < 1e-5 && std::fabs(a.y - b.y) < 1e-5 && std::fabs(a.z - b.z) < 1e-5;
+    };
+    REQUIRE(near(s.listener.position, medium.listener.position));
+    REQUIRE(near(s.emitters[0].position, medium.emitters[0].position));
+    REQUIRE(near(s.emitters[1].position, medium.emitters[1].position));
+    REQUIRE(s.emitters[0].gainDb == medium.emitters[0].gainDb);
+
+    for (const double rate : {44100.0, 48000.0, 96000.0})
+    {
+        p.prepare(rate, 256, false);
+        REQUIRE(p.tailLengthSeconds() * rate
+                >= static_cast<double>(sim::RealtimeEngine::maxIrLengthSamples(rate)) - 1e-6);
+        REQUIRE(p.tailLengthSeconds() >= 12.0);
+    }
+}
+
 TEST_CASE("Pipeline: the latency peak lands at exactly latencySamples()", "[pipeline][latency]")
 {
     // Emitters at the listener's minimum distance (pushed to 0.3 m), all alpha = 1.
