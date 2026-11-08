@@ -1770,3 +1770,22 @@ D5g-2 (s = 1 ↔ Lambert also cited to §5.2 Eq. 4.24), D5g-3 ("when the absorpt
 the largest)"), D5g-4 ("regular geometry" added to the §9.4 conditions), D5g-8 (the T effect stated for the largest
 undetected error, < 0.016 m² → ≤ 0.19 % Sabine, Eq. 5.26), D5g-12 (former rule: documented '0.01 m², ±0.1 %', coded
 max(0.011 m², 1e-3·A)), D5g-16 (§6 row: B12 citation replaced, not "§9.4 corrected").
+
+## Phase 07 follow-ups recorded in the plan (2026-11-08; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Maisara 2026-11-08: "Have we recorded those follow ups in a phase? Otherwise they will be lost and our progressive phase execution will miss them!". Source: PR #23 "Follow-ups". Already recorded before this edit: `output_mode` wiring (phase-08, phase-09 scope 5), AX33 confirm/replace (phase-10 scope 8). Plan-editor: all applied, no DECISIONS NEEDED (no acoustic or numeric choice; numbers are measurements from CI run 42465826545).
+
+| id | passage | verdict (interrogator, diff check) |
+|---|---|---|
+| P07F-1 | phase-13 scope 1: full-rebuild times 48 kHz default/max (Linux 183.6/752.1, macOS 132.7/801.9, Windows 141.8/603.0 ms) | CORRECT against the CI run; not checkable against the corpus (measurement) |
+| P07F-2 | same at 96 kHz (392.4/1883.7, 278.6/1832.1, 295.2/1509.1 ms) | CORRECT; not checkable against the corpus |
+| P07F-3 | RSS +122.6 MB per instance, Linux, 96 kHz, maximum room | CORRECT; not checkable against the corpus |
+| P07F-4 | "maximum room (100 × 100 × 100 m)" | CORRECT against phase-07 scope 2 / contract README |
+| P07F-5 | phase-13 scope 1: memory budget left to that phase | not rated (no value) |
+| P07F-6 | phase-10 scope 8: builder 1 ms idle poll, listener only fetch_add | CORRECT against the code (IrBuilderThread.h kIdlePollS, ScenePipeline.cpp setParameter) |
+| P07F-7 | phase-10 scope 8: Phase 10 states the worst-case extra delay | CORRECT; consistent with AQ4/AX31/AX33 (their bound excludes the ≤ 1 ms poll) |
+| P07F-8 | phase-13 scope 12: cache the pinned pluginval release | not rated (software) |
+| P07F-9 | BUILD_PLAN §5 B13 `dry_wet` | not rated (decision deferred); consistent with phase-07 scope 2 |
+| P07F-10 | BUILD_PLAN §4 summaries (10, 13), §6 row | CORRECT; mirror the phase text, no assumption/threshold/golden changed |
+
+Context noted by the interrogator (not a defect): the default-room full rebuild (133–184 ms at 48 kHz) includes tail-noise generation and is not the AQ10 W1/W2 position-only workload; phase-10's acceptance already allows phase-13 optimisation or `blocked (AQ10 miss)`. Status: applied, verified, committed.
