@@ -8,5 +8,5 @@ AX34-fallback restore are consistent.
 | N1 | realtime setStateInformation quiesce/restart vs "builder stopped before prepare()" | IMPRECISE (threading assumption) | state that setStateInformation, prepareToPlay and reset() are not called concurrently with each other (not checkable, like the reset note) | minor |
 | N2 | restore in the AX34 fallback | IMPRECISE | "Before `prepareToPlay` (or in the AX34 fallback)" | minor |
 | N3 | test (d) realtime not deterministic as written | IMPRECISE | recorded generation is read before the scene snapshot; inject the change after the snapshot via a test hook | minor |
-| N4 | §6 cites interrogator-decision-diff-check-1.md | IMPRECISE (file not found at the time of the check) | main session: the file was committed with f6dfc2f's predecessor; verify listing | minor |
+| N4 | §6 cites interrogator-decision-diff-check-1.md | IMPRECISE (file not found at the time of the check) | main session: false alarm: the file is tracked (`git ls-files docs/review/phase-07/` lists it; committed before f6dfc2f); closed | none |
 | N5 | §6 row R3-1/R3-2 wording superseded by "handled" | IMPRECISE | add "(extended to bit-identical skips, DC-1)" | minor |
