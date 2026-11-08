@@ -196,12 +196,19 @@ build/tsan/tests/unit/spatial_tests "[conv]"
 prose no build or test reads (`tools/ci/ci_fingerprint.py`: `docs/sessions/`, `docs/review/`,
 `docs/phases/`, `docs/PRD.md`, `docs/BUILD_PLAN.md`, `docs/THIRD_PARTY.md`, `CLAUDE.md`, `README.md`,
 `.claude/`). If a run on the same fingerprint passed every job, all jobs are skipped and the `ci ok`
-check links that run (its jobs and artifacts, listening pack included, are the evidence). Markers from
-`main` are visible to every PR, a PR's own markers only to that PR. To force a full run: Actions → CI →
-Run workflow with `force` (once the trigger is on `main`), or push a change outside those paths. Add a
+check links that run (its jobs and artifacts, listening pack included, are the evidence). A PR's markers
+are visible only to that PR (CI no longer runs on `main`). To force a full run: Actions → CI → Run
+workflow with `force`. Add a
 path to the exclusions only if `pytest tools/ci` (which greps code for reads of them) still passes.
 Every new CI job needs `needs: changes`, the `if:` gate and an entry in `ci-ok`'s `needs`
 (`tools/ci/test_ci_workflow.py` fails otherwise).
+
+**When CI runs (Maisara, 2026-11-08).** `ci.yml` starts by itself only when a PR is opened, reopened or
+marked ready for review; `nightly.yml` (the BRAS validation, no longer scheduled) the same, for PRs that
+touch `src/sim/` or the validation files. Pushes to an open PR, `main` and the clock start nothing.
+Every other run is started by hand: Actions → CI (or nightly validation) → Run workflow, on the PR's
+branch (or the session triggers it with the GitHub tools). `tools/ci/test_ci_workflow.py` pins these
+triggers.
 
 Binary dirs are `build/<preset>/`. Plugin bundles land in
 `build/<preset>/SpatialScene_artefacts/<Config>/{VST3,AU,Standalone}/`.
@@ -250,6 +257,14 @@ Windows: run the CMake commands from an "x64 Native Tools Command Prompt for VS 
 - Reviews use the project skill `/review-phase-pr <pr-number | branch>` (`.claude/skills/review-phase-pr/`):
   it checks the PR against the phase file, the assumptions and the sourced domain references, and
   writes a severity-ranked review. Run it before asking Maisara to go through a listening checklist.
+- **When to open a PR (Maisara, 2026-11-08).** Open a PR only when the work is finished: no further
+  logic changes, no pending decisions, no ongoing conversations. Before opening it, the steward has
+  cleared the session and `/review-phase-pr` has run on the branch's diff, with its fixes in. Opening
+  the PR runs CI once. After that, push to it only for (1) fixes that a CI failure calls for (e.g. a
+  macOS/Windows compile error that can't be reproduced locally) and (2) changes the contracted
+  engineer's review asks for; batch each round into one push, then start one manual CI run on the
+  branch (pushes don't start CI). Bookkeeping that touches only fingerprint-excluded prose (status row,
+  PR link, session brief) may follow without a run.
 - Commit messages: `phase-XX: <imperative summary>`.
 - The PR description contains: what was done, acceptance-criteria checklist with CI evidence,
   listening checklist for Maisara, contractor review focus, follow-ups, assumption/golden changes.
