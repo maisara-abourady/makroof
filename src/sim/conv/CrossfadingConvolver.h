@@ -96,6 +96,11 @@ public:
     // Clears the input history, the pending output and the sample counter; keeps the current IR,
     // ends a running fade on its target. Not concurrent with process().
     void reset() noexcept;
+    // Phase 07 (RealtimeEngine::reset): reset() and also drops every IR (current, next, retiring and
+    // the mailbox's request), freeing them on the calling thread, so the convolver is in the state
+    // right after prepare() (the fade count is kept). Buffers are reused. Not concurrent with process().
+    void resetAndDropIrs() noexcept;
+    bool isPrepared() const noexcept { return partitionSize_ > 0; }
 
     int latencySamples() const noexcept { return partitionSize_; }
     int partitionSize() const noexcept { return partitionSize_; }

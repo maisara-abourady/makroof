@@ -437,7 +437,9 @@ jobs:
 
   # Phase 06 (and 07, 10): ThreadSanitizer on the real-time convolver's lock-free IR handover. The
   # "[conv]" tests include one that hammers requestIr from two threads while the audio thread
-  # processes. The plugin isn't needed for them, so it isn't built here (much faster).
+  # processes; the Phase 07 "[pipeline]" tests (the JUCE-free spatial_plugin_core) run a parameter
+  # thread, the IR builder and the audio thread together. The JUCE plugin isn't needed for them, so it
+  # isn't built here (much faster).
   tsan:
     name: TSan (linux)
     needs: changes
@@ -461,10 +463,10 @@ jobs:
         run: cmake --preset tsan -DSPATIAL_BUILD_PLUGIN=OFF
       - name: Build
         run: cmake --build --preset tsan --target spatial_tests
-      - name: Test (real-time convolution, TSan)
+      - name: Test (real-time convolution and the Phase 07 scene pipeline, TSan)
         env:
           TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
-        run: build/tsan/tests/unit/spatial_tests "[conv]"
+        run: build/tsan/tests/unit/spatial_tests "[conv],[pipeline]"
 
   # One check that sums the run up (a good candidate for the only required status check). Green when
   # every job passed, or when the gate skipped them all; red otherwise. Only a fully green run records

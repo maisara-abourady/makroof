@@ -4,6 +4,7 @@
 #   spatial_contract  static lib, no JUCE
 #   spatial_sim       static lib, no JUCE, depends on spatial_contract only
 #   spatial_module3d  static lib, no JUCE, depends on spatial_contract only
+#   spatial_plugin_core  static lib, no JUCE: the plugin's scene -> IR pipeline (contract, sim, module3d)
 #   SpatialScene      JUCE plugin (VST3, AU on Apple, Standalone)
 #   render_cli        console executable (offline renders)
 #   spatial_tests     Catch2 unit tests, registered with CTest
@@ -47,6 +48,7 @@ add_subdirectory(src/contract)
 add_subdirectory(src/sim)
 add_subdirectory(src/module3d)
 add_subdirectory(src/cli)
+add_subdirectory(src/plugin/core)
 
 if(SPATIAL_BUILD_PLUGIN)
     # Included (not add_subdirectory) so that JUCE puts the bundles in build/<preset>/SpatialScene_artefacts/.
