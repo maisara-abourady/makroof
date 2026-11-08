@@ -46,6 +46,7 @@ target_link_libraries(SpatialScene
                       PUBLIC spatial::contract
                              spatial::sim
                              spatial::module3d
+                             spatial::plugin_core
                              juce::juce_recommended_config_flags
                              juce::juce_recommended_warning_flags
                       PRIVATE juce::juce_audio_utils

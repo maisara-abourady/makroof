@@ -35,6 +35,13 @@ void RealtimeEngine::prepare(double sampleRate, int maxBlock)
     sampleRate_ = sampleRate;
 }
 
+void RealtimeEngine::reset() noexcept
+{
+    if (sampleRate_ <= 0.0)
+        return;
+    convolver_.resetAndDropIrs();
+}
+
 void RealtimeEngine::process(const float* const in[2], float* const out[2], int n) noexcept
 {
     if (sampleRate_ <= 0.0) // not prepared (or prepare() threw)

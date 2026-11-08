@@ -2,7 +2,9 @@
 # spatial_contract only. Never include anything from src/sim here (CLAUDE.md "contract boundary").
 add_library(spatial_module3d STATIC
             SceneModel.h
-            SceneModel.cpp)
+            SceneModel.cpp
+            ParameterMap.h
+            ParameterMap.cpp)
 add_library(spatial::module3d ALIAS spatial_module3d)
 
 target_include_directories(spatial_module3d PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")

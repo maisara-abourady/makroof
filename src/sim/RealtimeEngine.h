@@ -8,7 +8,10 @@
 //   latencySamples()                P + kAlignPreRollSamples (AX1: the IR puts the earliest direct
 //                                   arrival at sample kAlignPreRollSamples, so a host that
 //                                   compensates this latency hears the direct sound on the grid)
-//   submitRoomIR(RoomIR)            any non-audio thread; builds the IrSet there and hands it over
+//   submitRoomIR(RoomIR)            any non-audio thread, or the processing thread when nothing else
+//                                   submits (offline bounce, reset sequence with the builder quiesced:
+//                                   Phase 07); builds the IrSet there and hands it over
+//   reset()                         non-real-time; back to the state right after prepare() (Phase 07)
 //
 // Until the first IR arrives the output is silence. An IR submitted before processing starts is
 // installed at once; every later change, including a first IR that arrives mid-stream, crossfades
@@ -38,6 +41,14 @@ public:
     // is unprepared (process() writes silence) until a prepare() succeeds.
     void prepare(double sampleRate, int maxBlock);
 
+    // Non-real-time, not concurrent with process() or a submit (Phase 07 reset sequence, step 2). A
+    // no-op when unprepared. Otherwise it returns the engine to the state right after prepare() at the
+    // same sample rate and block size: no current, next or retiring IR and an empty mailbox (the
+    // dropped IRs are freed on the calling thread); input history, pending output and sample counter
+    // cleared; buffers reused, not reallocated. (fadeCount() keeps counting since prepare().)
+    void reset() noexcept;
+    bool isPrepared() const noexcept { return sampleRate_ > 0.0; }
+
     // Audio thread. in[c] / out[c] hold n samples, c = 0, 1; in and out may be the same buffers.
     // Before a successful prepare() it writes silence.
     void process(const float* const in[2], float* const out[2], int n) noexcept;
@@ -52,11 +63,12 @@ public:
     // plus the AX1 pre-roll, which the alignment can add in front of a capped tail.
     static std::size_t maxIrLengthSamples(double sampleRate) noexcept;
 
-    // Non-audio thread. Builds the IrSet of `ir` and requests it. Returns false (nothing changes) if
-    // the IR is not 2 x 2, has another sample rate than prepare(), is longer than
+    // Any non-audio thread, or the processing thread when nothing else submits (offline bounce, reset
+    // sequence with the builder quiesced: Phase 07). Builds the IrSet of `ir` and requests it. Returns false
+    // (nothing changes) if the IR is not 2 x 2, has another sample rate than prepare(), is longer than
     // maxIrLengthSamples(), or has a non-finite tap (phase 06b). Frees retired IRs first.
     bool submitRoomIR(const RoomIR& ir, conv::CrossfadeLaw law = conv::CrossfadeLaw::EqualGain);
-    // The same with a prebuilt IrSet (makeIrSet()), e.g. to switch between cached IRs.
+    // The same with a prebuilt IrSet (makeIrSet()), e.g. to switch between cached IRs. Same threads.
     bool submitIrSet(std::shared_ptr<const conv::IrSet> irSet,
                      conv::CrossfadeLaw law = conv::CrossfadeLaw::EqualGain);
     // Non-audio thread. nullptr when the IR doesn't fit or has a non-finite tap (as submitRoomIR).

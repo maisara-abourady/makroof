@@ -169,6 +169,14 @@ void CrossfadingConvolver::reset() noexcept
     restartLanes();
 }
 
+void CrossfadingConvolver::resetAndDropIrs() noexcept
+{
+    if (partitionSize_ <= 0)
+        return;
+    clearAll(); // mailbox, current, next, retiring, then the release queue
+    reset();
+}
+
 void CrossfadingConvolver::startLane(Lane& lane, const Request* r) noexcept
 {
     lane.done = 0;

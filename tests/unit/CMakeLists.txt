@@ -27,7 +27,12 @@ add_executable(spatial_tests
                test_fail_fast.cpp
                test_partitioned_convolver.cpp
                test_crossfading_convolver.cpp
-               test_realtime_engine.cpp)
+               test_realtime_engine.cpp
+               test_scene_model.cpp
+               test_parameter_map.cpp
+               PipelineTestUtil.h
+               test_ir_builder_thread.cpp
+               test_scene_pipeline.cpp)
 
 # tests/support: the AllocationTracker replaces the global operator new / delete of this binary
 # (Phase 06, zero-allocation checks of the real-time convolver).
@@ -42,12 +47,14 @@ target_link_libraries(spatial_tests
                               spatial::sim
                               spatial::cli
                               spatial::module3d
+                              spatial::plugin_core
                               spatial::warnings)
 
 if(SPATIAL_BUILD_PLUGIN)
-    # The pass-through null test links the plugin's shared-code target, so it exercises the same
-    # AudioProcessor the VST3/AU/Standalone wrappers call.
-    target_sources(spatial_tests PRIVATE test_passthrough.cpp)
+    # The plugin tests link the plugin's shared-code target, so they exercise the same AudioProcessor
+    # the VST3/AU/Standalone wrappers call.
+    target_sources(spatial_tests PRIVATE test_plugin_processor.cpp test_plugin_state.cpp)
+    target_compile_definitions(spatial_tests PRIVATE SPATIAL_STATE_DIR="${PROJECT_SOURCE_DIR}/tests/state")
     target_link_libraries(spatial_tests PRIVATE SpatialScene)
     # Same trick JUCE uses for its format wrappers: see the module headers and the plugin's
     # compile definitions (JucePlugin_*, module config) without compiling the modules a second time.
