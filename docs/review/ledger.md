@@ -1687,6 +1687,8 @@ CORRECT, others not). **L** = decision loop (researcher → decider → interrog
 | P07-27 | resolved | W | dirty generation counter; builder compares against the recorded submitted generation (R3-1); no-lost-update test |
 | P07-28 | resolved | W | no allocation tested; no lock by construction (atomic increment), TSan |
 
+D7 final advocate screen of the applied text: PASS (`docs/review/phase-07/advocate-round3.md`).
+
 Totals for the 22 rows: 20 resolved, 1 resolved for 07 with a follow-up (P07-8), 1 follow-up (P07-10); none needs
 Maisara for correctness. Proposals she can veto: D1, D2, D3, D4, D6 (AX33), D7 (AX18 amendment), D8 (AX34), D9.
 
