@@ -60,3 +60,12 @@ def test_window_sums_match_window_definition():
 
 def test_n0_rule():
     assert tr.n0(6000.0) == 1_524_000
+
+
+def test_detection_stamped_at_closest_approach_within_1_ms():
+    # direct sound at r = 3 m: r/c = 8.746 ms. A stamp at sphere entry would be (r - r_d)/c = 7.29 ms (bin 7);
+    # the closest-approach stamp is within d_min²/(2rc) ≤ 0.12 ms of r/c (d_min ≤ r_d), so all energy is in the 1 ms bin 8.
+    rcv = SRC + np.array([3.0, 0.0, 0.0])
+    r = tr.trace(DIMS, [1.0] * 6, [0.0] * 6, np.zeros(8), SRC, rcv, 300_000, t_end=0.02, bin_s=0.001)
+    assert r.e[0, 8] > 0
+    assert r.e[0].sum() == r.e[0, 8]

@@ -171,6 +171,11 @@ jobs:
         if: runner.os == 'Linux'
         run: python tools/ci/listening_pack.py --phase phase-04 --render-cli build/cli/render_cli
 
+      # Phase 05b: the current full room through every test scene (B11 not promoted: no A/B pair).
+      - name: Listening pack (phase-05b)
+        if: runner.os == 'Linux'
+        run: python tools/ci/listening_pack.py --phase phase-05b --render-cli build/cli/render_cli
+
       # Phase 06: offline vs real-time drum renders and the IR-switch demo (render_cli --realtime-emulation).
       - name: Listening pack (phase-06)
         if: runner.os == 'Linux'

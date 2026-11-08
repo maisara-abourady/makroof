@@ -89,7 +89,7 @@ class TraceResult:
     def window_k(self) -> np.ndarray:
         return np.where(self.window_s2 > 0, self.window_s1**2 / np.where(self.window_s2 > 0, self.window_s2, 1.0), 0.0)
 
-    def merged(self, other: "TraceResult") -> "TraceResult":
+    def merged(self, other: TraceResult) -> TraceResult:
         """Sum of two disjoint particle sets with the same seed (chunks continue the numbering)."""
         r = TraceResult(self.n + other.n, self.seed, self.bin_s, self.e + other.e, self.e2 + other.e2,
                         self.detections + other.detections)

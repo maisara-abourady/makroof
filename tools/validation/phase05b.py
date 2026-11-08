@@ -40,6 +40,7 @@ from tools.acoustics import tracer as tr  # noqa: E402
 from tools.validation import scope6  # noqa: E402
 
 OUT = HERE / "data" / "phase05b.json"
+A_STAR_05E = REPO / "tools" / "acoustics" / "data" / "phase05e_a_star.json"
 CACHE = REPO / "build" / "validation" / "phase05b"
 BIN_S = 0.010  # B11: 10 ms bins
 AQ9_IDX = (3, 4, 5)  # 500 Hz, 1 kHz, 2 kHz
@@ -176,6 +177,7 @@ def step_selfcheck():
                         "tolerance_db": SELF_S0_DB, "pass": bool(np.nanmax(np.abs(dg)) <= SELF_S0_DB)}
     log(f"s=0 anchor: max |Δ| {out['s0']['max_abs_db']:.3f} dB, mean {out['s0']['mean_db']:+.3f} dB")
     # s = 1: Table 5.2 (no air), room-energy decay of the tracer's particles vs the iteration T
+    a_star_05e = {c["case"]: c for c in json.loads(A_STAR_05E.read_text())["cases"]}
     for case, dims, alpha, t_ey, t_it, _ in radiosity.TABLE_5_2:
         scale = np.asarray(dims) / scope6.AQ10_DIMS
         src = scope6.AQ10_SRC * scale
@@ -188,10 +190,21 @@ def step_selfcheck():
         slope = np.polyfit(t[sel], np.log(E[sel]), 1)[0]
         T = -np.log(1e6) / slope
         rel = T / t_it - 1
+        ref = a_star_05e[case]
         out["s1"][str(case)] = {"T_tracer_s": T, "T_iteration_s": t_it, "T_eyring_s": t_ey, "rel": rel,
-                                "pass": bool(abs(rel) <= SELF_S1_REL), "n": SELF_S1_N}
-        log(f"s=1 Table 5.2 case {case}: T {T:.3f} s vs iteration {t_it} s ({rel:+.2%})")
+                                "pass": bool(abs(rel) <= SELF_S1_REL), "n": SELF_S1_N,
+                                # scope 5 diagnosis (reported, no new pass rule): the phase-05e converged a* solver
+                                # and its independent Lambert-particle MC (tools/acoustics/data/phase05e_a_star.json);
+                                # the iteration column sits 0.6-7.2 % above both (ledger DB-1, open)
+                                "T_a_star_05e_s": ref["solver_T60_s"], "T_mc_05e_s": ref["mc"]["T60_s"],
+                                "rel_vs_mc_05e": T / ref["mc"]["T60_s"] - 1,
+                                "rel_vs_a_star_05e": T / ref["solver_T60_s"] - 1,
+                                "column_vs_mc_05e": ref["iteration_column_vs_mc_rel"]}
+        log(f"s=1 Table 5.2 case {case}: T {T:.3f} s vs iteration {t_it} s ({rel:+.2%}), vs 05e MC "
+            f"{ref['mc']['T60_s']:.3f} s ({T / ref['mc']['T60_s'] - 1:+.2%})")
     out["s1_tolerance_rel"] = SELF_S1_REL
+    out["s1_pass_all"] = all(v["pass"] for v in out["s1"].values())
+    out["s1_max_abs_rel_vs_mc_05e"] = max(abs(v["rel_vs_mc_05e"]) for v in out["s1"].values())
     d["selfcheck"] = out
     save(d)
 
@@ -228,60 +241,237 @@ def rendered_bins(c, plan, env_c, nb) -> np.ndarray:
     return spec + dif
 
 
-def step_ell():
+def _case_t_end(c) -> float:
+    return plan_of(c)["mix"]["mixS"] + rh.CROSSFADE_HALF_S + 2e-3
+
+
+def rung_values(c, size, env_c) -> dict:
+    """The scope 0 convergence quantities of one case at one rung: full E_target (8,) and the rendered
+    energy (ISM specular + hybrid diffuse) in every tracer-gated bin (session brief O4b)."""
+    plan = plan_of(c)
+    nbg = n_gate_bins(plan)
+    rb = rendered_bins(c, plan, env_c, nbg)
+    gated = load()["tracer"]["cases"][c["name"]]["gated"]
+    return {"target": rh.target_hybrid(plan, env_c).tolist(),
+            "gated_bins": [[float(rb[b, j]) for j in gated[b]] for b in range(8)]}
+
+
+def rung_change(r1: dict, r2: dict) -> dict:
+    t1, t2 = np.asarray(r1["target"]), np.asarray(r2["target"])
+    ch_t = float(np.max(np.abs(t1[list(AQ9_IDX)] / t2[list(AQ9_IDX)] - 1)))
+    gb = [abs(x / y - 1) for b1, b2 in zip(r1["gated_bins"], r2["gated_bins"]) for x, y in zip(b1, b2)]
+    return {"target_change": ch_t, "gated_bin_change": float(max(gb)) if gb else 0.0}
+
+
+def factorised_env(c, size) -> np.ndarray:
+    key = CACHE / f"hybrid_fact_{c['name']}_{size}.npz"
+    if key.exists():
+        return np.load(key)["env"]
+    t0 = time.time()
+    env = hybrid_env_factorised(c, size, _case_t_end(c))
+    log(f"hybrid (air factored) {c['name']} ℓ = {size} m: {time.time() - t0:.0f} s")
+    CACHE.mkdir(parents=True, exist_ok=True)
+    np.savez(key, env=env)
+    return env
+
+
+def step_ell(max_rung: int = 2):
+    """Scope 0 ladder: rungs 0 (5 m) and 1 (2.5 m) with the full reference hybrid (all variants of a
+    group at once, as phase 05e); rungs from 1.25 m on, per case with the air factored out (one band
+    column, `hybrid_env_factorised`; memory). The 2.5 m rung is recomputed the same way for the
+    2.5 -> 1.25 m step and compared with the full run (factorisation check)."""
     d = load()
-    trc = d["tracer"]["cases"]
     groups = {}
     for c in cases():
         groups.setdefault(c["group"], []).append(c)
-    rungs = {}
-    a_star = {}
-    for gi, (g, cs) in enumerate(groups.items()):
-        dims, alpha = cs[0]["dims"], cs[0]["alpha_faces"]
-        for size in ELL_LADDER[:2]:
-            p = radiosity.box_patches(dims, size)
-            a_star.setdefault(g, {})[str(size)] = radiosity.a_star(dims, (1 - np.asarray(alpha))[p.face], p)
-    result = {"ladder_m": list(ELL_LADDER), "tolerance_rel": ELL_TOL, "dt_s": rh.DT, "per_group": {}}
+    result = d.get("ell", {})
+    result.update({"ladder_m": list(ELL_LADDER), "tolerance_rel": ELL_TOL, "dt_s": rh.DT})
+    vals = result.setdefault("values", {})
+    # a* per room layout and rung
+    a_star = result.setdefault("a_star", {})
     for g, cs in groups.items():
-        per = {}
-        for size in ELL_LADDER[:2]:
+        dims, alpha = cs[0]["dims"], cs[0]["alpha_faces"]
+        for size in ELL_LADDER[: max_rung + 1]:
+            if str(size) not in a_star.setdefault(g, {}):
+                p = radiosity.box_patches(dims, size)
+                a_star[g][str(size)] = radiosity.a_star(dims, (1 - np.asarray(alpha))[p.face], p)
+    for size in ELL_LADDER[:2]:
+        if all(str(size) in vals.get(c["name"], {}) for c in cases()):
+            continue
+        for g, cs in groups.items():
             env = hybrid_env(cs, size)
             for vi, c in enumerate(cs):
-                plan = plan_of(c)
-                nbg = n_gate_bins(plan)
-                rb = rendered_bins(c, plan, env[vi], nbg)
-                gated = trc[c["name"]]["gated"]
-                per.setdefault(c["name"], {})[str(size)] = {
-                    "target": rh.target_hybrid(plan, env[vi]).tolist(),
-                    "gated_bins": [[float(rb[b, j]) for j in gated[b]] for b in range(8)]}
-        rungs[g] = per
-    # one halving 5 -> 2.5 m: max relative change per quantity
-    worst = 0.0
-    for g, per in rungs.items():
-        a5, a25 = a_star[g]["5.0"], a_star[g]["2.5"]
-        ch_a = abs(a5 / a25 - 1)
-        cases_out = {}
-        for n, r in per.items():
-            t5, t25 = np.asarray(r["5.0"]["target"]), np.asarray(r["2.5"]["target"])
-            ch_t = float(np.max(np.abs(t5[list(AQ9_IDX)] / t25[list(AQ9_IDX)] - 1)))
-            gb = [abs(x / y - 1) for b5, b25 in zip(r["5.0"]["gated_bins"], r["2.5"]["gated_bins"]) for x, y in zip(b5, b25)]
-            ch_b = float(max(gb)) if gb else 0.0
-            cases_out[n] = {"target_change": ch_t, "gated_bin_change": ch_b}
-            worst = max(worst, ch_t, ch_b)
-        worst = max(worst, ch_a)
-        result["per_group"][g] = {"a_star": a_star[g], "a_star_change": ch_a, "cases": cases_out}
-    result["halving_5_to_2.5_max_change"] = worst
-    result["ell_m"] = 5.0 if worst < ELL_TOL else None
+                vals.setdefault(c["name"], {})[str(size)] = rung_values(c, size, env[vi])
+    for size in ELL_LADDER[2: max_rung + 1]:
+        for c in cases():
+            if str(size) in vals.get(c["name"], {}):
+                continue
+            vals[c["name"]][str(size)] = rung_values(c, size, factorised_env(c, size))
+            if str(ELL_LADDER[1]) + "_factorised" not in vals[c["name"]]:
+                vals[c["name"]][str(ELL_LADDER[1]) + "_factorised"] = rung_values(c, ELL_LADDER[1], factorised_env(c, ELL_LADDER[1]))
+            d["ell"] = result
+            save(d)
+    steps = {}
+    ell = None
+    for j in range(max_rung):
+        a, b = ELL_LADDER[j], ELL_LADDER[j + 1]
+        if not all(str(b) in vals[c["name"]] for c in cases()):
+            break
+        ka = str(a) + ("_factorised" if j >= 1 else "")
+        per_case = {n: rung_change(v[ka], v[str(b)]) for n, v in vals.items()}
+        per_room = {g: abs(a_star[g][str(a)] / a_star[g][str(b)] - 1) for g in groups}
+        worst = max([max(x.values()) for x in per_case.values()] + list(per_room.values()))
+        steps[f"{a}->{b}"] = {"cases": per_case, "a_star_change": per_room, "max_change": worst, "converged": worst < ELL_TOL}
+        log(f"ℓ ladder {a} -> {b} m: max change {worst:.4%}")
+        if worst < ELL_TOL:
+            ell = a
+            break
+    if any(str(ELL_LADDER[1]) + "_factorised" in v for v in vals.values()):
+        result["factorisation_check_2.5"] = {n: rung_change(v[str(ELL_LADDER[1]) + "_factorised"], v[str(ELL_LADDER[1])])
+                                              for n, v in vals.items() if str(ELL_LADDER[1]) + "_factorised" in v}
+    result["steps"] = steps
+    result["ell_m"] = ell
     d["ell"] = result
     save(d)
-    log(f"ℓ ladder 5 -> 2.5 m: max change {worst:.4%}; ℓ = {result['ell_m']}")
+    log(f"ℓ = {ell}")
+
+
+def lean_solve(rk: rh.RoomKernel, inc: np.ndarray, gath: np.ndarray, v: int = 0, b: int = 0, tol: float = 1e-9,
+               max_generations: int = 2000, chunk: int = 128) -> np.ndarray:
+    """rh.solve for one variant and band with the kernel's FFT built in chunks of patches, in complex64
+    (ref_hybrid.solve transforms the whole (N, N, T) kernel at once in complex128, which does not fit in
+    memory at ℓ = 1.25 m in the 20 × 30 × 10 m layouts). Same recursion, same truncation: (P, T)."""
+    N, T = rk.N, rk.T
+    L = 2 * T
+    F = L // 2 + 1
+    K = rk.kernel(v, b)  # (N, N, T) view
+    Kf = np.empty((F, N, N), dtype=np.complex64)  # (F, l, k)
+    for k0 in range(0, N, chunk):
+        k1 = min(N, k0 + chunk)
+        Kf[:, :, k0:k1] = np.transpose(np.fft.rfft(K[k0:k1], n=L, axis=2), (2, 1, 0)).astype(np.complex64)
+    D = rk.variants[v].diffuse[rk.bands[b]][rk.p.face]
+    phi = D[None, :, None] * inc[:, v, b]
+    total = phi.copy()
+    e0 = phi.sum()
+    for _ in range(max_generations):
+        Pf = np.transpose(np.fft.rfft(phi, n=L, axis=2), (2, 1, 0)).astype(np.complex64)  # (F, N, P)
+        Yf = np.matmul(Kf, Pf)
+        y = np.fft.irfft(np.transpose(Yf, (2, 1, 0)), n=L, axis=2)[:, :, :T]
+        phi = D[None, :, None] * np.maximum(y, 0.0)
+        total += phi
+        if phi.sum() <= tol * max(total.sum(), e0, 1e-300):
+            break
+    Gf = np.fft.rfft(gath[:, v, b], n=L, axis=2)
+    Tf = np.fft.rfft(total, n=L, axis=2)
+    return np.maximum(np.fft.irfft((Gf * Tf).sum(axis=1), n=L, axis=1)[:, :T], 0.0)
+
+
+def hybrid_env_factorised(c, size, t_end) -> np.ndarray:
+    """One case's diffuse envelope (8, T) at patch size ``size`` with the air factored out: the hybrid
+    run without air in one band column, then exp(−m_b·c·t) per 1 ms bin centre. Exact for the
+    continuous model when α and s do not depend on the band (all 15 (A) cases): every diffuse path's
+    air factor is exp(−m·R) with R = c·t its arrival time; the discrete hybrid applies air per
+    whole delay bin in the kernel, so the two differ by the binning (checked against the full run at
+    ℓ = 2.5 m, `factorisation_check` in phase05b.json)."""
+    v0 = variant_of(c, np.zeros(8))
+    rk = rh.RoomKernel(c["dims"], size, t_end, [v0], bands=[3], log=log)
+    inc = rh.injection(rk, c["src"])[None]
+    gat = rh.gather_kernel(rk, c["rcv"])[None]
+    env0 = lean_solve(rk, inc, gat)[0]  # (T,)
+    tb = (np.arange(rk.T) + 0.5) * rh.DT
+    return env0[None, :] * np.exp(-np.outer(scope6.air_m(), rh.C_SOUND * tb))
+
+
+# ------------------------------------------------------------------------------------------
+# Step 4: gate (A), window-level check, branch, bias trigger
+# ------------------------------------------------------------------------------------------
+
+
+def db(x):
+    return float(10 * np.log10(x))
+
+
+def step_gate():
+    d = load()
+    ell = d["ell"]["ell_m"]
+    if ell is None:
+        raise SystemExit("ℓ is not certified (phase05b.json 'ell'): no comparison on an uncertified ℓ (scope 0)")
+    groups = {}
+    for c in cases():
+        groups.setdefault(c["group"], []).append(c)
+    out = {"ell_m": ell, "cases": {}}
+    for g, cs in groups.items():
+        env = hybrid_env(cs, ell)
+        for vi, c in enumerate(cs):
+            plan = plan_of(c)
+            nbg = n_gate_bins(plan)
+            z = np.load(CACHE / f"tracer_{c['name']}.npz")
+            e, e2 = z["e"][:, :nbg], z["e2"][:, :nbg]
+            with np.errstate(divide="ignore", invalid="ignore"):
+                k = np.where(e2 > 0, e * e / np.where(e2 > 0, e2, 1), 0.0)
+            rb = rendered_bins(c, plan, env[vi], nbg)
+            bins = []
+            worst = 0.0
+            n_gated = []
+            for b in range(8):
+                gb = np.nonzero(k[b] >= tr.K_GATE)[0]
+                n_gated.append(len(gb))
+                for j in gb:
+                    dd = db(rb[b, j] / e[b, j])
+                    worst = max(worst, abs(dd))
+                    bins.append({"band": b, "bin": int(j), "delta_db": dd, "k": float(k[b, j]),
+                                 "sigma_db": 4.34 / np.sqrt(k[b, j])})
+            enough = min(n_gated) >= 3
+            gate_pass = bool(enough and worst <= GATE_DB)
+            win = window_of(plan)
+            e_tr = win.norm * z["s1"]
+            k_tr = z["s1"] ** 2 / z["s2"]
+            se = 4.34 / np.sqrt(k_tr)
+            e_hyb = rh.target_hybrid(plan, env[vi])
+            e_ax16 = plan["target_ax16"]
+            wl = {str(rh_b): {"delta_lb_tr_db": db(e_ax16[i] / e_tr[i]), "hybrid_vs_tracer_db": db(e_hyb[i] / e_tr[i]),
+                              "delta_lb_db": db(e_ax16[i] / e_hyb[i]), "k_tr": float(k_tr[i]), "se_db": float(se[i])}
+                  for i, rh_b in zip(AQ9_IDX, (500, 1000, 2000))}
+            out["cases"][c["name"]] = {
+                "mix_s": plan["mix"]["mixS"], "fallback": plan["fallback"], "gate_bins": nbg, "gated_per_band": n_gated,
+                "bins": bins, "max_abs_db": worst, "enough_gated_bins": enough, "gate_A_pass": gate_pass, "window": wl}
+            log(f"{c['name']}: (A) {'pass' if gate_pass else 'FAIL'} max |Δ| {worst:.2f} dB; window "
+                + "; ".join(f"{k_}: ΔL_tr {v['delta_lb_tr_db']:+.2f} hyb-tr {v['hybrid_vs_tracer_db']:+.2f}" for k_, v in wl.items()))
+    allw = [w for c in out["cases"].values() for w in c["window"].values()]
+    window_pass = all(abs(w["hybrid_vs_tracer_db"]) <= WINDOW_DB for w in allw)
+    se_ok = all(w["se_db"] <= SE_MAX_DB for w in allw)
+    over = any(abs(w["delta_lb_tr_db"]) > WINDOW_DB for w in allw)
+    xb_over_phase05 = True  # phase 05e/05f X-b: |ΔL_b| > 1 dB in 26 of 345 case-bands (report-phase05.md §6a)
+    if window_pass and se_ok:
+        branch = "(i)"
+        switch = over or xb_over_phase05
+    else:
+        branch = "(ii)"
+        switch = False
+    bias_trigger = any(abs(b["delta_db"]) > BIAS_DIAG_DB for c in out["cases"].values() for b in c["bins"])
+    out["summary"] = {
+        "gate_A_pass_all": all(c["gate_A_pass"] for c in out["cases"].values()),
+        "gate_A_failed_cases": [n for n, c in out["cases"].items() if not c["gate_A_pass"]],
+        "window_pass": window_pass, "se_ok": se_ok, "any_abs_delta_lb_tr_over_1db": over,
+        "max_abs_hybrid_vs_tracer_db": max(abs(w["hybrid_vs_tracer_db"]) for w in allw),
+        "max_abs_delta_lb_tr_db": max(abs(w["delta_lb_tr_db"]) for w in allw),
+        "max_se_db": max(w["se_db"] for w in allw),
+        "branch": branch, "phase05_xb_over_1db": xb_over_phase05, "tail_level_switch": switch,
+        "bias_diagnosis_triggered": bias_trigger}
+    d["gate"] = out
+    save(d)
+    log(json.dumps(out["summary"], indent=1))
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("step", choices=["tracer", "selfcheck", "ell", "gate"])
+    ap.add_argument("--max-rung", type=int, default=1, help="ell: deepest ladder rung to compute (0 = 5 m ... 3 = 0.625 m)")
     a = ap.parse_args(argv)
-    {"tracer": step_tracer, "selfcheck": step_selfcheck, "ell": step_ell}[a.step]()
+    if a.step == "ell":
+        step_ell(a.max_rung)
+    else:
+        {"tracer": step_tracer, "selfcheck": step_selfcheck, "gate": step_gate}[a.step]()
 
 
 if __name__ == "__main__":
