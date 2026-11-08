@@ -202,6 +202,9 @@ Run workflow with `force` (once the trigger is on `main`), or push a change outs
 path to the exclusions only if `pytest tools/ci` (which greps code for reads of them) still passes.
 Every new CI job needs `needs: changes`, the `if:` gate and an entry in `ci-ok`'s `needs`
 (`tools/ci/test_ci_workflow.py` fails otherwise).
+`nightly.yml` has the same gate with its own marker (`nightly-pass-<fingerprint>`): the daily run validates
+only when the tree changed since the last passing validation (force: Actions → nightly validation → Run
+workflow with `force`; `tools/ci/test_nightly_workflow.py`).
 
 Binary dirs are `build/<preset>/`. Plugin bundles land in
 `build/<preset>/SpatialScene_artefacts/<Config>/{VST3,AU,Standalone}/`.

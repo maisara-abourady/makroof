@@ -2,12 +2,20 @@
 # validation scenes against the committed baseline (tests/golden/validation_baseline.json), the
 # bias-hook self-test (debug render_cli), the comparison report with measured IRs (artifact).
 # Linux only. Runs nightly, on demand, and on pull requests that touch the validation.
+# Skip gate (as ci.yml): if the validation already passed on a tree with the same fingerprint
+# (tools/ci/ci_fingerprint.py), the job is skipped and the gate links the run that passed. The
+# scheduled run therefore validates only when main changed since the last passing run.
 name: nightly validation
 
 on:
   schedule:
     - cron: "17 3 * * *"
   workflow_dispatch:
+    inputs:
+      force:
+        description: Run the validation even if this tree's fingerprint already passed
+        type: boolean
+        default: false
   pull_request:
     paths:
       - "tools/validation/**"
@@ -24,8 +32,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Skip gate: the same fingerprint as ci.yml, with its own marker key (nightly-pass-*). Markers saved
+  # on main (scheduled runs) are visible to every PR; a PR's markers to that PR only.
+  changes:
+    name: changes (skip if this tree already passed the validation)
+    runs-on: ubuntu-24.04
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+      fingerprint: ${{ steps.fp.outputs.fingerprint }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Fingerprint
+        id: fp
+        run: echo "fingerprint=$(python3 tools/ci/ci_fingerprint.py)" >> "$GITHUB_OUTPUT"
+      - name: Look up a pass marker
+        id: lookup
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: .nightly-pass
+          key: nightly-pass-${{ steps.fp.outputs.fingerprint }}
+      - name: Decide
+        id: decide
+        env:
+          FP: ${{ steps.fp.outputs.fingerprint }}
+          HIT: ${{ steps.lookup.outputs.cache-hit }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: |
+          if [[ "$HIT" == "true" && "$FORCE" != "true" ]]; then
+            passed="$(cat .nightly-pass/passed 2>/dev/null || echo unknown)"
+            echo "Fingerprint $FP already passed the validation: skipping. Reused run: $passed" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Fingerprint $FP: running the validation (marker hit: ${HIT:-false}, force: $FORCE)." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
   validation:
     name: BRAS validation (linux)
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -89,3 +134,20 @@ jobs:
             docs/validation/phase05/
             tools/validation/data/phase05_results.json
           if-no-files-found: warn
+
+      # Only a run whose every step above succeeded records the marker (a plain `if` keeps the
+      # implicit success(); always() would bypass it).
+      - name: Write the pass marker
+        if: needs.changes.outputs.run == 'true'
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          mkdir -p .nightly-pass
+          echo "$RUN_URL (commit $SHA)" > .nightly-pass/passed
+      - name: Save the pass marker
+        if: needs.changes.outputs.run == 'true'
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: .nightly-pass
+          key: nightly-pass-${{ needs.changes.outputs.fingerprint }}
