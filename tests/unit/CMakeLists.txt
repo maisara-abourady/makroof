@@ -19,7 +19,17 @@ add_executable(spatial_tests
                test_tail_decay.cpp
                test_mixing_time.cpp
                test_noise_tail.cpp
-               test_hybrid_ir.cpp)
+               test_hybrid_ir.cpp
+               ConvTestUtil.h
+               ../support/AllocationTracker.h
+               ../support/AllocationTracker.cpp
+               test_partitioned_convolver.cpp
+               test_crossfading_convolver.cpp
+               test_realtime_engine.cpp)
+
+# tests/support: the AllocationTracker replaces the global operator new / delete of this binary
+# (Phase 06, zero-allocation checks of the real-time convolver).
+target_include_directories(spatial_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/support")
 
 # The contract tests read the fixtures in tests/scenes/ (valid/ and invalid/).
 target_compile_definitions(spatial_tests PRIVATE SPATIAL_SCENES_DIR="${PROJECT_SOURCE_DIR}/tests/scenes")

@@ -103,3 +103,13 @@ def test_to_stereo():
     assert signals.to_stereo(a).shape == (4, 2)
     with pytest.raises(ValueError):
         signals.to_stereo(a, np.arange(3.0))
+
+
+def test_drum_loop_is_deterministic_and_normalised():
+    a = signals.drum_loop(48000)
+    b = signals.drum_loop(48000)
+    assert np.array_equal(a[0], b[0]) and np.array_equal(a[1], b[1])
+    peak = max(np.max(np.abs(a[0])), np.max(np.abs(a[1])))
+    assert abs(20 * np.log10(peak) - (-6.0)) < 1e-9
+    assert a[0].size == int(round(4 * 4 * 0.6 * 48000 + 0.5 * 48000))
+    assert not np.array_equal(a[0], a[1])  # snare left, hats right
