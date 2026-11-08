@@ -50,8 +50,46 @@ def documented_materials(descr_text: str) -> dict:
     return {"areas": areas, "d_char": depths, "S": float(m.group(1)), "V": float(m.group(2))}
 
 
-def match_materials(acc: dict, documented: dict, rel_tol=1e-3, abs_tol=0.011) -> dict:
-    """Map reader material ids to BRAS names by total area, one-to-one (greedy by area)."""
+# bras_mapping.md §2 acceptance test (phase-05g, ledger T5g-1…T5g-18): a documented area printed to the unit u is
+# reproduced to within AREA_TOL_FACTOR · u, absolute at any area size (rounding to u contributes at most u/2 whatever
+# the area; the tolerance is twice that bound plus 10 %). Every BRAS material is printed to 0.01 m², so 0.011 m². The
+# same rule applies to the reader's total over all faces against the documented S (printed 202.53 / 2763.0 / 5851.3:
+# 0.011 / 0.11 / 0.11 m²). Set by misparse detection, not accuracy (an undetected error < 0.016 m² changes the Sabine T by ≤ 0.19 %, Kuttruff Eq. 5.26).
+AREA_TOL_FACTOR = 1.1
+AREA_UNIT_M2 = 0.01  # the printed unit of every BRAS material area (documented_units checks it)
+AREA_TOL_M2 = AREA_TOL_FACTOR * AREA_UNIT_M2
+
+
+def _printed_unit(number: str) -> float:
+    """The unit of the last printed digit: '178.90' -> 0.01, '2763.0' -> 0.1, '8' -> 1."""
+    return 10.0 ** -len(number.split(".")[1]) if "." in number else 1.0
+
+
+def documented_units(descr_text: str) -> dict:
+    """Printed units of the documented areas and of S, from the digits as printed (not stored in
+    bras_geometry.json, whose ``documented`` block keeps the values only): {"areas": {name: u}, "S": u_S}."""
+    block = descr_text.split("Surface Areas:")[1].split("Characteristic depths:")[0]
+    areas = {name: _printed_unit(a) for name, a in re.findall(r"(mat_CR\d_\w+)\s+([\d.]+)\s*m", block)}
+    m = re.search(r"S\s*=\s*([\d.]+)\s*m²", descr_text)
+    return {"areas": areas, "S": _printed_unit(m.group(1))}
+
+
+def documentation_sum_bound_m2(units: dict) -> float:
+    """Worst case |Σ documented areas − S| from rounding alone: n·u/2 + u_S/2 (bras_mapping.md §2)."""
+    return sum(u / 2 for u in units["areas"].values()) + units["S"] / 2
+
+
+def check_total_area(polys_area_m2: float, documented_S: float, unit_S: float) -> None:
+    """The reader's total over every face (unpainted included) reproduces the documented S to within
+    AREA_TOL_FACTOR × S's printed unit (bras_mapping.md §2)."""
+    if abs(polys_area_m2 - documented_S) > AREA_TOL_FACTOR * unit_S:
+        raise SystemExit(f"reader total {polys_area_m2:.3f} m^2 vs documented S {documented_S} m^2 "
+                         f"(limit {AREA_TOL_FACTOR * unit_S:.3f} m^2)")
+
+
+def match_materials(acc: dict, documented: dict, abs_tol=AREA_TOL_M2) -> dict:
+    """Map reader material ids to BRAS names by total area, one-to-one (greedy by area); every area
+    within ``abs_tol`` (bras_mapping.md §2: 1.1 × the printed unit, absolute)."""
     ids = sorted((k for k in acc if k is not None), key=lambda k: -acc[k])
     names = sorted(documented, key=lambda n: -documented[n])
     if len(ids) != len(names):
@@ -59,7 +97,7 @@ def match_materials(acc: dict, documented: dict, rel_tol=1e-3, abs_tol=0.011) ->
     out = {}
     for k in ids:
         best = min((n for n in names if n not in out.values()), key=lambda n: abs(acc[k] - documented[n]))
-        if abs(acc[k] - documented[best]) > max(abs_tol, rel_tol * documented[best]):
+        if abs(acc[k] - documented[best]) > abs_tol:
             raise SystemExit(f"model material {k}: {acc[k]:.3f} m^2 matches no documented area ({documented})")
         out[k] = best
     return out
@@ -210,7 +248,11 @@ def reduce_polygons(room: str, polys, names: dict, emitters: dict, receivers: di
 def extract_room(room: str, cache: pathlib.Path, log=print) -> dict:
     skp_path = cache / room / "geometry" / f"{room}.skp"
     data = skp_path.read_bytes()
-    doc = documented_materials((cache / "materials" / "descr" / f"mat_{room}.txt").read_text(encoding="utf-8", errors="replace"))
+    descr = (cache / "materials" / "descr" / f"mat_{room}.txt").read_text(encoding="utf-8", errors="replace")
+    doc = documented_materials(descr)
+    units = documented_units(descr)
+    if any(u != AREA_UNIT_M2 for u in units["areas"].values()):
+        raise SystemExit(f"{room}: material areas not printed to {AREA_UNIT_M2} m^2 ({units['areas']}): /fix-plan")
     model = skp_reader.read(data, log=log)
     polys = skp_reader.world_polygons(model)
     acc: dict = {}
@@ -218,6 +260,7 @@ def extract_room(room: str, cache: pathlib.Path, log=print) -> dict:
         acc[p.material] = acc.get(p.material, 0.0) + p.area_m2
     unpainted = acc.pop(None, 0.0)
     names = match_materials(acc, doc["areas"])
+    check_total_area(sum(p.area_m2 for p in polys), doc["S"], units["S"])
     off_plane = max(p.off_plane_m for p in polys)
     emitters, receivers = sofa_positions(cache / room / "geometry" / f"{room}_RIRs_Dodecahedron.sofa")
     red = reduce_polygons(room, polys, names, emitters, receivers)

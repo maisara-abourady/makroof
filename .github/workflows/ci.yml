@@ -1,12 +1,13 @@
 name: CI
 
 on:
-  # Pushes to main and every pull request. (Pushes to other branches are covered by their PR run;
-  # running both would start two identical runs per push.)
-  push:
-    branches: [main]
+  # Maisara, 2026-11-08 (option 2): CI starts by itself exactly once per PR, when it is opened, reopened
+  # or marked ready for review. Pushes to an open PR do not start it (CLAUDE.md "When to open a PR":
+  # after a fix that a CI failure or the engineer's review called for, rerun it by hand, below).
+  # Nothing runs on main or on a schedule.
   pull_request:
-  # Manual run; `force` bypasses the skip below.
+    types: [opened, reopened, ready_for_review]
+  # Manual run (Actions -> CI -> Run workflow, on the PR's branch); `force` bypasses the skip below.
   workflow_dispatch:
     inputs:
       force:

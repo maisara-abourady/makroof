@@ -305,8 +305,13 @@ hand-tuned.
      reflecting walls (the Kuttruff §5.7 iteration) lies below Eyring's: on Kuttruff Table 5.2 cases
      2 and 4 it moves T away from the iteration result (case 4: ≈ 1.47 s against Eyring 1.38 s and
      Iteration 1.21 s). A γ²-Eyring pass on BRAS alone is input-limited (C2); the Phase 05f outcome
-     (recommended: not adopted) is recorded in BUILD_PLAN §5 B12. a* assumes s = 1 on all walls; with
-     low s the true T can fall on the other side of Eyring (Kuttruff §9.4). The report gives the mean
+     (recommended: not adopted) is recorded in BUILD_PLAN §5 B12. a* assumes Lambert (s = 1)
+     reflection on all walls (Kuttruff §5.7 Eqs. 5.49–5.56; s = 1 is a diffusely reflecting surface, §2.7, and complete
+     diffusion is Lambert's law, §5.2, Eq. 4.24). For
+     non-uniform absorption it puts T below Eyring when the absorption sits on one face (Table 5.2 cases 2, 4; in case 4 the largest)
+     but above it when a small face absorbs (case 6); with regular geometry, smooth walls and non-uniform
+     absorption the field may not be diffuse, and the measured T can exceed the diffuse-field prediction (Kuttruff
+     §9.4, 'coupling without separate rooms'; §5.2). The report gives the mean
      |T30 error| at 500 Hz–2 kHz (AQ9)
      for Eyring, a* and γ²-Eyring against BRAS, with the rooms listed sorted by the absorption-contrast
      indicator of scope 3 **and** by the largest single-face share of the total absorption. No

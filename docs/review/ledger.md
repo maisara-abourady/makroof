@@ -1700,3 +1700,73 @@ Final state of the 22 rows as in the table above.
 
 **Accepted by Maisara 2026-11-08 ("accepted, merge with no ci"): D1, D2, D3, D4, D6 (AX33), D7 (AX18 amendment), D8
 (AX34), D9, no vetoes.** Merged to main without a CI run at her instruction.
+
+## Phase 05g — Kuttruff §9.4 citation (scope 3) and the BRAS area tolerance (scope 4) (2026-11-07; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Scope 3: interrogator check of phase-05.md scope 6 "a* assumes s = 1 on all walls; with low s the true T can fall on the
+other side of Eyring (Kuttruff §9.4)" and the §5 B12 citation (§5.7, §9.4). Scope 4: interrogator (options) → decider
+(05g-4.1…4.3) → interrogator (decision mode; printed units then read from the BRAS files by the main session: every
+material area printed to 0.01 m², S printed 202.53 / 2763.0 / 5851.3) → advocate (PASS ×3 with the interrogator's text
+corrections; an engineering choice, not a C2 product choice; Maisara's accept/veto is still asked under fix-plan step 3)
+→ plan-editor applied → interrogator diff check (CLEAN on substance; five minor fixes applied by the main session).
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| G5g-1 | FACT | "a* assumes s = 1 on all walls (Kuttruff §5.7, §9.4)" | IMPRECISE: substance correct, §9.4 the wrong citation | Kuttruff §5.7 L2729–2730 (Lambert premise of Eqs. 5.49–5.56), Table 5.2 caption; §2.7 L1620, §9.8 L4311 (s = 1 diffuse/Lambert); §9.4 L4183–4241 never mentions a* or s | minor | – | applied: §5.7 Eqs. 5.49–5.56, §2.7, §5.2 Eq. 4.24 |
+| G5g-2 | FACT | "with low s the true T can fall on the other side of Eyring (Kuttruff §9.4)" | IMPRECISE | §9.4 L4240–4241: regular geometry, smooth walls, non-uniform absorption → 2-D field, measured T ≈ 2 s vs 1.6–1.7 s predicted (formula unnamed); no s, no Eyring comparison | minor | – | applied: corpus wording (§9.4 'coupling without separate rooms'; §5.2) |
+| G5g-3 | FACT | implied fixed side of a* relative to Eyring | IMPRECISE | Table 5.2: case 4 a* 1.21 < Eyring 1.38 s, case 6 5.93 > 4.61 s (table governs; printed prose slip L2796) | minor | – | applied: no fixed direction stated |
+| T5g-1 | NUMBER | "±0.1 % allowed for rounding of large areas" | IMPRECISE | rounding to 0.01 m² is ≤ 0.005 m² absolute at any size; measured residuals show no size trend (max 0.00477 = E[max] of 20 uniform rounding errors) | minor | – | closed (rationale replaced) |
+| T5g-2 | NUMBER | option A (keep) | CORRECT acoustically, loose detector (admits 1.77 m² on CR4 concrete) | Kuttruff Eqs. 5.24–5.26; Vorländer §11.1.1 (0.5 m elements) | none | – | not chosen |
+| T5g-3 | NUMBER | option B (0.011 m² absolute) | CORRECT | headroom 0.0062 m² | none | – | chosen (05g-4.1) |
+| T5g-4 | NUMBER | option C (≈ 0.006 m²) | CORRECT on data; dataset precision NOT CHECKABLE | headroom 0.0012 m² | none | – | not chosen |
+| T5g-5 | NUMBER | option D (relative 1e-5) | WRONG | fails the correct reader (CR2 windows limit 9.75e-5 vs 0.00296 m²) | blocker if adopted | – | rejected |
+| T5g-6 | FACT | tightness has no acoustic need | CORRECT | α uncertainty dominates (Kuttruff §9 audience passage; Vorländer §11.1.2) | none | – | closed |
+| T5g-7 | DECISION | A/B/C | product/engineering choice | detection threshold vs headroom | minor | – | decided (decider B) |
+| T5g-8 | NUMBER | total-S assertion | checked the documentation against itself only | test_skp_reader.py | none | – | closed by 05g-4.3 |
+| T5g-9 | SOFTWARE | code and test change together | – | match_materials + test | – | – | applied (shared `AREA_TOL_M2`) |
+| T5g-10 | NUMBER | 05g-4.1 arithmetic; every reader area rounds to its documented value | CORRECT | bras_geometry.json | none | – | verified |
+| T5g-11 | FACT | "any change ≥ 0.011 m² fails" | WRONG → applied: "> 1.1u + u/2 ≈ 0.016 m² always fails, smaller may pass" | residual up to 0.0048 m² | major (text) | – | closed |
+| T5g-12 | NUMBER | u_S per room | UNDERINFORMED → resolved: S printed 202.53 / 2763.0 / 5851.3 (u_S 0.01 / 0.1 / 0.1) | BRAS `_descr/mat_CRx.txt` line 19 | major | – | closed |
+| T5g-13 | NUMBER | "a further u/2 for the dataset's computation" vs the CR2 total bound | INCONSISTENT → applied: "twice the rounding bound plus 10 %" | arithmetic | major (text) | – | closed |
+| T5g-14 | NUMBER | "5 % jnd" | IMPRECISE → applied: working T jnd, Vorländer Table 6.1 gives 5 % for EDT, B12 iii | Vorländer Table 6.1 | minor | – | closed |
+| T5g-15 | NUMBER | self-check bound n·u/2 + u_S/2 = 0.030 / 0.085 / 0.090 | CORRECT | arithmetic | none | – | verified |
+| T5g-16 | NUMBER | every material printed to 0.01 m² | resolved: yes (178.90, 698.50, 8.50 …) | BRAS files | none | – | closed (the extractor now checks it) |
+| T5g-17 | DECISION | relative term removed in the matcher too | CONSEQUENCE | – | minor | – | applied |
+| T5g-18 | DECISION | reversal: a correct reader above 1.1u on a new room → /fix-plan, never per room | CONSEQUENCE | – | none | – | applied |
+| 05g-4.1 | DECISION | per-material \|A_reader − A_doc\| ≤ 1.1u = 0.011 m² absolute, no relative term, one shared constant | decider; interrogator SURVIVES WITH CORRECTIONS; advocate PASS | above | – | accepted by Maisara 2026-11-08 | applied: `extract_bras_geometry.AREA_TOL_M2`, `test_skp_reader.py`, bras_mapping §2 |
+| 05g-4.2 | DECISION | bras_mapping §2 rationale text | decider; corrections T5g-11/13/14 applied; advocate PASS | above | – | accepted by Maisara 2026-11-08 | applied |
+| 05g-4.3 | DECISION | reader total (all faces, unpainted included) vs S within 1.1 u_S (measured 0.0027 / 0.026 / 0.033 m²); documentation self-check bound n·u/2 + u_S/2 replacing 0.06 | decider; interrogator UNDERINFORMED → resolved; advocate PASS | above | – | accepted by Maisara 2026-11-08 | applied: `check_total_area`, `documentation_sum_bound_m2`, test |
+
+Maisara's accept/veto of 05g-4.1…4.3 (fix-plan step 3: several options were valid, T5g-2/3/4): **accepted by Maisara 2026-11-08 ("I'm okay with both", asked to accept or veto: no veto, the committed rule stands)**.
+
+Finished diff (interrogator, step 5): **CLEAN on substance**; all numbers re-derived (0.011 / 0.11 / 0.11; 0.016;
+0.030 / 0.085 / 0.090; 1 105 m², 4.93 m, 7.84 m; reader skip counts).
+
+| id | kind | item | verdict | evidence | severity | status |
+|---|---|---|---|---|---|---|
+| D5g-1 | FACT | a* Lambert premise, Kuttruff §5.7 Eqs. 5.49–5.56 | CORRECT | §5.7 (Eq. 5.49 kernel 5.50; a* Eq. 5.53; iteration 5.54–5.56) | none | closed |
+| D5g-2 | FACT | "s = 1 is Lambert reflection, §2.7" | IMPRECISE | §2.7 says "diffusely reflecting"; Lambert in §5.2 / Eq. 4.24, §9.8 | minor | applied |
+| D5g-3 | FACT | "large face absorbs (cases 2, 4)" | IMPRECISE | Table 5.2 case 2 is a cube (six equal faces); case 4 the largest face | minor | applied |
+| D5g-4 | FACT | §9.4 smooth walls + non-uniform absorption | CORRECT, "regular geometry" omitted | §9.4 L4240–4241 | minor | applied |
+| D5g-5 | NUMBER | 1.1u = 0.011 m² | CORRECT | arithmetic | none | closed |
+| D5g-6 | NUMBER | reader total vs S limits 0.011 / 0.11 / 0.11 | CORRECT (measured values: data) | printed decimals | none | closed |
+| D5g-7 | NUMBER | detection floor ≈ 0.016 m² | CORRECT | u/2 + 1.1u | none | closed |
+| D5g-8 | NUMBER | "≤ 0.13 %" for T | IMPRECISE: largest undetected error 0.016 m² → 0.19 % (Sabine, Eq. 5.26) | Kuttruff Eq. 5.26 | minor | applied |
+| D5g-9 | NUMBER | 5 % working T jnd, Vorländer Table 6.1 EDT | CORRECT | Vorländer §6.4 Table 6.1 | none | closed |
+| D5g-10 | NUMBER | self-check bound 0.030 / 0.085 / 0.090 | CORRECT | arithmetic, n = 5 / 7 / 8 | none | closed |
+| D5g-11 | NUMBER | smallest material 8.50 m², smallest faces ≈ 1e-5 m² | CORRECT (consistent) | §5 areas; reader data | none | closed |
+| D5g-12 | NUMBER | former rule '0.01 m², ±0.1 %' vs '0.011 m²' | INCONSISTENT (bookkeeping) | phase-05g scope 4; code abs_tol=0.011 | minor | applied (documented vs coded both named) |
+| D5g-13 | NUMBER | CR4 1 105 m², 4.93 m, 7.84 m | CORRECT | arithmetic | none | closed |
+| D5g-14 | DECISION | tolerance set by misparse detection | CONSEQUENCE | Eq. 5.26: ≤ 0.19 % vs 5 % | minor | closed |
+| D5g-15 | DECISION | AX26 unchanged, CR4 box flat | CONSEQUENCE | Kuttruff §5.3, §5.7 Table 5.2 / Fig. 5.11 | minor | closed (Expert question) |
+| D5g-16 | FACT | §6 row "§9.4 citation … corrected" for B12 | IMPRECISE | B12 no longer cites §9.4 | minor | applied |
+| D5g-17 | SOFTWARE | reader statements in the §6 row | consistent with `skp_reader.py` docstring | – | – | closed |
+| D5g-18 | SOFTWARE | threshold applied to code and test | consistent (`AREA_TOL_FACTOR`) | – | – | closed |
+
+Six minor fixes (D5g-2, 3, 4, 8, 12, 16) were applied by the main session in the interrogator's proposed wording (its
+"Fixes" list), not by the plan-editor; T5g-12 (printed units) was resolved by the main session reading the BRAS files,
+and `extract_bras_geometry.documented_units` now checks the printed units in the BRAS-cache tests. The fixes were:
+D5g-2 (s = 1 ↔ Lambert also cited to §5.2 Eq. 4.24), D5g-3 ("when the absorption sits on one face (cases 2, 4; in case 4
+the largest)"), D5g-4 ("regular geometry" added to the §9.4 conditions), D5g-8 (the T effect stated for the largest
+undetected error, < 0.016 m² → ≤ 0.19 % Sabine, Eq. 5.26), D5g-12 (former rule: documented '0.01 m², ±0.1 %', coded
+max(0.011 m², 1e-3·A)), D5g-16 (§6 row: B12 citation replaced, not "§9.4 corrected").

@@ -84,10 +84,28 @@ third source position, measured with the Genelec only, which is not omni and is 
 ## 2. Inputs per room
 
 - Geometry: `CRx.skp` (SketchUp 2015), read by `tools/validation/skp_reader.py` (this
-  repository's own reader). Accepted only if every material's total area reproduces
-  `_descr/mat_CRx.txt` to the printed precision (0.01 m², ±0.1 % allowed for rounding of large
-  areas) and every loop vertex lies on its face's plane (|n·p + d| ≤ 1 mm, AX30, decided 2026-11-07 before any CR4
-  comparison; measured maxima CR2 7.2e-16 m, CR3 3.2e-12 m, CR4 1.98e-5 m).
+  repository's own reader). Accepted only if
+  - every material's total area reproduces `_descr/mat_CRx.txt` to within 1.1 × its printed unit u
+    (u = 0.01 m² for every BRAS material, so 0.011 m² absolute at any area: rounding to u contributes
+    at most u/2 whatever the area's size, and the tolerance is twice that bound plus 10 %; measured
+    maximum 0.0048 m² over the 20 materials of CR2–CR4, each equal to the reader's area rounded to
+    0.01 m²),
+  - the reader's total over all faces (unpainted included) reproduces the documented S to within
+    1.1 × S's printed unit (S printed as 202.53 / 2763.0 / 5851.3 m², so 0.011 / 0.11 / 0.11 m²;
+    measured 0.0027 / 0.026 / 0.033 m²), and
+  - every loop vertex lies on its face's plane (|n·p + d| ≤ 1 mm, AX30, decided 2026-11-07 before any CR4
+    comparison; measured maxima CR2 7.2e-16 m, CR3 3.2e-12 m, CR4 1.98e-5 m).
+
+  The area tolerance is set by misparse detection, not accuracy: a change in one material larger than
+  1.1u + u/2 ≈ 0.016 m² always fails, smaller ones may pass (the smallest faces, ≈ 1e-5 m² in CR4, are
+  not individually detected; the re-extraction regression test of `test_skp_reader.py` guards them).
+  An undetected area error (< 0.016 m²) changes the Sabine T by ≤ 0.19 % (|ΔT/T| ≤ ΔS/S_i,
+  Kuttruff Eq. 5.26; smallest material 8.50 m²), far below the 5 % working T jnd (AQ9; Vorländer Table 6.1 gives 5 % for EDT at
+  500–1000 Hz; BUILD_PLAN §5 B12 iii). The documentation's own consistency (Σ documented areas vs S)
+  is checked to n·u/2 + u_S/2 (CR2 0.030, CR3 0.085, CR4 0.090 m²; n = 5 / 7 / 8 materials). Decided
+  in phase-05g (ledger T5g-1…T5g-18). The former rule (documented as '0.01 m², ±0.1 %', coded as max(0.011 m², 1e-3·A)) admitted a
+  lost 1.77 m² face on CR4 concrete. If a correct reader exceeds 1.1u on a new room, the rule goes to /fix-plan, never a
+  per-room tolerance.
 - Source and receiver positions: `RIRs/CRx_RIRs_Dodecahedron.sofa` (EmitterPosition,
   ReceiverPosition, model frame, metres), extracted once by
   `tools/validation/extract_bras_geometry.py` into `tools/validation/data/bras_geometry.json`
@@ -158,6 +176,11 @@ third source position, measured with the Genelec only, which is not omni and is 
   represented only through the face-rule areas and α.
 - The face rule assigns sloped seating to the floor and splays to the nearest wall; the x/y wall
   split of the box is approximate (phase-05 Data).
+- CR4's AX26 box is flat: A_floor = 1 754 m² (floor-assigned faces, including the raked seating
+  steps) exceeds the floor's oriented-bounding-rectangle footprint (33.35 × 33.13 m ≈ 1 105 m²),
+  giving H = V/A_floor = 4.93 m against V/footprint ≈ 7.8 m. Recorded as an Expert question
+  (BUILD_PLAN §2 AX26, Pending Expert); AX26 is not changed after results (phase-05.md) and is
+  reversed only on independent evidence.
 - AX17 broadband s: BRAS s rises as √f, so the AX17 mean overstates s at 500 Hz by up to +47 %
   and understates it at 2 kHz by up to −26 % (F7; decider report 11).
 - Whether any room combines uneven α with low s is stated in §5 (Raise with Maisara, item 1).
