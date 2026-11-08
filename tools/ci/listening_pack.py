@@ -154,8 +154,109 @@ def _phase_05e(pack: pathlib.Path, binary: pathlib.Path) -> None:
     ab_pack.build(pack, binary=binary)
 
 
+# phase-06: the real-time engine. A drum loop through medium_room (Phase 04 hybrid IR) rendered
+# offline and through render_cli --realtime-emulation (random host blocks), which CI has already
+# nulled; and a tone through an IR that switches every 0.5 s between living_room and
+# concert_hall_box (30 ms equal-power crossfades, AQ4 / AX18).
+PHASE_06_NOTES = (
+    "Phase 06: the REAL-TIME convolution engine (what the plugin will run from Phase 07). Still the "
+    "mono omni room preview of Phase 04 (both ears the same). (1) drums_medium_room_offline.wav and "
+    "drums_medium_room_realtime.wav are the same drum loop through medium_room, rendered by the "
+    "offline reference and by the real-time engine in random host block sizes. They must sound "
+    "IDENTICAL: CI has already measured the difference (table below), so this is a sanity listen. "
+    "(2) ir_switch_demo.wav is a steady low tone in a room that switches every 0.5 s between "
+    "living_room (short decay, close) and concert_hall_box (long decay; its emitters are much "
+    "farther away, so it is also about 29 dB quieter, AX2), starting with living_room. You should hear "
+    "the room and the level change every half second, smoothly over 30 ms, with NO clicks, ticks or "
+    "pops at the switch points. Both drum files share one playback gain, so they stay comparable."
+)
+
+
+def _phase_06(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
+    from tools.acoustics import clicks
+
+    pack.mkdir(parents=True, exist_ok=True)
+    dry_dir = pack / "dry"
+    dry_dir.mkdir(exist_ok=True)
+    drums = signals.to_stereo(*signals.drum_loop(FS))
+    tone = signals.to_stereo(signals.sustained_tone(FS, 6.0))
+    wav.write_float32(dry_dir / "drums.wav", drums.astype(np.float32), FS)
+    wav.write_float32(dry_dir / "tone.wav", tone.astype(np.float32), FS)
+    room = SCENES_DIR / "medium_room.json"
+
+    def render(out: pathlib.Path, *args) -> np.ndarray:
+        result = render_cli.run(binary, *args, "--out", out)
+        if result.returncode != 0:
+            raise RuntimeError(f"render_cli failed for {out.name}:\n{result.stderr}")
+        data, _ = wav.read_float32(out)
+        return data
+
+    offline = render(pack / "drums_medium_room_offline.wav", "--scene", room, "--mode", "omni", "--in", dry_dir / "drums.wav")
+    realtime = render(
+        pack / "drums_medium_room_realtime.wav",
+        "--scene", room, "--mode", "omni", "--in", dry_dir / "drums.wav", "--realtime-emulation", "--block", "random",
+    )
+    if offline.shape != realtime.shape:
+        raise RuntimeError(f"offline {offline.shape} and realtime {realtime.shape} renders differ in shape")
+    ref = offline.astype(np.float64)
+    residual_db = 10 * np.log10(np.sum((realtime - ref) ** 2) / np.sum(ref**2))
+    switch = render(
+        pack / "ir_switch_demo.wav",
+        "--scene", SCENES_DIR / "living_room.json", "--switch-scene", SCENES_DIR / "concert_hall_box.json",
+        "--switch-every", "0.5", "--mode", "omni", "--in", dry_dir / "tone.wav", "--realtime-emulation",
+    )
+    found = clicks.detect_clicks(switch[:, 0].astype(np.float64), FS)
+
+    rows = []
+    # Playback safety (as the other packs): one common gain for the two drum files, its own for the demo.
+    drum_peak = max(float(np.max(np.abs(offline))), float(np.max(np.abs(realtime))))
+    for name, data, peak in (
+        ("drums_medium_room_offline.wav", offline, drum_peak),
+        ("drums_medium_room_realtime.wav", realtime, drum_peak),
+        ("ir_switch_demo.wav", switch, float(np.max(np.abs(switch)))),
+    ):
+        if peak > 10 ** (PEAK_LIMIT_DBFS / 20):
+            gain_db = PEAK_LIMIT_DBFS - 20 * np.log10(peak)
+            wav.write_float32(pack / name, (data.astype(np.float64) * 10 ** (gain_db / 20)).astype(np.float32), FS)
+            rows.append(f"{name}: SCALED by {gain_db:.1f} dB for playback (peak {20 * np.log10(peak):+.1f} dBFS)")
+        else:
+            rows.append(f"{name}: not scaled (peak {20 * np.log10(peak):+.1f} dBFS)")
+    log(f"phase-06: realtime vs offline residual {residual_db:.1f} dB; click detector on ir_switch_demo: "
+        f"{len(found['events'])} events, max {found['max_frame_dbfs']:.1f} dBFS")
+
+    events = ", ".join(f"{e['time_s']:.3f} s ({e['level_dbfs']:.0f} dBFS)" for e in found["events"]) or "none"
+    lines = [
+        "SPATIAL SCENE LISTENING PACK - phase-06",
+        "=" * 60,
+        "",
+        textwrap.fill(PHASE_06_NOTES, 78),
+        "",
+        "FILES",
+        "-----",
+        "dry/drums.wav          the dry drum loop (synthetic: kick, snare left, hi-hat right, 100 bpm)",
+        "dry/tone.wav           the dry tone (110 + 220 + 330 Hz, 6 s, slow fades)",
+        "drums_medium_room_offline.wav   offline reference render (Phase 04 room IR)",
+        "drums_medium_room_realtime.wav  real-time engine, random host blocks of 1..2048 samples",
+        "ir_switch_demo.wav     tone, room switches every 0.5 s (living_room <-> concert_hall_box)",
+        "",
+        "MEASURED",
+        "--------",
+        f"realtime vs offline: residual energy {residual_db:.1f} dB relative to the render (CI gate: -120 dB)",
+        textwrap.fill(
+            f"ir_switch_demo.wav, click detector (left channel; high-pass 2 kHz, 2 ms frames, floor -90 dBFS): "
+            f"{len(found['events'])} event(s): {events}. Information, not a gate: a 30 ms crossfade has slope "
+            "corners at its ends, whose high-frequency splatter for this tone is estimated at about -77 dBFS in a "
+            "2 ms frame (about 74 dB below the tone), right at the switch times. A real click (a step or a spike) "
+            "would show as a much louder event or one away from the switch times. Your ears decide.",
+            78,
+        ),
+        "",
+    ] + rows
+    (pack / "README.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 # phase-05f: the same A/B pack, now with the CR4 pair (CR4 accepted in phase-05f).
-SPECIAL_BUILDERS = {"phase-05e": _phase_05e, "phase-05f": _phase_05e}
+SPECIAL_BUILDERS = {"phase-05e": _phase_05e, "phase-05f": _phase_05e, "phase-06": _phase_06}
 
 
 def build(out_root: pathlib.Path, phase: str, binary: pathlib.Path, log=print) -> pathlib.Path:

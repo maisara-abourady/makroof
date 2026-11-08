@@ -63,6 +63,10 @@ the Phase 06 convolver.
    ear L/R. The plugin sends `outputMode` through, so `binaural` now uses this path. `stereoSpeakers`
    keeps using omni until Phase 09.
 7. `render_cli --mode binaural`, listening-pack entries, goldens for 3 scenes.
+8. **Update-time check (ledger P06F-4):** once the head yaw follows the emitter centroid (AX3), emitter
+   moves change the HRTF set; check whether Vorländer Table 15.1's head-rotation row (35 ms; filter
+   content 'new HRTF') applies and, if so, whether the AQ4/AX31 isolated-update delay (slot wait +
+   rebuild + 2P) meets it; record the result (an AX through /fix-plan if a change is needed).
 
 ## Out of scope
 

@@ -183,8 +183,9 @@ Verify:
   with two threads hammering `requestIr`.
 - PFFFT contract respected: N = 2^a·3^b·5^c with a ≥ 5 for real transforms, 16-byte aligned
   buffers from `pffft_aligned_malloc`, unordered layout only with `pffft_zconvolve_accumulate`,
-  no built-in scaling (backward(forward(x)) = N·x). The marton78 fork has no release tags, so the
-  pin must be a commit hash (and `GIT_SHALLOW` must then be dropped). Details and the fork's
+  no built-in scaling (backward(forward(x)) = N·x). The marton78 fork has release tags `v1.0.0`,
+  `v1.1.0`, `v1.2.0`; the project pins v1.1.0's commit hash 1fdcb508 (a hash pin needs `GIT_SHALLOW`
+  dropped). Details and the fork's
   licence text requirement in `convolution-and-movement.md` §3 and `tooling-testing-licences.md`.
 - The −120 dB residual criterion is only achievable if the reference (`OfflineRender`) and the
   convolver's MAC accumulate in double or pairwise: a 144 000-tap float32 direct convolution is

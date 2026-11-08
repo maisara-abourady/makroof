@@ -10,6 +10,7 @@ checksum in a script. Python requirements are pinned by version and SHA-256 (`to
 |---|---|---|---|---|
 | [JUCE](https://github.com/juce-framework/JUCE) | tag `8.0.17-security` (JUCE 8.0.17, security-fix release of 2026-11-02) | Dual: [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html) or the [JUCE 8 commercial licence](https://juce.com/legal/juce-8-licence/) | `cmake/SpatialDependencies.cmake`, `FetchContent` | Plugin framework (VST3, AU, Standalone wrappers). JUCE bundles the VST3 SDK (MIT), AudioUnitSDK (Apache 2.0) and others, see its `LICENSE.md`. **The licence tier and revenue cap must be checked before the first paid release (Phase 13).** Splash screen left at the JUCE default until then. |
 | [nlohmann/json](https://github.com/nlohmann/json) | tag `v3.12.0` | [MIT](https://github.com/nlohmann/json/blob/develop/LICENSE.MIT) | `cmake/SpatialDependencies.cmake`, `FetchContent` | Header-only JSON library. PRIVATE dependency of `spatial_contract` (scene JSON I/O); not visible in the contract's public headers. MIT requires the copyright notice in distributions: add it to the product's licence notices before release (Phase 13). |
+| [PFFFT](https://github.com/marton78/pffft) (marton78 fork of Julien Pommier's PFFFT) | tag `v1.1.0` (commit `1fdcb508e5082052ab406d560b7c4622b8b4b0dd`, 2026-02-27) | BSD-style FFTPACK licence (Copyright (c) 2004 UCAR; (c) 2013 Julien Pommier; (c) 2019 Hayati Ayguen; (c) 2020 Dario Mambro), see its [`LICENSE.txt`](https://github.com/marton78/pffft/blob/v1.1.0/LICENSE.txt) | `cmake/SpatialDependencies.cmake`, `FetchContent` (only `src/pffft.c` and `src/pffft_common.c` are compiled, into `spatial_pffft`; the repository's CMakeLists is not used) | Single-precision real FFT of the real-time convolver (`src/sim/conv/Fft.*`, Phase 06); SSE on x86-64, NEON on arm64. PRIVATE dependency of `spatial_sim`. The licence requires its copyright notices and disclaimer in the documentation of binary distributions: add them to the product's licence notices before release (Phase 13). |
 | [dr_wav](https://github.com/mackron/dr_libs) (dr_libs) | `dr_wav.h` v0.14.5 at commit `fa931f3285ced10ace628f7f1ac951e1951e7ea6` (tag `wav-0.14.5`), SHA-256 `c69816d0e0ac6cab3df8bf2f42df451d4531c2bfa34f7d7a69e959e6ed399038` | Public domain ([Unlicense](https://unlicense.org/)) or [MIT-0](https://github.com/aws/mit-0), at the user's choice | `cmake/SpatialDependencies.cmake`, `FetchContent` (URL + hash of the single header) | WAV read/write for `render_cli` only (`src/cli/WavIO.cpp`); not linked into the plugin. Neither licence requires attribution. |
 
 ## Used in tests and tooling only (not shipped)
@@ -46,7 +47,7 @@ checksum in a script. Python requirements are pinned by version and SHA-256 (`to
 
 ## Planned (not yet added)
 
-PFFFT (FFT) and an HRTF dataset arrive in later phases. Add their rows when they are pinned.
+An HRTF dataset arrives in a later phase (08). Add its row when it is pinned.
 
 Validation datasets for phase 05d (decider report 15, accepted by Maisara, 2026-11-05; facts from
 researcher reports 13/14, external). The 05d session pins them, confirms the licence on the live record

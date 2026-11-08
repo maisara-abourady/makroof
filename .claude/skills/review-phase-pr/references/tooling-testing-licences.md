@@ -54,7 +54,7 @@ is marked "(unverified, from memory)". Repo state read from `/home/user/makroof/
 | hendrikmuhs/ccache-action | `v1.2.24` (commit `f09c25b45002a07be2955cbe52e8cee55643f89d`, 2026-08-31) | `v1.2.24` | Current; not SHA-pinned. |
 | ilammy/msvc-dev-cmd | `v1.13.0` (commit `0b201ec74fa43914dc39ae48a89fd1d8cb592756`, 2024-01-01) | `v1.13.0` | Current (project is slow-moving); not SHA-pinned. |
 | nlohmann/json | planned | `v3.12.0` (2025-04-11) | — |
-| PFFFT (marton78) | planned | `v1.2.0` (tag commit 2026-11-03) | — |
+| PFFFT (marton78) | pinned (Phase 06) | `v1.2.0` (tag commit 2026-11-03); project pins `v1.1.0` commit `1fdcb508` | — |
 | dr_wav | planned | `wav-0.14.6` (header "dr_wav - v0.14.6 - 2026-10-31") | — |
 | Inno Setup | not yet used | `is-7_1_1` (commit 2026-10-26; 6.7.4 same day) | — |
 
