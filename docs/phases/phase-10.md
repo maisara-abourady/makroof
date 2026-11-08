@@ -13,9 +13,9 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
   positions change; synchronous rebuild in non-realtime mode. Since a crossfade runs uninterrupted, the
   effective update interval is max(20 ms cap, 30 ms crossfade, rebuild time): at most one new IR per
   30 ms while rebuilds stay under 30 ms, one per rebuild time otherwise (reference: Vorländer Table 15.1).
-- **AX18**: equal-gain crossfade for position updates; **equal-power** for large jumps (e.g. the
-  corner-to-corner step scenarios) and output-mode toggles, where the IRs are unrelated. Equal-gain
-  for position updates is a placeholder (AX18 amendment); this phase sets the law.
+- **AX18**: equal-gain for position and room-size updates (placeholder until Phase 10, AX18);
+  **equal-power** for large jumps (e.g. the corner-to-corner step scenarios) and output-mode toggles,
+  where the IRs are unrelated. This phase sets the law.
 - **AX22**: Phase 04's realised-k switch. t_mix,e is continuous in position, but the fallback to
   ISM-only up to the image-count cap is a single jump point in source position. Across it the IR segment
   between t_mix,e and t_cap,e is ISM in one IR and noise in the other, so AX18's equal-gain premise
