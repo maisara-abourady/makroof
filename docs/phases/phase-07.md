@@ -134,8 +134,9 @@ The session raises each item in its **first message** and again in the **PR desc
 
      Threading: the reset sequence, resubmit included, runs on the thread the host calls
      `AudioProcessor::reset()` on (or the thread that enters non-realtime mode). Assumed from the
-     JUCE/host contract: it is not concurrent with `processBlock`. This assumption is **not checkable**
-     by an automated test here; pluginval and auval exercise reset. The resubmit may allocate
+     JUCE/host contract: it is not concurrent with `processBlock`, and `setStateInformation`,
+     `prepareToPlay` and `reset()` are not called concurrently with each other. These assumptions are
+     **not checkable** by an automated test here; pluginval and auval exercise reset. The resubmit may allocate
      (`buildRoomIR`/`makeIrSet`) or free; it is a transport event outside `processBlock`, so the
      no-allocation rule for `processBlock` is unaffected.
    - **Non-realtime mode** (`isNonRealtime()`): entering it runs the reset sequence, which leaves the
@@ -179,12 +180,15 @@ The session raises each item in its **first message** and again in the **PR desc
      bit-identical, and in both cases it clears the flag. A build that merges the restore with parameter
      changes made after it is still that decision. The synchronous builds in `setStateInformation`
      (realtime, engine prepared), `prepareToPlay` and reset step 3 are build decisions at a generation
-     ≥ g_R, and each consumes the flag; a build discarded in reset step 1 is not a decision.
+     ≥ g_R, and each consumes the flag; a build discarded in reset step 1 is not a decision. The
+     generation a decision records (as handled, and for the ≥ g_R comparison) is the one read before
+     its scene snapshot, so a change after the snapshot is a later generation.
      - Realtime (engine prepared): `setStateInformation` runs like the reset sequence's steps 1, 3 and 5
        on its own thread: it quiesces the builder (discarding any in-flight build), makes the restore's
        decision itself (build; submit with EqualPower, or skip if bit-identical; record the generation
        as handled; consume the flag), and restarts the builder. So it is never concurrent with a
-       builder submit. Before `prepareToPlay`, the decision is `prepareToPlay`'s synchronous build.
+       builder submit. Before `prepareToPlay` (or in the AX34 fallback), the decision is `prepareToPlay`'s
+       synchronous build.
      - Offline: the deferred submit in `processBlock` makes it at the next block boundary and clears the
        flag there. Host call order fixes which block that is, so bounces stay deterministic (AX5).
      - The rule is generic: no scene fields or values are inspected beyond the IR comparison (NFR-8).
@@ -204,8 +208,9 @@ The session raises each item in its **first message** and again in the **PR desc
      (c) Restoring a different state crosses as an EqualPower fade, and the next listener_y change after
      it is EqualGain.
      (d) Offline: a restore and a parameter change in the same block make one EqualPower fade, and the
-     next change is EqualGain. Realtime: a parameter change arriving during the restore's synchronous
-     build is a later generation, built by the builder after the restore, with EqualGain.
+     next change is EqualGain. Realtime: a parameter change injected after the restore's scene snapshot
+     (through a test hook) is a later generation, built by the builder after the restore, with
+     EqualGain.
      (e) Offline (c) is bit-identical across two bounces, and a fresh instance that restores before
      `prepareToPlay` bounces bit-identical to the reset-instance bounce.
      (f) `setStateInformation` → `prepareToPlay` or reset → a listener_y change crosses as EqualGain,
