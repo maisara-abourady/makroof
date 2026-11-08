@@ -1833,3 +1833,5 @@ Decider D1 (rounds 1–2), interrogator (decision mode, three rounds), advocate 
 | P05B-35 | 3 052 GB arithmetic | CORRECT | — |
 | P05B-36 | "≥ 49 GB" for the dense route | IMPRECISE (minor) → "≈ 147 GB with the current dense solver" | applied |
 | P05B-37 | re-run rule | CORRECT | — |
+
+Diff check of the /fix-plan text (interrogator, rows P05B-38…56): every changed passage CORRECT (AX16 26 of 345 recounted from report-phase05.md §6a, sub-values, AX35 numbers 0.324 % / 0.417 % / 5.36 % / 3.23→3.18 %, 15–49 / ≈ 147 GB recomputed, 3 TB order of magnitude, phase-05b notes, §6 row); three minor wording corrections applied: P05B-44 (Δt check covers the three s = 1 layouts), P05B-48 (2.5 m memory figures stated with patches, bins and decimal GB), P05B-50 (Δt/ℓ separation credited to `ell.dt_check`, not to Eq. 4.32 alone). P05B-52/53 note the consequences: the per-bin early envelope stays unverified while (B) keeps B11 unpromoted, and the tail level keeps AX16's measured bias (up to +3.83 dB, BRAS −1.47 dB) until the switch lands. Status: applied, verified; vetoable by Maisara.
