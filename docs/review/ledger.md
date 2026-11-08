@@ -1546,3 +1546,103 @@ Diff check (interrogator, /fix-plan step 5) of the applied plan edits (commit 67
 
 Outside the diff: the plain D1 line for Maisara (P06B-63, "compensates … on playback and bounce") is qualified
 in the PR / report text.
+
+## docs/phases/phase-07.md — interrogation (2026-11-08; /interrogate; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Interrogator, document mode, on `docs/phases/phase-07.md` with BUILD_PLAN §2 (AQ4, AQ5, AQ10, AX1, AX2, AX5,
+AX6, AX7, AX9, AX18, AX31, AX32), PRD FR-3D-5/8/10, FR-LIC-1, NFR-2, NFR-6, phase-06b, phase-08 and the `src/sim`
+API (`RealtimeEngine.h`, `Engine.h`, `CrossfadingConvolver.h`, `BandRenderer.h`, `NoiseTail.{h,cpp}`). Rows tagged
+(API)/(plan) are rated against those documents, not the corpus. Not rated (pure software): JUCE APVTS and generic
+editor, pluginval/auval, TSan, boundary check, bus layout, ID list file, 1 000-blob fuzz, XML vs JSON state,
+embedded default scene, 20 ms trim smoothing. The target document was not edited (changes are Maisara's, via /fix-plan).
+
+### Interrogator ledger (round 0)
+
+| id | kind | finding / question | verdict | evidence | severity |
+|---|---|---|---|---|---|
+| P07-1 | NUMBER | Reported latency 544 samples at P = 512 (P + 32) | CORRECT | `RealtimeEngine.h` latencySamples(); AQ10/AX1; 11.33 ms at 48 kHz; Izhaki Ch. 11 "Plugin delay compensation" | none |
+| P07-2 | NUMBER | Latency AC: first peak at exactly getLatencySamples(), emitter at 0.3 m, α = 1 | CORRECT on timing; IMPRECISE on why 0.3 m | AX1 / `Engine.h` alignment removes the 0.3 m (≈ 42-sample) propagation delay; zero-phase filterbank (`BandRenderer.h`); 0.3 m only sets amplitude (+10.46 dB, AX2); α = 1 → Eyring T → 0 (Kuttruff Eq. 4.12) | minor |
+| P07-3 | NUMBER | AX2 "0 dB at 1 m" with both emitters summed in the mono preview | IMPRECISE (per path, not per track) | `Engine.h` out = Σ in·h; coherent L = R +6 dB, uncorrelated +3 dB (Vorländer §1.7, Table 1.3, Eq. 1.38); worst direct gain 20·log10(2/0.3) = +16.5 dB | minor |
+| P07-4 | CONSEQUENCE | Mono preview sums two coherent emitters at one receiver | CONSEQUENCE | Vorländer §1.7; comb filtering from delay differences (Izhaki Ch. 11); notches at (2k+1)c/(2Δd) when `listener_x` moves | minor |
+| P07-5 | FACT (plan) | Push-away along listener→emitter keeps the scene valid | INCONSISTENT with AX6 / contract README | counter-example: 1.5 m room, listener x = 0.3, emitter x = 0.1 → pushed to x = 0.0; direction undefined when coincident; a valid point always exists (box side ≥ 1.3 m > 0.6 m) | major |
+| P07-6 | FACT (plan) | Is params → scene a pure function (push, resize)? | NOT SPECIFIED (AX5 at risk) | stored or written-back pushes make output order-dependent and fight host automation | major |
+| P07-7 | DECISION | Resizing keeps relative positions | CONSEQUENCE | default scene scaled to 100 m: distance 6.09 → 53.0 m, −18.8 dB direct (Blauert Ch. 2, distance cues); ear height 42 m | minor |
+| P07-8 | FACT (listening) | "min … max: small booth vs large hall" | CONDITIONS VIOLATED (12 s cap) | 100 m cube, medium_room materials, Eyring with air (Kuttruff Eq. 4.12, Table 6.1): T 15.1 s (500 Hz), 10.9 s (1 kHz), ≈ 39–43 s (125 Hz); IR = min(12 s, 1.5·T60max) (`NoiseTail.cpp`) cut without fade after ≈ 18 dB of decay at 125 Hz | major |
+| P07-9 | NUMBER (plan) | CPU at maximum room size | NOT CHECKABLE (corpus) | AQ10 ≤ 15 % stated for a 3 s tail; linear estimate ≈ 25 % for 12 s | minor |
+| P07-10 | NUMBER (plan) | Builder-thread memory at maximum room | NOT CHECKABLE (corpus) | estimate ≈ 37 MB per IrSet at 96 kHz / 12 s, up to ~4 live + FDL ≈ 18.5 MB | minor |
+| P07-11 | DECISION | 1.5 m minimum room reachable from a host parameter | CONSEQUENCE | Kuttruff Eq. 3.44, §3.6: f_s ≈ 520–880 Hz at V = 3.375 m³; diffuse tail model not valid below | minor |
+| P07-12 | NUMBER (plan) | "Runs at most every 20 ms" | CORRECT as a cap; semantics open in AQ4 (INCONSISTENT) | AQ4 defers the cap's meaning to a Phase 10 AX but 07 must implement one; 32 ms output interval at P = 512 (AQ4/AX31); 07 rebuilds are full (no tail cache); Vorländer Table 15.1 700 ms | minor |
+| P07-13 | FACT (plan) | Crossfade law for state recall and room-size swaps unstated (engine default EqualGain) | IMPRECISE | AX18; equal gain on uncorrelated outputs dips −3.0 dB (Vorländer §1.7, Eq. 1.37) | minor |
+| P07-14 | FACT (API) | Offline: processBlock builds and submits synchronously "so bounces are deterministic" | INCONSISTENT with `RealtimeEngine` contract and AX5 | submitRoomIR is "any non-audio thread"; latest-wins mailbox; an in-flight builder-thread IR can land after the synchronous one | major |
+| P07-15 | FACT (API) | Bit-identical bounces vs fade timing from the sample counter | CONDITIONS VIOLATED | AX31 s0 = (⌊r/P⌋+2)·P counted from prepare/reset; RealtimeEngine has no reset(); change enters up to 2P later | major |
+| P07-16 | AC testability | State round-trip / offline-determinism ACs pass with a no-op restore or ignored change | AC DOES NOT DISCRIMINATE | default state restores to itself; an ignored 2.0 s change is still deterministic | major |
+| P07-17 | FACT (plan) | Positions/dimensions in both scene JSON and APVTS: which wins? | NOT SPECIFIED (AX5 at risk) | float32 normalized ↔ metres not exact (≈ 6 µm at 100 m) | major |
+| P07-18 | FACT (API) | Default scene `outputMode: binaural`, 07 renders omni | IMPRECISE | `Engine.h` kindForOutputMode(binaural) = dry stub; 07 must force Omni; 07-era projects render differently after 08 | minor |
+| P07-19 | FACT (API) | prepareToPlay builds IR and reports latency | CONDITIONS VIOLATED (only AX6 rates) | `RealtimeEngine::prepare` throws std::invalid_argument outside 44.1/48/88.2/96 kHz | major |
+| P07-20 | FACT (API) | setStateInformation "rebuilds the IR synchronously" | CONDITIONS VIOLATED | called before prepareToPlay (Logic, 07 Risks); submit fails on rate mismatch | minor |
+| P07-21 | FACT (plan) | "Non-finite input zeroed inside the engine" | IMPRECISE | AX32 also zeroes |x| > 2²⁰ (`CrossfadingConvolver.h`) | minor |
+| P07-22 | NUMBER | 1.5–100 m, 0.1 m margin ↔ 0/1, 0.3 m min distance | CORRECT; skew unspecified | AX6, README, AX9 1 nm tolerance; skew frozen into `parameter_ids_v1.json` | minor |
+| P07-23 | FACT (API) | prepare drops IRs; join builder first; bare convolver untouched when unprepared; allocation off audio thread | CORRECT | `RealtimeEngine.h`, `CrossfadingConvolver.h` | none |
+| P07-24 | FACT (listening) | Moving `listener_y` away: "more distant and roomier" | CORRECT | Blauert Ch. 3 §3.3; Vorländer Fig. 4.7; under AX1 no propagation-delay cue (Vorländer Eq. 2.5) | none |
+| P07-25 | FACT (listening) | With PDC, drum hits line up with a dry duplicate | CORRECT, with a condition | Izhaki Ch. 11; under AX1 only the nearest emitter is on the grid (1 m farther → 2.9 ms) | minor |
+| P07-26 | NUMBER | "Bit-identical (same platform)" vs NFR-6 | CORRECT | AX5 | none |
+| P07-27 | FACT (PRD) | FR-3D-10 with coalescing and latest-wins mailbox | IMPRECISE | holds only if the last dirty state is always built (no lost wake-up) | minor |
+| P07-28 | AC testability | "No allocation / lock in processBlock" | IMPRECISE | AllocationTracker sees allocations, not locks; APVTS listeners may run on the audio thread | minor |
+| P07-29 | DECISION | Two emitters (AX7) vs FR-3D-5 "any number" | PRODUCT MATTER | AX7 recorded user decision | none |
+
+### Builder answers (round 1)
+
+Status key: **resolved** = the answer settles it with no change to phase-07 needed; **open** = phase-07 (or an
+AX) needs a wording or decision change, which is Maisara's via /fix-plan; **disputed** = builder disagrees with
+the verdict (none this round).
+
+| id | builder answer | status |
+|---|---|---|
+| P07-1 | Agreed. | resolved |
+| P07-2 | Agreed. The latency AC tests one thing: the reported latency equals the arrival of the aligned direct sound. 0.3 m maximises the direct peak relative to everything else, so the peak pick is unambiguous. With α = 1 there are no reflections (Kuttruff Eq. 4.12: T → 0), so distance only scales the peak (AX2). Distance independence of the alignment is AX1 and is already Phase 03's test, so one distance is enough here. No change needed. | resolved |
+| P07-3 | Agreed: AX2 holds **per emitter path**. Coherent L = R material sums +6 dB in each output (Vorländer §1.7, Table 1.3). The +16.5 dB worst case (both emitters at 0.3 m) is inside the −24 dB trim range. Whether that headroom and the reverb energy on top are acceptable is product matter. Proposed wording: "AX2 is per emitter path; the mono preview sums both paths". | open (wording) |
+| P07-4 | Agreed. Comb colouring is a property of the mono preview (two delayed coherent copies at one receiver; Vorländer §1.7; Izhaki Ch. 11 on delay-induced comb filtering). It goes away in Phase 08 when L and R reach two ears through different HRTFs. Proposed: add a checklist line so Maisara does not report it as a defect. | open (checklist wording) |
+| P07-5 | Agreed: INCONSISTENT. Proposed rule (pure, deterministic): (1) clamp listener and emitters to the margin box; (2) if \|e − l\| < 0.3 m, set e = l + 0.3·d, with d = (e − l)/\|e − l\| or +y (AQ1 forward) when \|e − l\| = 0 (exact float equality); (3) clamp to the box; (4) if still < 0.3 m, use l + 0.3·s·â, where â is the axis with the most free room for the listener (ties x, y, z) and s its sign. Step 4 always succeeds: the box side is ≥ 1.3 m, so on every axis the listener has ≥ 0.65 m to one side. Needs a /fix-plan wording change. | open (needs /fix-plan) |
+| P07-6 | Builder intent: the scene is a **pure function** of (current parameter values, non-parameter scene fields). The push is recomputed on every change and is never stored or written back to a host parameter. State restores the parameters and re-derives the push. That keeps AX5 independent of the order of changes and does not fight automation in read mode. Needs to be written into scope 2. | open (needs /fix-plan) |
+| P07-7 | Agreed consequence (Blauert Ch. 2 distance cues: the −18.8 dB follows from 1/r). Relative positions are what the plan specifies, and they keep the scene valid at any size without clamping jumps. Absolute positions with clamping are the alternative. This is a product choice, frozen with the parameter IDs. | open (product, Maisara) |
+| P07-8 | Agreed; I checked the code: `tailLengthS` = min(12 s, kTailDecayRangeDb/60 · T60max), with no end fade (`NoiseTail.cpp`). AX6 already records that renders over the cap are truncated, but in 07 it becomes a host-reachable parameter. Options for Maisara: (a) accept and say so in the checklist ("at maximum size the low end is cut at 12 s"); (b) add a short end fade at the cap (changes Phase 04 output: goldens, AX entry); (c) lower `room_h`/`room_w`/`room_d` maxima (contract stays 100 m). Builder recommends (a) for 07 with an AX note, and (b) as a Phase 10/13 follow-up. | open (product, Maisara) |
+| P07-9 | Not checkable from the corpus, but already measured: BUILD_PLAN §0 row 06 records a 12 s IR at P = 512, host 512: steady 7.3–11.7 %, crossfading 14.0–26.2 % (run 42355829013). AQ10's 15 % is stated for a 3 s tail only, so 07 makes no CPU claim at maximum size. | resolved |
+| P07-10 | Not checkable from the corpus. The engine already pre-allocates its history for 12 s at prepare (`RealtimeEngine::maxIrLengthSamples`), so the audio thread never allocates. The IrSet sizes are an estimate. Proposed: Phase 07 logs peak RSS at 96 kHz with the maximum room in its PR (no gate). | open (follow-up, measurement) |
+| P07-11 | Agreed (Kuttruff §3.6, Eq. 3.44: below f_s the field is modal, not diffuse). A known limit of the ISM + diffuse tail model, not new in 07; 07 only exposes it on a parameter. Proposed: record it as a model limit (AX note), no change to the build. | open (product note) |
+| P07-12 | Agreed: 07 has to implement one semantics now. Builder proposal: AQ4's recommendation (decider D1 Q2): a minimum 20 ms spacing between build **starts**, and an isolated request starts at once. Phase 10 then confirms or changes it through the AX it already owes. 07 also records the measured full-rebuild time (default and maximum room) in §0. Needs an AX row or a sentence in phase-07 scope 3. | open (needs /fix-plan) |
+| P07-13 | Agreed (AX18; Vorländer §1.7, Eq. 1.37: −3 dB with equal gain on uncorrelated signals). Proposed: equal-power for state recall (setStateInformation during playback) and for room-size changes (new tail, new modal structure); equal-gain for listener/emitter position changes. Needs a sentence in scope 3. | open (needs /fix-plan) |
+| P07-14 | Agreed: INCONSISTENT. Proposed: when isNonRealtime() is true, the builder thread is quiesced (stop accepting work, join any in-flight build, drain it before the first offline block), and processBlock builds and calls submitRoomIR itself. The "non-audio thread" restriction exists because submit allocates and frees. In offline mode that is acceptable, and no other thread touches the engine. RealtimeEngine.h's comment then needs "or the processing thread when nothing else submits". The switch back to realtime restarts the builder. | open (needs /fix-plan) |
+| P07-15 | Agreed. Proposed: add `RealtimeEngine::reset()` (forwards to `CrossfadingConvolver::reset()`, clearing the history and the sample counter, keeping the current IR) and call it from the JUCE `AudioProcessor::reset()` and on entering non-realtime mode. The determinism AC then renders two bounces in **one** instance with a reset in between, plus a fresh instance, all three bit-identical with the same block partitioning. Note in scope 3 that "synchronous" means the IR is submitted before the block; under AX31 it enters the output up to 2P later, identically in every run. | open (needs /fix-plan) |
+| P07-16 | Agreed. Proposed AC wording: the saved state differs from the default in at least one parameter (e.g. `listener_y`) and one non-parameter field (tailSeed and one α). The test asserts that the restored output differs from a default-instance output, and that the 2.0 s change makes the output after 2.0 s differ from a run without the change. | open (needs /fix-plan) |
+| P07-17 | Builder proposal: on restore the **APVTS values are authoritative** for every field that has a parameter, and the scene JSON for every other field. The scene is re-derived from (parameters, JSON) by the same pure function as P07-6, so live and restored renders match bit for bit on one platform. If they disagree, the parameters win and the JSON value is ignored, with no warning. Needs a sentence in scope 4. | open (needs /fix-plan) |
+| P07-18 | Agreed. 07 forces Kind::Omni and stores outputMode unchanged. No released projects exist before v1 ships, so NFR-6 is not at stake; Phase 08 changes the render of 07-era states by design. Proposed wording in "Assumptions in force": "07 ignores outputMode/output_mode; renders omni". | open (wording) |
+| P07-19 | Agreed. Proposed: prepareToPlay catches the unsupported rate. The engine stays unprepared (silence, per `RealtimeEngine.h`), the warning flag is set (shown in Phase 11), and the reported latency stays P + 32, so PDC doesn't jump if the host later switches to a supported rate. Silence vs dry pass-through is Maisara's call (builder recommends silence plus the flag: a dry pass-through would be mistaken for the room). pluginval's sample-rate test must cover it. | open (product, Maisara) |
+| P07-20 | Agreed: if not prepared, setStateInformation validates and stores the scene, and the synchronous build happens in the next prepareToPlay. Wording in scope 4. | open (wording) |
+| P07-21 | Agreed: restate as "non-finite input and \|x\| > 2²⁰ are zeroed inside the engine (Phase 06, AX32)". | open (wording) |
+| P07-22 | Agreed. The skew is a software choice, but it is frozen. Proposed: JUCE `NormalisableRange` with skew set so that 10 m sits at the centre (log-like over 1.5–100 m), recorded in `parameter_ids_v1.json`. Product sign-off before the freeze. | open (product, Maisara) |
+| P07-23 | Agreed. | resolved |
+| P07-24 | Agreed (Blauert Ch. 3 §3.3; Vorländer Fig. 4.7). | resolved |
+| P07-25 | Agreed (Izhaki Ch. 11; AX1 aligns the nearest emitter only). Proposed checklist note: "use the default symmetric L/R positions for this check". | open (checklist wording) |
+| P07-26 | Agreed. | resolved |
+| P07-27 | Builder intent: an atomic dirty generation counter. The builder rebuilds while the counter has changed since its last build start, so the final state is always built (no lost wake-up). A unit test fires N changes and asserts that the last submitted scene equals the final parameters. Wording in scope 3. | open (wording) |
+| P07-28 | Agreed. "No lock" can't be proven by the AllocationTracker. Proposed: the parameter listener only does an atomic store (code review plus a test that the listener path makes no allocation), and the TSan AC covers the cross-thread part. The AC should say "no allocation (tested); no lock (by construction, reviewed)". | open (wording) |
+| P07-29 | Agreed: AX7 is a recorded user decision. | resolved |
+
+### Re-rounds
+
+The interrogator rated no row **blocker** (its scale: a WRONG item that code, a test gate or a golden will be
+built on). Under `/interrogate`, re-rounds run only for open blockers, so **no re-round needed**. Statuses above
+are final for this session: 8 resolved, 21 open, 0 disputed.
+
+### Unresolved (each closes through /fix-plan on phase-07, Maisara's decision)
+
+- **Major (should be settled before Phase 07 starts):** P07-5 (push-away rule keeping AX6), P07-6 (pure params →
+  scene function), P07-14 (offline submit thread, builder quiesced), P07-15 (`RealtimeEngine::reset()`, bounce
+  determinism AC), P07-16 (discriminating state/determinism ACs), P07-17 (parameters authoritative on restore),
+  P07-19 (unsupported sample rates: silence + flag vs pass-through), P07-8 (12 s truncation at maximum room:
+  accept / end fade / lower maxima).
+- **Product choices for Maisara:** P07-7 (resizing moves sources), P07-11 (small-room modal limit noted),
+  P07-22 (room-size skew before the freeze), and P07-3 (trim headroom) and P07-19/P07-8 above.
+- **Wording/checklist (minor):** P07-3, P07-4, P07-12 (cap semantics for 07, needs an AX or sentence), P07-13
+  (crossfade law), P07-18, P07-20, P07-21, P07-25, P07-27, P07-28.
+- **Measurement follow-up:** P07-10 (peak memory at 96 kHz, maximum room).
