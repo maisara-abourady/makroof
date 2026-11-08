@@ -53,7 +53,16 @@ std::shared_ptr<const conv::IrSet> RealtimeEngine::makeIrSet(const RoomIR& ir) c
         || ir.length() > maxIrLengthSamples(sampleRate_)
         || ir.taps.size() != static_cast<std::size_t>(kNumChannels * kNumChannels))
         return nullptr;
-    return conv::IrSet::create(ir, partitionSize_);
+    try
+    {
+        // Phase 06b scope 4: non-finite taps are refused like an IR
+        // that doesn't fit, so submitRoomIR() returns false and the current IR keeps playing.
+        return conv::IrSet::create(ir, partitionSize_);
+    }
+    catch (const std::invalid_argument&)
+    {
+        return nullptr;
+    }
 }
 
 bool RealtimeEngine::submitRoomIR(const RoomIR& ir, conv::CrossfadeLaw law)

@@ -50,6 +50,8 @@ inline double residualDb(const std::vector<float>& y, const std::vector<double>&
     // Samples of y before the delay must be silent (they would be energy the reference doesn't have).
     for (std::size_t t = 0; t < delay && t < y.size(); ++t)
         err += static_cast<long double>(y[t]) * static_cast<long double>(y[t]);
+    if (std::isnan(err)) // a NaN anywhere in y is never a null (phase-06b review: it read as -inf)
+        return std::numeric_limits<double>::infinity();
     if (!(err > 0.0L))
         return -std::numeric_limits<double>::infinity();
     return 10.0 * std::log10(static_cast<double>(err / sig));

@@ -1514,6 +1514,39 @@ logs of run 42397114233 (Linux 7.0 / 12.6 %, macOS 3.5 / 6.5 %, Windows 3.2 / 5.
 | P06B-5 | FACT | "12 s IR, P = 256: over budget while crossfading" | IMPRECISE (overstated) → applied: over budget on Linux (103.2 %); Windows 64.2 %, macOS 48.9 % | PR #14 "For the Expert", run 42397114233 | minor | – | closed |
 | P06B-6 | FACT | arithmetic 544 / 288 / 10.7 / 5.3 ms / 32 ms; AQ10, AX18, AX31 summaries; phase-07 gate; phase-10 item; §6 row | CORRECT | BUILD_PLAN §2, phase-06.md | none | – | closed |
 
+
+## Phase 06b decisions D1–D4 (session 1, 2026-11-07; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Maisara, 2026-11-07, asked to choose decisions 1 and 2 herself: "I have created an entire workflow described in
+claude.md so you don't ask me these" / "Same answer". The decision loop therefore decided all four; each is a
+proposal she can veto. Brief `docs/sessions/2026-11-07-phase-06b.md`. Full rows and reasoning:
+`docs/review/phase-06b/` — `decisions-request.md`, `measurements.md` (M1–M3), `interrogator-option-check.md`
+(P06B-7…30), `researcher-dossier.md` (F1–F20; D1, D3 NOT READY, gaps not fillable: no retrievable monitoring
+threshold, largest host level or clamp/zero convention), `decider-round1.md`, `interrogator-round1.md`
+(P06B-31…60), `advocate-round1.md`, `decider-round2.md`, `interrogator-round2.md` (P06B-61…73),
+`advocate-round2.md`.
+
+| id | type | claim | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| P06B-7…30 | OPTIONS | option check of D1–D4 | D1, D2 product matters; D3 product matter inside the window +40 dB … 1.83e33 (+24 dBFS CONDITIONS VIOLATED; −120 dB null invalid under clamping, P06B-24); D4 family (b) verified, (a) alone CONDITIONS VIOLATED, no FMA margin (P06B-29); M1 duration evidence WRONG (P06B-16) → re-measured (189 440 samples per channel = IR + run) | interrogator-option-check.md | major (P06B-16, 22, 24, 26, 29) | – | closed (applied) |
+| P06B-31…60 | DECISION | decider round 1 (D1 (a), D2 confirm, D3 AX32 B = 2²⁰ zero, D4 50 ulp) | all four SURVIVE WITH CORRECTIONS; majors: P06B-39 (phase-13 item 9 remedy P = 256 inconsistent), P06B-47 (AX32 formula counted N twice), P06B-55 (window) | interrogator-round1.md | major ×3 | advocate: D1 REDIRECT (Linux-only evidence, NFR-4); D2 wording; D3, D4 PASS | closed (round 2) |
+| P06B-61…73 | DECISION | decider round 2 final texts | nothing falls; minor wording P06B-62, 63, 68, 69, 71 applied with the texts; P06B-66 carried to phase-08 item 8 | interrogator-round2.md | minor | advocate round 2: all four PASS | closed |
+| P06B-D1 | DECISION | AQ10: keep P = 512; reported latency P + 32 = 544 samples (11.3 ms); phase-13 item 9 remedy restated (not P = 256) | SURVIVES WITH CORRECTIONS (applied); advocate PASS | decider-round2.md D1 | – | vetoable by Maisara (veto → P = 256, see D1 "If Maisara vetoes") | accepted (Maisara 2026-11-08, no vetoes) |
+| P06B-D2 | DECISION | AX31 confirmed (note appended) | SURVIVES; advocate PASS | decider-round2.md D2 | – | vetoable by Maisara | accepted (Maisara 2026-11-08, no vetoes) |
+| P06B-D3 | DECISION | AX32: |x| > 2²⁰, ±Inf, NaN → 0 before the forward FFT; test (a)–(d) | SURVIVES WITH CORRECTIONS (applied); advocate PASS | decider-round2.md D3 | – | vetoable by Maisara | accepted (Maisara 2026-11-08, no vetoes) |
+| P06B-D4 | DECISION | summation-order test: T = 400 exact case, max error ≤ 50 ulp (midpoint of 0 and 100) at P = 128/256/512 | SURVIVES WITH CORRECTIONS (applied); advocate PASS | decider-round2.md D4; measured SSE: 0 ulp (descending), 100 ulp (ascending mutant) | – | vetoable by Maisara | accepted (Maisara 2026-11-08, no vetoes) |
+
+Diff check (interrogator, /fix-plan step 5) of the applied plan edits (commit 67034fe): nothing WRONG.
+
+| id | type | claim | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| P06B-74 | FACT | AX31 row: rationale "the 35 ms rotation rows … don't apply to v1" vs the appended note "head rotation deferred to phase-08 item 8, not out of scope" | INCONSISTENT → applied: the rationale now names only the source-rotation / directivity row and §15's 50 ms; the head-rotation row is deferred to phase-08 item 8 | Vorländer Table 15.1 (two 35 ms rows) | major | – | closed |
+| P06B-75 | NUMBER | AX32 "peak taps 0.155–0.49 over the test scenes" | IMPRECISE → applied: "0.155 in medium_room to 0.49, the largest over the test scenes" (smallest peak not measured) | M1 | minor | – | closed |
+| P06B-76 | NUMBER | phase-08 item 8: W1 in (13.7, 24.3] ms decides the row | IMPRECISE → applied: "under the 35 ms limit with the fade not counted"; under 20 ms neither variant meets it for W1 | Vorländer §15, Table 15.1 | minor | – | closed |
+
+Outside the diff: the plain D1 line for Maisara (P06B-63, "compensates … on playback and bounce") is qualified
+in the PR / report text.
+
 ## Phase 05g — Kuttruff §9.4 citation (scope 3) and the BRAS area tolerance (scope 4) (2026-11-07; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
 
 Scope 3: interrogator check of phase-05.md scope 6 "a* assumes s = 1 on all walls; with low s the true T can fall on the

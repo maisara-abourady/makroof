@@ -359,8 +359,11 @@ void CrossfadingConvolver::process(const float* const* in, float* const* out, in
         {
             float* dst = inPtrs_[static_cast<std::size_t>(c)] + position_;
             std::memcpy(dst, in[c] + done, bytes);
-            for (int i = 0; i < chunk; ++i) // input guard: NaN / Inf would poison the FDL
-                if (!std::isfinite(dst[i]))
+            // AX32 input bound: a sample is taken in unchanged iff |x| <= kInputBound; NaN, +-Inf and
+            // |x| > kInputBound become 0 (one comparison: it is false for NaN). Every FDL bin then stays
+            // <= 2P * kInputBound, so neither the forward FFT nor the delay line can overflow.
+            for (int i = 0; i < chunk; ++i)
+                if (!(std::fabs(dst[i]) <= kInputBound))
                     dst[i] = 0.0f;
         }
         for (int c = 0; c < numOutputs_; ++c)

@@ -3,6 +3,7 @@
 #include "sim/conv/Denormals.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -50,6 +51,13 @@ std::shared_ptr<const IrSet> IrSet::create(int numInputs, int numOutputs,
     for (const auto& t : taps)
         if (t.size() != length)
             throw std::invalid_argument("IrSet::create: all paths must have the same length");
+    // Phase 06b scope 4: a NaN or +-Inf tap would make every output sample it touches non-finite for
+    // as long as the IR plays. Rejected here, off the audio thread; the engine keeps its current IR.
+    // (Finite taps cannot overflow the spectrum: they are scaled by 1 / 2P first and a partition has P
+    // of them, so every bin is at most max|h| / 2.)
+    for (const auto& t : taps)
+        if (!std::all_of(t.begin(), t.end(), [](float v) { return std::isfinite(v); }))
+            throw std::invalid_argument("IrSet::create: the IR has a non-finite (NaN or Inf) tap");
 
     std::shared_ptr<IrSet> set(new IrSet());
     set->numInputs_ = numInputs;

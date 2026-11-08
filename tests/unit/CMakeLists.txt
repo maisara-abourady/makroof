@@ -23,6 +23,8 @@ add_executable(spatial_tests
                ConvTestUtil.h
                ../support/AllocationTracker.h
                ../support/AllocationTracker.cpp
+               ../support/FailFast.cpp
+               test_fail_fast.cpp
                test_partitioned_convolver.cpp
                test_crossfading_convolver.cpp
                test_realtime_engine.cpp)
@@ -57,3 +59,11 @@ endif()
 catch_discover_tests(spatial_tests
                      DISCOVERY_MODE PRE_TEST
                      REPORTER console)
+
+# Phase 06b scope 5: a crashing test must end the binary promptly. The hidden crash probe
+# (test_fail_fast.cpp) aborts while another thread holds the stdout lock; run_crash_probe.cmake passes
+# when it ends abnormally within 30 s and prints the time it took (a hang fails at the limit).
+add_test(NAME fail_fast_crash_probe
+         COMMAND ${CMAKE_COMMAND} -DPROBE=$<TARGET_FILE:spatial_tests> -DLIMIT=30 -P
+                 "${CMAKE_CURRENT_SOURCE_DIR}/run_crash_probe.cmake")
+set_tests_properties(fail_fast_crash_probe PROPERTIES TIMEOUT 60)
