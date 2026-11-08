@@ -159,8 +159,46 @@ The session raises each item in its **first message** and again in the **PR desc
      bit-equals the input delayed by getLatencySamples() (= 544), NaN at the delayed index (isnan);
      flag set; prepareToPlay(48000) then renders the room (output differs from the delayed input) and
      clears the flag; also 48 → 96 → 44.1 → 192 → 48 kHz without re-instantiation.
-   - **Crossfade laws / switch rule (D7): PENDING.** Placeholder: the decided text (Phase 07 decision
-     loop 2026-11-08, D7) is applied separately. Do not implement a switch rule from this line.
+   - **Switch rule and crossfade law** (Phase 07 decision loop 2026-11-08, decider D7 (rounds 1–3),
+     interrogator SURVIVES WITH CORRECTIONS, advocate PASS; proposal, vetoable by Maisara).
+
+     *Skip rule.* A submit is skipped when the built RoomIR is bit-identical (length and taps) to the IR
+     of the last successful submit since the last `prepare()` or reset. Step 3 of the reset sequence
+     always submits. If the derived scene equals the last submitted one in every field, the build may be
+     skipped as well (AX5: the same scene gives the same IR).
+
+     *Restore flag.* `setStateInformation` advances the dirty generation and records it as the restore
+     generation g_R, which sets the flag. The flag applies only to the restore's own submit decision: the
+     first build decision whose scene generation is ≥ g_R. That decision either submits or skips as
+     bit-identical, and in both cases it clears the flag. A build that merges the restore with parameter
+     changes made after it is still that decision. The synchronous build in `prepareToPlay` and reset
+     step 3 are build decisions at a generation ≥ g_R, and each consumes the flag; a build discarded in
+     reset step 1 is not a decision.
+     - Realtime: the builder makes this decision (or `prepareToPlay` / reset step 3, as above).
+     - Offline: the deferred submit in `processBlock` makes it at the next block boundary and clears the
+       flag there. Host call order fixes which block that is, so bounces stay deterministic (AX5).
+     - The rule is generic: no scene fields or values are inspected beyond the IR comparison (NFR-8).
+
+     *Law.* The submit made by the restore's decision uses EqualPower. Every other submit uses EqualGain
+     (the AX18 placeholder for position and room-size updates; Phase 10 sets the law).
+
+     *Tests* (realtime and offline each; the law is checked by a −100 dB null of the output against the
+     analytic crossfade of the two IRs, the Phase 06 technique). Null-test conditions: `output_trim_db`
+     at 0 dB with the smoother snapped (gain exactly 1.0f), or the reference applies the same gain; the
+     reference fade starts at s0 = (⌊r/P⌋+2)·P, read from `fadeStartSample()` (AX31); the reference IRs
+     are built from the same two scenes at the same rate (AX5); the reference allows for the mono
+     preview (same signal on both outputs).
+     (a) Restoring the current state during playback starts no fade: the engine's fade counter is
+     unchanged, the output is unchanged, and the flag is cleared.
+     (b) After (a), the next listener_y change crosses to the new IR as an EqualGain fade.
+     (c) Restoring a different state crosses as an EqualPower fade, and the next listener_y change after
+     it is EqualGain.
+     (d) A restore with a parameter change in the same block (offline) or the same build (realtime,
+     forced by an injected clock) makes one EqualPower fade, and the next change is EqualGain.
+     (e) Offline (c) is bit-identical across two bounces, and a fresh instance that restores before
+     `prepareToPlay` bounces bit-identical to the reset-instance bounce.
+     (f) `setStateInformation` → `prepareToPlay` or reset → a listener_y change crosses as EqualGain,
+     realtime and offline.
    - Output trim is applied with a smoothed gain (20 ms).
    - Bus layout: stereo in → stereo out only.
 4. **State (FR-LIC-1, NFR-6):** `getStateInformation` writes XML (or JSON in a `MemoryBlock`) with
