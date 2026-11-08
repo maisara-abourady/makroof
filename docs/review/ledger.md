@@ -1558,6 +1558,9 @@ embedded default scene, 20 ms trim smoothing. The target document was not edited
 
 ### Interrogator ledger (round 0)
 
+The interrogator's five questions (most severe first): (1) P07-5/P07-6, (2) P07-14/P07-15, (3) P07-16/P07-17,
+(4) P07-8, (5) P07-19. The other rows are findings; all 29 are answered below.
+
 | id | kind | finding / question | verdict | evidence | severity |
 |---|---|---|---|---|---|
 | P07-1 | NUMBER | Reported latency 544 samples at P = 512 (P + 32) | CORRECT | `RealtimeEngine.h` latencySamples(); AQ10/AX1; 11.33 ms at 48 kHz; Izhaki Ch. 11 "Plugin delay compensation" | none |

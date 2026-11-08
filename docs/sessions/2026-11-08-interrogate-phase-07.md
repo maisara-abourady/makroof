@@ -35,3 +35,4 @@
 |---|---|---|---|---|
 | 0 | 2026-11-08 | BRIEF GAPS | G1 (quote not verbatim), G2 (O1 evidence; corpus not committed), G3 (O3 criterion: rows with questions), G4 (O4 untestable with zero blockers or blockers left after 3 rounds), G5 (unresolved-list location), G6 (O6 diff/push evidence) | none |
 | 1 | 2026-11-08 | BRIEF OK | G7 (non-blocking: O3 repo citations limited to INCONSISTENT/SOFTWARE rows; FACT/NUMBER answers cite the corpus) | G1, G2, G3, G4, G5, G6 |
+| 2 | 2026-11-08 | READY TO REPORT | G8 (non-blocking: round-0 table lacks the interrogator's question/status columns, so its ≤5 questions aren't identifiable) | G7 (O3 citation reading checked: met); G8 closed after the round (question rows named under the ledger heading) |
