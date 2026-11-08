@@ -229,6 +229,42 @@ The 3D Module builds a `contract::SceneDescription` in memory and calls `contrac
 before handing it over. `src/sim` and `src/module3d` never include each other; only
 `contract::SceneDescription` crosses (enforced by `tools/ci/check_boundaries.py`).
 
+## 3D Module behaviour (not contract rules)
+
+These are choices of the 3D Module (`src/module3d/`, Phase 07), not rules of the contract: the
+Simulator still accepts any scene that passes `contract::validate`, and another producer of scenes
+may behave differently. The plugin's scene is a **pure function** of its host parameters and the
+non-parameter scene fields (`module3d::deriveScene`).
+
+**Positions are normalised within the room.** The host parameters `listener_x/y/z`, `emL_x/y/z` and
+`emR_x/y/z` run 0–1 per axis *inside the 0.1 m margins* (AX6): 0 is 0.1 m from the low wall, 1 is
+0.1 m from the high wall. Resizing the room (`room_w/d/h`, 1.5–100 m, `L = 1.5·(100/1.5)^x`) keeps
+relative positions, so it scales distances and heights with the room — approximately, because the
+positions are normalised inside the 0.1 m margins, so a uniform resize scales them only up to that
+offset. Example: the default scene (`medium_room`) stretched to 100 × 100 × 100 m puts the listener
+52.9 m from L at 42.1 m ear height: the direct sound is −18.8 dB re the default scene (−34.5 dB re
+1 m, AX2). The direct-to-reverberant ratio is unchanged only for uniform scaling without air
+absorption (Kuttruff Eqs. 5.44/5.45); per-axis resizing or air absorption changes it. With absolute
+positions instead, the in-room share of a 0.1–99.9 m slider would be 1.3 % in a 1.5 m room and
+3.8 % for the default height. A UI resize that keeps absolute positions is a Phase 11 gesture, not a
+mapping change. The frozen IDs and mappings are in
+[`tests/state/parameter_ids_v1.json`](../../tests/state/parameter_ids_v1.json).
+
+**Emitters closer than 0.3 m to the listener are pushed away** (decider D1). Each emitter `e` is
+replaced by the point `p` of the margin box `B` with `|p − l| ≥ 0.3 m` nearest to `e`; the listener
+never moves, and the two emitters are treated independently. If `|e − l| ≥ 0.3 m`, `p = e`. Otherwise
+`p = l + 0.3·u`, where `u` maximises `u·d` over unit vectors with `l + 0.3·u ∈ B`,
+`d = (e − l)/|e − l|`, or `d = +y` (AQ1 forward) if `e = l` exactly; exact ties are broken by the
+largest `u·ŷ`, then `u·x̂`, then `u·ẑ`. When `l + 0.3·d` lies in `B` this is the push along the
+listener→emitter direction. `p` moves the least possible distance; it jumps only where two nearest
+points tie (up to 0.6 m, the sphere diameter), e.g. across the line through `l` normal to a wall.
+The push is recomputed on every change; it is never stored and never written back to a host
+parameter, so the engine never sees an invalid scene.
+
+**`output_mode`** is a frozen host parameter from Phase 07 but is applied to the scene only from
+Phases 08/09; until then the stored `render.outputMode` is kept and the plugin renders the omni room
+preview.
+
 ## Changing the contract
 
 A change to the contract always means: bump `contractVersion` (minor for additive changes, major for

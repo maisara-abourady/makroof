@@ -545,3 +545,76 @@ TEST_CASE("Pipeline: parameter thread, builder and audio thread together (TSan)"
     params.join();
     REQUIRE(contract::validate(p.currentScene()).ok());
 }
+
+#if defined(__linux__)
+#include <fstream>
+#include <unistd.h>
+#endif
+
+namespace {
+
+// Resident set size of this process in bytes (Linux: /proc/self/statm); 0 where unavailable.
+std::size_t residentBytes()
+{
+#if defined(__linux__)
+    std::ifstream statm("/proc/self/statm");
+    std::size_t pages = 0, resident = 0;
+    statm >> pages >> resident;
+    return resident * static_cast<std::size_t>(sysconf(_SC_PAGESIZE));
+#else
+    return 0;
+#endif
+}
+
+} // namespace
+
+// Phase 07 Definition of done (recorded, not gated): the full-rebuild time (scene -> buildRoomIR ->
+// IrSet) at the default and the maximum room, and the peak memory per instance at 96 kHz with the
+// maximum room. Hidden: CI runs it from the Release build with `spatial_tests "[benchmark]"`.
+TEST_CASE("benchmark: Phase 07 full rebuild (default and maximum room) and memory per instance",
+          "[.][benchmark][pipeline-measure]")
+{
+    const auto timeBuild = [](const module3d::ParameterValues& v, double rate) {
+        sim::RealtimeEngine engine;
+        engine.prepare(rate, 512);
+        const auto scene = module3d::deriveScene(v, plugin::defaultScene());
+        double best = 1e9;
+        for (int i = 0; i < 3; ++i)
+        {
+            const auto t0 = std::chrono::steady_clock::now();
+            const auto ir = plugin::ScenePipeline::buildIr(scene, rate);
+            const auto set = engine.makeIrSet(ir);
+            const auto t1 = std::chrono::steady_clock::now();
+            REQUIRE(set != nullptr);
+            best = std::min(best, std::chrono::duration<double, std::milli>(t1 - t0).count());
+        }
+        return best;
+    };
+    auto maxRoom = module3d::defaultParameterValues();
+    maxRoom[module3d::kRoomW] = maxRoom[module3d::kRoomD] = maxRoom[module3d::kRoomH] = 100.0;
+    for (const double rate : {48000.0, 96000.0})
+    {
+        std::printf(
+            "phase-07 full rebuild at %.0f Hz (best of 3): default room %.1f ms, maximum room %.1f ms\n",
+            rate, timeBuild(module3d::defaultParameterValues(), rate), timeBuild(maxRoom, rate));
+    }
+
+    const std::size_t before = residentBytes();
+    {
+        auto p = std::make_unique<plugin::ScenePipeline>();
+        p->beginRestore();
+        p->restore(plugin::defaultScene(), maxRoom);
+        p->prepare(96000.0, 512, false);
+        std::vector<float> a(512, 0.1f), b(512, 0.1f);
+        const float* const in[2] = {a.data(), b.data()};
+        float* const out[2] = {a.data(), b.data()};
+        for (int i = 0; i < 200; ++i)
+            p->process(in, out, 512);
+        const std::size_t after = residentBytes();
+        if (before > 0)
+            std::printf("phase-07 memory per instance at 96 kHz, maximum room: RSS +%.1f MB\n",
+                        static_cast<double>(after - before) / (1024.0 * 1024.0));
+        else
+            std::printf("phase-07 memory per instance: RSS not measured on this OS\n");
+    }
+}

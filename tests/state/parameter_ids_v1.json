@@ -1,0 +1,152 @@
+{
+  "description": "Frozen host parameter IDs of the SpatialScene plugin, version 1 (Phase 07). IDs are never renamed or re-ranged; new IDs are added. tests/unit/test_plugin_processor.cpp compares the plugin's parameters with this file; changing either fails CI. Positions are normalised 0..1 within the room per axis (0 and 1 = the 0.1 m AX6 margins); defaults = tests/scenes/valid/medium_room.json.",
+  "version": 1,
+  "mappings": {
+    "linear": "plain = min + x (max - min)",
+    "room-log": "L = 1.5 * (100 / 1.5)^x for 0 < x < 1, clamped to [1.5, 100]; x <= 0 -> exactly 1.5, x >= 1 -> exactly 100; inverse x = ln(L / 1.5) / ln(100 / 1.5) with L <= 1.5 -> exactly 0, L >= 100 -> exactly 1 (decider D9)",
+    "choice": "index into choices"
+  },
+  "parameters": [
+    {
+      "id": "listener_x",
+      "name": "Listener X",
+      "type": "float",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.5,
+      "unit": "",
+      "mapping": "linear"
+    },
+    {
+      "id": "listener_y",
+      "name": "Listener Y",
+      "type": "float",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.24576271186440676,
+      "unit": "",
+      "mapping": "linear"
+    },
+    {
+      "id": "listener_z",
+      "name": "Listener Z",
+      "type": "float",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.42105263157894735,
+      "unit": "",
+      "mapping": "linear"
+    },
+    {
+      "id": "emL_x",
+      "name": "Emitter L X",
+      "type": "float",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.3717948717948718,
+      "unit": "",
+      "mapping": "linear"
+    },
+    {
+      "id": "emL_y",
+      "name": "Emitter L Y",
+      "type": "float",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.7542372881355932,
+      "unit": "",
+      "mapping": "linear"
+    },
+    {
+      "id": "emL_z",
+      "name": "Emitter L Z",
+      "type": "float",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.5,
+      "unit": "",
+      "mapping": "linear"
+    },
+    {
+      "id": "emR_x",
+      "name": "Emitter R X",
+      "type": "float",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.6282051282051283,
+      "unit": "",
+      "mapping": "linear"
+    },
+    {
+      "id": "emR_y",
+      "name": "Emitter R Y",
+      "type": "float",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.7542372881355932,
+      "unit": "",
+      "mapping": "linear"
+    },
+    {
+      "id": "emR_z",
+      "name": "Emitter R Z",
+      "type": "float",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.5,
+      "unit": "",
+      "mapping": "linear"
+    },
+    {
+      "id": "room_w",
+      "name": "Room width",
+      "type": "float",
+      "min": 1.5,
+      "max": 100.0,
+      "default": 8.0,
+      "unit": "m",
+      "mapping": "room-log"
+    },
+    {
+      "id": "room_d",
+      "name": "Room depth",
+      "type": "float",
+      "min": 1.5,
+      "max": 100.0,
+      "default": 12.0,
+      "unit": "m",
+      "mapping": "room-log"
+    },
+    {
+      "id": "room_h",
+      "name": "Room height",
+      "type": "float",
+      "min": 1.5,
+      "max": 100.0,
+      "default": 4.0,
+      "unit": "m",
+      "mapping": "room-log"
+    },
+    {
+      "id": "output_trim_db",
+      "name": "Output trim",
+      "type": "float",
+      "min": -48.0,
+      "max": 24.0,
+      "default": 0.0,
+      "unit": "dB",
+      "mapping": "linear"
+    },
+    {
+      "id": "output_mode",
+      "name": "Output mode",
+      "type": "choice",
+      "choices": [
+        "binaural",
+        "stereoSpeakers"
+      ],
+      "default": "binaural",
+      "mapping": "choice"
+    }
+  ]
+}
