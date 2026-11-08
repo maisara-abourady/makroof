@@ -15,7 +15,7 @@ decisions are hers; this phase records her answer and applies it.
 **Status (2026-11-07):** both decided by the phase-06b decision loop (decider, interrogator, advocate;
 `docs/review/phase-06b/decider-round2.md`, ledger P06B-7 … P06B-73) on Maisara's instruction ("I have
 created an entire workflow described in claude.md so you don't ask me these" / "Same answer"): decision 1
-**(a)** (D1), decision 2 **AX31 confirmed** (D2). Both remain proposals Maisara can veto; the session
+**(a)** (D1), decision 2 **AX31 confirmed** (D2). Both remain proposals Maisara could veto (accepted 2026-11-08, no vetoes); the session
 still raises them so that she can.
 
 1. **Latency reading (AQ10).** At the default partition size P = 512, `latencySamples()` = P + 32
@@ -34,7 +34,7 @@ still raises them so that she can.
        64.2 %, macOS 48.9 % (PR #14 'For the Expert'). Non-uniform partitioning is planned for that
        (`docs/phases/phase-13.md` scope 1, Maisara 2026-11-07).
 2. **AX31: confirm or veto.** Decided by decider D1, interrogator SURVIVES WITH CORRECTIONS, advocate
-   PASS (ledger P06F-1); vetoable by her. With the work spread over host callbacks, an isolated update
+   PASS (ledger P06F-1); accepted by Maisara 2026-11-08 (no vetoes). With the work spread over host callbacks, an isolated update
    reaches the output **one partition later** (10.7 ms at P = 512, 48 kHz; 5.3 ms at P = 256, AX31).
    Back-to-back updates keep the AQ4 pace and the reported latency is unchanged. The alternatives
    rejected in AX31 (catch-up at pickup, or computing the whole first block at pickup) restore the old
@@ -76,15 +76,15 @@ As `docs/BUILD_PLAN.md` §2, unchanged unless a decision above changes them:
   back-to-back fades rounded to whole partitions (32 ms at 48 kHz while the rebuild is ≤ 32 ms);
   isolated-update delay slot wait + rebuild + 2P.
 - **AQ10**: partition size P ≤ 512 samples at 48 kHz (default P = 512); reported latency P + the AX1
-  pre-roll = 544 samples (11.3 ms) at the default (decision 1, recorded as D1 (a), 2026-11-07; vetoable
-  by Maisara); CPU ≤ 15 % of one core per instance, 3 s tail, 48 kHz / 512-sample buffer.
+  pre-roll = 544 samples (11.3 ms) at the default (decision 1, recorded as D1 (a), 2026-11-07; accepted by
+  Maisara 2026-11-08 (no vetoes)); CPU ≤ 15 % of one core per instance, 3 s tail, 48 kHz / 512-sample buffer.
 - **AX1**: the Phase 03 pre-roll (`kAlignPreRollSamples`; 32 samples, AX31 and §0 row 06) is part of the
   reported latency.
 - **AX18**: equal-gain crossfade for position updates, equal-power between unrelated IRs.
 - **AX31**: real-time IR pickup under work spreading, s0 = (⌊r/P⌋ + 2)·P (decision 2: confirmed, D2,
-  2026-11-07; vetoable by Maisara).
+  2026-11-07; accepted by Maisara 2026-11-08 (no vetoes)).
 - **AX32**: input samples with |x| > B = 2²⁰ (+120.4 dB re 1.0), ±Inf or NaN are replaced by 0 before the
-  forward FFT (scope 3; D3, 2026-11-07; vetoable by Maisara).
+  forward FFT (scope 3; D3, 2026-11-07; accepted by Maisara 2026-11-08 (no vetoes)).
 
 ## Start here
 

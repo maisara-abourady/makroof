@@ -16,8 +16,8 @@ The session raises each item in its **first message** and again in the **PR desc
 1. **Latency decision gate.** Before `prepareToPlay` reports latency (`setLatencySamples`), phase-06b
    decision 1 (the AQ10 latency reading, `docs/phases/phase-06b.md`) must be recorded; until then 07
    may build everything else. Recorded 2026-11-07: phase-06b D1 (a), P = 512, reported latency 544
-   samples, a proposal Maisara can veto; a veto (P = 256) would change the default P and so the
-   reported latency.
+   samples, accepted by Maisara 2026-11-08 (no vetoes). Phase 07 reports latencySamples() = 544 at
+   the default P = 512.
 
 ## Assumptions in force
 
