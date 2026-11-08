@@ -65,7 +65,11 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
    runs `clicks.py`.
 8. **Isolated-update cap:** confirm or replace AX33 (Phase 07: minimum 20 ms spacing between build
    starts; an isolated request starts at once) and state the resulting isolated-update delay (at most
-   rebuild + 2P, AX31).
+   rebuild + 2P, AX31). Phase 07's `IrBuilderThread` (`src/plugin/core/IrBuilderThread.h`, `kIdlePollS`)
+   notices a parameter change by polling the dirty generation every 1 ms while idle: the audio-thread
+   parameter listener only does a lock-free `fetch_add`, so it never makes a system call or takes a lock
+   (Phase 07 follow-up, PR #23). Confirm this, or replace it with a wake-up that keeps the audio thread
+   free of locks and system calls, and state the resulting worst-case extra delay for an isolated update.
 
 ## Out of scope
 

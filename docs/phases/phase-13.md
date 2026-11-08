@@ -37,7 +37,14 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
    12 s IR at P = 512: macOS 7.3 / 14.0, Linux 11.7 / 26.0, Windows 9.1 / 26.2; 12 s IR at P = 256: up
    to 59 % while crossfading (Linux/Windows). AQ10 budgets only a 3 s IR (P = 512: 1.6–2.1 % steady,
    3.3–4.1 % crossfading), so no current criterion needs it; Maisara chose to plan it, not build it
-   (2026-11-07).
+   (2026-11-07). Further inputs (Phase 07 follow-up, PR #23, CI run 42465826545, release build, best of
+   3): full rebuild (scene → `buildRoomIR` → `IrSet`, tail noise generation included), default / maximum
+   room (100 × 100 × 100 m), at 48 kHz: Linux 183.6 / 752.1 ms, macOS 132.7 / 801.9 ms, Windows
+   141.8 / 603.0 ms; at 96 kHz: Linux 392.4 / 1883.7 ms, macOS 278.6 / 1832.1 ms, Windows
+   295.2 / 1509.1 ms. RSS per instance at 96 kHz, maximum room: +122.6 MB (Linux only; the pipeline
+   keeps the last built and the last submitted `RoomIR`/`IrSet`). Measure memory per instance on all
+   three OSes and report it in `docs/perf/v1.md`; any memory budget is a decision for this phase (no
+   number is set here).
 2. **macOS universal binary** (arm64 + x86_64) via `CMAKE_OSX_ARCHITECTURES`. Test both slices in CI (the
    x86_64 slice runs through Rosetta on the arm64 runner).
 3. **Robustness tests** (Catch2 + pluginval options):
@@ -90,6 +97,10 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
     longer cap.
 11. **AX34:** decide whether to add internal resampling for unsupported rates (quality verifiable),
     replacing the bypass-like fallback (Phase 07 D8).
+12. **Cache the pinned pluginval release in CI** (`actions/cache`, keyed on the pinned version and its
+    checksum) so that a GitHub Releases outage cannot fail CI (Phase 07 follow-up: CI run 42465826545
+    attempt 1 failed only at the pluginval download, HTTP 504 on all three runners). May be pulled
+    forward as a standalone tooling change before Phase 13.
 
 ## Out of scope
 
