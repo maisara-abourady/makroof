@@ -517,7 +517,8 @@ bool renderRealtime(const sim::RoomIR& ir, const sim::RoomIR* other, const Optio
     if (!setA || (other != nullptr && !setB))
     {
         error = "the room IR does not fit the real-time engine (longer than "
-                + std::to_string(sim::RealtimeEngine::maxIrLengthSamples(ir.sampleRate)) + " samples)";
+                + std::to_string(sim::RealtimeEngine::maxIrLengthSamples(ir.sampleRate))
+                + " samples, or a non-finite tap)";
         return false;
     }
     const std::size_t irLength = std::max(ir.length(), other != nullptr ? other->length() : std::size_t{0});

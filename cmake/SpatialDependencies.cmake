@@ -71,6 +71,12 @@ if(SPATIAL_BUILD_PLUGIN)
 endif()
 
 if(SPATIAL_BUILD_TESTS)
+    # Phase 06b scope 5 (fail fast after a crash): Catch2's fatal-signal handler reports through
+    # stdout and the heap, which are not async-signal-safe. A crash while another thread holds one of
+    # their locks (or after heap corruption) then blocks the test binary until the 600 s ctest timeout.
+    # Without the handler a SIGABRT/SIGSEGV ends the process at once; ctest runs every test case as
+    # its own process (catch_discover_tests), so it still reports which test crashed.
+    set(CATCH_CONFIG_NO_POSIX_SIGNALS ON CACHE BOOL "Catch2: no POSIX fatal-signal handler (phase 06b)" FORCE)
     FetchContent_Declare(Catch2
                          GIT_REPOSITORY https://github.com/catchorg/Catch2.git
                          GIT_TAG ${SPATIAL_CATCH2_TAG}

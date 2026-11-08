@@ -53,13 +53,13 @@ public:
     static std::size_t maxIrLengthSamples(double sampleRate) noexcept;
 
     // Non-audio thread. Builds the IrSet of `ir` and requests it. Returns false (nothing changes) if
-    // the IR is not 2 x 2, has another sample rate than prepare(), or is longer than
-    // maxIrLengthSamples(). Frees retired IRs first.
+    // the IR is not 2 x 2, has another sample rate than prepare(), is longer than
+    // maxIrLengthSamples(), or has a non-finite tap (phase 06b). Frees retired IRs first.
     bool submitRoomIR(const RoomIR& ir, conv::CrossfadeLaw law = conv::CrossfadeLaw::EqualGain);
     // The same with a prebuilt IrSet (makeIrSet()), e.g. to switch between cached IRs.
     bool submitIrSet(std::shared_ptr<const conv::IrSet> irSet,
                      conv::CrossfadeLaw law = conv::CrossfadeLaw::EqualGain);
-    // Non-audio thread. nullptr when the IR doesn't fit (as submitRoomIR).
+    // Non-audio thread. nullptr when the IR doesn't fit or has a non-finite tap (as submitRoomIR).
     std::shared_ptr<const conv::IrSet> makeIrSet(const RoomIR& ir) const;
 
     // Non-audio thread: frees IRs the audio thread has retired; returns how many.

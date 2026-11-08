@@ -147,6 +147,23 @@ TEST_CASE("IrSet geometry and validation", "[conv]")
     sim::conv::PartitionedConvolver c;
     c.prepare(2, 2, 64, 256, 3);
     CHECK_THROWS_AS(c.setIrSet(set), std::invalid_argument); // 4 partitions > 3
+
+    // Phase 06b scope 4: a NaN, +Inf or -Inf tap anywhere in any path is rejected; the largest finite
+    // taps are accepted (scaled by 1 / 2P before the transform, they cannot overflow).
+    for (const float bad : {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity(),
+                            -std::numeric_limits<float>::infinity()})
+        for (const std::size_t at : {std::size_t{0}, std::size_t{511}, std::size_t{999}})
+        {
+            std::vector<std::vector<float>> taps(4, std::vector<float>(1000, 0.01f));
+            taps[3][at] = bad;
+            INFO("tap " << bad << " at " << at);
+            CHECK_THROWS_AS(sim::conv::IrSet::create(2, 2, taps, 256, 48000.0), std::invalid_argument);
+        }
+    const auto huge = sim::conv::IrSet::create(
+        1, 1, {std::vector<float>(512, std::numeric_limits<float>::max())}, 512);
+    for (std::size_t k = 0; k < huge->numPartitions(); ++k)
+        for (int i = 0; i < 2 * 512; ++i)
+            CHECK(std::isfinite(huge->spectrum(0, 0, k)[i]));
 }
 
 // Acceptance (phase-06): output = sim::convolve (Phase 02 direct / double FFT reference) delayed by

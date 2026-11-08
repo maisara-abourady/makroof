@@ -536,3 +536,51 @@ TEST_CASE("CrossfadingConvolver work spreading holds for odd and random host blo
     }
     CHECK(c.fadeCount() >= 3);
 }
+
+// Phase 06b scope 6: the k >= 1 partitions are summed late-first (descending k), and this test pins
+// that order (test rule: phase-06b decision D4, ledger P06B-27..29, 57..59; measurement in
+// docs/review/phase-06b/measurements.md M2(b)).
+// Constructed so that only the order of the additions decides, on any SIMD path and with or without
+// FMA: constant input x = 1 (the FDL spectrum is DC-only, 2P), partition 1 holds one tap of 1.0 and
+// partitions 2 .. K-1 one tap each of 2^-25 (below half an ulp of 1.0); the 1 / 2P scale is a power of
+// two, so every product is exact. Summed late-first, the T tiny terms add exactly (T * 2^-25 = T/4 ulp)
+// before 1.0 is added: steady-state output 1 + T * 2^-25, bit-exact. Summed early-first (the ascending
+// mutant), each tiny term is rounded away against 1.0: output 1.0, an error of T/4 ulp. Measured on
+// SSE (descending): 0 ulp at P = 128, 256, 512; the ascending mutant: 100 ulp.
+TEST_CASE("CrossfadingConvolver sums the partitions late-first (exact-arithmetic case)", "[conv][crossfade]")
+{
+    const int p = GENERATE(128, 256, 512);
+    const int tiny = 400; // T: the two orders are exactly 0 and T/4 = 100 ulp apart
+    const int partitions = tiny + 2;
+    std::vector<float> h(static_cast<std::size_t>(partitions * p), 0.0f);
+    h[static_cast<std::size_t>(p)] = 1.0f;
+    for (int k = 2; k < partitions; ++k)
+        h[static_cast<std::size_t>(k * p + 3)] = std::ldexp(1.0f, -25);
+
+    CrossfadingConvolver c;
+    c.prepare(1, 1, 512, p, static_cast<std::size_t>(partitions), kFade48k);
+    REQUIRE(c.requestIr(monoIr(h, p)));
+    const std::size_t total = static_cast<std::size_t>((partitions + 4) * p);
+    const std::vector<float> x(total, 1.0f);
+    std::vector<float> y(total, 0.0f);
+    std::size_t pos = 0;
+    for (const int n : conv_test::blockSchedule(total, 0, 9u, 512))
+    {
+        c.process(x.data() + pos, y.data() + pos, n);
+        pos += static_cast<std::size_t>(n);
+    }
+    const double ulp = std::ldexp(1.0, -23);
+    const double expected = 1.0 + tiny * std::ldexp(1.0, -25);
+    double worst = 0.0;
+    for (std::size_t i = total - static_cast<std::size_t>(p); i < total; ++i) // steady state: last block
+        worst = std::max(worst, std::abs(static_cast<double>(y[i]) - expected) / ulp);
+    INFO("P " << p << ", T " << tiny << ": worst error " << worst << " ulp (ascending order: " << tiny / 4
+              << " ulp)");
+    // D4: the pass line is the midpoint of the two exact errors (0 and 100 ulp), a free margin: every
+    // operation in this case is exact, so a correct build reads 0 on any SIMD path.
+    CHECK(worst <= 50.0);
+    // D4 also says a non-zero descending error means the case is not exact on that platform: it must be
+    // reported and the case redesigned (never re-thresholded). This check makes such a platform fail
+    // loudly instead of passing unseen; it is not the order criterion above.
+    CHECK(worst == 0.0);
+}
