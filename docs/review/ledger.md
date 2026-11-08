@@ -1649,3 +1649,43 @@ are final for this session: 7 resolved, 22 open, 0 disputed.
 - **Wording/checklist (minor):** P07-3, P07-4, P07-12 (cap semantics for 07, needs an AX or sentence), P07-13
   (crossfade law), P07-18, P07-20, P07-21, P07-25, P07-27, P07-28.
 - **Measurement follow-up:** P07-10 (peak memory at 96 kHz, maximum room).
+
+### /fix-plan on the open rows (2026-11-08, Maisara: "why are you waiting for me? You have people to delegate to - cehck claude.md"; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Run by the main session under `.claude/commands/fix-plan.md`. Records in `docs/review/phase-07/`:
+interrogator-option-check.md (step 3), research-dossier.md (researcher + M1: auval renders at 11.025/22.05/192 kHz,
+CI run 42452887610), decider-round1/2/3.md, interrogator-decision-round1/2/3.md, advocate-round1/2.md,
+interrogator-diff-check-1/2/3.md (wording fixes). Commits e2f1d7a, a06e5ca, 8493ac7, 38bbbfe (wording/software),
+7871f26, 614a005 (decisions). Decisions are **proposals Maisara can veto**.
+
+Paths: **W** = wording/software fix by the plan-editor, diff-checked by the interrogator (3 rounds; P07-15a blocker
+found and closed in round 2; nothing WRONG/INCONSISTENT left after round 3). **V** = interrogator-verified option (one
+CORRECT, others not). **L** = decision loop (researcher → decider → interrogator decision mode → advocate).
+
+| row | end state | path | outcome |
+|---|---|---|---|
+| P07-3 | resolved | W + L (D4) | AX2 per emitter path; output_trim_db −48…+24 dB (band-mean basis; +24 covers the ≈ 22 dB mid-band drop at max room); extreme-scene gain recorded in the PR |
+| P07-4 | resolved | W | checklist: comb colouring expected for coherent L/R in the mono preview; less audible or inaudible binaurally (Blauert Ch. 4) |
+| P07-5 | resolved | L (D1) | nearest valid point on the 0.3 m sphere in the margin box, tie-break y, x, z; tie jumps up to 0.6 m; brute-force reference test |
+| P07-6 | resolved | W | scene = pure function of parameters + non-parameter fields |
+| P07-7 | resolved | L (D2) | relative positions kept; consequence documented; absolute-position resize gesture → phase-11 item 5 |
+| P07-8 | resolved (07) + follow-up | L (D3) | 07 accepts and documents the 12 s cut (checklist; AX6 note); end treatment Q1–Q3 → phase-13 item 10 |
+| P07-10 | follow-up | W | peak RSS at 96 kHz / max room recorded in the 07 PR (DoD) |
+| P07-11 | resolved | V (D5) | Risks line: modal below ≈ 520–1040 Hz in the 1.5 m room (Kuttruff §3.6 Eq. 3.44); raising the minimum would not remove it |
+| P07-12 | resolved | L (D6) | AX33: 20 ms = minimum spacing between build starts; isolated request starts at once; AQ4 pointer; phase-10 scope 8 confirms or replaces |
+| P07-13 | resolved | L (D7) | skip bit-identical IRs; restore flag consumed by the restore's own decision → EqualPower; EqualGain placeholder otherwise; AX18 amended (correlation of position updates, ρ_b formula); phase-10 position-fade gate with known limit |
+| P07-14 | resolved | W | one reset sequence; builder quiesced offline; processBlock the only submitter during a bounce |
+| P07-15 | resolved | W | `RealtimeEngine::reset()` = post-prepare state (no IR, empty mailbox); resubmit; determinism AC incl. same instance + fresh instance |
+| P07-16 | resolved | W | discriminating state and determinism ACs |
+| P07-17 | resolved | W | parameters authoritative on restore |
+| P07-18 | resolved | W | 07 forces omni; outputMode kept |
+| P07-19 | resolved | L (D8) | AX34: bypass-like delayed dry pass-through at unsupported rates, flag set; warning → phase-11 item 7; resampling → phase-13 item 11 |
+| P07-20 | resolved | W | state before prepareToPlay stored, built in prepareToPlay |
+| P07-21 | resolved | W | AX32 bound stated |
+| P07-22 | resolved | L (D9) | true log map L = 1.5·(100/1.5)^x, explicit endpoints, tested on three OSes |
+| P07-25 | resolved | W | PDC checklist: symmetric L/R |
+| P07-27 | resolved | W | dirty generation counter; builder compares against the recorded submitted generation (R3-1); no-lost-update test |
+| P07-28 | resolved | W | no allocation tested; no lock by construction (atomic increment), TSan |
+
+Totals for the 22 rows: 20 resolved, 1 resolved for 07 with a follow-up (P07-8), 1 follow-up (P07-10); none needs
+Maisara for correctness. Proposals she can veto: D1, D2, D3, D4, D6 (AX33), D7 (AX18 amendment), D8 (AX34), D9.
