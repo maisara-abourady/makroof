@@ -67,29 +67,46 @@ The session raises each item in its **first message** and again in the **PR desc
      and reallocates, so a concurrent submit would race it (PR #14 follow-up).
    - Non-finite host input samples and finite samples with |x| > 2²⁰ are already zeroed inside the
      engine (Phase 06, AX32).
-   - Add `RealtimeEngine::reset()`: it returns the engine to the state right after a successful
-     `prepare()` at the same sample rate and block size: no current or pending IR; input history,
-     pending output and sample counter cleared; the history buffers are reused, not reallocated. The
-     next submitted IR is therefore installed at once. It is not called concurrently with `process()`.
-     A `reset()` that kept the current IR would break offline determinism: the next bounce's first IR
-     would then be faded in from s0 = 2P (`CrossfadingConvolver::computeBlock` step 4) instead of being
-     installed at once (step 1 requires `current_ == nullptr && blockStart_ == 0`), so it could not
-     equal a fresh instance. `CrossfadingConvolver::reset()` keeps the current IR today, so this phase
-     adds the drop (code change in this phase). `AudioProcessor::reset()` and the entry into
-     non-realtime mode call `RealtimeEngine::reset()` and then resubmit the IR of the current scene
-     immediately (before the next `processBlock`), so playback after a host reset is not silent and
-     every bounce starts identically.
-   - **Non-realtime mode** (`isNonRealtime()`): the builder thread is quiesced: it takes no new work,
-     and any in-flight build is joined and drained before the first offline block. When a parameter
-     changes during an offline bounce, `processBlock` builds the IR and calls `submitRoomIR` itself
-     before processing that block; it is the only submitter during a bounce: `setStateInformation`
+   - **Reset sequence.** `AudioProcessor::reset()` and the entry into non-realtime mode run the same
+     sequence:
+     1. Quiesce the builder: it stops accepting work, and any in-flight build is joined and drained;
+        its result is discarded, not submitted.
+     2. `RealtimeEngine::reset()` (new): a no-op if the engine is unprepared; otherwise it returns the
+        engine to the state right after `prepare()` at the same sample rate and block size: no current,
+        next or retiring IR and an empty mailbox (the dropped IRs are freed on the calling thread;
+        `reset()` is not concurrent with `process()`); input history, pending output and sample counter
+        cleared; buffers reused, not reallocated. `CrossfadingConvolver::reset()` keeps the current IR
+        today, so this phase adds the drop (code change in this phase).
+     3. Submit the current scene's IR (reuse the last built `IrSet` through `submitIrSet` when its
+        parameter generation is current, otherwise build it) and record that generation as submitted,
+        so neither `processBlock`'s dirty check nor the builder submits the same scene again.
+     4. Snap the output-trim smoother to its target.
+     5. In realtime mode, restart the builder; in non-realtime mode, keep it quiesced.
+
+     The IR is installed at once (`CrossfadingConvolver::computeBlock` step 1: no current, next or
+     retiring IR and `blockStart_ == 0`) when it is in the mailbox before the first P samples are
+     processed; otherwise it fades in from silence. So playback after a host reset is not silent and
+     every bounce starts identically. A reset that kept the current IR would break offline
+     determinism: the next bounce's first IR would fade in from s0 = 2P (step 4) instead of being
+     installed at once, so it could not equal a fresh instance.
+
+     Threading: the reset sequence, resubmit included, runs on the thread the host calls
+     `AudioProcessor::reset()` on (or the thread that enters non-realtime mode). Assumed from the
+     JUCE/host contract: it is not concurrent with `processBlock`. This assumption is **not checkable**
+     by an automated test here; pluginval and auval exercise reset. The resubmit may allocate
+     (`buildRoomIR`/`makeIrSet`) or free; it is a transport event outside `processBlock`, so the
+     no-allocation rule for `processBlock` is unaffected.
+   - **Non-realtime mode** (`isNonRealtime()`): entering it runs the reset sequence, which leaves the
+     builder quiesced. When a parameter changes during an offline bounce, `processBlock` builds the IR
+     and calls `submitRoomIR` itself before processing that block; it is the only submitter during a bounce: `setStateInformation`
      and `prepareToPlay` do not submit mid-bounce (if a host calls them, their submit is deferred to the
      next `processBlock`), so bounces are deterministic. "Synchronous" means the IR is submitted before
      the block; under AX31 it enters the output up to 2P later for an isolated update (no fade
      running); a change during a running fade is taken after that fade ends (AX31); identical across
      runs for the same block partitioning. Leaving non-realtime mode restarts the builder thread. Widen
-     the `submitRoomIR` thread comment in `RealtimeEngine.h` from "any non-audio thread" to "any
-     non-audio thread, or the processing thread when nothing else submits" (code change in this phase).
+     the `submitRoomIR`/`submitIrSet` thread comments in `RealtimeEngine.h` from "any non-audio thread"
+     to "any non-audio thread, or the processing thread when nothing else submits (offline bounce,
+     reset sequence with the builder quiesced)" (code change in this phase).
    - `prepareToPlay` builds the initial IR synchronously and calls `setLatencySamples(engine.latencySamples())`.
      Latency stays constant for the life of the instance at a given sample rate.
    - Output trim is applied with a smoothed gain (20 ms).
@@ -150,8 +167,8 @@ In **Logic (AU)** and **one VST3 host**, put a drum loop or vocal on a stereo tr
 - [ ] Move `listener_y` from near the emitters to the far wall: the sound gets more distant and roomier.
 - [ ] Move `listener_x` off-centre: the sound becomes coloured (comb filtering, because the L and R
       paths have different lengths and the mono preview sums them in one output). This is expected with
-      the mono preview for coherent L/R material; in Phase 08's binaural render it is much less audible
-      (binaural timbre compensation, Blauert Ch. 4), not removed. Don't report it as a defect.
+      the mono preview for coherent L/R material; in Phase 08's binaural render it is less audible or
+      inaudible (binaural timbre compensation, Blauert Ch. 4). Don't report it as a defect.
 - [ ] Shrink `room_w/d/h` to minimum, then maximum: small booth vs large hall.
 - [ ] Draw automation on `listener_y` and play it. The change follows the automation. Some stepping or
       zipper noise is acceptable here; Phase 10 removes it. Report anything harsher than that.
