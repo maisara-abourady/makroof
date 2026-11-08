@@ -1546,11 +1546,11 @@ corrections; an engineering choice, not a C2 product choice; Maisara's accept/ve
 | T5g-16 | NUMBER | every material printed to 0.01 m² | resolved: yes (178.90, 698.50, 8.50 …) | BRAS files | none | – | closed (the extractor now checks it) |
 | T5g-17 | DECISION | relative term removed in the matcher too | CONSEQUENCE | – | minor | – | applied |
 | T5g-18 | DECISION | reversal: a correct reader above 1.1u on a new room → /fix-plan, never per room | CONSEQUENCE | – | none | – | applied |
-| 05g-4.1 | DECISION | per-material \|A_reader − A_doc\| ≤ 1.1u = 0.011 m² absolute, no relative term, one shared constant | decider; interrogator SURVIVES WITH CORRECTIONS; advocate PASS | above | – | Maisara accept/veto (fix-plan step 3) | applied: `extract_bras_geometry.AREA_TOL_M2`, `test_skp_reader.py`, bras_mapping §2 |
-| 05g-4.2 | DECISION | bras_mapping §2 rationale text | decider; corrections T5g-11/13/14 applied; advocate PASS | above | – | Maisara accept/veto | applied |
-| 05g-4.3 | DECISION | reader total (all faces, unpainted included) vs S within 1.1 u_S (measured 0.0027 / 0.026 / 0.033 m²); documentation self-check bound n·u/2 + u_S/2 replacing 0.06 | decider; interrogator UNDERINFORMED → resolved; advocate PASS | above | – | Maisara accept/veto | applied: `check_total_area`, `documentation_sum_bound_m2`, test |
+| 05g-4.1 | DECISION | per-material \|A_reader − A_doc\| ≤ 1.1u = 0.011 m² absolute, no relative term, one shared constant | decider; interrogator SURVIVES WITH CORRECTIONS; advocate PASS | above | – | accepted by Maisara 2026-11-08 | applied: `extract_bras_geometry.AREA_TOL_M2`, `test_skp_reader.py`, bras_mapping §2 |
+| 05g-4.2 | DECISION | bras_mapping §2 rationale text | decider; corrections T5g-11/13/14 applied; advocate PASS | above | – | accepted by Maisara 2026-11-08 | applied |
+| 05g-4.3 | DECISION | reader total (all faces, unpainted included) vs S within 1.1 u_S (measured 0.0027 / 0.026 / 0.033 m²); documentation self-check bound n·u/2 + u_S/2 replacing 0.06 | decider; interrogator UNDERINFORMED → resolved; advocate PASS | above | – | accepted by Maisara 2026-11-08 | applied: `check_total_area`, `documentation_sum_bound_m2`, test |
 
-Maisara's accept/veto of 05g-4.1…4.3 (fix-plan step 3: several options were valid, T5g-2/3/4): **pending** (asked in PR #19 and the session report).
+Maisara's accept/veto of 05g-4.1…4.3 (fix-plan step 3: several options were valid, T5g-2/3/4): **accepted by Maisara 2026-11-08 ("I'm okay with both", asked to accept or veto: no veto, the committed rule stands)**.
 
 Finished diff (interrogator, step 5): **CLEAN on substance**; all numbers re-derived (0.011 / 0.11 / 0.11; 0.016;
 0.030 / 0.085 / 0.090; 1 105 m², 4.93 m, 7.84 m; reader skip counts).
