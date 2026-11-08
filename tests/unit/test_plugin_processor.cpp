@@ -10,6 +10,7 @@
 #include <chrono>
 #include <limits>
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstring>
@@ -129,7 +130,10 @@ TEST_CASE("Parameter ID freeze: the plugin's parameters equal tests/state/parame
         REQUIRE(ranged->convertFrom0to1(0.0f) == range.start);
         REQUIRE(ranged->convertFrom0to1(1.0f) == range.end);
         const float def = ranged->convertFrom0to1(ranged->getDefaultValue());
-        REQUIRE(std::fabs(def - static_cast<float>(static_cast<double>(f["default"]))) <= 1e-6f);
+        // Float round trip through the normalised default: allow 1e-6 of the range (0 dB -> -1.4e-6 dB on
+        // arm64).
+        REQUIRE(std::fabs(def - static_cast<float>(static_cast<double>(f["default"])))
+                <= 1e-6f * std::max(1.0f, range.end - range.start));
         REQUIRE(ranged->getLabel() == f["unit"].toString());
         const auto mapping = f["mapping"].toString();
         if (mapping == "room-log")
@@ -256,7 +260,13 @@ TEST_CASE("No allocation in processBlock while 50 parameter changes per second a
     std::size_t allocs = 0, frees = 0;
     const auto fades0 = p.pipeline().engine().convolver().fadeCount();
     float y = 0.2f;
-    for (int block = 0; block < 400; ++block)
+    // At least 400 blocks (~2 s), and until an IR change has crossed (slow debug builds, e.g. MSVC), at most
+    // 60 s.
+    const auto limit = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+    for (int block = 0; block < 400
+                        || (p.pipeline().engine().convolver().fadeCount() == fades0
+                            && std::chrono::steady_clock::now() < limit);
+         ++block)
     {
         for (int c = 0; c < 2; ++c)
             juce::FloatVectorOperations::fill(buffer.getWritePointer(c), 0.1f, 256);

@@ -541,8 +541,11 @@ TEST_CASE("Pipeline: no allocation or free on the audio thread while 50 changes 
     float* const out[2] = {a.data(), b.data()};
     std::size_t allocs = 0, frees = 0;
     const auto end = std::chrono::steady_clock::now() + std::chrono::milliseconds(1500);
+    const auto limit = std::chrono::steady_clock::now() + std::chrono::seconds(60);
     const auto fades0 = p.engine().convolver().fadeCount();
-    while (std::chrono::steady_clock::now() < end)
+    // At least 1.5 s, and until an IR change has crossed (slow debug builds, e.g. MSVC), at most 60 s.
+    while (std::chrono::steady_clock::now() < end
+           || (p.engine().convolver().fadeCount() == fades0 && std::chrono::steady_clock::now() < limit))
     {
         {
             test_support::ScopedTracking tracking;
