@@ -78,10 +78,28 @@ def test_lookup_uses_the_same_key(wf: dict) -> None:
     assert lookup["with"]["key"] == "ci-pass-${{ steps.fp.outputs.fingerprint }}"
 
 
+# Maisara, 2026-11-08 (option 2): one automatic run per PR (opened / reopened / ready for review), never
+# on a push to the PR, on main or on a schedule; anything else is started by hand.
+ONCE_PER_PR = {"opened", "reopened", "ready_for_review"}
+
+
+def _on(wf: dict) -> dict:
+    return wf[True] if True in wf else wf["on"]  # PyYAML reads the key `on` as True
+
+
 def test_triggers(wf: dict) -> None:
-    on = wf[True] if True in wf else wf["on"]  # PyYAML reads the key `on` as True
-    assert set(on) >= {"push", "pull_request", "workflow_dispatch"}
+    on = _on(wf)
+    assert set(on) == {"pull_request", "workflow_dispatch"}
+    assert set(on["pull_request"]["types"]) == ONCE_PER_PR
     assert on["workflow_dispatch"]["inputs"]["force"]["type"] == "boolean"
+
+
+def test_validation_triggers() -> None:
+    nightly = yaml.safe_load((WORKFLOW.parent / "nightly.yml").read_text(encoding="utf-8"))
+    on = _on(nightly)
+    assert set(on) == {"pull_request", "workflow_dispatch"}  # no schedule
+    assert set(on["pull_request"]["types"]) == ONCE_PER_PR
+    assert "src/sim/**" in on["pull_request"]["paths"]
 
 
 # ---- the scripts, run as written ----
