@@ -42,3 +42,4 @@
 | 1 | 2026-11-08 | BRIEF OK | G7 (non-blocking: O3 repo citations limited to INCONSISTENT/SOFTWARE rows; FACT/NUMBER answers cite the corpus) | G1, G2, G3, G4, G5, G6 |
 | 2 | 2026-11-08 | READY TO REPORT | G8 (non-blocking: round-0 table lacks the interrogator's question/status columns, so its ≤5 questions aren't identifiable) | G7 (O3 citation reading checked: met); G8 closed after the round (question rows named under the ledger heading) |
 | 3 | 2026-11-08 | BRIEF GAPS | G9 (O8 row ids explicit), G10 (O8 per-row end state; out-of-scope outcomes as follow-ups), G11 (O7 needs a post-O8 READY TO REPORT), G12 (non-blocking: fix-plan step 3 order and verdict names), G13 (non-blocking: O5 vs O8), G14 (non-blocking: §0 status untouched), G15 (non-blocking: table break) | none |
+| 4 | 2026-11-08 | BRIEF OK | none | G9, G10, G11, G12, G13, G14, G15 |
