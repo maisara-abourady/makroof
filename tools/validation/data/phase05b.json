@@ -9862,6 +9862,20 @@
     "t52_layout6_s0.4": true,
     "t52_layout6_s1.0": true
    }
+  },
+  "dt_check": {
+   "t52_layout4_s1.0": {
+    "dt_halving_change_at_2.5m": 0.0012556253622859614,
+    "ell_halving_change_2.5_to_1.25": 0.05360575279879465
+   },
+   "t52_layout5_s1.0": {
+    "dt_halving_change_at_2.5m": 0.0007601983387466316,
+    "ell_halving_change_2.5_to_1.25": 0.03181437348179883
+   },
+   "t52_layout6_s1.0": {
+    "dt_halving_change_at_2.5m": 0.0010865769917878243,
+    "ell_halving_change_2.5_to_1.25": 0.031814372587151585
+   }
   }
  }
 }
