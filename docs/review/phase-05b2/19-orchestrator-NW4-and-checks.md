@@ -63,3 +63,9 @@ NW-3 in layout 4 at s = 1 (listener at 0.1 m; clamp at 1 M paths): wall 7.858e-5
 NW-4 at 256 k (wall 8.055e-5, edge 8.831e-5; SE ≈ 0.025 dB) the clamp reads **−0.11 dB (wall) and −0.25 dB (edge)**: next to walls
 where the field is far from diffuse, NW-3's bias is larger than in W1 (≤ 0.09 dB). (Against the forward 4 M-path runs it reads −0.29 /
 −0.94 dB, but those runs carry the heavy-tail bias shown in §1.)
+
+## 5. C3: (f) against `ref_hybrid` in all 8 bands, 15 (A) cases (rerun after an out-of-memory kill)
+
+32 000 paths (seed 0x5EED, no stratification); reference at ℓ = 1.25 m (air factored, exact for these band-flat cases). Per band over the
+15 cases: max |(f) − ref| = **0.088 dB**, max |z| = **1.29**, mean signed z = **−0.11**; the reference's own 2.5 → 1.25 m change
+≤ **0.33 %**. Identical in all 8 bands (α and s band-flat; only air differs). Data: `phase05b2_dt1.json` section `c3`.
