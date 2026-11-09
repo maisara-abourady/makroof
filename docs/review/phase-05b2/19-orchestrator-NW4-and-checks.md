@@ -43,3 +43,23 @@ Readings: the reference converges onto (f) as ℓ shrinks (the continuum limit (
 
 Correlation of the 8 band contributions over paths (32 k paths): W1 reference min 0.994; W1 corner min 0.978; CR4 min 0.988; layout 4
 reference 1.000. The random error is a broadband level offset, not a tone-colour tilt.
+
+## 4. C6b: listener swept near walls (Seats 1, 3, 6) and NW-3's shift in layout 4 (Seats 1, 2, 9)
+
+W1 room, 1 cm steps; largest step between neighbouring points over the 8 bands (dB); N-2 = prefix batches of 1 000 until SE ≤ 0.083 dB
+(cap 256 000):
+
+| sweep | NW-1, 32 k | NW-1, 256 k | NW-1, N-2 (N range) | NW-3, 32 k | NW-3, 256 k | NW-3, N-2 (N range) |
+|---|---|---|---|---|---|---|
+| 0.1 → 1.0 m off a wall | 0.013 | 0.007 | 0.044 (9 k–181 k) | 0.004 | 0.003 | 0.035 (9 k–18 k) |
+| along a wall at 0.1 m, 1 m | 0.035 | 0.025 | **0.358** (15 k–256 k) | 0.002 | 0.001 | 0.070 (15 k–22 k) |
+| diagonal into a corner, 1 → 0.1 m | 0.071 | 0.007 | 0.066 (19 k–256 k) | 0.003 | 0.004 | 0.065 (19 k–56 k) |
+
+At fixed N every variant stays ≤ 0.07 dB per cm; N-2's prefix reuse adds steps where N changes (up to 0.36 dB along a wall under
+NW-1). (NW-4 was not swept; at fixed N it is the forward estimator from the other end and is expected to behave like the reference-
+position rows of C6.)
+
+NW-3 in layout 4 at s = 1 (listener at 0.1 m; clamp at 1 M paths): wall 7.858e-5 (SE 0.068 dB), edge 8.342e-5 (SE 0.125 dB). Against
+NW-4 at 256 k (wall 8.055e-5, edge 8.831e-5; SE ≈ 0.025 dB) the clamp reads **−0.11 dB (wall) and −0.25 dB (edge)**: next to walls
+where the field is far from diffuse, NW-3's bias is larger than in W1 (≤ 0.09 dB). (Against the forward 4 M-path runs it reads −0.29 /
+−0.94 dB, but those runs carry the heavy-tail bias shown in §1.)
