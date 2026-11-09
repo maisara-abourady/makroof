@@ -29,8 +29,9 @@ own energy per 10 ms at t_mix,e equals E_target,b (`bandsAmplitude` = √(E_targ
 The entries are of two kinds (`tail::energyEntries`): the **specular** energy of each image
 ((1−α)(1−s) per hit, as rendered), and the **AX16 scattered** energy of each image:
 E_noScatter · (1 − Π_s (1 − s_s)^hits_s) **at the specular path's own arrival time, attenuated by every
-wall of the specular path**. AX16 is exact when absorption is uniform (Kuttruff §5.2: specular +
-scattered = (1−α)ⁿ). It is wrong when absorption is concentrated: real scattered energy leaves the
+wall of the specular path**. AX16's energy per reflection order is exact for uniform α (Kuttruff §5.2:
+specular + scattered = (1−α)ⁿ); its window level is not (hit-count residual: +0.03…+0.40 dB in the
+uniform cases here, ≤ 0.43 dB in `report-phase05.md` §6a). It is wrong when absorption is concentrated: real scattered energy leaves the
 specular path at the scattering hit and then meets the walls **it** travels to next (Kuttruff §4.5;
 Gilbert, §4.6), not the walls of the specular path. With one strongly absorbing face, AX16 credits
 scattered energy along paths that avoid that face (too much energy), or charges it for hits it would
@@ -51,11 +52,15 @@ per window; `phase05b.json` "gate"; report §5), ΔL_b,tr = 10·log10(E_target(A
 So: **AX16 mis-sets the tail level by up to +3.9 dB** (tail too loud) in a room with one absorbing
 surface, and by −1.2 dB (too quiet) in others, while the reference hybrid (`tools/acoustics/ref_hybrid.py`,
 the "propagated diffuse energy", Kuttruff Eqs. 4.24, 4.29, 4.35) agrees with the tracer within
-**0.08 dB everywhere**. In the measured BRAS rooms the model-vs-model bound ΔL_b (AX16 vs hybrid) reaches
-−1.18 dB (CR3, 2 kHz; −1.47 dB with per-band s); the six Phase 04 test rooms and CR2 stay ≤ 0.3 dB
-(report-phase05.md §6a). 1 dB is the level jnd (Vorländer Table 6.1, 500–1000 Hz). Concentrated
-absorption is common in real venues (audience areas, carpeted floors, absorbing back walls: FR-3D-3's
-venue presets), which is why NFR-1 makes this matter.
+**0.08 dB everywhere**. Kuttruff Table 5.2 layouts 4–6 are **bounding cases** (α = 1 on one face, every
+other face rigid; Kuttruff §5.7: real halls are less dramatic). The realistic magnitude is the one
+measured in the BRAS rooms: the model-vs-model bound ΔL_b (AX16 vs hybrid) reaches **−1.18 dB** (CR3,
+2 kHz; −1.47 dB with per-band s); the six Phase 04 test rooms and CR2 stay ≤ 0.3 dB
+(report-phase05.md §6a). 1 dB is the jnd of G (Vorländer Table 6.1, 500–1000 Hz); a tail-level error
+moves G by less than ΔL_b,tr and is compared with 1 dB only by extension (as AQ9 does for 2 kHz).
+Concentrated absorption is common in real venues (unoccupied seating (Kuttruff §6.7), carpeted floors,
+absorbing back walls, open (outdoor) faces); FR-3D-3's venue presets will contain such rooms, which is
+why NFR-1 makes this matter.
 
 ### 0.2 What the plan already decided (so this session does not decide it again)
 
@@ -74,33 +79,43 @@ venue presets), which is why NFR-1 makes this matter.
 ### 0.3 Why it is hard (the core engineering problem)
 
 The reference hybrid computes the diffuse energy by time-dependent radiosity with specular transport
-between patches (Joyce's reflection matrix, Kuttruff Eq. 4.35): the boundary is split into patches of
-edge ℓ, and a **dense kernel** K[k, l, τ] (energy diffusely emitted by patch k that arrives on patch l
-after τ time steps, directly or via any number of specular reflections, i.e. via every lattice image
-of k) is built and applied generation by generation. Memory and time grow as N²·T (N patches ∝ S/ℓ²,
-T time steps ∝ t_mix,e/Δt):
+between patches: the boundary is split into patches of edge ℓ, and a **dense kernel** K[k, l, τ]
+(energy diffusely emitted by patch k that arrives on patch l after τ time steps, directly or via any
+number of specular reflections: Gilbert's construction with Fujiwara's mirroring, Kuttruff §4.6; Eq. 4.35
+(Joyce's reflection matrix) is the direction-to-direction form of the same transport) is built and
+applied generation by generation. Memory grows as N²·T and time as N²·T·G (N patches ∝ S/ℓ², T time
+steps ∝ t_mix,e/Δt, G generations, up to 2 000 in `ref_hybrid.solve`):
 
 | room | ℓ = 2.5 m: patches, bins, dense kernel (8 bands, float32) | ℓ = 1.25 m |
 |---|---|---|
 | AQ10 room 20×30×10 m | 352, 118, ≈ 0.47 GB | 1 408, ≈ 7.5 GB |
+| AQ10 room with the AX22 fallback (t_mix,e = t_cap ≈ 0.38 s, as in layouts 4–6 and W2) | 352, ≈ 385, ≈ 1.5 GB | 1 408, ≈ 24 GB |
 | BRAS CR4 42×42×4.9 m | 714, 155 (to the latest t_mix,e of its 10 pairs), ≈ 2.5 GB | 2 856, ≈ 40 GB |
-| contract maximum 100×100×100 m (AX6) | 9 600, ≈ 1 035, ≈ 3 TB | ≈ 49 TB |
+| contract maximum 100×100×100 m (AX6), non-fallback pair | 9 600, ≈ 1 035, ≈ 3 TB | ≈ 49 TB |
+| contract maximum with the AX22 fallback (t_cap(N_cap = 1 560) ≈ 2.1 s; Kuttruff Eq. 4.6 integrated: N = 4πc³t³/(3V)) | 9 600, ≈ 2 100, ≈ 6 TB | – |
 
-A plugin instance today adds ≈ 123 MB of RSS at 96 kHz in the maximum room (Phase 07, Linux: +122.6 MB). The reference
+A plugin instance today adds ≈ 123 MB of RSS at 96 kHz in the maximum room (Phase 07, Linux: +122.6 MB),
+and a full rebuild at the maximum room takes 603–802 ms at 48 kHz today (BUILD_PLAN §0 row 07, three
+OSes); room-size changes are full rebuilds. The reference
 implementation is therefore **not portable as it is**: it is a correct model with an unusable data
-structure. The model is what has been validated; the data structure is free. That is the whole of
+structure. The model is what has been validated (on the window E_target only, one source–listener pair
+per case (AX28), against a geometrical-acoustics tracer (Kuttruff §9.8); the per-bin envelope (gate A)
+was not evaluated); the data structure is free. That is the whole of
 decision D-T1 below.
 
 Also measured (session 1, `phase05b.json` "ell", "r1"): the hybrid's **E_target** converges fast in ℓ
 (5→2.5 m ≤ 1.27 %, 2.5→1.25 m ≤ 0.324 % in the 15 (A) cases; CR2, CR3 2.5→1.25 ≤ 0.37 %; a* ≤ 0.42 %),
 far faster than its per-bin envelope (5.36 %), because E_target is a window integral. **CR4's 1.25 m
 rung was not computable (15.2 GB per band with the current solver): R1 is open for CR4.** The time
-step Δt = 1 ms is not the limiting factor (halving it changes gated bins ≤ 0.126 %).
+step Δt = 1 ms is not the limiting factor (halving it changes gated bins ≤ 0.126 % in the three s = 1 layouts at 2.5 m).
 
 ### 0.4 What success looks like for Maisara
 
-Rooms with concentrated absorption get a tail whose level matches physics within the B11 window
-tolerance; nothing audible changes in uniform rooms (in Phase 05 X-b the six Phase 04 rooms moved ≤ 0.3 dB); the plugin
+Rooms with concentrated absorption get a tail whose level matches the validated model (window E_target,
+as validated in §0.3) within the B11 window tolerance; in rooms where AX16 is exact per reflection order
+(uniform α) nothing audible changes, within D-T6's bound; in mixed-α rooms (the six Phase 04 rooms
+include several, e.g. club, concert_hall_box; in Phase 05 X-b they moved ≤ 0.3 dB) the change is
+checked against the tracer / `ref_hybrid` and reported (D-T6); the plugin
 still rebuilds and fits in memory for every scene the contract accepts, or, if that is impossible, the
 limit is a product decision she made with the numbers in front of her, implemented generically (NFR-8)
 and without level jumps under automation (FR-SIM-6).
@@ -133,6 +148,10 @@ Run researcher → decider → interrogator → advocate (CLAUDE.md, `/fix-plan`
 AX row through `/fix-plan`. None of them may be decided by the implementer alone, and none may be
 decided after seeing a test it would make pass.
 
+**Order:** D-T5 → D-T4 → D-T1 → D-T2 → D-T6 → D-T3. D-T1 needs D-T5's required output and D-T4's
+ceiling; D-T2 needs D-T1's discretisation; D-T6 is fixed before any agreement number exists; D-T3 comes
+last, and only if needed. The D-T numbers are identifiers, not the order.
+
 - **D-T1 — Formulation of the propagated diffuse energy in `src/sim`.** It must give **the same model**
   as `ref_hybrid` (injection s(1−α) at each specular hit into the Lambert patch hit, Kuttruff Eq. 4.24;
   mixed specular/diffuse propagation, Eq. 4.35 with the §5.2 split; gathering at the listener,
@@ -141,16 +160,19 @@ decided after seeing a test it would make pass.
   (a) the dense kernel with memory reductions (per-band, float32, the room kernel cached across
   position-only rebuilds as in the Phase 10 tail cache; injection and gathering per emitter);
   (b) matrix-free propagation (form factors and delays computed on the fly per generation; Kuttruff §4.5
-  procedure step 3 stores only K_ik and a bounded history for pure Lambert radiosity — whether the
-  mixed kernel admits the same is open, interrogator P05B-23/-35);
-  (c) exploiting the shoebox's structure (regular patch grids on parallel faces; lattice images as
-  translations; convolution/FFT over patch indices);
+  procedure step 3 stores only K_ik and a bounded history for pure Lambert radiosity — that bounded
+  history rests on a bounded R; Gilbert paths are unbounded, so for the mixed kernel the history is
+  bounded only by the window horizon T; interrogator P05B-23/-35);
+  (c) exploiting the shoebox's structure (regular patch grids on parallel faces; lattice images are
+  translations only within one mirror-parity class (8 classes); convolution/FFT over patch indices);
   (d) an **adjoint** (listener-side) formulation: E_target is a linear functional of the diffuse
-  energy, so the window weights can be propagated backwards from the listener once per emitter pair,
-  replacing a time-resolved forward solve;
-  (e) a transform-domain evaluation (the Hann-weighted, exponentially referred window is a short sum of
-  complex exponentials on [a, b]; whether the truncation to the window allows a few steady-state-like
-  complex solves of size N instead of N²·T storage is to be checked, not assumed);
+  energy, so the window weights can be propagated backwards from the listener, one backward solve per
+  emitter (the windows are per emitter), replacing a time-resolved forward solve; linearity needs t_mix,e
+  independent of the diffuse energy, which holds only if D-T5 keeps k_real on the AX16 entries;
+  (e) a transform-domain evaluation (the window is truncated at t_mix,e and the referral weight grows as
+  exp(+rate·t), so an exact evaluation needs ≈ T frequencies, which is what `ref_hybrid.solve` does; only
+  an approximation with a few complex solves of size N is conceivable, and its error would itself need
+  a bound);
   (f) a seeded Monte-Carlo estimator of the same diffuse energy (determinism by AX5; its SE must meet
   AX11's threshold/3 for the window level; note it is a different estimator of the same model and must
   be validated as such).
@@ -158,8 +180,8 @@ decided after seeing a test it would make pass.
   (candidate: the 15 (A) cases, the six Phase 04 rooms, the 30 BRAS pairs) and tolerance; both are
   choices for the decision loop), its memory and time complexity, and the measured
   W1/W2 and peak memory for the AQ10 room, CR4, and the largest contract room (AX6: 100 m per side).
-  **A coarser ℓ is not a remedy** (phase-05b scope 0). The Table 15.1 option (scattering part updated
-  every 3 s or 1 m) is a Phase 10 remedy only if W1 > 700 ms (phase-05b scope 0), not a D-T1 option.
+  **A coarser ℓ is not a remedy** (phase-05b scope 0). The Table 15.1 option (3 s time available for a
+  movement > 1 m (specular and scattering parts), Vorländer Table 15.1, as AQ10 states it) is a Phase 10 remedy only if W1 > 700 ms (phase-05b scope 0), not a D-T1 option.
 - **D-T2 — ℓ for the tail path (R1).** AX35 (c) candidate: 2.5 m (certified in the 15 (A) cases, CR2,
   CR3). **CR4 is open**: compute its 2.5→1.25 m E_target change (500 Hz–2 kHz, all 10 pairs) with the
   D-T1 formulation if it is cheaper, or with `phase05b.py r1` on a machine with ≥ 16 GB free, or with a
@@ -169,30 +191,43 @@ decided after seeing a test it would make pass.
 - **D-T3 — Supported room range and behaviour at its edge (only if D-T1 cannot cover AX6's whole
   range within the budget D-T4).** Options must be generic (NFR-8: no preset- or scene-specific logic);
   a size threshold that switches formulation must not produce an audible level step when a user
-  automates room size across it (FR-SIM-6; Phase 10's −1 dB mid-fade bound is the yardstick: a step of
-  ΔL_b,tr at the threshold would violate it in concentrated-absorption rooms). Narrowing AX6 is a
+  automates room size across it (FR-SIM-6). The question for D-T3 is the level step a listener hears
+  when room size crosses the threshold by an arbitrarily small amount, judged against the 1 dB level jnd
+  (Vorländer Table 6.1, by extension), stated in listener terms per room class: ΔG, ΔC80, ΔT30/EDT and
+  the seam step at t_mix,e, computed from real IRs. (Phase 10's mid-fade gate is not this yardstick: it
+  compares against the endpoint interpolation, a 3.87 dB step gives ≈ −0.21 dB there at worst, and
+  phase-10 puts its limit at ≳ 8.5 dB.) Narrowing AX6 is a
   contract change (major bump, CLAUDE.md "contract boundary") and Maisara's call.
 - **D-T4 — Cost budget.** AQ10: rebuild ≤ 50 ms is a **target, recorded, not a blocker**; NFR-2:
   heavy CPU is acceptable when it buys accuracy, but the plugin must stay usable in a DAW session. There
-  is **no memory budget anywhere** in the plan: the decision loop proposes one (per instance, at the
-  largest room), with the Phase 07 baseline (≈ 123 MB at 96 kHz, maximum room) as context. W1/W2 as
-  defined in AQ10 (position-only rebuilds, 20×30×10 m, 2 emitters, 48 kHz, release, median of 10).
+  is **no memory budget yet**: BUILD_PLAN records memory per instance and defers any budget to Phase 13
+  (scope 1); D-T4 sets this formulation's working ceiling only (per instance, at the largest room),
+  cross-referenced to Phase 13, with the Phase 07 baseline (≈ 123 MB at 96 kHz, maximum room) as
+  context. W1/W2 as defined in AQ10 (position-only rebuilds, 20×30×10 m, 2 emitters, 48 kHz, release,
+  median of 10); the full-rebuild time at the largest room is recorded beside them.
 - **D-T5 — Interaction with the matching.** Decide, with evidence: (1) the hybrid's diffuse energy
   **replaces** AX16's scattered entries in E_target (the specular entries stay), exactly as
-  `ref_hybrid.target_hybrid` does; (2) what the AX22 realised-k test (`needsIsmFallback`, k_real < 19 in
+  `ref_hybrid.target_hybrid` does; this is the validated model, so any other combination is not what
+  the window check validated; (2) what the AX22 realised-k test (`needsIsmFallback`, k_real < 19 in
   500 Hz–2 kHz) counts once scattered entries are no longer discrete entries (today k_real counts the
   AX16 entries: replacing them by a smooth envelope changes k_real and therefore the fallback decision
   and t_mix,e; the Python `phase04_plan` computes k_real from AX16 entries and is what session 1
   compared against): keep k_real on the AX16 entries (fallback unchanged), or redefine it (an AX22
   change, out of scope unless the decision loop shows it is forced); (3) `bandsAxisShares` (used for
-  directional output in Phase 08) — the AX16 entries carry arrival directions, the diffuse envelope
-  does not; decide what Phase 08 receives.
+  directional output in Phase 08) — the AX16 entries carry arrival directions; the Eq. 4.29 gather sums
+  per-patch contributions along known lines dS′→P, so per-patch directions are available in the model;
+  decide what Phase 08 receives. Also state the outcome for `open_field` (outdoor; in AX22 fallback,
+  BUILD_PLAN §0 row 04) under the switch.
 - **D-T6 — Regression bound for the rooms the switch should not change** (scope 4 item 4, section 5).
-  Decide the room set and the bound. Options: the six Phase 04 rooms at ≤ 0.3 dB (Phase 05 X-b,
-  `report-phase05.md` §6a); ≤ 0.3 dB plus D-T1's agreement tolerance (the C++ path carries both); ±1 dB
-  (B11 window tolerance, level jnd, Vorländer Table 6.1); report-only, with the uniform-α (A) cases gated
-  through the tracer test (AX16 is exact for uniform α, Kuttruff §5.2). Note: not all six Phase 04 rooms
-  are uniform-α (e.g. `asymmetric_materials`).
+  Decide the room set and the bound, before any agreement number exists. The six Phase 04 rooms are
+  dead_booth, living_room, classroom, club, concert_hall_box and stone_box; several are mixed-α (e.g.
+  club, concert_hall_box). Frame: (a) rooms where AX16 is exact per reflection order (uniform α): a bound
+  derived before any result from D-T1's tolerance plus the hit-count residual (AX16's energy per
+  reflection order is exact for uniform α, Kuttruff §5.2; its window level is not: +0.03…+0.40 dB in the
+  uniform cases of §0.1, ≤ 0.43 dB in `report-phase05.md` §6a); (b) mixed-α rooms: the change is checked
+  against the tracer / `ref_hybrid` and reported, not bounded to the old AX16 value (a bound there would
+  protect a known-wrong value, NFR-1). The measured ≤ 0.3 dB (Phase 05 X-b) is an observed result and
+  cannot itself be the bound.
 
 ## 4. Scope (after section 3 is settled and committed)
 
@@ -203,7 +238,8 @@ decided after seeing a test it would make pass.
    unchanged (no new scene fields: s and α already exist; if D-T1 needs more, that is a contract change
    and Maisara's).
 3. **Matching switch** per D-T5 in `planEmitter`/`matchTail`; diagnostics (`render_cli --diagnostics`)
-   gain the diffuse E_target per band beside the AX16 one, so the switch is observable.
+   gain the diffuse E_target per band beside the AX16 one, so the switch is observable
+   (atomicity rule: section 8).
 4. **Agreement tests** (Catch2): C++ E_target vs `ref_hybrid.target_hybrid` (exported reference values
    as a small golden, generated by a script with its reason in `tests/golden/CHANGELOG.md`) on the cases
    D-T1 states (candidates: the 15 (A) cases, the six Phase 04 rooms, the 30 BRAS pairs), to D-T1's
@@ -220,9 +256,10 @@ decided after seeing a test it would make pass.
 7. **Plan bookkeeping** through `/fix-plan`: AX16 (switched, with the measured ΔL_b,tr table), AX21
    (unchanged statement, cross-reference), AX35 (c) resolved, new AX rows D-T1…D-T6, §6 rows.
 8. **Listening pack:** a `phase-05b2` entry: Phase 04 tail level vs switched tail level, loudness-matched
-   **not** (the level difference is the point), through the six Phase 04 rooms and two synthetic
-   concentrated-absorption rooms (Table 5.2 layout 4 at s = 0.4 and layout 5 at s = 1, as scenes), clicks
-   and pink bursts.
+   **not** (the level difference is the point), through the six Phase 04 rooms, `open_field`, the BRAS
+   scene with the largest real ΔL_b (`bras_cr3_ls1_mp2`) and three synthetic concentrated-absorption
+   rooms (Table 5.2 layout 4 at s = 0.4, layout 4 at s = 1 (the largest deficit, +3.87 dB) and layout 5
+   at s = 1, as scenes), clicks and pink bursts. The scene choice is listening content, not a gate.
 
 ## 5. Acceptance criteria — automated
 
@@ -231,8 +268,9 @@ decided after seeing a test it would make pass.
       next rung run.
 - [ ] C++ E_target = `ref_hybrid` within D-T1's tolerance on all listed cases (CI, three OSes).
 - [ ] C++ E_target vs tracer within ±1 dB on the 15 (A) cases (deterministic test on committed data).
-- [ ] Uniform-α rooms unchanged: the room set and the regression bound are open decision D-T6 (decision
-      loop; measured in Phase 05 X-b: six Phase 04 rooms ≤ 0.3 dB, `report-phase05.md` §6a), not tuned.
+- [ ] Rooms where AX16 is exact per reflection order (uniform α) unchanged within D-T6's bound; mixed-α
+      rooms checked against the tracer / `ref_hybrid` and reported (D-T6), not tuned.
+- [ ] `render_cli --diagnostics` reports the diffuse E_target per band beside the AX16 one (test).
 - [ ] Same scene + seed → bit-identical IR on the same platform; no NaN/Inf/denormals; allocation-free
       audio thread (existing tracker test) unchanged.
 - [ ] W1/W2 and peak memory recorded (AQ10; not a blocker unless D-T4 makes memory one).
@@ -243,8 +281,9 @@ decided after seeing a test it would make pass.
 ## 6. Listening checklist (Maisara)
 
 - [ ] In the concentrated-absorption scenes, the switched tail's level sounds natural against the early
-      part (no "reverb pasted on top", no tail that is too weak); in the six Phase 04 rooms nothing
-      audible changed.
+      part (no "reverb pasted on top", no tail that is too weak); in uniform-α rooms nothing
+      audible changed (D-T6); in the mixed-α Phase 04 rooms (e.g. club, concert_hall_box) any change
+      sounds like a correction, not an artefact.
 - [ ] No new seam at the handover (the level change is at t_mix,e).
 - [ ] Moving a source or resizing the room under automation: no level jumps (Phase 10 will gate this;
       listen now).
@@ -262,8 +301,15 @@ the room-range edge (D-T3); determinism; no per-scene logic.
 - CR4 R1 needs a finer rung that is not computable → the switch's ℓ is certified per AX35's rule only
   where computable; the gap is recorded and goes to Maisara.
 - **Split rule (CLAUDE.md):** this is phase 05b's second session. Whatever does not fit goes into
-  `docs/phases/phase-05h.md` (05c is reserved for Phase 05's zero-rooms branch), written in the same
-  detail as this file, with the status row and a `blocked`/`in progress` note; the session stops there.
+  `docs/phases/phase-05h.md` (05c is reserved for Phase 05's zero-rooms branch).
+  - **Atomicity:** the matching change does not land in `src/sim` (commit to the branch) without, in the
+    same push, the `ref_hybrid` agreement test, the tracer test, the updated goldens and a green nightly
+    BRAS run.
+  - **Named split point:** if the session cannot finish, the split is after section 3's decisions and
+    R1 are committed; `phase-05h.md` then carries the implementation in this file's level of detail.
+  - **For that branch:** §0 row 05b becomes `done (not promoted; tail-level switch specified in
+    phase-05h)`, a new row 05h `not started`, and the 05b PR closes both sessions' work without any
+    `src/sim` matching change; the session stops there.
 
 ## 9. Out of scope
 
@@ -273,6 +319,6 @@ any per-scene tuning.
 
 ## 10. Definition of done
 
-Section 5 all checked with CI evidence; §0 row 05b `done (not promoted; tail-level switch implemented)`
+Full completion (the split branch is in section 8): section 5 all checked with CI evidence; §0 row 05b `done (not promoted; tail-level switch implemented)`
 with the numbers; PR (the single phase-05b PR, covering both sessions) with the listening checklist,
 the contractor focus, the AX/ledger links and the "Raise with Maisara" items.
