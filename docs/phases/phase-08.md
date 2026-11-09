@@ -60,13 +60,30 @@ the Phase 06 convolver.
    writes `resources/hrtf/generic-v1.bin` (a simple versioned binary: header, direction grid,
    minimum-phase or raw HRIRs, ITDs). The original SOFA is downloaded by checksum (scope 1), **never
    committed**.
-   - **Embed bound.** The committed four-rate `.bin` is ≤ ~32 MB (the full 8802-direction grid in
-     four-rate float32 would be ≈ 104 MB): a grid subset of ≤ ~3000 directions that keeps the lowest
-     measured elevation row (−81°) and the 0°-elevation ring, and/or float16 storage, chosen in this
-     phase so that AC 2 (−60 dB) and AC 4 (continuity) hold on the real file. AC 2's reference is the
-     pinned-resampler output of the **untrimmed** resampled source (for SADIE II this equals the trimmed
-     one: York already trimmed to 512 samples at 96 kHz with fades). If the bound cannot be met with
-     AC 2 and AC 4 held, report it (decision reversal condition 3); don't loosen either gate.
+   - **Embed bound.** The committed four-rate `.bin` is ≤ ~32 MB (32·10⁶ B, whole file; the full
+     8802-direction grid in four-rate float32 would be ≈ 104 MB). Four-rate float32 costs 11 784 B
+     per direction (1473 taps × 2 ears × 4 B), float16 5 892 B, so the bound holds for **either** a
+     float32 grid subset of **≤ ~2700 directions** (31.8 MB; 3000 would be 35.4 MB) **or** a float16
+     grid subset of **≤ ~3000 directions** (17.7 MB; the count is a product choice near a 2702-node
+     full-sphere grid, the bound is the bytes). Either subset keeps the lowest measured elevation
+     row (−81°) and the 0°-elevation ring; the route is chosen in this phase so that AC 2 (−60 dB,
+     both terms) and AC 4 (continuity) hold on the real file. **AC 2 measures the storage and
+     decoding path plus the trim**, not the converter's transformations: its reference is built in
+     the test from the pinned source by the converter's own pinned steps with the parameters read
+     from the `.bin` header (pinned resampler; the **stored** DF-EQ curve applied; the **stored**
+     `onset_left`/`onset_right` removed; the minimum-phase step if the header says the stored form
+     is minimum-phase). Two residuals in the `residualDb` form (10·log10 Σ(decoded − reference)² /
+     Σ reference² over the reference length, decoded = 0 beyond its end), per ear, stored direction
+     and rate, both gated at −60 dB: the **storage term**, against that reference trimmed and faded
+     identically (it cannot fail from truncation), and the **total term**, against the same
+     reference left **untrimmed and unfaded**, so the energy the trim and fade remove counts as
+     error. A total failure with the storage term passing is a truncation finding (trim length or
+     fade), reported and handled through the interrogator, never by loosening a gate. For SADIE II
+     the truncation term is expected near zero (York trimmed to 512 samples at 96 kHz = 256 at
+     48 kHz, with fades; dossier F12) and is measured, not assumed. The EQ's correctness is the DF-EQ
+     identity AC's subject, not AC 2's; the pre-EQ data exists only as the fetched source and inside
+     the test, and no product code path switches the EQ off. If the bound cannot be met with AC 2
+     and AC 4 held, report it (decision reversal condition 3); don't loosen either gate.
    - **Dataset-agnostic header.** `generic-v1.bin` records: set identity; lab and campaign; record
      version and DOI; source SHA-256; converter version; sample rates and per-rate tap count; direction
      count and grid type; lowest/highest measured elevation (SADIE II: −81°/+90°, the −90° point
@@ -93,25 +110,31 @@ the Phase 06 convolver.
      average of the interaural cross-spectrum), are computed over the **stored** direction subset with
      each direction weighted by the solid angle of its spherical Voronoi cell, w_i = Ω_i / 4π (the
      Voronoi cells are the dual of the stored Delaunay triangulation), per ear (DF curve) / per band
-     (coherence target) in one-third-octave bands, stored in the `.bin` header beside the weights' sum
-     check (Σ w_i = 1), and reported by `--diagnostics` together with the unweighted curve, so the bias
-     the weighting removes is visible on the pinned file. The converter applies its own weighted
-     diffuse-field curve to every set it converts (per ear). The header records (i) the source's EQ
-     state as documented by the publisher (SADIE II: diffuse-field equalised by York), (ii) the
-     converter's computed curve, (iii) the post-EQ check: the weighted one-third-octave average of the
-     converted set is 0 dB within 0.1 dB in every band (automated test, the DF-EQ identity AC; a numerical identity
-     bound, one tenth of the level jnd). **Source-state consistency check (pin time):** if the computed
-     curve on the pinned `D1_HRIR_SOFA.zip` lies within ±1 dB in every one-third-octave band with centre
-     from 200 Hz to 8 kHz, the header records "source: diffuse-field equalised (publisher), converter
-     residual ≤ 1 dB"; if any band exceeds ±1 dB, the header records "source EQ state: not confirmed"
-     and the phase raises it with Maisara and through the interrogator before the Phase 08 goldens are
-     frozen. The curve above 8 kHz is reported, not gated. Nothing in the rule switches the application
-     off. Provenance of the numbers (the decider's product judgement, not load-bearing for the head
-     choice): 1 dB is Vorländer's general level jnd of roughly 1 dB (`vorlaender-auralization.md`
-     abbreviations table and line 3167); Table 6.1's 1 dB row is strength G at 500–1000 Hz, so the
+     (coherence target), **as power averages** in one-third-octave bands — L_b = 10·log10(Σ_i
+     w_i · P_{i,b}), P_{i,b} the band-b mean of |H_i(f)|² (Begault Ch. 4 'Equalization of HRTFs':
+     random-incidence noise levels in third-octave bands; Vorländer §16.1.1: incoherent waves) — the
+     DF-EQ curve being C_b of the source and the converter applying −C_b (filter realisation
+     recorded in the header; the band set recorded in the header), stored in the `.bin` header
+     beside the weights' sum check (Σ w_i = 1), and reported by `--diagnostics` together with the
+     unweighted curve, so the bias the weighting removes is visible on the pinned file. The
+     converter applies its own weighted diffuse-field curve to every set it converts (per ear). The
+     header records (i) the source's EQ state as documented by the publisher (SADIE II:
+     diffuse-field equalised by York), (ii) the converter's computed curve, (iii) the post-EQ check:
+     the weighted one-third-octave **power** average L_b of the converted set (per ear) is 0 dB
+     within 0.1 dB in every band of the converter's curve (automated test, the DF-EQ identity AC; a
+     numerical identity bound, one tenth of the level jnd). **Source-state consistency check (pin
+     time):** if the computed curve C_b on the pinned `D1_HRIR_SOFA.zip` lies within ±1 dB in every
+     one-third-octave band with centre from 200 Hz to 8 kHz, the header records "source:
+     diffuse-field equalised (publisher), converter residual ≤ 1 dB"; if any band exceeds ±1 dB, the
+     header records "source EQ state: not confirmed" and the phase raises it with Maisara and
+     through the interrogator before the Phase 08 goldens are frozen. The curve above 8 kHz is
+     reported, not gated. Nothing in the rule switches the application off. Provenance of the
+     numbers (the decider's product judgement, not load-bearing for the head choice): 1 dB is
+     Vorländer's general level jnd of roughly 1 dB (`vorlaender-auralization.md` abbreviations table
+     and line 3167); Table 6.1's 1 dB row is strength G at 500–1000 Hz, so the
      per-one-third-octave-band use from 200 Hz to 8 kHz is by extension (as §5 B11 already says of
-     Table 6.1); one-third-octave bands: Rumsey §3.2.4, Begault Ch. 4 "Equalization of HRTFs"; 200 Hz:
-     the set's measured range (sweeps from 200 Hz, LF modelled below); 8 kHz: the top of
+     Table 6.1); one-third-octave bands: Rumsey §3.2.4, Begault Ch. 4 "Equalization of HRTFs";
+     200 Hz: the set's measured range (sweeps from 200 Hz, LF modelled below); 8 kHz: the top of
      `contract::kOctaveBandsHz` and of the AC 3 ILD band; 0.1 dB: one tenth of the jnd. Begault's
      ±1.5–2.5 dB diffuse-minus-free-field figure is not a tolerance.
 
@@ -166,19 +189,35 @@ near-field HRTF correction (sources < 1 m; note it as a follow-up).
 
 - [ ] Licence file present and `docs/THIRD_PARTY.md` updated (a CI script fails if `resources/hrtf/*.bin`
       exists without the `LICENSE-<id>.txt` matching the **header's** set id).
-- [ ] Converter round-trip: HRIRs decoded from `generic-v1.bin` match the pinned-resampler output of the
-      untrimmed resampled SOFA source within −60 dB at every stored (measured) direction. The source is
-      fetched by checksum (scope 1); the test skips with a marker when it is absent unless
-      `SPATIAL_REQUIRE_HRTF_SOURCE=1` (CI).
+- [ ] **Converter round-trip (storage and decoding):** at every stored direction, each ear and each
+      of the four rates, the HRIR decoded from `generic-v1.bin` is within −60 dB (`residualDb`) of
+      the reference built in the test from the pinned SOFA source by the converter's pinned steps
+      with the header's parameters (pinned resampler, stored DF-EQ curve, stored onsets,
+      minimum-phase step if recorded) — **both** against that reference trimmed and faded
+      identically (storage term) **and** against it untrimmed and unfaded (total term; truncation
+      loss counts). The test prints both terms' worst values per rate. The source is fetched by
+      checksum (scope 1); the test skips with a marker when it is absent unless
+      `SPATIAL_REQUIRE_HRTF_SOURCE=1` (CI). The DF-EQ curve's correctness is tested by the DF-EQ
+      identity AC, the onset estimator by AC 3, the interpolation by AC 4; AC 2 tests none of them.
 - [ ] **ITD/ILD sanity** (anechoic scene: α = 1 everywhere, direct path only): an emitter at +90°
       azimuth (left; define the azimuth sign convention in the code and docs) gives ITD between **0.6 and
       0.75 ms** with the left ear leading, and ILD > 6 dB averaged over 2–8 kHz. The mirror holds at −90°.
-      An emitter straight ahead gives |ITD| < 20 µs and |ILD| < 1 dB. The onset/ITD estimator (and the
-      sign convention) is named in this AC by the decision loop **before the first measurement**; if the
-      pinned file measures outside 0.6–0.75 ms, the window is challenged on that evidence through the
-      interrogator, never widened to pass (decider challenge C-1: York's own ITD plots read ≈ 0.85 ms for
-      D1 by an unstated method, dossier F21; a low-frequency/cross-correlation ITD exceeds an onset ITD,
-      Roginska & Geluso Ch. 1). Not a head reversal.
+      An emitter straight ahead gives |ITD| < 20 µs and |ILD| < 1 dB. The window 0.6–0.75 ms
+      **presupposes an onset (pulse-arrival) estimator**: it is sized to the onset ITD of brief
+      pulses, ≈ 650 µs at 90° (Blauert Ch. 2 §2.2.2, Fig. 2.30), and to the far-source path
+      difference (D/2)(φ + sin φ) = 0.656 ms for D = 17.5 cm. The estimator is therefore of the
+      onset class — the converter's per-ear onset detection that yields `onset_left`/`onset_right`,
+      run on the resampled HRIRs before EQ and onset removal, and the same criterion applied by the
+      test to the rendered anechoic output — and its exact criterion (threshold relative to the
+      ear's peak) and the sign convention are named in this AC by the decision loop **before the
+      first measurement**. A low-frequency ITD (≈ 750 µs for an average human head) exceeds the
+      broadband onset ITD (≈ 650 µs); the value depends on stimulus and measurement technique
+      (Roginska & Geluso Ch. 1; Blauert Ch. 2 §2.2.2: the sphere model's interaural phase and group
+      delay reach about 0.6–0.8 ms), so an estimator of another class would need its own window
+      derived from the corpus before measuring — never this one widened. If the pinned file measures
+      outside 0.6–0.75 ms with the named onset criterion, the window is challenged on that evidence
+      through the interrogator, never widened to pass (decider challenge C-1: York's own ITD plots
+      read ≈ 0.85 ms for D1 by an unstated method, dossier F21). Not a head reversal.
 - [ ] **Interpolation continuity:** sweeping azimuth in 1° steps never changes broadband level by more than
       1 dB or ITD by more than 30 µs per step.
 - [ ] **Tail coherence:** measured interaural coherence of the late tail per band is within ±0.1 of the
@@ -187,9 +226,10 @@ near-field HRTF correction (sources < 1 m; note it as a follow-up).
 - [ ] **Orientation (AX3):** a unit test with emitters ahead, behind and on top of the listener gives
       the documented yaw, and the hold rule triggers at < 0.1 m.
 - [ ] T30 of each ear's BRIR within ±5% of the omni IR's T30 (250 Hz–4 kHz).
-- [ ] **DF-EQ identity:** the solid-angle-weighted one-third-octave average of the converted set is 0 dB
-      within 0.1 dB in every band (scope 3). The committed `.bin` is within the scope 2 embed bound with
-      this, AC 2 and AC 4 green on the real file; its size is recorded in the PR.
+- [ ] **DF-EQ identity:** the solid-angle-weighted one-third-octave **power** average of the
+      converted set, L_b = 10·log10(Σ_i w_i P_{i,b}) per ear (scope 3), is 0 dB within 0.1 dB in
+      every band of the converter's curve. The committed `.bin` is within the scope 2 embed bound
+      with this, AC 2 and AC 4 green on the real file; its size is recorded in the PR.
 - [ ] **Validation-only override:** `render_cli --hrtf <file>` renders through the given converted set;
       the option exists only in the CLI (no scene field, no host parameter; `hrtfId` stays the schema
       const), and the scene validator still rejects any other `hrtfId`.
@@ -206,8 +246,9 @@ form**: location **front / back / above / inside / outside**; colour against the
 boxy / thin / harsh**. Record the `hrtfId` and the header's set identity string of the build you listened
 through (scope 7).
 - [ ] Default scene with emitters at about ±30° ahead: where is the image (front / back / above / inside /
-      outside)? Expected: in front and outside your head. (Generic HRTFs are heard "inside" or "above" by
-      some people. Note what you hear; that's what B4 is for.)
+      outside)? Expected: in front and outside your head. (Generic HRTFs are heard inside the head,
+      or reversed front/back, by some people, and height on the median plane is uncertain
+      (Begault Ch. 3; Vorländer §6.3.2). Note what you hear; that's what B4 is for.)
 - [ ] `anechoic_azimuth_sweep.wav`: a sound circling the head. It should be clearly left, right and
       front. Front/back confusion is common with generic HRTFs, so note it.
 - [ ] Move the listener close to the L emitter: the image pulls left and the room recedes.
@@ -230,9 +271,10 @@ through (scope 7).
 
 Licence review (licence re-read on the record at pin time; head named nowhere in UI), HRIR interpolation
 (triangulation, ITD handling, the named onset estimator), coordinate and sign conventions, the
-dataset-agnostic header and the Voronoi-weighted DF-EQ / coherence averages with the identity test, the
-image-source grouping approximation (if the benchmark introduced it), the diffuse-coherence mixing, energy
-normalization between modes, and the `--hrtf` override staying out of the scene and the plugin.
+dataset-agnostic header and the Voronoi-weighted DF-EQ / coherence averages with the identity test,
+the two-term AC 2 reference (header parameters, untrimmed total term), the image-source grouping
+approximation (if the benchmark introduced it), the diffuse-coherence mixing, energy normalization
+between modes, and the `--hrtf` override staying out of the scene and the plugin.
 
 ## Risks
 
@@ -244,12 +286,18 @@ normalization between modes, and the `--hrtf` override staying out of the scene 
   (scope 5) is introduced only if the benchmark shows it is needed.
 - The four-rate embed may not reach ≤ ~32 MB with AC 2 and AC 4 held (scope 2). Report it; don't loosen a
   gate (decision reversal condition 3: Maisara is told the deadline keeper's cell is back at 2).
-- AC 3's ITD window may fail as worded on the SADIE heads (York's plots read ≈ 0.85 ms by an unstated
-  method). Not a head reversal: name the estimator first, then challenge the window through the
-  interrogator on the measurement (C-1).
+- AC 3's ITD window may fail on the SADIE heads (York's plots read ≈ 0.85 ms by an unstated method;
+  a low-frequency estimator reads higher than an onset estimator). Not a head reversal: name the
+  onset criterion first, then challenge the window through the interrogator on the measurement
+  (C-1).
 - The pin-time source-state check (scope 3) may exceed ±1 dB in a band: the header records "not
-  confirmed", the dossier's F18 is marked contradicted and it is raised before any golden is frozen. The
-  converted output is the same either way (the set's own weighted curve is always applied).
+  confirmed", the dossier's F18 is marked contradicted and it is raised before any golden is frozen.
+  The converted set's **state** is the same either way — weighted one-third-octave power average
+  0 dB in every band, by construction (the DF-EQ identity AC) — but not its **signal**: the
+  converter's weighted normalisation replaces, band by band, whatever direction-independent
+  equalisation the source carried, so a 'not confirmed' result means the shipped set differs from
+  York's published equalisation by the reported curve. That is why it is raised before any golden is
+  frozen.
 - Headphone compensation has no slot in the plan (§5 B14, open debt): expect colouration notes in the
   checklist that no Phase 08 step addresses.
 
