@@ -1849,6 +1849,9 @@ Created on Maisara's decision of 2026-11-09 (Q2 option (b): "Answer to q2: b. Ma
 | P05B2-28 | D-T6 example room | INCONSISTENT → six Phase 04 rooms named | applied |
 | P05B2-33, 34 | consequences (AX21 step stays; listening scenes) | noted | — |
 | P05B2-35…56 | round-2 changed passages | CORRECT (37, 38 IMPRECISE minor → applied) | applied (c89b0d4) |
+
+Renumbering (2026-11-09, merge of main, commit 7e7f506): the AX35 of this block and of the block 'Phase 05b: patch size at a compute limit' is BUILD_PLAN **AX36**; main's AX35 is the hrtfId rule.
+
 ## docs/phases/phase-05g.md L17, L68; docs/phases/phase-06b.md L60 — board loop wording replaces the advocate (2026-11-09; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
 
 Session brief `docs/sessions/2026-11-09-board-agents.md` (O6). Plan-editor: three SPECIFIED wording fixes, no DECISIONS NEEDED (commits c8f7c2d, 871959f). Interrogator document mode on the changed passages: **no FACT or NUMBER changed**; no blocker, no major.

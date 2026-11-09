@@ -4,8 +4,8 @@ Size: **L** (one session is the second and last of phase 05b; CLAUDE.md: a remai
 goes into `phase-05h.md`, see "Split rule" below) · Depends on: 05b session 1 (this file's "Settled"
 section; branch `claude/funny-clarke-d9mv2g`, report `docs/validation/report-phase05b.md`), 04, 05,
 05e, 05f, 07 `done` · Read first, in this order: `CLAUDE.md`; this file in full; `docs/BUILD_PLAN.md` §2
-**AX16, AX21, AX22, AX35, AQ10, AX4, AX5, AX11, AX18, AX20, AX28, AX6**, §5 **B11, B12**; `docs/phases/phase-05b.md`
-(scope 0, 4 and the AX35 notes); `docs/validation/report-phase05b.md` (all of it, ten minutes);
+**AX16, AX21, AX22, AX36, AQ10, AX4, AX5, AX11, AX18, AX20, AX28, AX6**, §5 **B11, B12**; `docs/phases/phase-05b.md`
+(scope 0, 4 and the AX36 notes); `docs/validation/report-phase05b.md` (all of it, ten minutes);
 `docs/validation/report-phase05.md` §6a; `docs/review/ledger.md` block "Phase 05b: patch size at a compute
 limit"; PRD NFR-1, NFR-2, NFR-3, NFR-8, FR-SIM-2, FR-SIM-6, FR-3D-3, FR-3D-4.
 
@@ -69,7 +69,7 @@ why NFR-1 makes this matter.
   (it does: branch **(i)**, SE ≤ 1/3 dB) and |ΔL_b,tr| > 1 dB anywhere (it is: 3.87 dB), **tail-level
   matching switches to the hybrid's propagated diffuse energy**, even though early rendering is not
   promoted. Phase 05's own X-b result (26 of 345 case-bands > 1 dB) independently requires the switch.
-- AX35 (c) (2026-11-08, accepted by Maisara 2026-11-09): the switch is **not** implemented until **R1** (an ℓ
+- AX36 (c) (2026-11-08, accepted by Maisara 2026-11-09): the switch is **not** implemented until **R1** (an ℓ
   certified for the tail path in every selected BRAS room) and **R2** (a formulation whose memory and
   rebuild cost are shown across the supported room range) are settled and Maisara decides. **This
   session is where R1, R2 and the implementation happen.** Maisara has decided that it happens (option (b)).
@@ -127,25 +127,26 @@ and without level jumps under automation (FR-SIM-6).
 
 - Gate (B) fails (initial α, three BRAS rooms: EDT Δ̂ +0.816 jnd > δ = 0.25; CR4 +1.756 > 1 jnd) →
   early rendering **not promoted**; AX21 stands.
-- Gate (A) per bin and the scope 5 bias trigger: "not evaluated (compute limit, AX35 (b))".
+- Gate (A) per bin and the scope 5 bias trigger: "not evaluated (compute limit, AX36 (b))".
 - Window check: branch (i); hybrid E_target within 0.08 dB of the tracer; numbers in §0.1.
 - Tracer (`tools/acoustics/tracer.py`, seed 0x05B7) and its committed statistics; self-checks
   (s = 0 passes; s = 1 diagnosis vs Table 5.2 column, ledger DB-1 open).
-- ℓ ladder and its certification rule per quantity (AX35); compiled kernel
+- ℓ ladder and its certification rule per quantity (AX36); compiled kernel
   `tools/validation/hybrid_fast.py` (= `ref_hybrid` to 1e-7; numba offline).
 - B12: Eyring stays. AX22/N_cap: unchanged. Mixing-time rule: unchanged.
 - Maisara 2026-11-09: build the switch in this session (option (b)).
-- AX35 accepted (Maisara 2026-11-09).
+- AX36 accepted (Maisara 2026-11-09).
 
 ## 2. Raise with Maisara (first message and PR)
 
-1. AX35: accepted by Maisara 2026-11-09 ('W1: accept'); the window check's certification basis stands.
+1. AX36: accepted by Maisara 2026-11-09 ('W1: accept'); the window check's certification basis stands.
 2. Any room-range decision D-T3 produces (only if D-T1 finds no formulation that covers the whole
    contract range): present the numbers (memory, W1/W2 per room size) and the audible stakes (§0.1).
 
 ## 3. Open decisions — settle each through the decision loop **before** writing `src/sim` code
 
-Run researcher → decider → interrogator → advocate (CLAUDE.md, `/fix-plan`) for each. Record each as an
+Run the decision loop for each (`/fix-plan` step 3: decider convening round, the convened seats and the
+researcher, decider decision round, interrogator decision mode; `docs/board/README.md`). Record each as an
 AX row through `/fix-plan`. None of them may be decided by the implementer alone, and none may be
 decided after seeing a test it would make pass.
 
@@ -183,7 +184,7 @@ last, and only if needed. The D-T numbers are identifiers, not the order.
   W1/W2 and peak memory for the AQ10 room, CR4, and the largest contract room (AX6: 100 m per side).
   **A coarser ℓ is not a remedy** (phase-05b scope 0). The Table 15.1 option (3 s time available for a
   movement > 1 m (specular and scattering parts), Vorländer Table 15.1, as AQ10 states it) is a Phase 10 remedy only if W1 > 700 ms (phase-05b scope 0), not a D-T1 option.
-- **D-T2 — ℓ for the tail path (R1).** AX35 (c) candidate: 2.5 m (certified in the 15 (A) cases, CR2,
+- **D-T2 — ℓ for the tail path (R1).** AX36 (c) candidate: 2.5 m (certified in the 15 (A) cases, CR2,
   CR3). **CR4 is open**: compute its 2.5→1.25 m E_target change (500 Hz–2 kHz, all 10 pairs) with the
   D-T1 formulation if it is cheaper, or with `phase05b.py r1` on a machine with ≥ 16 GB free, or with a
   per-band, chunked transform. If any change is ≥ 1 %, the next rung is needed (and its cost enters D-T1).
@@ -255,7 +256,7 @@ last, and only if needed. The D-T numbers are identifiers, not the order.
 6. **Costs:** W1/W2 (AQ10), peak memory per instance at the AQ10 room, CR4 and the largest supported
    room, recorded in §0.
 7. **Plan bookkeeping** through `/fix-plan`: AX16 (switched, with the measured ΔL_b,tr table), AX21
-   (unchanged statement, cross-reference), AX35 (c) resolved, new AX rows D-T1…D-T6, §6 rows.
+   (unchanged statement, cross-reference), AX36 (c) resolved, new AX rows D-T1…D-T6, §6 rows.
 8. **Listening pack:** a `phase-05b2` entry: Phase 04 tail level vs switched tail level, loudness-matched
    **not** (the level difference is the point), through the six Phase 04 rooms, `open_field`, the BRAS
    scene with the largest real ΔL_b (`bras_cr3_ls1_mp2`) and three synthetic concentrated-absorption
@@ -299,7 +300,7 @@ the room-range edge (D-T3); determinism; no per-scene logic.
 
 - D-T1 finds no formulation within D-T4 for large rooms → D-T3 goes to Maisara with numbers; the session
   may still implement the switch for the supported range.
-- CR4 R1 needs a finer rung that is not computable → the switch's ℓ is certified per AX35's rule only
+- CR4 R1 needs a finer rung that is not computable → the switch's ℓ is certified per AX36's rule only
   where computable; the gap is recorded and goes to Maisara.
 - **Split rule (CLAUDE.md):** this is phase 05b's second session. Whatever does not fit goes into
   `docs/phases/phase-05h.md` (05c is reserved for Phase 05's zero-rooms branch).
@@ -317,7 +318,7 @@ the room-range edge (D-T3); determinism; no per-scene logic.
 
 ## 9. Out of scope
 
-Early rendering of scattered energy (not promoted; re-run rule AX35 (e)); per-band scattering (B10);
+Early rendering of scattered energy (not promoted; re-run rule AX36 (e)); per-band scattering (B10);
 the tail decay rate (B12); Phase 08 directions beyond D-T5 (3); Phase 10 caching beyond what D-T1 needs;
 any per-scene tuning.
 

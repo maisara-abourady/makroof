@@ -440,7 +440,7 @@ R1_MEMORY_BUDGET_GB = 12.0  # kernel + its complex64 transform on the 15 GB sess
 
 
 def step_r1():
-    """AX35 (c), R1: E_target (500 Hz-2 kHz) and a* at 2.5 and 1.25 m in the selected BRAS rooms (initial α,
+    """AX36 (c), R1: E_target (500 Hz-2 kHz) and a* at 2.5 and 1.25 m in the selected BRAS rooms (initial α,
     Phase 05 positions), from the hybrid alone. Per band with the air factored out (exact per band: every
     path's air factor is exp(-m_b R) with R = c t, whatever α and s are). A rung whose dense kernel plus
     transform exceeds R1_MEMORY_BUDGET_GB is recorded as not computed (compute limit)."""
@@ -494,14 +494,14 @@ def step_r1():
     save(d)
 
 
-# AX35 (phase 05b, D1; vetoable by Maisara): the ladder stops at a compute limit (0.625 m does not fit in
+# AX36 (phase 05b, D1; vetoable by Maisara): the ladder stops at a compute limit (0.625 m does not fit in
 # memory), not at the c·Δt floor; scope 0's < 1 % rule is applied per quantity. The window check uses the
 # hybrid's E_target, certified at 2.5 m (2.5 -> 1.25 m ≤ 0.324 %) and evaluated at 1.25 m. Gate (A) per bin
 # and the scope 5 bias trigger are NOT evaluated (the gated bins converge at no computable rung): no per-bin
 # tracer-vs-hybrid number is computed here.
 GATE_ELL_M = 1.25
 PREV_ELL_M = 2.5
-NOT_EVALUATED = "not evaluated (compute limit, AX35)"
+NOT_EVALUATED = "not evaluated (compute limit, AX36)"
 
 
 def step_gate():
@@ -509,7 +509,7 @@ def step_gate():
     e_ = d["ell"]
     st = e_["steps"][f"{PREV_ELL_M}->{GATE_ELL_M}"]
     if max(c["target_change"] for c in st["cases"].values()) >= ELL_TOL or max(st["a_star_change"].values()) >= ELL_TOL:
-        raise SystemExit("E_target / a* not certified at 2.5 m (AX35 (a)): no window comparison")
+        raise SystemExit("E_target / a* not certified at 2.5 m (AX36 (a)): no window comparison")
     vals = e_["values"]
     out = {"ell_m": GATE_ELL_M, "e_target_certified_at_m": PREV_ELL_M, "gate_A": NOT_EVALUATED,
            "bias_diagnosis": NOT_EVALUATED, "cases": {}}
@@ -552,9 +552,9 @@ def step_gate():
         "max_abs_delta_lb_tr_db": max(abs(w["delta_lb_tr_db"]) for w in allw),
         "max_se_db": max(w["se_db"] for w in allw),
         "branch": branch, "phase05_xb_over_1db": xb_over_phase05,
-        # AX35 (c): under (i) the switch is due by scope 4 but waits for R1 (BRAS convergence), R2 (formulation,
+        # AX36 (c): under (i) the switch is due by scope 4 but waits for R1 (BRAS convergence), R2 (formulation,
         # memory and rebuild cost) and Maisara; meanwhile AX16 records ΔL_b,tr as a known deficit
-        "tail_level_switch": ("due, waits for R1/R2/Maisara (AX35 (c))" if branch == "(i)" and (over or xb_over_phase05)
+        "tail_level_switch": ("due, waits for R1/R2/Maisara (AX36 (c))" if branch == "(i)" and (over or xb_over_phase05)
                               else "no (branch (ii): ΔL_b,tr recorded as a known deficit)")}
     d["gate"] = out
     save(d)

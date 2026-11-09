@@ -61,10 +61,10 @@ def test_ell_ladder_consistent():
 @pytest.mark.skipif("gate" not in D, reason="window check not run")
 def test_window_check_follows_ax35():
     g = D["gate"]
-    # AX35 (b): gate (A) per bin and the bias trigger are not evaluated; no per-bin numbers are stored
+    # AX36 (b): gate (A) per bin and the bias trigger are not evaluated; no per-bin numbers are stored
     assert g["gate_A"] == p.NOT_EVALUATED and g["bias_diagnosis"] == p.NOT_EVALUATED
     assert all("bins" not in c for c in g["cases"].values())
-    # AX35 (a): E_target certified at 2.5 m (2.5 -> 1.25 m < 1 %), evaluated at 1.25 m
+    # AX36 (a): E_target certified at 2.5 m (2.5 -> 1.25 m < 1 %), evaluated at 1.25 m
     st = D["ell"]["steps"][f"{p.PREV_ELL_M}->{p.GATE_ELL_M}"]
     assert max(c["target_change"] for c in st["cases"].values()) < p.ELL_TOL
     assert max(st["a_star_change"].values()) < p.ELL_TOL
@@ -77,7 +77,7 @@ def test_window_check_follows_ax35():
     assert s["window_pass"] == all(abs(w["hybrid_vs_tracer_db"]) <= p.WINDOW_DB for w in allw)
     assert s["se_ok"] == all(w["se_db"] <= p.SE_MAX_DB for w in allw)
     assert s["branch"] == ("(i)" if s["window_pass"] and s["se_ok"] else "(ii)")
-    # AX35 (c): never "switched" in this phase
+    # AX36 (c): never "switched" in this phase
     assert "switched" not in s["tail_level_switch"]
 
 

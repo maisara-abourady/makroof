@@ -141,16 +141,16 @@ def write() -> str:
         w("")
         w(f"**{gate['gate_A']}.** The gated 10 ms bins converge at no computable patch size (section 3: 2.5 → 1.25 m changes "
           "them by up to 5.36 %; 3.23 → 3.18 % in Table 5.2 layouts 5 and 6 at s = 1; halving Δt changes them by ≤ 0.13 %, so "
-          "the cause is ℓ), and 0.625 m does not fit in memory. Under AX35 (b) no per-bin tracer-vs-hybrid number is "
+          "the cause is ℓ), and 0.625 m does not fit in memory. Under AX36 (b) no per-bin tracer-vs-hybrid number is "
           "computed, and the scope 5 bias trigger is not evaluated either; (A) is never recorded as passing. The outcome "
-          "'not promoted' rests on gate (B) alone (section 6). Re-run rule: AX35 (e).")
+          "'not promoted' rests on gate (B) alone (section 6). Re-run rule: AX36 (e).")
         w("")
         w("## 5. Window-level check (scope 4)")
         w("")
         w("ΔL_b,tr = 10·log10(E_target(AX16)/E_target(tracer)); hybrid vs tracer = 10·log10(E_target(hybrid)/E_target(tracer)); "
           "same Hann window; SE = 4.34/√k_tr (must be ≤ 1/3 dB).")
         w("")
-        w(f"Hybrid E_target certified at {gate['e_target_certified_at_m']} m and evaluated at {gate['ell_m']} m (AX35 (a)); "
+        w(f"Hybrid E_target certified at {gate['e_target_certified_at_m']} m and evaluated at {gate['ell_m']} m (AX36 (a)); "
           "margin = 1 dB − |hybrid vs tracer|; a margin smaller than the case-band's 2.5 → 1.25 m E_target change marks the "
           "branch ℓ-sensitive (heuristic flag, not an error bound).")
         w("")
@@ -170,7 +170,7 @@ def write() -> str:
         w("")
     r1 = d.get("r1")
     if r1:
-        w("## 5b. R1: tail-path ℓ in the selected BRAS rooms (AX35 (c); hybrid alone, initial α, Phase 05 positions)")
+        w("## 5b. R1: tail-path ℓ in the selected BRAS rooms (AX36 (c); hybrid alone, initial α, Phase 05 positions)")
         w("")
         w("| room | patches 2.5 / 1.25 m | E_target change 2.5→1.25 m (max over pairs, 500 Hz–2 kHz) | a* change | certified at 2.5 m |")
         w("|---|---|---|---|---|")
@@ -181,7 +181,7 @@ def write() -> str:
             w(f"| {room} | {a['patches']} / {b['patches']} | {ch} | {r['a_star_change']:.3%} | {cert} |")
         w("")
         w("R2 (formulation, memory and rebuild cost across the supported room range) and Maisara's decision are still "
-          "needed before any `src/sim` switch (AX35 (c)); until then AX16 records ΔL_b,tr (section 5) as a known deficit.")
+          "needed before any `src/sim` switch (AX36 (c)); until then AX16 records ΔL_b,tr (section 5) as a known deficit.")
         w("")
     # 6 gate B
     w("## 6. Gate (B) on the Phase 05 numbers (scope 6; `report-phase05.md` §6b)")

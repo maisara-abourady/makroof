@@ -9881,8 +9881,8 @@
  "gate": {
   "ell_m": 1.25,
   "e_target_certified_at_m": 2.5,
-  "gate_A": "not evaluated (compute limit, AX35)",
-  "bias_diagnosis": "not evaluated (compute limit, AX35)",
+  "gate_A": "not evaluated (compute limit, AX36)",
+  "bias_diagnosis": "not evaluated (compute limit, AX36)",
   "cases": {
    "s_case_s0.1": {
     "mix_s": 0.11353242020805729,
@@ -10426,8 +10426,8 @@
    }
   },
   "summary": {
-   "gate_A": "not evaluated (compute limit, AX35)",
-   "bias_diagnosis": "not evaluated (compute limit, AX35)",
+   "gate_A": "not evaluated (compute limit, AX36)",
+   "bias_diagnosis": "not evaluated (compute limit, AX36)",
    "window_pass": true,
    "se_ok": true,
    "any_abs_delta_lb_tr_over_1db": true,
@@ -10437,7 +10437,7 @@
    "max_se_db": 0.07809976612768316,
    "branch": "(i)",
    "phase05_xb_over_1db": true,
-   "tail_level_switch": "due, waits for R1/R2/Maisara (AX35 (c))"
+   "tail_level_switch": "due, waits for R1/R2/Maisara (AX36 (c))"
   }
  },
  "r1": {
