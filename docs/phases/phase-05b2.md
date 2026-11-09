@@ -52,9 +52,10 @@ per window; `phase05b.json` "gate"; report §5), ΔL_b,tr = 10·log10(E_target(A
 So: **AX16 mis-sets the tail level by up to +3.9 dB** (tail too loud) in a room with one absorbing
 surface, and by −1.2 dB (too quiet) in others, while the reference hybrid (`tools/acoustics/ref_hybrid.py`,
 the "propagated diffuse energy", Kuttruff Eqs. 4.24, 4.29, 4.35) agrees with the tracer within
-**0.08 dB everywhere**. Kuttruff Table 5.2 layouts 4–6 are **bounding cases** (α = 1 on one face, every
-other face rigid; Kuttruff §5.7: real halls are less dramatic). The realistic magnitude is the one
-measured in the BRAS rooms: the model-vs-model bound ΔL_b (AX16 vs hybrid) reaches **−1.18 dB** (CR3,
+**0.08 dB everywhere**. Kuttruff Table 5.2 layouts 4–6 are **extreme cases** (α = 1 on one face, every
+other face rigid; Kuttruff §5.7 says of case 4, the "practically most important" one and a "crude model
+of most auditoria", that real halls are less dramatic; the corpus does not show that α = 1 bounds
+ΔL). Three BRAS rooms, with estimated input data (B11 (B)), give a realistic magnitude: the model-vs-model bound ΔL_b (AX16 vs hybrid) reaches **−1.18 dB** (CR3,
 2 kHz; −1.47 dB with per-band s); the six Phase 04 test rooms and CR2 stay ≤ 0.3 dB
 (report-phase05.md §6a). 1 dB is the jnd of G (Vorländer Table 6.1, 500–1000 Hz); a tail-level error
 moves G by less than ΔL_b,tr and is compared with 1 dB only by extension (as AQ9 does for 2 kHz).
@@ -89,7 +90,7 @@ steps ∝ t_mix,e/Δt, G generations, up to 2 000 in `ref_hybrid.solve`):
 | room | ℓ = 2.5 m: patches, bins, dense kernel (8 bands, float32) | ℓ = 1.25 m |
 |---|---|---|
 | AQ10 room 20×30×10 m | 352, 118, ≈ 0.47 GB | 1 408, ≈ 7.5 GB |
-| AQ10 room with the AX22 fallback (t_mix,e = t_cap ≈ 0.38 s, as in layouts 4–6 and W2) | 352, ≈ 385, ≈ 1.5 GB | 1 408, ≈ 24 GB |
+| AQ10 room with the AX22 fallback (t_mix,e = t_cap ≈ 0.38 s, as in layout 4, layout 5 at s = 0.1 and s = 1, layout 6 at s = 1, and W2) | 352, ≈ 385, ≈ 1.5 GB | 1 408, ≈ 24 GB |
 | BRAS CR4 42×42×4.9 m | 714, 155 (to the latest t_mix,e of its 10 pairs), ≈ 2.5 GB | 2 856, ≈ 40 GB |
 | contract maximum 100×100×100 m (AX6), non-fallback pair | 9 600, ≈ 1 035, ≈ 3 TB | ≈ 49 TB |
 | contract maximum with the AX22 fallback (t_cap(N_cap = 1 560) ≈ 2.1 s; Kuttruff Eq. 4.6 integrated: N = 4πc³t³/(3V)) | 9 600, ≈ 2 100, ≈ 6 TB | – |
@@ -303,13 +304,16 @@ the room-range edge (D-T3); determinism; no per-scene logic.
 - **Split rule (CLAUDE.md):** this is phase 05b's second session. Whatever does not fit goes into
   `docs/phases/phase-05h.md` (05c is reserved for Phase 05's zero-rooms branch).
   - **Atomicity:** the matching change does not land in `src/sim` (commit to the branch) without, in the
-    same push, the `ref_hybrid` agreement test, the tracer test, the updated goldens and a green nightly
-    BRAS run.
+    same push, the `ref_hybrid` agreement test, the tracer test and the updated goldens, and the PR is not
+    opened before a manual nightly BRAS run on that push is green (CLAUDE.md "When CI runs").
   - **Named split point:** if the session cannot finish, the split is after section 3's decisions and
     R1 are committed; `phase-05h.md` then carries the implementation in this file's level of detail.
   - **For that branch:** §0 row 05b becomes `done (not promoted; tail-level switch specified in
     phase-05h)`, a new row 05h `not started`, and the 05b PR closes both sessions' work without any
-    `src/sim` matching change; the session stops there.
+    `src/sim` matching change; in the same `/fix-plan` change, Phase 08's dependencies gain 05h (binaural
+    rendering must not be built and checked on the AX16 tail level and AX16 `bandsAxisShares`, which
+    D-T5 (3) may change; advocate, 2026-11-09), unless the decision loop records why 08 may go first;
+    the session stops there.
 
 ## 9. Out of scope
 
