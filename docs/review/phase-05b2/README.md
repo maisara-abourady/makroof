@@ -12,3 +12,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `7-builder-D-T1-evidence.md` | orchestrator (builder) | D-T1 candidate measurements, outside src/sim |
 | `4-researcher-T5-T4.md` | researcher | dossier RQ1–RQ6 (D-T4, D-T5) |
 | `5-decider-decision-T5-T4.md` | decider | decision round 1, D-T5 and D-T4 |
+| `6-seat<n>-rerun-T5-T4.md` | seats 2, 3, 5, 6, 8 | re-runs on the composed variants (all confirm the decider's cells; Seat 2 and Seat 5 add conditions) |
