@@ -359,7 +359,7 @@ def step_openfield(npaths: int = 400_000):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b"])
+    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d"])
     ap.add_argument("--paths", type=int, default=32_000)
     a = ap.parse_args(argv)
     if njit is None:
@@ -373,7 +373,8 @@ def main(argv=None):
     elif a.step == "openfield":
         step_openfield()
     else:
-        {"c3": step_c3, "c4": step_c4, "c5": step_c5, "c6": step_c6, "c7": step_c7, "c9b": step_c9b}[a.step]()
+        {"c3": step_c3, "c4": step_c4, "c5": step_c5, "c6": step_c6, "c7": step_c7, "c9b": step_c9b,
+         "c12a": step_c12a, "c12b": step_c12b, "c12d": step_c12d}[a.step]()
 
 
 
@@ -915,6 +916,362 @@ def near_field_run(c: dict, npaths: int, h: float, r_near: float = 1.0, seed: in
         fd, fc, rcv, a, b, rate, norm, npaths, seed, r_near, h, ng, near_img, G, out)
     return out, plan
 
+
+# ------------------------------------------------------------------------------------------
+# C12 (docs/review/phase-05b2/21-decider-decision-T1-T2-T6.md): NW-4C (blend of the emitter-started and the
+# listener-started estimator, w = d_L² / (d_L² + d_E²)) and N-3W* (pilot [0, n*), final estimate from the disjoint
+# range [n*, n* + N), work cap W_max in image evaluations, R / VOV / slope flagged).
+# ------------------------------------------------------------------------------------------
+
+if njit is not None:
+
+    @njit(parallel=True, fastmath=False, cache=True)
+    def mc5(dims, alpha, s, m_air, src, face_pos, face_spec, face_dist, face_cnt, rcv, a, b, rate, norm, npaths, p0, wn,
+            seed, out, nev):
+        """mc3's model and RNG, paths p0 .. p0 + npaths - 1 (path index drives the stream), each weighted 4π / wn;
+        nev[p] = image evaluations of the path (inner-loop iterations of the NEE gather)."""
+        nb = 8
+        gam = np.empty(nb)
+        for k in range(nb):
+            gam[k] = m_air[k] - rate[k] / C
+        for q in prange(npaths):
+            p = q + p0
+            w = np.empty(nb); contrib = np.zeros(nb); hitf = np.empty(nb)
+            x = np.empty(3); d = np.empty(3)
+            st = np.uint64(seed) * np.uint64(0x9E3779B97F4A7C15) + np.uint64(p) * np.uint64(0xD1B54A32D192ED03)
+            inc = np.uint64(2 * p + 1)
+            st, u1 = _next(st, inc); st, u1 = _next(st, inc); st, u2 = _next(st, inc)
+            z = 1 - 2 * u1; ph = 2 * np.pi * u2; rr = np.sqrt(max(0.0, 1 - z * z))
+            d[0] = rr * np.cos(ph); d[1] = rr * np.sin(ph); d[2] = z
+            x[0] = src[0]; x[1] = src[1]; x[2] = src[2]
+            for k in range(nb):
+                w[k] = 4 * np.pi / wn
+            t = 0.0
+            ne = 0
+            while True:
+                tb = 1e300; f = -1
+                for ax in range(3):
+                    if d[ax] > 1e-15:
+                        tt = (dims[ax] - x[ax]) / d[ax]
+                        if tt < tb:
+                            tb = tt; f = 2 * ax + 1
+                    elif d[ax] < -1e-15:
+                        tt = -x[ax] / d[ax]
+                        if tt < tb:
+                            tb = tt; f = 2 * ax
+                for i in range(3):
+                    x[i] += tb * d[i]
+                ax = f // 2
+                x[ax] = 0.0 if f % 2 == 0 else dims[ax]
+                t += tb / C
+                if t >= b:
+                    break
+                for k in range(nb):
+                    w[k] *= np.exp(-m_air[k] * tb)
+                sf = s[f]
+                if sf > 0:
+                    rem = C * (b - t)
+                    dx0 = x[0] - rcv[0]; dy0 = x[1] - rcv[1]; dz0 = x[2] - rcv[2]
+                    dlr = np.sqrt(dx0 * dx0 + dy0 * dy0 + dz0 * dz0)
+                    for k in range(nb):
+                        hitf[k] = w[k] * (1 - alpha[f, k]) * sf / np.pi * np.exp(-rate[k] * (b - t))
+                    for m in range(face_cnt[f]):
+                        if face_dist[f, m] - dlr > rem:
+                            break
+                        ne += 1
+                        dx = face_pos[f, m, 0] - x[0]; dy = face_pos[f, m, 1] - x[1]; dz = face_pos[f, m, 2] - x[2]
+                        r2 = dx * dx + dy * dy + dz * dz; r = np.sqrt(r2)
+                        ta = t + r / C
+                        if ta <= a or ta >= b:
+                            continue
+                        cs = (dx if ax == 0 else (dy if ax == 1 else dz))
+                        if f % 2 == 1:
+                            cs = -cs
+                        cs /= r
+                        if cs <= 0:
+                            continue
+                        hw = np.sin(np.pi * (ta - a) / (b - a)); hw *= hw
+                        g = cs / r2 * hw
+                        for k in range(nb):
+                            contrib[k] += hitf[k] * g * face_spec[f, m, k] * np.exp(-gam[k] * r)
+                for k in range(nb):
+                    w[k] *= (1 - alpha[f, k])
+                st, u = _next(st, inc)
+                if u < sf:
+                    st, u1 = _next(st, inc); st, u2 = _next(st, inc)
+                    ct = np.sqrt(u1); stt = np.sqrt(1 - u1); ph = 2 * np.pi * u2
+                    a1 = (ax + 1) % 3; a2 = (ax + 2) % 3
+                    d[a1] = stt * np.cos(ph); d[a2] = stt * np.sin(ph); d[ax] = ct if f % 2 == 0 else -ct
+                else:
+                    d[ax] = -d[ax]
+                mx = 0.0
+                for k in range(nb):
+                    mx = max(mx, w[k])
+                if mx == 0.0:
+                    break
+            for k in range(nb):
+                out[q, k] = contrib[k] * norm
+            nev[q] = ne
+
+
+SEED_REV = SEED + 1  # the listener-started set has its own stream (independent of the emitter-started one)
+PILOT = 8000         # N-3W* pilot n* (decider's composed variant; a product choice the seats rate)
+
+
+def wall_distance(dims, pos) -> float:
+    d = np.asarray(dims, float); x = np.asarray(pos, float)
+    return float(np.min(np.minimum(x, d - x)))
+
+
+def nw4c_weight(c: dict) -> float:
+    dl, de = wall_distance(c["dims"], c["rcv"]), wall_distance(c["dims"], c["src"])
+    return dl * dl / (dl * dl + de * de)
+
+
+class _Prep:
+    """Face lists of both ends and the plan of the true positions, built once per scene."""
+
+    def __init__(self, c: dict, plan=None):
+        m = scope6.air_m()
+        self.var = rh.variant(c["alpha"], c["s"], m)
+        self.plan = rh.phase04_plan(c["dims"], self.var, c["src"], c["rcv"]) if plan is None else plan
+        self.a, self.b = self.plan["mix"]["windowStartS"], self.plan["mix"]["mixS"]
+        self.dims = np.asarray(c["dims"], float)
+        self.fl = {"fwd": face_lists(self.dims, self.var, c["rcv"], C * self.b), "rev": face_lists(self.dims, self.var, c["src"], C * self.b)}
+        self.ends = {"fwd": (np.asarray(c["src"], float), np.asarray(c["rcv"], float)), "rev": (np.asarray(c["rcv"], float), np.asarray(c["src"], float))}
+        self.rate = rh.ENERGY_DECAY_PER_T60 / np.asarray(self.plan["t60"])
+        self.norm = rh.MATCH_NORMALISATION_S / (0.5 * (self.b - self.a))
+        self.alpha = np.asarray(c["alpha"], float).reshape(6, 8); self.s = np.asarray(c["s"], float); self.m = m
+        self.w = nw4c_weight(c)
+
+    def run(self, end: str, n: int, p0: int = 0):
+        fp, fs, fd, fc, _ = self.fl[end]
+        st, gt = self.ends[end]
+        out = np.zeros((n, 8)); nev = np.zeros(n, np.int64)
+        if n > 0:
+            mc5(self.dims, self.alpha, self.s, self.m, st, fp, fs, fd, fc, gt, self.a, self.b, self.rate, self.norm, n, p0,
+                float(n), SEED if end == "fwd" else SEED_REV, out, nev)
+        return out, nev
+
+    def nw4c(self, n: int, p0: int = 0, timed: bool = False):
+        """Per-history NW-4C scores (n, 8): w·fwd_p + (1 − w)·rev_p (histories pair path p of each set)."""
+        t0 = time.perf_counter(); of, ef = self.run("fwd", n, p0); t1 = time.perf_counter(); orv, er = self.run("rev", n, p0)
+        t2 = time.perf_counter()
+        x = self.w * of + (1 - self.w) * orv
+        return {"x": x, "fwd": of, "rev": orv, "ev_fwd": ef, "ev_rev": er, "s_fwd": t1 - t0, "s_rev": t2 - t1}
+
+
+def tally_stats(out: np.ndarray, total_spec: np.ndarray) -> dict:
+    """MCNP-style tally checks per band on per-history scores (out sums to the estimate): R = SE/mean of the
+    diffuse estimate, VOV, and the slope of the largest scores' tail (1 + Hill index over the top min(200, 5 %))."""
+    n = out.shape[0]
+    x = out * n
+    mu = x.mean(axis=0)
+    dev = x - mu
+    s2 = (dev ** 2).sum(axis=0); s4 = (dev ** 4).sum(axis=0)
+    vov = np.where(s2 > 0, s4 / np.maximum(s2 ** 2, 1e-300) - 1.0 / n, 0.0)
+    se = np.sqrt(np.maximum(s2 / n, 0) / n)
+    R = np.where(mu > 0, se / np.maximum(mu, 1e-300), 0.0)
+    k = max(10, min(200, int(0.05 * n)))
+    slope = np.zeros(8)
+    for bb in range(8):
+        v = np.sort(x[:, bb])[::-1]
+        if v[k] <= 0:
+            slope[bb] = 0.0; continue
+        hill = np.mean(np.log(v[:k] / v[k]))
+        slope[bb] = 1.0 + (1.0 / hill if hill > 0 else 1e9)
+    return {"R": R.tolist(), "VOV": vov.tolist(), "slope": np.minimum(slope, 10.0).tolist(),
+            "R_ok": bool(np.all(R < 0.05)), "VOV_ok": bool(np.all(vov < 0.1)), "slope_ok": bool(np.all(slope > 3.0))}
+
+
+def n3w(pr: _Prep, w_max: float, se_t: float = 0.083, pilot: int = PILOT) -> dict:
+    """N-3W*: pilot [0, n*) sets N from its worst-band SE (dB of the total); the final estimate comes from the disjoint
+    range [n*, n* + N); N is capped so that pilot + final image evaluations ≤ w_max (cap hit flagged)."""
+    pl = pr.nw4c(pilot)
+    sp = summarise(pl["x"], pr.plan)
+    worst = float(np.max(sp["se_db"]))
+    n_need = _need(pilot, worst, se_t)
+    w_pilot = float(pl["ev_fwd"].sum() + pl["ev_rev"].sum())
+    ev_pp = w_pilot / pilot
+    n_cap = int(max(0, np.floor((w_max - w_pilot) / max(ev_pp, 1e-12))))
+    cap_hit = n_need > n_cap
+    n = min(n_need, n_cap)
+    fin = pr.nw4c(n, p0=pilot) if n > 0 else None
+    sf = summarise(fin["x"], pr.plan) if n > 0 else None
+    return {"pilot_se_db_worst": worst, "n_need": n_need, "n_cap": n_cap, "n": n, "cap_hit": bool(cap_hit),
+            "work_pilot": w_pilot, "work_final": float(fin["ev_fwd"].sum() + fin["ev_rev"].sum()) if n > 0 else 0.0,
+            "total": (sf["total"] if n > 0 else np.full(8, np.nan)), "se_db": (sf["se_db"] if n > 0 else np.full(8, np.nan)),
+            "pilot_stats": tally_stats(pl["x"], pr.plan["target_specular"]), "ev_per_history": ev_pp}
+
+
+def c12_scenes() -> dict:
+    """(a): C4's cases, both-near cases and Seat 9's absorbing-face cases in W1 and layouts 4 and 5 at s = 1."""
+    w1 = {"dims": (20.0, 30.0, 10.0), "alpha": [AQ] * 6, "s": [0.3] * 6}
+    rooms = {"W1": w1}
+    for L in (4, 5):
+        dims, al = p5.layout_alpha(L)
+        rooms[f"layout{L}_s1"] = {"dims": dims, "alpha": [[x] * 8 for x in al], "s": [1.0] * 6}
+    out = {}
+    for rn, base in rooms.items():
+        D = base["dims"]
+        S0, R0 = (7.0, 20.0, 2.0), (10.0, 8.0, 1.7)
+        cases = {"reference_positions": (S0, R0),
+                 "listener_wall": (S0, (10.0, 0.1, 1.7)), "listener_edge": (S0, (0.1, 0.1, 1.7)),
+                 "listener_corner": (S0, (0.1, 0.1, D[2] - 0.1)),
+                 "emitter_wall": ((7.0, D[1] - 0.1, 2.0), R0), "emitter_edge": ((D[0] - 0.1, D[1] - 0.1, 2.0), R0),
+                 "emitter_corner": ((D[0] - 0.1, D[1] - 0.1, D[2] - 0.1), R0),
+                 "both_wall": ((7.0, D[1] - 0.1, 2.0), (10.0, 0.1, 1.7)),
+                 "both_corner": ((D[0] - 0.1, D[1] - 0.1, D[2] - 0.1), (0.1, 0.1, 0.1))}
+        out[rn] = {k: dict(base, name=f"{rn}_{k}", src=v[0], rcv=v[1]) for k, v in cases.items()}
+    # Seat 9's absorbing-face cases (19 §6): layout 4's floor, layout 5's xMin wall
+    out["layout4_s1"]["listener_absorber"] = dict(rooms["layout4_s1"], name="layout4_s1_listener_absorber", src=(7.0, 20.0, 2.0), rcv=(10.0, 8.0, 0.1))
+    out["layout5_s1"]["listener_absorber"] = dict(rooms["layout5_s1"], name="layout5_s1_listener_absorber", src=(7.0, 20.0, 2.0), rcv=(0.1, 8.0, 1.7))
+    return out
+
+
+def step_c12a(n: int = 32_000, n_long: int = 256_000, refs: bool = True):
+    """(a): NW-4C at n histories (SE, largest share) against a disjoint long NW-4C run and ref_hybrid at 1.25 m (500 Hz–2 kHz)."""
+    d = load(); res = d.get("c12", {}).get("a", {})
+    for rn, cs in c12_scenes().items():
+        for k, c in cs.items():
+            key = f"{rn}/{k}"
+            if key in res:
+                continue
+            pr = _Prep(c)
+            r = pr.nw4c(n)
+            s = summarise(r["x"], pr.plan); sf = summarise(r["fwd"], pr.plan); sr = summarise(r["rev"], pr.plan)
+            lg = pr.nw4c(n_long, p0=n)
+            sl = summarise(lg["x"], pr.plan)
+            row = {"w": pr.w, "d_L": wall_distance(c["dims"], c["rcv"]), "d_E": wall_distance(c["dims"], c["src"]),
+                   "se_db": s["se_db"].tolist(), "se_db_fwd_only": sf["se_db"].tolist(), "se_db_rev_only": sr["se_db"].tolist(),
+                   "max_share": s["max_path_share"].tolist(), "total": s["total"].tolist(),
+                   "long_total": sl["total"].tolist(), "long_se_db": sl["se_db"].tolist(),
+                   "vs_long_db": (10 * np.log10(s["total"] / sl["total"])).tolist(),
+                   "stats_32k": tally_stats(r["x"], pr.plan["target_specular"]),
+                   "s_fwd": r["s_fwd"], "s_rev": r["s_rev"],
+                   "ev_per_history": float((r["ev_fwd"].sum() + r["ev_rev"].sum()) / n)}
+            if refs:
+                ref, _ = _ref_bands(c, (1.25,), AQ9)
+                row["ref1.25_aq9"] = [float(ref["1.25"][bb]) for bb in AQ9]
+                row["long_vs_ref1.25_db_aq9"] = [float(10 * np.log10(sl["total"][bb] / ref["1.25"][bb])) for bb in AQ9]
+                row["long_z_vs_ref_aq9"] = [float((sl["total"][bb] - ref["1.25"][bb]) / max(sl["se_db"][bb] / 4.343 * sl["total"][bb], 1e-300)) for bb in AQ9]
+            res[key] = row
+            log(key, "w", round(pr.w, 3), "SE", round(max(row["se_db"]), 3), "share", round(max(row["max_share"]), 4),
+                "vs long", round(max(np.abs(row["vs_long_db"])), 3), "vs ref", np.round(row.get("long_vs_ref1.25_db_aq9", []), 3))
+            d = load(); d.setdefault("c12", {})["a"] = res; save(d)
+
+
+def step_c12d(threads=(1, 4)):
+    """(c), (d), (e): cost per image evaluation, W_max from the restore bound, NW-4C vs forward-only cost to Tol-2 at the
+    reference positions, paths allowed, Seat 1's floor, the 3 s bound, cap hits on CS-NW+ and Phase 04 near-wall cases."""
+    import numba
+    out = {}
+    T_BOUND = 30.0 / 14.0           # pluginval watchdog / 14 restores (Challenge 1)
+    T_BUILD = (1.51, 1.88)          # Phase 07 restore at 100 m, 96 kHz (BUILD_PLAN §0 row 07)
+    ref_scenes = [c for c in bench_scenes() if c["group"] in ("W1", "W2", "CR4", "cube100", "cube100_flutter")]
+    # cost per image evaluation, gated scene (100 m cube, both builds' rooms), 1 and 4 threads
+    cost = {}
+    for th in threads:
+        numba.set_num_threads(th)
+        for c in [x for x in ref_scenes if x["group"].startswith("cube100")]:
+            pr = _Prep(c); pr.run("fwd", 64)
+            t0 = time.perf_counter(); o, ev = pr.run("fwd", 8000); dt_ = time.perf_counter() - t0
+            cost[f"{c['name']}_t{th}"] = {"s": dt_, "evals": int(ev.sum()), "ns_per_eval": 1e9 * dt_ / max(ev.sum(), 1)}
+            log("cost", c["name"], th, cost[f"{c['name']}_t{th}"])
+    numba.set_num_threads(max(threads))
+    out["cost"] = cost
+    ns = max(v["ns_per_eval"] for k, v in cost.items() if k.startswith("cube100_e") and k.endswith(f"_t{max(threads)}"))
+    out["ns_per_eval_used"] = ns
+    out["restore_bound_s"] = T_BOUND
+    out["w_max"] = {str(tb): (T_BOUND - tb) / 2 / (ns * 1e-9) for tb in T_BUILD}
+    w_max = out["w_max"][str(T_BUILD[1])]
+    out["w_max_used"] = w_max
+    out["w_max_seconds_per_emitter_this_box"] = w_max * ns * 1e-9
+    log("W_max", out["w_max"])
+    # (c) and (e) at the reference positions; paths allowed under W_max
+    ref = {}
+    for c in ref_scenes:
+        pr = _Prep(c)
+        pr.run("fwd", 64); pr.run("rev", 64)
+        r = pr.nw4c(PILOT, timed=True)
+        s = summarise(r["x"], pr.plan); sf = summarise(r["fwd"], pr.plan)
+        wf = float(np.max(sf["se_db"])); wc = float(np.max(s["se_db"]))
+        nf = _need(PILOT, wf, 0.083); nc = _need(PILOT, wc, 0.083)
+        evf = float(r["ev_fwd"].mean()); evc = float((r["ev_fwd"].sum() + r["ev_rev"].sum()) / PILOT)
+        ref[c["name"]] = {"w": pr.w, "fwd_se_db_8k": wf, "nw4c_se_db_8k": wc,
+                          "fwd_paths_tol2": nf, "nw4c_histories_tol2": nc,
+                          "fwd_evals_tol2": nf * evf, "nw4c_evals_tol2": nc * evc,
+                          "fwd_s_tol2": r["s_fwd"] * nf / PILOT, "nw4c_s_tol2": (r["s_fwd"] + r["s_rev"]) * nc / PILOT,
+                          "cost_ratio_nw4c_over_fwd": (nc * evc) / max(nf * evf, 1e-12),
+                          "ev_per_path_fwd": evf, "ev_per_history_nw4c": evc,
+                          "paths_allowed_fwd": int(w_max / max(evf, 1e-12)), "histories_allowed_nw4c": int(w_max / max(evc, 1e-12)),
+                          "pilot_work_over_w_max": PILOT * evc / w_max,
+                          "pilot_stats": tally_stats(r["x"], pr.plan["target_specular"]),
+                          "pilot_stats_fwd": tally_stats(r["fwd"], pr.plan["target_specular"])}
+        log(c["name"], {k: (round(v, 4) if isinstance(v, float) else v) for k, v in ref[c["name"]].items() if not k.startswith("pilot_stats")})
+    out["reference_positions"] = ref
+    d = load(); d.setdefault("c12", {})["d"] = out; save(d)
+    # cap hits: CS-NW+ (W1) and the six Phase 04 rooms with the listener, then one emitter, at 0.1 m from a wall
+    w1 = bench_scenes()[0]
+    csnw = {"W1_listener_wall": dict(w1, rcv=(10.0, 0.1, 1.7)), "W1_listener_edge": dict(w1, rcv=(0.1, 0.1, 1.7)),
+            "W1_listener_corner": dict(w1, rcv=(0.1, 0.1, 9.9)), "W1_listener_wall_0.3": dict(w1, rcv=(10.0, 0.3, 1.7)),
+            "W1_emitter_wall": dict(w1, src=(7.0, 29.9, 2.0))}
+    for r_ in ("dead_booth", "living_room", "classroom", "club", "concert_hall_box", "stone_box"):
+        si = scope6.scene_inputs(REPO / "tests" / "scenes" / "valid" / f"{r_}.json")
+        base = {"dims": si["dims"], "alpha": np.asarray(si["alpha"], float).reshape(6, 8).tolist(), "s": [float(x) for x in si["s"]],
+                "src": tuple(float(x) for x in si["src"]), "rcv": tuple(float(x) for x in si["rcv"])}
+        for end in ("rcv", "src"):
+            x = np.asarray(base[end], float); D = np.asarray(base["dims"], float)
+            gaps = np.r_[x, D - x]; i = int(np.argmin(gaps)); ax = i % 3
+            x[ax] = 0.1 if i < 3 else D[ax] - 0.1
+            csnw[f"{r_}_{'listener' if end == 'rcv' else 'emitter'}_wall"] = dict(base, **{end: tuple(x)})
+    caps = {}
+    for k, c in csnw.items():
+        pr = _Prep(c)
+        r = n3w(pr, w_max)
+        caps[k] = {"w": pr.w, "n_need": r["n_need"], "n_cap": r["n_cap"], "n": r["n"], "cap_hit": r["cap_hit"],
+                   "pilot_se_db_worst": r["pilot_se_db_worst"], "final_se_db_worst": float(np.nanmax(r["se_db"])) if r["n"] > 0 else None,
+                   "work_pilot_over_w_max": r["work_pilot"] / w_max, "pilot_stats": r["pilot_stats"],
+                   "evals_for_se_0.33": r["work_pilot"] * (r["pilot_se_db_worst"] / 0.33) ** 2,
+                   "seat1_floor_met": bool(r["work_pilot"] * (r["pilot_se_db_worst"] / 0.33) ** 2 <= w_max)}
+        log(k, {kk: (round(v, 4) if isinstance(v, float) else v) for kk, v in caps[k].items() if kk != "pilot_stats"})
+    out["cap_hits"] = caps
+    out["cap_hit_rate"] = float(np.mean([v["cap_hit"] for v in caps.values()]))
+    d = load(); d.setdefault("c12", {})["d"] = out; save(d)
+
+
+def step_c12b(w_max: float | None = None, se_t: float = 0.083):
+    """(b): 1 cm sweeps under N-3W* at Tol-2 in W1; largest neighbour step per band, N range, cap hits."""
+    d = load()
+    if w_max is None:
+        w_max = d["c12"]["d"]["w_max_used"]
+    w1 = bench_scenes()[0]
+    sweeps = {
+        "listener_off_wall_1.0_to_0.1m": [dict(w1, rcv=(10.0, 1.0 - 0.01 * i, 1.7)) for i in range(91)],
+        "listener_along_wall_at_0.1m_1m": [dict(w1, rcv=(10.0 + 0.01 * i, 0.1, 1.7)) for i in range(101)],
+        "listener_into_corner_1m_to_0.1m": [dict(w1, rcv=(1.0 - 0.009 * i, 1.0 - 0.009 * i, 1.7)) for i in range(101)],
+        # listener held at 0.3 m off the y = 0 wall; the emitter crosses d_E = d_L = 0.3 m (0.6 -> 0.1 m off y = 30)
+        "emitter_crossing_dE_eq_dL": [dict(w1, rcv=(10.0, 0.3, 1.7), src=(7.0, 29.4 + 0.01 * i, 2.0)) for i in range(51)],
+        "both_off_walls_1.0_to_0.1m": [dict(w1, rcv=(10.0, 1.0 - 0.01 * i, 1.7), src=(7.0, 29.0 + 0.01 * i, 2.0)) for i in range(91)],
+    }
+    out = {"w_max": w_max, "se_target_db": se_t, "pilot": PILOT, "sweeps": {}}
+    for name, seq in sweeps.items():
+        tots, ns, caps, ws = [], [], [], []
+        for c in seq:
+            pr = _Prep(c)
+            r = n3w(pr, w_max, se_t)
+            tots.append(r["total"]); ns.append(r["n"]); caps.append(r["cap_hit"]); ws.append(pr.w)
+        v = 10 * np.log10(np.asarray(tots))
+        st = np.abs(np.diff(v, axis=0))
+        same_n = np.asarray([ns[i] == ns[i + 1] for i in range(len(ns) - 1)])
+        res = {"points": len(seq), "max_step_db": st.max(axis=0).tolist(),
+               "max_step_db_same_N": (st[same_n].max(axis=0).tolist() if same_n.any() else None),
+               "N_min_max": [int(min(ns)), int(max(ns))], "N_changes": int(np.sum(~same_n)),
+               "cap_hits": int(sum(caps)), "w_range": [float(min(ws)), float(max(ws))],
+               "worst_step_at": int(np.argmax(st.max(axis=1)))}
+        out["sweeps"][name] = res
+        log(name, {k: (np.round(x, 3).tolist() if isinstance(x, list) else x) for k, x in res.items()})
+        d = load(); d.setdefault("c12", {})["b"] = out; save(d)
 
 if __name__ == "__main__":
     main()
