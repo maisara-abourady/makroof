@@ -4,9 +4,11 @@ Dry runs of the nine-seat board loop made while the board agents were created (s
 `docs/sessions/2026-11-09-board-agents.md`). **Nothing here is adopted**: the decisions are proposals
 recorded to show the loop works end to end; applying one goes through `/fix-plan` in a later session.
 
-Method note: an agent type added mid-session is not registered until a new session starts, so every
-seat in these runs was a `general-purpose` worker given the generated agent file
-(`.claude/agents/seat<n>-*.md`) verbatim as its instructions; each transcript's first line says so.
+Method note: when the seat agents had just been written, the Agent tool did not yet list their types, so
+the first smoke run (`seat9-materials-smoke.md`) used a `general-purpose` worker given the generated
+agent file (`.claude/agents/seat9-room-acoustician.md`) verbatim as its instructions; its first line says
+so. The harness registered the nine types later in the same session, and every seat in the `hrtf-head/`
+dry run ran as its own registered agent type (each transcript's method line says which).
 
 | file | what |
 |---|---|

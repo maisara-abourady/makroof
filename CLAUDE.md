@@ -114,8 +114,10 @@ nine subject-matter seats (`docs/board/README.md`; personas in `docs/board/`, ag
 - `/fix-plan` runs the loop (step 3); outputs of every round are saved under `docs/review/<target>/`.
 - Agent files for the seats are **generated**: `python3 .claude/board/build_agents.py` (`--check` to
   verify) from the persona's sections 0–18 plus `docs/board/seat-protocol.md`. Never edit a persona or a
-  generated seat file by hand. An agent type added in a session is not registered until a new session
-  starts; until then run the seat as a `general-purpose` worker given its agent file verbatim.
+  generated seat file by hand. An agent type added in a session may not be listed by the Agent tool at
+  once (it was picked up mid-session on 2026-11-09, but not immediately); try the type first, and if it is
+  not found run the seat as a `general-purpose` worker given its agent file verbatim, saying so in the
+  transcript.
 - Never add preset-specific or scene-specific logic to `src/sim/` (PRD NFR-8). If accuracy falls
   short for a scene, report it. Don't tune for it.
 

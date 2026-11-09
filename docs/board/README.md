@@ -38,8 +38,9 @@ python3 .claude/board/build_agents.py --check    # exit 1 if any is stale
 
 `docs/board/` is inert for the CI fingerprint (`tools/ci/ci_fingerprint.py`): nothing in `src/`,
 `tests/`, `tools/` or the workflows reads it, and the generator lives under `.claude/` for the same
-reason. A new agent type is not registered until a new session starts (ledger, phase-07 row 1191);
-within the session that created it, a `general-purpose` worker given the file verbatim stands in.
+reason. A new agent type may not be listed by the Agent tool at once (ledger, phase-07 row 1191; on
+2026-11-09 the nine seat types were picked up mid-session, but not immediately): try the type first, and
+if it is not found a `general-purpose` worker given the file verbatim stands in, saying so in its output.
 
 ## Convening table
 
