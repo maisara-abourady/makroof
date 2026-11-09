@@ -29,7 +29,7 @@ Emitter L (R is the mirror image, identical to the printed digits):
 | 8000 | 0.226 | 1.190e-41 | 1.288e-41 ± 1.1e-42 | -380.8 | -378.6 |
 
 **Readings.**
-- Under 5.1-A, E_b > 0 in every band, but the matched tail's whole energy is **≤ −104 dB re the direct sound** (63 Hz; −152 dB at 1 kHz).
+- Under 5.1-A, E_b > 0 in every band, but the matched tail's whole energy is **≤ −104 dB re the direct sound** (63 Hz; −152 dB at 500 Hz, −166 dB at 1 kHz; corrected 2026-11-09 after interrogator P05B2-T5T4-19).
   It starts at t_mix,e = 1.40 s. The Phase 04 consistency check (energy later than t_dir + 50 ms below −60 dB) still holds with
   > 44 dB to spare in every band.
 - The rendered IR still has no early scattered energy (AX21 stands), so the physically expected ground scatter after 50 ms
