@@ -11,3 +11,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `3-seat<n>-T5-T4.md` | seats 1–9 | positions on D-T5 and D-T4 |
 | `7-builder-D-T1-evidence.md` | orchestrator (builder) | D-T1 candidate measurements, outside src/sim |
 | `4-researcher-T5-T4.md` | researcher | dossier RQ1–RQ6 (D-T4, D-T5) |
+| `5-decider-decision-T5-T4.md` | decider | decision round 1, D-T5 and D-T4 |
