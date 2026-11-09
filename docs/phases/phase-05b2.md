@@ -63,7 +63,7 @@ venue presets), which is why NFR-1 makes this matter.
   (it does: branch **(i)**, SE ≤ 1/3 dB) and |ΔL_b,tr| > 1 dB anywhere (it is: 3.87 dB), **tail-level
   matching switches to the hybrid's propagated diffuse energy**, even though early rendering is not
   promoted. Phase 05's own X-b result (26 of 345 case-bands > 1 dB) independently requires the switch.
-- AX35 (c) (2026-11-08, vetoable by Maisara): the switch is **not** implemented until **R1** (an ℓ
+- AX35 (c) (2026-11-08, accepted by Maisara 2026-11-09): the switch is **not** implemented until **R1** (an ℓ
   certified for the tail path in every selected BRAS room) and **R2** (a formulation whose memory and
   rebuild cost are shown across the supported room range) are settled and Maisara decides. **This
   session is where R1, R2 and the implementation happen.** Maisara has decided that it happens (option (b)).
@@ -119,11 +119,11 @@ and without level jumps under automation (FR-SIM-6).
   `tools/validation/hybrid_fast.py` (= `ref_hybrid` to 1e-7; numba offline).
 - B12: Eyring stays. AX22/N_cap: unchanged. Mixing-time rule: unchanged.
 - Maisara 2026-11-09: build the switch in this session (option (b)).
+- AX35 accepted (Maisara 2026-11-09).
 
 ## 2. Raise with Maisara (first message and PR)
 
-1. **AX35 accept or veto** (session 1, question 1, still unanswered). If vetoed, the window check that
-   makes the switch due loses its certification basis, and this session stops (status `blocked`).
+1. AX35: accepted by Maisara 2026-11-09 ('W1: accept'); the window check's certification basis stands.
 2. Any room-range decision D-T3 produces (only if D-T1 finds no formulation that covers the whole
    contract range): present the numbers (memory, W1/W2 per room size) and the audible stakes (§0.1).
 
@@ -154,8 +154,9 @@ decided after seeing a test it would make pass.
   (f) a seeded Monte-Carlo estimator of the same diffuse energy (determinism by AX5; its SE must meet
   AX11's threshold/3 for the window level; note it is a different estimator of the same model and must
   be validated as such).
-  The decision states: the formulation, its agreement test against `ref_hybrid` (cases and tolerance;
-  the tolerance is a numeric choice: decision loop), its memory and time complexity, and the measured
+  The decision states: the formulation, its agreement test against `ref_hybrid` (agreement-test case set
+  (candidate: the 15 (A) cases, the six Phase 04 rooms, the 30 BRAS pairs) and tolerance; both are
+  choices for the decision loop), its memory and time complexity, and the measured
   W1/W2 and peak memory for the AQ10 room, CR4, and the largest contract room (AX6: 100 m per side).
   **A coarser ℓ is not a remedy** (phase-05b scope 0). The Table 15.1 option (scattering part updated
   every 3 s or 1 m) is a Phase 10 remedy only if W1 > 700 ms (phase-05b scope 0), not a D-T1 option.
@@ -186,6 +187,12 @@ decided after seeing a test it would make pass.
   change, out of scope unless the decision loop shows it is forced); (3) `bandsAxisShares` (used for
   directional output in Phase 08) — the AX16 entries carry arrival directions, the diffuse envelope
   does not; decide what Phase 08 receives.
+- **D-T6 — Regression bound for the rooms the switch should not change** (scope 4 item 4, section 5).
+  Decide the room set and the bound. Options: the six Phase 04 rooms at ≤ 0.3 dB (Phase 05 X-b,
+  `report-phase05.md` §6a); ≤ 0.3 dB plus D-T1's agreement tolerance (the C++ path carries both); ±1 dB
+  (B11 window tolerance, level jnd, Vorländer Table 6.1); report-only, with the uniform-α (A) cases gated
+  through the tracer test (AX16 is exact for uniform α, Kuttruff §5.2). Note: not all six Phase 04 rooms
+  are uniform-α (e.g. `asymmetric_materials`).
 
 ## 4. Scope (after section 3 is settled and committed)
 
@@ -211,7 +218,7 @@ decided after seeing a test it would make pass.
 6. **Costs:** W1/W2 (AQ10), peak memory per instance at the AQ10 room, CR4 and the largest supported
    room, recorded in §0.
 7. **Plan bookkeeping** through `/fix-plan`: AX16 (switched, with the measured ΔL_b,tr table), AX21
-   (unchanged statement, cross-reference), AX35 (c) resolved, new AX rows D-T1…D-T5, §6 rows.
+   (unchanged statement, cross-reference), AX35 (c) resolved, new AX rows D-T1…D-T6, §6 rows.
 8. **Listening pack:** a `phase-05b2` entry: Phase 04 tail level vs switched tail level, loudness-matched
    **not** (the level difference is the point), through the six Phase 04 rooms and two synthetic
    concentrated-absorption rooms (Table 5.2 layout 4 at s = 0.4 and layout 5 at s = 1, as scenes), clicks
@@ -224,7 +231,7 @@ decided after seeing a test it would make pass.
       next rung run.
 - [ ] C++ E_target = `ref_hybrid` within D-T1's tolerance on all listed cases (CI, three OSes).
 - [ ] C++ E_target vs tracer within ±1 dB on the 15 (A) cases (deterministic test on committed data).
-- [ ] Uniform-α rooms unchanged: the room set and the regression bound are an open decision (decision
+- [ ] Uniform-α rooms unchanged: the room set and the regression bound are open decision D-T6 (decision
       loop; measured in Phase 05 X-b: six Phase 04 rooms ≤ 0.3 dB, `report-phase05.md` §6a), not tuned.
 - [ ] Same scene + seed → bit-identical IR on the same platform; no NaN/Inf/denormals; allocation-free
       audio thread (existing tracker test) unchanged.
