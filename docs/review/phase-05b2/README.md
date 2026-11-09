@@ -15,3 +15,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `6-seat<n>-rerun-T5-T4.md` | seats 2, 3, 5, 6, 8 | re-runs on the composed variants (all confirm the decider's cells; Seat 2 and Seat 5 add conditions) |
 | `8-interrogator-T5-T4-round1.md` | interrogator | decision mode round 1 (D-T4a TENSION MISREAD; others survive, with corrections) |
 | `9-decider-convene-T1-T2-T6.md` | decider | convening round, D-T1, D-T2, D-T6 |
+| `10-decider-rebuttal-T5-T4.md` | decider | rebuttal round 2 (D-T4a → 4a-2G+; corrections applied) |
