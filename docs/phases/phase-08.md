@@ -79,8 +79,10 @@ the Phase 06 convolver.
      reference left **untrimmed and unfaded**, so the energy the trim and fade remove counts as
      error. A total failure with the storage term passing is a truncation finding (trim length or
      fade), reported and handled through the interrogator, never by loosening a gate. For SADIE II
-     the truncation term is expected near zero (York trimmed to 512 samples at 96 kHz = 256 at
-     48 kHz, with fades; dossier F12) and is measured, not assumed. The EQ's correctness is the DF-EQ
+     the truncation term is expected small (York trimmed to 512 samples at 96 kHz = 256 at 48 kHz,
+     with fades, dossier F12; what remains is whatever the converter's own fade window removes and
+     what the pinned resampler and the DF-EQ filter realisation spread beyond the trim) and is
+     measured, not assumed. The EQ's correctness is the DF-EQ
      identity AC's subject, not AC 2's; the pre-EQ data exists only as the fetched source and inside
      the test, and no product code path switches the EQ off. If the bound cannot be met with AC 2
      and AC 4 held, report it (decision reversal condition 3); don't loosen either gate.
@@ -205,7 +207,8 @@ near-field HRTF correction (sources < 1 m; note it as a follow-up).
       An emitter straight ahead gives |ITD| < 20 µs and |ILD| < 1 dB. The window 0.6–0.75 ms
       **presupposes an onset (pulse-arrival) estimator**: it is sized to the onset ITD of brief
       pulses, ≈ 650 µs at 90° (Blauert Ch. 2 §2.2.2, Fig. 2.30), and to the far-source path
-      difference (D/2)(φ + sin φ) = 0.656 ms for D = 17.5 cm. The estimator is therefore of the
+      difference divided by the speed of sound, (D/2)(φ + sin φ)/c = 0.225 m / 343 m s⁻¹ = 0.656 ms
+      for D = 17.5 cm (Blauert Ch. 2 §2.2.2). The estimator is therefore of the
       onset class — the converter's per-ear onset detection that yields `onset_left`/`onset_right`,
       run on the resampled HRIRs before EQ and onset removal, and the same criterion applied by the
       test to the rendered anechoic output — and its exact criterion (threshold relative to the
