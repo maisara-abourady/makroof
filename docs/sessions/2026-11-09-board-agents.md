@@ -11,6 +11,8 @@
 
 > 2026-11-09 (after the report with A1, A2, D1–D5 and the dry-run proposal D1): "accepted"
 
+> 2026-11-09 (after the final report, READY TO REPORT): "open a pr for sure and merge it"
+
 Files she uploaded, in three batches (the "useful material"), with the SHA-256 of each upload as received in `/root/.claude/uploads/63cdcdb4-35c0-595f-8865-ce3d1265bf55/`:
 
 | batch | file (as uploaded) | copied to `docs/board/` | SHA-256 |
