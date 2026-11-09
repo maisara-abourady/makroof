@@ -612,9 +612,47 @@ def step_gate():
     log(json.dumps(out["summary"], indent=1))
 
 
+OUTER_CASES = ("t52_layout4_s1.0", "t52_layout5_s1.0")  # phase-05b2 D-T5.1 condition (ii)
+OUTER_BANDS = (1, 6, 7)  # 125 Hz, 4 kHz, 8 kHz
+
+
+def step_outer():
+    """phase-05b2 decision D-T5.1, condition (ii): the window check of scope 4 outside 500 Hz–2 kHz, before any
+    golden is updated. Tracer (same seed and doubling rule as `tracer`) against the hybrid's E_target at the
+    certified ℓ = 2.5 m and at 1.25 m (air factored out: exact here, α and s are band-flat in these layouts), at
+    125 Hz, 4 kHz and 8 kHz, on Table 5.2 layouts 4 and 5 at s = 1; ±1 dB (B11 window tolerance), SE ≤ 1/3 dB."""
+    d = load()
+    out = {"bands_hz": [125, 4000, 8000], "tolerance_db": WINDOW_DB,
+           "se_max_db": SE_MAX_DB, "cases": {}}
+    for name in OUTER_CASES:
+        c = next(x for x in cases() if x["name"] == name)
+        plan = plan_of(c)
+        res, info = run_tracer(c)
+        win = window_of(plan)
+        e_tr = win.norm * res.window_s1
+        k_tr = res.window_s1 ** 2 / res.window_s2
+        row = {"tracer_n": info["n"], "doublings": info["doublings"], "bands": {}}
+        envs = {size: factorised_env(c, size) for size in (PREV_ELL_M, GATE_ELL_M)}
+        for b, hz in zip(OUTER_BANDS, (125, 4000, 8000)):
+            e_h = {str(size): float(rh.target_hybrid(plan, env)[b]) for size, env in envs.items()}
+            row["bands"][str(hz)] = {
+                "hybrid_vs_tracer_db": db(e_h[str(GATE_ELL_M)] / e_tr[b]),
+                "hybrid_2.5_vs_tracer_db": db(e_h[str(PREV_ELL_M)] / e_tr[b]),
+                "e_target_change_2.5_to_1.25": abs(e_h[str(GATE_ELL_M)] / e_h[str(PREV_ELL_M)] - 1),
+                "delta_lb_tr_db": db(plan["target_ax16"][b] / e_tr[b]), "k_tr": float(k_tr[b]),
+                "se_db": float(4.34 / np.sqrt(k_tr[b]))}
+        out["cases"][name] = row
+        log(name, {k: round(v["hybrid_vs_tracer_db"], 3) for k, v in row["bands"].items()})
+    allb = [v for c in out["cases"].values() for v in c["bands"].values()]
+    out["pass"] = bool(all(abs(v["hybrid_vs_tracer_db"]) <= WINDOW_DB and v["se_db"] <= SE_MAX_DB for v in allb))
+    out["max_abs_hybrid_vs_tracer_db"] = max(abs(v["hybrid_vs_tracer_db"]) for v in allb)
+    d["outer_bands"] = out
+    save(d)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["tracer", "selfcheck", "ell", "dtcheck", "gate", "r1"])
+    ap.add_argument("step", choices=["tracer", "selfcheck", "ell", "dtcheck", "gate", "r1", "outer"])
     ap.add_argument("--rooms", nargs="*", help="r1 only: re-run these BRAS rooms (others kept as committed)")
     ap.add_argument("--chunked", action="store_true", help="r1 only: chunked solver above the dense memory budget (phase-05b2 D-T2)")
     ap.add_argument("--max-rung", type=int, default=1, help="ell: deepest ladder rung to compute (0 = 5 m ... 3 = 0.625 m)")
@@ -624,7 +662,8 @@ def main(argv=None):
     elif a.step == "r1":
         step_r1(a.rooms, a.chunked)
     else:
-        {"tracer": step_tracer, "selfcheck": step_selfcheck, "dtcheck": step_dtcheck, "gate": step_gate, "r1": step_r1}[a.step]()
+        {"tracer": step_tracer, "selfcheck": step_selfcheck, "dtcheck": step_dtcheck, "gate": step_gate, "r1": step_r1,
+         "outer": step_outer}[a.step]()
 
 
 if __name__ == "__main__":
