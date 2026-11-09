@@ -1789,3 +1789,17 @@ Maisara 2026-11-08: "Have we recorded those follow ups in a phase? Otherwise the
 | P07F-10 | BUILD_PLAN §4 summaries (10, 13), §6 row | CORRECT; mirror the phase text, no assumption/threshold/golden changed |
 
 Context noted by the interrogator (not a defect): the default-room full rebuild (133–184 ms at 48 kHz) includes tail-noise generation and is not the AQ10 W1/W2 position-only workload; phase-10's acceptance already allows phase-13 optimisation or `blocked (AQ10 miss)`. Status: applied, verified, committed.
+
+## docs/phases/phase-05g.md L17, L68; docs/phases/phase-06b.md L60 — board loop wording replaces the advocate (2026-11-09; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Session brief `docs/sessions/2026-11-09-board-agents.md` (O6). Plan-editor: three SPECIFIED wording fixes, no DECISIONS NEEDED (commits c8f7c2d, 871959f). Interrogator document mode on the changed passages: **no FACT or NUMBER changed**; no blocker, no major.
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| 05G-W1 | SOFTWARE | phase-05g L16–18: area-tolerance item raised to Maisara only if the `/fix-plan` loop (interrogator → decider over the board's seats, step 3) finds it needs her | listed, not rated | process wording; matches `.claude/commands/fix-plan.md` step 3 | none | — | resolved |
+| 05G-W2 | SOFTWARE | phase-05g L67–69: the tolerance decision belongs to the `/fix-plan` step 3 loop | listed, not rated | same | none | — | resolved |
+| 05G-D1 | DECISION | phase-05g L64–72: whether to tighten the area tolerance is deferred to the loop; no value proposed | CONSEQUENCE | procedural only; `bras_mapping.md` §2 value stands until decided | minor | — | resolved (unchanged by the edit) |
+| 06B-W1 | SOFTWARE | phase-06b L60: if AX31 is vetoed, "a new decision loop (decider over the board's seats → interrogator, through `/fix-plan`) picks the replacement" | listed, not rated | process wording; names fix-plan step 3c–3d | none | Q1 | resolved |
+| 06B-D1 | DECISION | phase-06b L58–62: AX31 confirmed → no code change; vetoed → replacement by the loop | CONSEQUENCE | the crossfade's acoustic content is not restated in the changed lines | minor | — | resolved (unchanged by the edit) |
+
+**Builder's answers.** Q1 (arrow order): all three clauses name the whole of `/fix-plan` step 3 (document-mode interrogation of the options, then convening, seats, decision, decision-mode interrogation); the arrow order is shorthand and immaterial; phase-06b L60 does not skip the document-mode pass. Q2 (phase-06b L15, L36 still say "decider, interrogator, advocate"): intentional; they record the loop as it was run on 2026-11-07, when an advocate agent existed (`docs/review/phase-06b/advocate-round1.md`, `advocate-round2.md`). Historical records are not rewritten.
