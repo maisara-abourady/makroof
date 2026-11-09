@@ -472,7 +472,7 @@ def db(x):
 R1_MEMORY_BUDGET_GB = 12.0  # kernel + its complex64 transform on the 15 GB session machine
 
 
-def step_r1(rooms=None, chunked: bool = False):
+def step_r1(rooms=None, chunked: bool = False, all_bands: bool = False):
     """AX36 (c), R1: E_target (500 Hz-2 kHz) and a* at 2.5 and 1.25 m in the selected BRAS rooms (initial α,
     Phase 05 positions), from the hybrid alone. Per band with the air factored out (exact per band: every
     path's air factor is exp(-m_b R) with R = c t, whatever α and s are). A rung whose dense kernel plus
@@ -480,9 +480,12 @@ def step_r1(rooms=None, chunked: bool = False):
     from tools.validation import hybrid_fast
     d = load()
     m = scope6.air_m()
-    out = {"rungs_m": [PREV_ELL_M, GATE_ELL_M], "bands_hz": [500, 1000, 2000], "rooms": {}}
-    if rooms is not None and "r1" in d:  # re-run selected rooms, keep the others as committed
-        out = d["r1"]
+    # phase-05b2 convening C9: all_bands extends R1 to the eight bands (section "r1_all_bands")
+    section = "r1_all_bands" if all_bands else "r1"
+    bands_idx = tuple(range(8)) if all_bands else AQ9_IDX
+    out = {"rungs_m": [PREV_ELL_M, GATE_ELL_M], "bands_hz": [[63, 125, 250, 500, 1000, 2000, 4000, 8000][b] for b in bands_idx], "rooms": {}}
+    if rooms is not None and section in d:  # re-run selected rooms, keep the others as committed
+        out = d[section]
     for room in scope6.bras_rooms():
         if rooms is not None and room not in rooms:
             continue
@@ -515,7 +518,7 @@ def step_r1(rooms=None, chunked: bool = False):
                 continue
             env = {n: np.zeros((8, T)) for n in names}
             tb = (np.arange(T) + 0.5) * rh.DT
-            for b in AQ9_IDX:
+            for b in bands_idx:
                 rk = hybrid_fast.FastRoomKernel(dims, size, t_end, var0, b)
                 if use_chunked:  # all pairs in one solve: the kernel is transformed once per generation
                     inc = np.stack([rh.injection(rk, sis[n]["src"]) for n in names])
@@ -528,7 +531,7 @@ def step_r1(rooms=None, chunked: bool = False):
                 for n in names:
                     e0 = lean_solve(rk, rh.injection(rk, sis[n]["src"])[None], rh.gather_kernel(rk, sis[n]["rcv"])[None])[0]
                     env[n][b] = e0 * np.exp(-m[b] * rh.C_SOUND * tb)
-            rung["e_target"] = {n: [float(x) for x in rh.target_hybrid(plans[n], env[n])[list(AQ9_IDX)]] for n in names}
+            rung["e_target"] = {n: [float(x) for x in rh.target_hybrid(plans[n], env[n])[list(bands_idx)]] for n in names}
             r["rungs"][str(size)] = rung
             log(f"R1 {room} {size} m: {N} patches done")
         a, b_ = r["rungs"][str(PREV_ELL_M)], r["rungs"][str(GATE_ELL_M)]
@@ -541,7 +544,8 @@ def step_r1(rooms=None, chunked: bool = False):
             r["certified_at_2.5"] = None
         out["rooms"][room] = r
         log(f"R1 {room}: E_target change {r['e_target_change']}, a* change {r['a_star_change']:.4%}")
-    d["r1"] = out
+    d = load()  # reload: other steps may have written meanwhile
+    d[section] = out
     save(d)
 
 
@@ -655,12 +659,13 @@ def main(argv=None):
     ap.add_argument("step", choices=["tracer", "selfcheck", "ell", "dtcheck", "gate", "r1", "outer"])
     ap.add_argument("--rooms", nargs="*", help="r1 only: re-run these BRAS rooms (others kept as committed)")
     ap.add_argument("--chunked", action="store_true", help="r1 only: chunked solver above the dense memory budget (phase-05b2 D-T2)")
+    ap.add_argument("--all-bands", action="store_true", help="r1 only: all eight bands, section r1_all_bands (phase-05b2 convening C9)")
     ap.add_argument("--max-rung", type=int, default=1, help="ell: deepest ladder rung to compute (0 = 5 m ... 3 = 0.625 m)")
     a = ap.parse_args(argv)
     if a.step == "ell":
         step_ell(a.max_rung)
     elif a.step == "r1":
-        step_r1(a.rooms, a.chunked)
+        step_r1(a.rooms, a.chunked, a.all_bands)
     else:
         {"tracer": step_tracer, "selfcheck": step_selfcheck, "dtcheck": step_dtcheck, "gate": step_gate, "r1": step_r1,
          "outer": step_outer}[a.step]()
