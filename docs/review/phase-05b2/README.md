@@ -24,3 +24,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `16-orchestrator-C4-near-wall.md` | orchestrator | computation C4 + near-wall remedies NW-1/2/3 |
 | `17-decider-convene-T1-addendum.md` | decider | addendum to the D-T1/D-T2/D-T6 convening |
 | `18-seat<n>-T1-T2(-T6).md` | seats 1–9 | positions on D-T1, D-T2 (and D-T6 for seats 1, 2, 3, 5, 9) |
+| `19-orchestrator-NW4-and-checks.md` | orchestrator | NW-4 reciprocal start, small-room ladder, band correlation |
