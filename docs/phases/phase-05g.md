@@ -67,9 +67,9 @@ python tools/validation/make_bras_scenes.py --check
    1 774 m² concrete would pass). **This is a decision for this session's `/fix-plan` loop
    (the decision loop of `/fix-plan` step 3: interrogator, decider over the board's seats): whether
    to tighten it, and to what.** No value is proposed here. Outcome: the decision is recorded in the
-   ledger; if it changes the tolerance, that is a plan
-   change (`bras_mapping.md` §2, §6 row) applied to `tools/validation/tests/test_skp_reader.py` and
-   `tools/validation/extract_bras_geometry.py` together, and CR2, CR3 and CR4 still pass.
+   ledger; if it changes the tolerance, that is a plan change (`bras_mapping.md` §2, §6 row) applied
+   to `tools/validation/tests/test_skp_reader.py` and `tools/validation/extract_bras_geometry.py`
+   together, and CR2, CR3 and CR4 still pass.
 5. **Reader definition count.** CR3 and CR4 declare 19 component definitions, but the reader finds 17
    definition records after the first geometry class (the `n_defs` cross-check was dropped in 05f by
    the root-start rule). Explain the difference from the files and restore a consistency check in
