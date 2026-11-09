@@ -57,7 +57,7 @@ still raises them so that she can.
   - update the `CLAUDE.md` commands if any of them names the default; §0 row 06 notes and §6 row.
 - **AX31 confirmed:** ledger row and §6 row "accepted by Maisara <date>"; the AX31 row's "vetoable by
   Maisara" becomes the acceptance. No code change.
-- **AX31 vetoed:** a new decision loop (decider → interrogator → advocate, through `/fix-plan`) picks the
+- **AX31 vetoed:** a new decision loop (decider over the board's seats → interrogator, through `/fix-plan`) picks the
   replacement among the alternatives recorded in AX31; the AX31 row is replaced through `/fix-plan`;
   `CrossfadingConvolver`, the crossfade acceptance test (phase-06 AC 3, s0 and `fadeStartSample()`)
   and the per-call multiply-add tests change accordingly; the phase-06 automated acceptance tests and

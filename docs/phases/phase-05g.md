@@ -14,8 +14,8 @@ phase-05.md seem to differ, phase-05.md wins and the difference goes to `/fix-pl
 The session raises each item in its **first message** and again in the **PR description**.
 
 1. **Area tolerance of the `bras_mapping.md` §2 acceptance test (scope 4).** Only if the `/fix-plan`
-   loop (interrogator → decider → advocate) finds that it needs her, as a C2-type product choice.
-   Otherwise nothing beyond this item.
+   loop (interrogator → decider over the board's seats, `/fix-plan` step 3) finds that it needs her,
+   as a C2-type product choice. Otherwise nothing beyond this item.
 
 ## Goal
 
@@ -65,8 +65,9 @@ python tools/validation/make_bras_scenes.py --check
    for rounding of large areas" (`extract_bras_geometry.match_materials`, `rel_tol=1e-3`). The 05f
    review found it loose against the measured ≤ 0.005 m² (a reader bug dropping ≈ 1 m² from CR4's
    1 774 m² concrete would pass). **This is a decision for this session's `/fix-plan` loop
-   (interrogator → decider → advocate): whether to tighten it, and to what.** No value is proposed
-   here. Outcome: the decision is recorded in the ledger; if it changes the tolerance, that is a plan
+   (the decision loop of `/fix-plan` step 3: interrogator, decider over the board's seats): whether
+   to tighten it, and to what.** No value is proposed here. Outcome: the decision is recorded in the
+   ledger; if it changes the tolerance, that is a plan
    change (`bras_mapping.md` §2, §6 row) applied to `tools/validation/tests/test_skp_reader.py` and
    `tools/validation/extract_bras_geometry.py` together, and CR2, CR3 and CR4 still pass.
 5. **Reader definition count.** CR3 and CR4 declare 19 component definitions, but the reader finds 17
