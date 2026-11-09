@@ -205,6 +205,10 @@ def bench_scenes() -> list[dict]:
     for e, src in enumerate(((45.0, 70.0, 2.0), (55.0, 70.0, 2.0))):
         out.append({"name": f"cube100_e{e}", "dims": (100.0, 100.0, 100.0), "alpha": [big] * 6, "s": [0.3] * 6,
                     "src": src, "rcv": (50.0, 30.0, 1.7), "group": "cube100"})
+    # flutter at the contract maximum (hard x-walls, α = 0.95 elsewhere): AX22 fallback, t_cap ≈ 2.1 s (the 100 m fallback row)
+    for e, src in enumerate(((45.0, 70.0, 2.0), (55.0, 70.0, 2.0))):
+        out.append({"name": f"cube100_flutter_e{e}", "dims": (100.0, 100.0, 100.0), "alpha": [[0.02] * 8] * 2 + [[0.95] * 8] * 4,
+                    "s": [0.0, 0.0, 0.05, 0.05, 0.05, 0.05], "src": src, "rcv": (50.0, 30.0, 1.7), "group": "cube100_flutter"})
     return out
 
 
