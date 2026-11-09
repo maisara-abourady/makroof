@@ -80,6 +80,42 @@ template in its README).
   have to make goes to the `interrogator` first). In a phase session, a new or changed AX/AQ value gets
   an interrogator check against `docs/corpus/` before it is committed, and the PR links the ledger rows.
   The main session runs these steps itself; Maisara doesn't have to ask for them.
+
+## The board (decision loop)
+
+Open choices that the corpus alone does not settle are decided by the **decider** sitting over a board of
+nine subject-matter seats (`docs/board/README.md`; personas in `docs/board/`, agents in `.claude/agents/`):
+
+| Seat | Agent | Subject matter |
+|---|---|---|
+| 1 | `seat1-perceptual-gatekeeper` | what the listener can hear or prefers; JNDs, blind tests, keep/cut/test, realism claims |
+| 2 | `seat2-engine-architect` | geometry and materials → room response; GA/wave/hybrid, scattering, diffraction, validation |
+| 3 | `seat3-reverb-renderer` | response → audio; FDN/convolution, time variance, coloration, CPU per instance |
+| 4 | `seat4-chain-keeper` | delivery to the ear; HRTF, headphone compensation, decoding, formats, loudness parity |
+| 5 | `seat5-deadline-keeper` | the audio thread and hosts; real-time safety, threading, pluginval, formats, CI gates |
+| 6 | `seat6-canvas-designer` | the user's controls and canvas; names, ranges, defaults, presets, automation, workflow |
+| 7 | `seat7-founder` | price, free tier, protection, channels, licensing, cadence, runway, public wording |
+| 8 | `seat8-storyteller` | what producers do with it; whose ears, point of view, anchor, contrast, translation |
+| 9 | `seat9-room-acoustician` | real rooms as references; audible geometry and materials, library provenance, presets |
+
+- The decider **convenes**: for every subject matter it fills a nine-row table (each seat convened or
+  recorded not required with the reason) and returns CONVENE; the main session runs the convened seats in
+  parallel (and the **researcher**, the decider's assistant for external evidence: papers, standards,
+  dataset and licence documentation, statistics and base rates). Each seat is its own advocate: it
+  ranks the options and rates its own tension **now** and **later** (0–3; 3 is veto-grade).
+- The decider decides at the **point of minimum tension among all nine, now and in the future**: inside
+  the PRD's hard constraints and Maisara's settled decisions, drop any option a seat rated veto-grade
+  (only Maisara overrides a veto), then minimise the worst-off seat over both columns, then the sum, then
+  prefer the cheaper-to-undo option; every decision carries a future-debt register. No decision borrows
+  from later phases silently.
+- The **interrogator** pushes back: convening (UNDERCONVENED), the tension map against the seats' words
+  (TENSION MISREAD), the debt register, the ordering, and every load-bearing fact against `docs/corpus/`.
+  A decision stands only if it SURVIVES. There is no advocate agent.
+- `/fix-plan` runs the loop (step 3); outputs of every round are saved under `docs/review/<target>/`.
+- Agent files for the seats are **generated**: `python3 .claude/board/build_agents.py` (`--check` to
+  verify) from the persona's sections 0–18 plus `docs/board/seat-protocol.md`. Never edit a persona or a
+  generated seat file by hand. An agent type added in a session is not registered until a new session
+  starts; until then run the seat as a `general-purpose` worker given its agent file verbatim.
 - Never add preset-specific or scene-specific logic to `src/sim/` (PRD NFR-8). If accuracy falls
   short for a scene, report it. Don't tune for it.
 
@@ -98,7 +134,8 @@ tools/acoustics Python analysis package + pytest (ISO 3382 metrics, click detect
 tools/hrtf/     SOFA -> embedded HRTF converter
 tools/ci/       CI helper scripts (boundary check, pluginval runner, listening pack)
 resources/      HRTF binary, materials.json, presets
-docs/           PRD, BUILD_PLAN, phases/, contract/, validation/
+docs/           PRD, BUILD_PLAN, phases/, contract/, validation/, board/ (the nine personas, protocol)
+.claude/        agents/ (decider, interrogator, researcher, plan-editor, steward, seat1–9), commands/, board/ (agent generator)
 ```
 
 ### The contract boundary (hard rule)
@@ -199,8 +236,8 @@ build/debug/tests/unit/spatial_tests "[.generate-state-fixtures]"
 
 **When CI skips.** `ci.yml` starts with a `changes` job that fingerprints every tracked file except
 prose no build or test reads (`tools/ci/ci_fingerprint.py`: `docs/sessions/`, `docs/review/`,
-`docs/phases/`, `docs/PRD.md`, `docs/BUILD_PLAN.md`, `docs/THIRD_PARTY.md`, `CLAUDE.md`, `README.md`,
-`.claude/`). If a run on the same fingerprint passed every job, all jobs are skipped and the `ci ok`
+`docs/phases/`, `docs/board/`, `docs/PRD.md`, `docs/BUILD_PLAN.md`, `docs/THIRD_PARTY.md`, `CLAUDE.md`,
+`README.md`, `.claude/`). If a run on the same fingerprint passed every job, all jobs are skipped and the `ci ok`
 check links that run (its jobs and artifacts, listening pack included, are the evidence). A PR's markers
 are visible only to that PR (CI no longer runs on `main`). To force a full run: Actions → CI → Run
 workflow with `force`. Add a

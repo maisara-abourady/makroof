@@ -29,6 +29,7 @@ SCHEME = "1"
 # Directory prefixes whose whole content is inert.
 INERT_DIRS = (
     ".claude/",  # agent, skill and command prompts
+    "docs/board/",  # board personas and seat protocol: sources of the generated agent prompts
     "docs/sessions/",
     "docs/review/",
     "docs/phases/",
