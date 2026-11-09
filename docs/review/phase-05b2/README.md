@@ -20,3 +20,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `12-interrogator-T5-T4-round2.md` | interrogator | round 2 (six survive; D-T4a narrow TENSION MISREAD on S5) |
 | `13-decider-round4-T4a-final.md` | decider | round 4 (final): D-T4a = 4a-2G3C, final texts of all seven ids |
 | `14-researcher-T1-T2.md` | researcher | dossier RQ-T1-1…4 (D-T1, D-T2) |
+| `15-interrogator-T5-T4-round3.md` | interrogator | round 3 (final): D-T4a SURVIVES WITH CORRECTIONS (59, 60), D-T4c SURVIVES |

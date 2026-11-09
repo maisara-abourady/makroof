@@ -774,6 +774,147 @@ def step_c9b(npaths: int = 8000):
     out["process_peak_rss_mb"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e3
     d = load(); d["c9b"] = out; save(d)
 
+# ------------------------------------------------------------------------------------------
+# Near-field remedy prototype (C4 follow-up, RQ-T1-1): (image, hit) pairs closer than r_near, for the listener
+# images near the listener, are gathered through the exact solid angle of the hit's wall cell (edge h),
+# Ω_cell/(π A_cell), instead of the point kernel cos θ/(π r²) — the MCNP "average flux in a region around
+# the detector" idea applied on the wall. Bias: uniform exitance within a near cell (checked by halving h);
+# the near-wall score is capped at ≈ Ω/(π A) ≤ 2/h² instead of 1/(π d²).
+# ------------------------------------------------------------------------------------------
+
+if njit is not None:
+
+    @njit(parallel=True, fastmath=False, cache=True)
+    def mc4(dims, alpha, s, m_air, src, face_pos, face_spec, face_dist, face_cnt, rcv, a, b, rate, norm, npaths, seed,
+            r_near, h, ng, near_img, G, out):
+        nb = 8
+        gam = np.empty(nb)
+        for k in range(nb):
+            gam[k] = m_air[k] - rate[k] / C
+        nimg = near_img.shape[0]
+        for p in prange(npaths):
+            w = np.empty(nb); contrib = np.zeros(nb); hitf = np.empty(nb)
+            x = np.empty(3); d = np.empty(3)
+            st = np.uint64(seed) * np.uint64(0x9E3779B97F4A7C15) + np.uint64(p) * np.uint64(0xD1B54A32D192ED03)
+            inc = np.uint64(2 * p + 1)
+            st, u1 = _next(st, inc); st, u1 = _next(st, inc); st, u2 = _next(st, inc)
+            z = 1 - 2 * u1; ph = 2 * np.pi * u2; rr = np.sqrt(max(0.0, 1 - z * z))
+            d[0] = rr * np.cos(ph); d[1] = rr * np.sin(ph); d[2] = z
+            x[0] = src[0]; x[1] = src[1]; x[2] = src[2]
+            for k in range(nb):
+                w[k] = 4 * np.pi / npaths
+            t = 0.0
+            while True:
+                tb = 1e300; f = -1
+                for ax in range(3):
+                    if d[ax] > 1e-15:
+                        tt = (dims[ax] - x[ax]) / d[ax]
+                        if tt < tb:
+                            tb = tt; f = 2 * ax + 1
+                    elif d[ax] < -1e-15:
+                        tt = -x[ax] / d[ax]
+                        if tt < tb:
+                            tb = tt; f = 2 * ax
+                for i in range(3):
+                    x[i] += tb * d[i]
+                ax = f // 2
+                x[ax] = 0.0 if f % 2 == 0 else dims[ax]
+                t += tb / C
+                if t >= b:
+                    break
+                for k in range(nb):
+                    w[k] *= np.exp(-m_air[k] * tb)
+                sf = s[f]
+                if sf > 0:
+                    rem = C * (b - t)
+                    dx0 = x[0] - rcv[0]; dy0 = x[1] - rcv[1]; dz0 = x[2] - rcv[2]
+                    dlr = np.sqrt(dx0 * dx0 + dy0 * dy0 + dz0 * dz0)
+                    for k in range(nb):
+                        hitf[k] = w[k] * (1 - alpha[f, k]) * sf / np.pi * np.exp(-rate[k] * (b - t))
+                    b1 = (ax + 1) % 3; b2 = (ax + 2) % 3
+                    ci = int(np.floor((x[b1] - (rcv[b1] - ng * h)) / h)); cj = int(np.floor((x[b2] - (rcv[b2] - ng * h)) / h))
+                    incell = ci >= 0 and cj >= 0 and ci < 2 * ng and cj < 2 * ng
+                    for m in range(face_cnt[f]):
+                        if face_dist[f, m] - dlr > rem:
+                            break
+                        dx = face_pos[f, m, 0] - x[0]; dy = face_pos[f, m, 1] - x[1]; dz = face_pos[f, m, 2] - x[2]
+                        r2 = dx * dx + dy * dy + dz * dz; r = np.sqrt(r2)
+                        ta = t + r / C
+                        if ta <= a or ta >= b:
+                            continue
+                        cs = (dx if ax == 0 else (dy if ax == 1 else dz))
+                        if f % 2 == 1:
+                            cs = -cs
+                        cs /= r
+                        if cs <= 0:
+                            continue
+                        hw = np.sin(np.pi * (ta - a) / (b - a)); hw *= hw
+                        geo = cs / r2
+                        if r < r_near and incell:
+                            for q in range(nimg):
+                                if abs(near_img[q, 0] - face_pos[f, m, 0]) + abs(near_img[q, 1] - face_pos[f, m, 1]) + abs(near_img[q, 2] - face_pos[f, m, 2]) < 1e-9:
+                                    geo = np.pi * G[f, ci, cj, q]  # Ω/(π A) replaces cos/(π r²); hitf already holds 1/π
+                                    break
+                        g = geo * hw
+                        for k in range(nb):
+                            contrib[k] += hitf[k] * g * face_spec[f, m, k] * np.exp(-gam[k] * r)
+                for k in range(nb):
+                    w[k] *= (1 - alpha[f, k])
+                st, u = _next(st, inc)
+                if u < sf:
+                    st, u1 = _next(st, inc); st, u2 = _next(st, inc)
+                    ct = np.sqrt(u1); stt = np.sqrt(1 - u1); ph = 2 * np.pi * u2
+                    b1 = (ax + 1) % 3; b2 = (ax + 2) % 3
+                    d[b1] = stt * np.cos(ph); d[b2] = stt * np.sin(ph); d[ax] = ct if f % 2 == 0 else -ct
+                else:
+                    d[ax] = -d[ax]
+                mx = 0.0
+                for k in range(nb):
+                    mx = max(mx, w[k])
+                if mx == 0.0:
+                    break
+            for k in range(nb):
+                out[p, k] = contrib[k] * norm
+
+
+def near_field_run(c: dict, npaths: int, h: float, r_near: float = 1.0, seed: int = SEED):
+    """(f) with the near-field cell gather: per-path contributions (npaths, 8) and the plan."""
+    m = scope6.air_m()
+    var = rh.variant(c["alpha"], c["s"], m)
+    plan = rh.phase04_plan(c["dims"], var, c["src"], c["rcv"])
+    a, b = plan["mix"]["windowStartS"], plan["mix"]["mixS"]
+    dims = np.asarray(c["dims"], float)
+    rcv = np.asarray(c["rcv"], float)
+    fp, fs, fd, fc, M = face_lists(dims, var, c["rcv"], C * b)
+    rate = rh.ENERGY_DECAY_PER_T60 / np.asarray(plan["t60"])
+    norm = rh.MATCH_NORMALISATION_S / (0.5 * (b - a))
+    lat = rh.lattice(tuple(dims), 2 * r_near + 1.0)
+    pos = lat.map(rcv)
+    near_img = np.ascontiguousarray(pos[np.linalg.norm(pos - rcv, axis=1) < 2 * r_near])
+    ng = int(np.ceil(r_near / h)) + 1
+    G = np.zeros((6, 2 * ng, 2 * ng, len(near_img)))
+    for f in range(6):
+        ax = f // 2; a1 = (ax + 1) % 3; a2 = (ax + 2) % 3
+        plane = 0.0 if f % 2 == 0 else dims[ax]
+        for i in range(2 * ng):
+            for j in range(2 * ng):
+                u0 = rcv[a1] - ng * h + i * h; v0 = rcv[a2] - ng * h + j * h
+                u1, v1 = min(u0 + h, dims[a1]), min(v0 + h, dims[a2]); u0, v0 = max(u0, 0.0), max(v0, 0.0)
+                if u1 <= u0 or v1 <= v0:
+                    continue
+                q = np.zeros((4, 3))
+                for k, (uu, vv) in enumerate(((u0, v0), (u1, v0), (u1, v1), (u0, v1))):
+                    q[k, ax] = plane; q[k, a1] = uu; q[k, a2] = vv
+                area = (u1 - u0) * (v1 - v0)
+                for kn, I in enumerate(near_img):
+                    front = (I[ax] > plane) if f % 2 == 0 else (I[ax] < plane)
+                    if front:
+                        G[f, i, j, kn] = rh.solid_angle_quad(I[None], q[None])[0] / (np.pi * area)
+    out = np.zeros((npaths, 8))
+    mc4(dims, np.asarray(c["alpha"], float).reshape(6, 8), np.asarray(c["s"], float), m, np.asarray(c["src"], float), fp, fs,
+        fd, fc, rcv, a, b, rate, norm, npaths, seed, r_near, h, ng, near_img, G, out)
+    return out, plan
+
 
 if __name__ == "__main__":
     main()

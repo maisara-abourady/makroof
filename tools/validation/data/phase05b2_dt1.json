@@ -1663,5 +1663,291 @@
     0.02021032018713953
    ]
   }
+ },
+ "c8": {
+  "numpy_cost_per_eval_s": 2.1447874428655605e-08,
+  "w1_generations": 10,
+  "rows": {
+   "AQ10 non-fallback": {
+    "patches": 352,
+    "lattice_images": 233,
+    "pair_image_evals_per_generation": 461914112,
+    "s_per_generation_numpy": 9.907075870999961,
+    "s_per_generation_at_2ns": 0.9238282240000001
+   },
+   "AQ10 fallback": {
+    "patches": 352,
+    "lattice_images": 2917,
+    "pair_image_evals_per_generation": 5782847488,
+    "s_per_generation_numpy": 124.0297867626905,
+    "s_per_generation_at_2ns": 11.565694976000001
+   },
+   "CR4": {
+    "patches": 714,
+    "lattice_images": 387,
+    "pair_image_evals_per_generation": 3156656832,
+    "s_per_generation_numpy": 67.70357934709381,
+    "s_per_generation_at_2ns": 6.313313664000001
+   },
+   "100 m non-fallback": {
+    "patches": 9600,
+    "lattice_images": 493,
+    "pair_image_evals_per_generation": 726958080000,
+    "s_per_generation_numpy": 15591.705614736577,
+    "s_per_generation_at_2ns": 1453.91616
+   },
+   "100 m fallback": {
+    "patches": 9600,
+    "lattice_images": 2705,
+    "pair_image_evals_per_generation": 3988684800000,
+    "s_per_generation_numpy": 85548.81072588729,
+    "s_per_generation_at_2ns": 7977.369600000001
+   }
+  },
+  "note": "T1-B recomputes the patch-to-patch transfer every generation (no N\u00b2T store); time per rebuild \u2248 generations \u00d7 s_per_generation. 2 ns per evaluation is an assumed optimised C++ rate [Hyp]."
+ },
+ "c10": {
+  "asymmetric_materials": {
+   "dims": [
+    6.0,
+    9.0,
+    3.2
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.02,
+    0.5,
+    0.25,
+    0.05,
+    0.1,
+    0.3
+   ]
+  },
+  "classroom": {
+   "dims": [
+    9.0,
+    7.0,
+    3.2
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.15,
+    0.15,
+    0.15,
+    0.15,
+    0.2,
+    0.2
+   ]
+  },
+  "club": {
+   "dims": [
+    16.0,
+    12.0,
+    4.5
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.2,
+    0.2,
+    0.2,
+    0.2,
+    0.15,
+    0.3
+   ]
+  },
+  "concert_hall_box": {
+   "dims": [
+    40.0,
+    25.0,
+    16.0
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.6,
+    0.4
+   ]
+  },
+  "dead_booth": {
+   "dims": [
+    2.5,
+    2.0,
+    2.2
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.2,
+    0.3
+   ]
+  },
+  "edge_values": {
+   "dims": [
+    1.5,
+    100.0,
+    4.0
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.5,
+    0.05,
+    0.05,
+    0.05,
+    0.0,
+    1.0
+   ]
+  },
+  "large_hall": {
+   "dims": [
+    30.0,
+    45.0,
+    18.0
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.25,
+    0.25,
+    0.25,
+    0.25,
+    0.7,
+    0.05
+   ]
+  },
+  "living_room": {
+   "dims": [
+    5.0,
+    4.0,
+    2.6
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.2,
+    0.2,
+    0.2,
+    0.2,
+    0.3,
+    0.1
+   ]
+  },
+  "medium_room": {
+   "dims": [
+    8.0,
+    12.0,
+    4.0
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.05,
+    0.05,
+    0.05,
+    0.05,
+    0.1,
+    0.3
+   ]
+  },
+  "open_field": {
+   "dims": [
+    100.0,
+    100.0,
+    30.0
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.4,
+    0.0
+   ]
+  },
+  "small_room": {
+   "dims": [
+    3.0,
+    4.0,
+    2.5
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.2,
+    0.1
+   ]
+  },
+  "stone_box": {
+   "dims": [
+    20.0,
+    12.0,
+    10.0
+   ],
+   "uniform_alpha": true,
+   "s": [
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1
+   ]
+  },
+  "W1 (AQ10 room)": {
+   "dims": [
+    20,
+    30,
+    10
+   ],
+   "uniform_alpha": true,
+   "s": [
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3
+   ]
+  },
+  "W2 (flutter)": {
+   "dims": [
+    20,
+    30,
+    10
+   ],
+   "uniform_alpha": false,
+   "s": [
+    0,
+    0,
+    0.1,
+    0.1,
+    0.1,
+    0.1
+   ]
+  },
+  "(A) s-cases": {
+   "dims": [
+    20,
+    30,
+    10
+   ],
+   "uniform_alpha": true,
+   "s": "0.1/0.25/0.4 uniform"
+  },
+  "(A) Table 5.2 layouts 4-6": {
+   "dims": [
+    20,
+    30,
+    10
+   ],
+   "uniform_alpha": false,
+   "s": "0.1/0.25/0.4/1 uniform"
+  }
  }
 }
