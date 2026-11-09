@@ -36,3 +36,16 @@ Emitter L (R is the mirror image, identical to the printed digits):
   (ledger OF: −23 to −43 dB per band; `ground_scatter.py`) is not rendered: the tail does not replace it. That is the AX21
   deficit, unchanged by D-T5.
 - The tail is not an artefact a listener can hear at these levels (> 100 dB below the direct sound).
+
+
+## Addendum: smaller open boxes (asked by Seat 3, D-T5 (4) condition)
+
+Same floor (α 0.05…0.99, s = 0.4), the other five faces α = 1, s = 0; candidate (f) prototype, 400 000 paths
+(`phase05b2_dt1.json`, section `open_boxes`). A smaller box gives an earlier t_cap and a milder referral, so the tail is louder than in
+`open_field`, but it stays ≥ 90 dB below the direct sound in every band:
+
+| box (five faces α = 1, floor as `open_field`) | t_mix,e (ms) | fallback | whole tail energy re direct, 63 / 125 / 250 / 500 / 1k Hz (dB) |
+|---|---|---|---|
+| open box 30x30x10 (V 9000 m3) | 439 | True | -92.5 / -95.9 / -105.6 / -136.9 / -149.8 |
+| open box 20x20x8 (V 3200 m3) | 309 | True | -90.6 / -93.9 / -103.1 / -133.1 / -145.4 |
+| open box 12x12x6 (V 864 m3) | 199 | True | -91.0 / -94.2 / -103.1 / -132.0 / -144.0 |

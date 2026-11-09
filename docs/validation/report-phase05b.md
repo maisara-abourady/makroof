@@ -119,7 +119,7 @@ Branch **(i)** (any branch ℓ-sensitive: no). Phase 05 X-b had |ΔL_b| > 1 dB (
 |---|---|---|---|---|
 | CR2 | 52 / 142 | 0.354% | 0.300% | yes |
 | CR3 | 352 / 1368 | 0.366% | 0.104% | yes |
-| CR4 | 714 / 2856 | not computed (compute limit: 15.2 GB > 12.0 GB) | 0.044% | open (compute limit) |
+| CR4 | 714 / 2856 | 0.140% | 0.044% | yes |
 
 R2 (formulation, memory and rebuild cost across the supported room range) and Maisara's decision are still needed before any `src/sim` switch (AX36 (c)); until then AX16 records ΔL_b,tr (section 5) as a known deficit.
 
