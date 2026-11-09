@@ -4,6 +4,8 @@ Size: **M** (L if gate (A) or the tracer fights back; split the remainder into a
 
 Created by decider report 8, accepted by Maisara, 2026-11-05: B11 is a v1 phase, after 05 and before 08.
 
+**Session 2:** the tail-level switch (scope 4 (i), AX35 (c)) is specified in [`phase-05b2.md`](phase-05b2.md) (Maisara, 2026-11-09).
+
 ## Goal
 
 Remove the AX21 deficit if the evidence supports it. The Phase 04 hybrid IR is specular-only before
