@@ -17,3 +17,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `9-decider-convene-T1-T2-T6.md` | decider | convening round, D-T1, D-T2, D-T6 |
 | `10-decider-rebuttal-T5-T4.md` | decider | rebuttal round 2 (D-T4a → 4a-2G+; corrections applied) |
 | `11-decider-round3-T4a-T54.md` | decider | round 3 (D-T4a → 4a-2G++; final summary of all seven ids) |
+| `12-interrogator-T5-T4-round2.md` | interrogator | round 2 (six survive; D-T4a narrow TENSION MISREAD on S5) |
