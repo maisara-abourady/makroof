@@ -7,6 +7,10 @@
 
 > 2026-11-09 (with the second batch of files): "wait for one more file"
 
+> 2026-11-09 (mid-session): "what exactly is the outcome I should expect by the end of this session and how the decision making framework we have introduced gets involved in action"
+
+> 2026-11-09 (after the report with A1, A2, D1–D5 and the dry-run proposal D1): "accepted"
+
 Files she uploaded, in three batches (the "useful material"), with the SHA-256 of each upload as received in `/root/.claude/uploads/63cdcdb4-35c0-595f-8865-ce3d1265bf55/`:
 
 | batch | file (as uploaded) | copied to `docs/board/` | SHA-256 |
@@ -38,8 +42,10 @@ The first turn of work started after batch 3, as instructed.
 | O8 | **End-to-end dry run** | implied by "evolve" (the loop must work, not only read well) | the question named in "Constraints" (D1) run through the O7 loop as written: decider CONVENE (nine-row table), the convened seats' reports, the researcher if a gap is named, the decider's decision with tension map and debt register, the interrogator's verdict, round count ≤ 3, the "for Maisara" lines present but marked dry run; transcripts in `docs/review/board-smoke/`; nothing applied to the plan |
 | O9 | **Bookkeeping** | CLAUDE.md "Scope list" and "Reporting: the steward" | this brief checked BRIEF OK; steward rounds appended; all work committed with clear messages and pushed to `claude/blissful-lamport-j6jitz` (`git ls-remote` shows the head) |
 
+| O10 | **D1 applied to the plan** | "accepted" (the dry-run proposal D1, after the report asked her to accept or veto it) | `docs/phases/phase-08.md`, `docs/BUILD_PLAN.md` §2 (new AX row) and §6, `docs/THIRD_PARTY.md` (planned row) carry the accepted decision (items 1–10 of `6-decider-rebuttal.md` with the three restatements of `7-interrogator-round2.md`; the C-1/C-2 wording asks as deferrals, no estimator chosen); applied by the plan-editor; interrogator document-mode check of the changed passages; ledger section in `docs/review/ledger.md`; `plan:` commit on the branch |
+
 ## Scope
-- In: O1–O9. Agent, command, protocol and generator files; `docs/board/`; CLAUDE.md; the fingerprint inert list; three wording edits in phase files through `/fix-plan` (no acoustic content; plan-editor applies, interrogator diff check, ledger row).
+- In: O1–O10. Agent, command, protocol and generator files; `docs/board/`; CLAUDE.md; the fingerprint inert list; three wording edits in phase files through `/fix-plan` (no acoustic content; plan-editor applies, interrogator diff check, ledger row).
 - Out (follow-ups, not this session): applying the dry run's decision to the plan; a review-phase-pr skill change (it does not mention the advocate); regenerating any persona; a PR (opened only if Maisara asks).
 
 ## Constraints and settled decisions
@@ -47,7 +53,7 @@ The first turn of work started after batch 3, as instructed.
 - The persona files are Maisara's build artefacts: copied verbatim, never edited. The agent files are generated from them; the shared protocol is the only text this session writes into a seat.
 - Fingerprint rule (`tools/ci/test_ci_fingerprint.py`): code under `tools/` may not name an inert path, so the generator lives in `.claude/board/` (inert itself) and is run by hand; no CI test reads `.claude/agents/`.
 - How a seat is run in this session: the Agent tool is tried with the new agent type first; if the type is not registered mid-session (ledger row 1191 records this), a `general-purpose` worker is given the generated agent file verbatim as its instructions, and the transcript says which method was used.
-- **Assumptions made because Maisara is not present to answer (steward round 1, G1 and G2); both are reversible by a prompt edit and go at the top of the report for her to confirm or change:**
+- **Accepted by Maisara 2026-11-09 ("accepted", after the report listed A1, A2, D1–D5 and the dry-run proposal): A1, A2, D2–D5 below are settled; the dry-run decision D1 is accepted and applied (O10).** The assumptions as they were made:
   - **A1 (G1, "amongst all 9" vs subset convening):** the decider's convening table always has nine rows: each seat is either convened or recorded as not required, with the reason, so the tension map is literally over all nine, with not-required seats at 0 and the interrogator checking every "not required" row against the convening table in `docs/board/README.md`. When in doubt the decider convenes; a seat's `NOT MY MATTER` answer is cheap. Reading of her words: "a subject matter that requires each of them to pitch in" and "called in … by the decider".
   - **A2 (G2, PRD ranking vs minimum tension):** minimum tension among the seats replaces the decider's PRD priority ranking as the driving force. The PRD's hard constraints, out-of-scope list and Maisara's settled decisions (BUILD_PLAN §2, §6) stay binding and bound the option space; the PRD's priorities are carried into the tension map by the seats whose mandates hold them (Seat 1 audibility, Seat 5 real-time safety, Seat 6 the user, Seat 7 cost). When the board's shared accomplishment (`docs/board/board.md` §1) conflicts with the PRD, the decider follows the PRD and reports the conflict under "Challenges to settled decisions" for Maisara.
 - **Design choices made by this session (not acoustic, not plan content), each flagged to Maisara in the report:** D1 the dry-run question: Phase 08 session 1 item 1, which head of SADIE II (KU100 or KEMAR) becomes `generic-v1`, with MIT KEMAR as the licence fallback (`docs/phases/phase-08.md`, BUILD_PLAN §1 "Generic HRTF" row); D2 seats self-rate present and future tension on a 0–3 scale (0 none, 1 minor, 2 major, 3 veto-grade); D3 the decider's ordering: exclude any option with a veto-grade rating from any seat (if every option has one, the fewest, and the item goes to Maisara), then minimise the worst-off seat's rating over seats and time, then the sum, then prefer the cheaper-to-undo option; D4 present and future tension weighted equally; D5 a seat's veto-grade rating removes an option (the stop the advocate's NO used to hold), and only Maisara can override it, recorded in the ledger.
