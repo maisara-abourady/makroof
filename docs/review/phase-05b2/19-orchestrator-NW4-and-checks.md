@@ -69,3 +69,14 @@ where the field is far from diffuse, NW-3's bias is larger than in W1 (≤ 0.09 
 32 000 paths (seed 0x5EED, no stratification); reference at ℓ = 1.25 m (air factored, exact for these band-flat cases). Per band over the
 15 cases: max |(f) − ref| = **0.088 dB**, max |z| = **1.29**, mean signed z = **−0.11**; the reference's own 2.5 → 1.25 m change
 ≤ **0.33 %**. Identical in all 8 bands (α and s band-flat; only air differs). Data: `phase05b2_dt1.json` section `c3`.
+
+## 6. Small-room ladder (completed) and NW-3 next to the absorbing face (Seat 9 check (b))
+
+`ref_hybrid` ladder (1 kHz; patches) vs (f) at 1 M paths: `classroom` (9 × 7 × 3.2 m) 0.081294 (52) → 0.081168 (180) → 0.081143 (684);
+(f) 0.081132 (SE 0.0011 dB). `small_room` (3 × 4 × 2.5 m) 0.692701 (16) → 0.692030 (52) → 0.692183 (166); (f) 0.692489 (SE 0.0005 dB).
+2.5 → 1.25 m changes ≤ 0.16 %; the reference converges onto (f).
+
+Listener at 0.1 m from the **absorbing** face (s = 1, 1 M paths each): layout 4 floor `(10, 8, 0.1)`: point 6.524e-5 (SE 0.012 dB,
+largest path share 0.00004) vs NW-3 clamp 6.690e-5 → **+0.109 dB**; layout 5 xMin wall `(0.1, 8, 1.7)`: point 5.015e-4 (SE 0.011 dB) vs
+clamp 5.401e-4 → **+0.322 dB**. Next to an absorbing face the point estimator is well behaved (that face emits no diffuse energy), and
+NW-3's clamp moves E_target by up to +0.32 dB (the diffuse field's gradient over 0.4 m next to the absorber) — more than Tol-2's τ.
