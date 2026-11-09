@@ -1,7 +1,5 @@
 # Orchestrator computation C12: NW-4C and N-3W* (for the second D-T1 seat round)
 
-(Part (a) is appended when its run completes.)
-
 2026-11-09. Requested by the decider (`21-decider-decision-T1-T2-T6.md`, "Orchestrator computations needed before the second
 round (C12)"). Prototype outside `src/sim`: `tools/validation/phase05b2_dt1.py` steps `c12d`, `c12b`, `c12a` (kernel `mc5` =
 `mc3`'s model and random stream with a path-index offset and a per-path count of image evaluations); data in
@@ -23,6 +21,92 @@ round (C12)"). Prototype outside `src/sim`: `tools/validation/phase05b2_dt1.py` 
   - slope = 1 + Hill index over the largest min(200, 5 %) scores, capped at 10. This is a simpler estimator than MCNP's
     Pareto fit.
   - Thresholds as in the researcher's dossier: R < 0.05, VOV < 0.1, slope > 3.
+
+## (a) NW-4C on C4's cases, both-near cases and Seat 9's absorbing-face cases (W1; layouts 4 and 5 at s = 1)
+
+Runs per case:
+- 32 000 histories (paths 0 … 31 999 of each set);
+- a disjoint long run of 256 000 histories (paths 32 000 … 287 999);
+- `ref_hybrid` at ℓ = 1.25 m in 500 Hz–2 kHz (air per bin, `_ref_bands`).
+
+Distances to the nearest surface: listener d_L and emitter d_E (m). Columns:
+- "fwd / rev SE": each set alone at 32 k;
+- "NW-4C SE": the blend at 32 k (largest band);
+- "share": the largest single history's share of the estimate;
+- "32 k vs long": 1 kHz;
+- "long vs ref" and z: 1 kHz, z = difference over the long run's SE;
+- VOV: the 32 k run's largest over the bands.
+
+| case | d_L / d_E | w | fwd SE | rev SE | NW-4C SE | share | long SE | 32 k vs long (dB) | long vs ref (dB) | z | VOV |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| W1/reference_positions | 1.70 / 2.00 | 0.419 | 0.018 | 0.015 | 0.012 | 0.0006 | 0.004 | -0.011 | -0.003 | -0.6 | 0.002 |
+| W1/listener_wall | 0.10 / 2.00 | 0.002 | 0.216 | 0.015 | 0.015 | 0.0007 | 0.005 | +0.011 | +0.002 | +0.4 | 0.002 |
+| W1/listener_edge | 0.10 / 2.00 | 0.002 | 0.582 | 0.016 | 0.016 | 0.0009 | 0.005 | +0.006 | -0.018 | -3.4 | 0.004 |
+| W1/listener_corner | 0.10 / 2.00 | 0.002 | 0.143 | 0.013 | 0.013 | 0.0009 | 0.005 | -0.022 | -0.024 | -5.3 | 0.004 |
+| W1/emitter_wall | 1.70 / 0.10 | 0.997 | 0.015 | 0.082 | 0.014 | 0.0010 | 0.005 | -0.006 | -0.008 | -1.7 | 0.005 |
+| W1/emitter_edge | 1.70 / 0.10 | 0.997 | 0.014 | 0.354 | 0.014 | 0.0011 | 0.005 | +0.009 | -0.002 | -0.5 | 0.005 |
+| W1/emitter_corner | 1.70 / 0.10 | 0.997 | 0.014 | 0.832 | 0.014 | 0.0012 | 0.005 | -0.027 | -0.011 | -2.1 | 0.007 |
+| W1/both_wall | 0.10 / 0.10 | 0.500 | 0.323 | 0.302 | 0.220 | 0.0393 | 0.057 | +0.296 | -0.043 | -0.8 | 0.170 |
+| W1/both_corner | 0.10 / 0.10 | 0.500 | 0.787 | 1.181 | 0.747 | 0.1823 | 0.196 | +0.085 | -0.244 | -1.3 | 0.598 |
+| layout4_s1/reference_positions | 1.70 / 2.00 | 0.419 | 0.069 | 0.067 | 0.048 | 0.0007 | 0.018 | -0.046 | +0.006 | +0.3 | 0.001 |
+| layout4_s1/listener_wall | 0.10 / 2.00 | 0.002 | 1.657 | 0.071 | 0.071 | 0.0019 | 0.025 | -0.073 | +0.014 | +0.6 | 0.001 |
+| layout4_s1/listener_edge | 0.10 / 2.00 | 0.002 | 0.554 | 0.068 | 0.068 | 0.0013 | 0.024 | -0.119 | +0.036 | +1.5 | 0.001 |
+| layout4_s1/listener_corner | 0.10 / 2.00 | 0.002 | 3.184 | 0.069 | 0.069 | 0.0020 | 0.025 | +0.017 | -0.168 | -7.0 | 0.001 |
+| layout4_s1/emitter_wall | 1.70 / 0.10 | 0.997 | 0.071 | 1.173 | 0.071 | 0.0012 | 0.026 | +0.057 | -0.019 | -0.7 | 0.001 |
+| layout4_s1/emitter_edge | 1.70 / 0.10 | 0.997 | 0.069 | 0.902 | 0.069 | 0.0011 | 0.025 | -0.273 | +0.139 | +5.4 | 0.001 |
+| layout4_s1/emitter_corner | 1.70 / 0.10 | 0.997 | 0.072 | 1.768 | 0.072 | 0.0015 | 0.027 | -0.027 | -0.159 | -6.0 | 0.001 |
+| layout4_s1/both_wall | 0.10 / 0.10 | 0.500 | 1.944 | 0.475 | 1.213 | 0.2744 | 0.461 | -0.427 | +0.354 | +0.7 | 0.933 |
+| layout4_s1/both_corner | 0.10 / 0.10 | 0.500 | 0.553 | 0.763 | 0.449 | 0.0599 | 1.162 | -5.226 | +0.496 | +0.4 | 0.214 |
+| layout4_s1/listener_absorber | 0.10 / 2.00 | 0.002 | 0.067 | 0.072 | 0.072 | 0.0012 | 0.026 | -0.043 | -0.006 | -0.2 | 0.001 |
+| layout5_s1/reference_positions | 1.70 / 2.00 | 0.419 | 0.054 | 0.046 | 0.035 | 0.0007 | 0.012 | -0.033 | -0.001 | -0.1 | 0.001 |
+| layout5_s1/listener_wall | 0.10 / 2.00 | 0.002 | 0.292 | 0.071 | 0.070 | 0.0021 | 0.024 | +0.101 | -0.010 | -0.4 | 0.006 |
+| layout5_s1/listener_edge | 0.10 / 2.00 | 0.002 | 0.683 | 0.114 | 0.114 | 0.0054 | 0.041 | -0.087 | -0.183 | -4.6 | 0.015 |
+| layout5_s1/listener_corner | 0.10 / 2.00 | 0.002 | 0.211 | 0.083 | 0.083 | 0.0043 | 0.032 | -0.067 | -0.376 | -12.4 | 0.012 |
+| layout5_s1/emitter_wall | 1.70 / 0.10 | 0.997 | 0.081 | 0.777 | 0.081 | 0.0031 | 0.029 | -0.075 | +0.030 | +1.0 | 0.010 |
+| layout5_s1/emitter_edge | 1.70 / 0.10 | 0.997 | 0.072 | 0.808 | 0.072 | 0.0026 | 0.027 | -0.128 | +0.046 | +1.7 | 0.007 |
+| layout5_s1/emitter_corner | 1.70 / 0.10 | 0.997 | 0.068 | 2.792 | 0.070 | 0.0039 | 0.024 | +0.008 | -0.061 | -2.5 | 0.011 |
+| layout5_s1/both_wall | 0.10 / 0.10 | 0.500 | 0.392 | 0.399 | 0.280 | 0.0396 | 0.232 | -0.871 | -0.610 | -2.8 | 0.221 |
+| layout5_s1/both_corner | 0.10 / 0.10 | 0.500 | 0.352 | 2.322 | 1.268 | 0.2879 | 0.871 | -3.434 | -0.397 | -0.5 | 0.945 |
+| layout5_s1/listener_absorber | 0.10 / 2.00 | 0.002 | 0.061 | 0.071 | 0.071 | 0.0018 | 0.025 | -0.060 | +0.030 | +1.2 | 0.003 |
+
+Independent check at the edge and corner listeners, where NW-4C and the reference disagree most: a forward-only run of 2 M paths
+on paths 10 M …, disjoint from every run above. It is a different unbiased estimator with different sampling.
+
+| case | fwd 2 M SE | fwd 2 M largest share | NW-4C long vs fwd 2 M | z | fwd 2 M vs ref 1.25 m |
+|---|---|---|---|---|---|
+| W1 listener corner | 0.100 dB | 1.0 % | +0.083 dB | 0.83 | −0.108 dB |
+| layout 4 listener corner | 0.657 dB | 11.2 % | +0.612 dB | 0.93 | −0.779 dB |
+| layout 5 listener edge | 0.199 dB | 1.7 % | +0.235 dB | 1.16 | −0.418 dB |
+| layout 5 listener corner | 0.445 dB | 5.0 % | +0.068 dB | 0.15 | −0.444 dB |
+
+Readings:
+1. **One end near a surface: NW-4C removes the heavy tail at that end.** This holds for the listener or the emitter at 0.1 m
+   from a wall, an edge or a corner, and for the absorbing faces.
+   - The blend's SE at 32 k equals the reference positions' SE: 0.013–0.016 dB in W1 (reference 0.012) and 0.068–0.114 dB in
+     layouts 4 and 5 (reference 0.048 / 0.035).
+   - The largest history share is ≤ 0.54 %, and VOV ≤ 0.015.
+   - Against the disjoint long run, every one-end case agrees within 2 SE except layout 4's emitter edge: −0.273 dB at a
+     combined SE of 0.073 dB, z ≈ −3.7. That is one case in 20 one-end cases. Its VOV (0.001) shows no heavy tail, so I record
+     it as an outlying draw, not explained.
+   - w moves to 0.002 or 0.997, so the weak end contributes almost nothing.
+2. **Against the 1.25 m reference.**
+   - **W1:** NW-4C is within 0.025 dB in every case. That is within the reference's own last-halving change at the edge and
+     corner (0.30 % and 0.63 %, i.e. 0.013 / 0.027 dB; C4).
+   - **Layouts 4 and 5, wall and absorbing-face cases:** within 0.030 dB.
+   - **Layouts 4 and 5, edge and corner cases:** they differ by −0.376 to +0.139 dB, with |z| up to 12.4. The reference is not
+     certified there. Its 2.5 → 1.25 m change is 4.75 % (layout 4 edge) and 1.18 % (layout 4 corner). No finer rung is
+     computable: the 0.625 m kernel for a 20 × 30 × 10 m room is about 16× the 1.25 m one.
+   - The independent forward-only 2 M runs read below the reference in all four checked cases (−0.11 to −0.78 dB), the same
+     sign as NW-4C, and they agree with NW-4C within z ≤ 1.16. But they are heavy-tailed themselves (SE 0.10–0.66 dB), so this
+     check is weak.
+   - So the edge and corner disagreements are consistent with a reference error and are not proven to be one. They are the
+     cases D-T1.5 already reports and does not gate (layout-4 near-wall, C4).
+3. **Both ends near a surface: NW-4C does not help, as the decider stated.**
+   - At 32 k the SE is 0.22–1.27 dB, the largest share 4–29 %, and VOV up to 0.95.
+   - The 32 k and 256 k runs disagree by up to 5.2 dB (layout 4 corner), and the long runs' own SE reaches 1.16 dB.
+   - Against the reference the long runs are within −0.61 to +0.50 dB, |z| ≤ 2.8, but at that SE this says little.
+   - These cases need either a much larger N (C12 (b): 364 000–377 000 histories at W1's both-near end, beyond W_max) or the
+     flag "near-wall, unreferenced".
 
 ## (d) W_max from the restore bound
 

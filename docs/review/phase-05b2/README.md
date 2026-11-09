@@ -27,3 +27,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `19-orchestrator-NW4-and-checks.md` | orchestrator | NW-4 reciprocal start, small-room ladder, band correlation |
 | `20-orchestrator-C7-ref-costs-100m.md` | orchestrator | C7: reference costs; tracer and ladder checks at 100 m |
 | `21-decider-decision-T1-T2-T6.md` | decider | decision round 1, D-T1, D-T2, D-T6 (T1.1/1.2/1.4/1.5 and D-T6 decided; T1.3, T1.6, D-T2 to a second round after C12) |
+| `22-orchestrator-C12.md` | orchestrator | C12: NW-4C (a), N-3W\* sweeps (b), cost (c), W_max and cap hits (d), tally checks (e), L2-F1R coupling |
