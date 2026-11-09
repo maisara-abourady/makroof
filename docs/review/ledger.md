@@ -1835,3 +1835,17 @@ Decider D1 (rounds 1–2), interrogator (decision mode, three rounds), advocate 
 | P05B-37 | re-run rule | CORRECT | — |
 
 Diff check of the /fix-plan text (interrogator, rows P05B-38…56): every changed passage CORRECT (AX16 26 of 345 recounted from report-phase05.md §6a, sub-values, AX35 numbers 0.324 % / 0.417 % / 5.36 % / 3.23→3.18 %, 15–49 / ≈ 147 GB recomputed, 3 TB order of magnitude, phase-05b notes, §6 row); three minor wording corrections applied: P05B-44 (Δt check covers the three s = 1 layouts), P05B-48 (2.5 m memory figures stated with patches, bins and decimal GB), P05B-50 (Δt/ℓ separation credited to `ell.dt_check`, not to Eq. 4.32 alone). P05B-52/53 note the consequences: the per-bin early envelope stays unverified while (B) keeps B11 unpromoted, and the tail level keeps AX16's measured bias (up to +3.83 dB, BRAS −1.47 dB) until the switch lands. Status: applied, verified; vetoable by Maisara.
+
+## Phase 05b session 2 phase file `docs/phases/phase-05b2.md` (2026-11-09; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Created on Maisara's decision of 2026-11-09 (Q2 option (b): "Answer to q2: b. Make the dedicated phase's prompt extremely aware with the utmost level of detailed analysis of what and why."); AX35 accepted the same day ("W1: accept"). Plan-editor applied the orchestrator's draft, holding two test-number choices as open decisions (D-T1 case set, new D-T6 regression bound). Interrogator document audit round 1 (P05B2-01…34): SOUND WITH CORRECTIONS (majors P05B2-12 fallback memory rows, P05B2-23 D-T3 yardstick wrong, P05B2-28 wrong example room); advocate round 1: no NO, REDIRECTs on §0.1 framing (extreme cases, empty venues, jnd by extension), D-T3, D-T6 (uniform vs mixed α), decision order (D-T5 → D-T4 → D-T1 → D-T2 → D-T6 → D-T3), listening pack (real BRAS scene, open_field), split rule (atomicity, named split point). All applied (cbc8d36). Round 2: interrogator P05B2-35…56 SOUND (minor P05B2-37 "bounding" → "extreme cases", P05B2-38 fallback label: applied c89b0d4); advocate GO, one narrow REDIRECT (split branch: Phase 08 waits for 05h; nightly before the PR): applied c89b0d4. No acoustic or numeric value decided: D-T1…D-T6 are open decisions for session 2's decision loop.
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-01…04, 06, 07, 09, 11, 13, 15, 17, 18, 25, 26, 32 | §0 numbers (ΔL_b,tr table, hybrid vs tracer, t_mix,e, patch counts, kernel sizes, convergence, BRAS ΔL_b, 26/345, +122.6 MB), model description, AX16 mechanism and sign, D-T5 code claims | CORRECT | — |
+| P05B2-05, 10, 14, 16, 19, 20, 21, 22, 24, 27, 29, 30, 31 | AX16 exactness per order, jnd of G, time ∝ N²TG, Δt scope, Gilbert/Fujiwara attribution, D-T1 (b)–(e) feasibility notes, per-patch directions, validation scope, Table 15.1 | IMPRECISE → restated | applied (cbc8d36) |
+| P05B2-12 | memory table without the AX22 fallback | CONDITIONS VIOLATED → fallback rows added | applied |
+| P05B2-23 | D-T3 used Phase 10's mid-fade gate as yardstick | WRONG → listener level step vs 1 dB jnd per room class | applied |
+| P05B2-28 | D-T6 example room | INCONSISTENT → six Phase 04 rooms named | applied |
+| P05B2-33, 34 | consequences (AX21 step stays; listening scenes) | noted | — |
+| P05B2-35…56 | round-2 changed passages | CORRECT (37, 38 IMPRECISE minor → applied) | applied (c89b0d4) |
