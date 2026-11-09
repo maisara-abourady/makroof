@@ -1,5 +1,5 @@
 ---
-description: Correct the PRD, BUILD_PLAN or phase files; acoustic decisions go to the interrogator, not the editor
+description: Correct the PRD, BUILD_PLAN or phase files; acoustic decisions go through the board's decision loop, not the editor
 argument-hint: <the fixes to make, or ledger row ids>
 ---
 Run this loop yourself (the main session); subagents cannot start other subagents. The user does not
@@ -8,32 +8,46 @@ need to know or remember these steps.
 1. Make sure the corpus is present (`tools/ci/fetch_corpus.sh` if `docs/corpus/SOURCE_COMMIT` is missing).
 2. Brief the **plan-editor** subagent with $ARGUMENTS: the exact fixes, the ledger rows they come from,
    and every decision that is already settled. Wait for its report.
-3. If it returned DECISIONS NEEDED, run the **interrogator** on them: for each option, verdict and
-   evidence against the corpus, with arithmetic shown. Then:
+3. If it returned DECISIONS NEEDED, run the **interrogator** on them (document mode): for each option,
+   verdict and evidence against the corpus, with arithmetic shown. Then:
    - exactly one option CORRECT and the others WRONG or CONDITIONS VIOLATED: that option is verified;
    - several options valid, none valid, or the choice is a product matter: run the decision loop below,
      then ask the user, briefly, to accept or veto each surviving decision. Don't adopt one without her.
 
-   **Decision loop** (each agent's role is in its file under `.claude/agents/`):
-   a. **researcher**: builds the dossier for the decision(s) whenever a load-bearing fact is outside the
-      corpus or unverified. The decider goes in only when the dossier says READY, or with the NOT READY
-      gaps listed so that it can defer those parts.
-   b. **decider**: decides, with its knowledge inventory and load-bearing claims. Send any RESEARCH NEEDED
-      back to (a).
-   c. **interrogator** (decision mode): SURVIVES / SURVIVES WITH CORRECTIONS / FALLS / UNDERINFORMED.
-   d. **advocate**, after **every** interrogator round, before the next one: screens the decisions and the
-      interrogator's verdicts for the product, so it can correct the exchange's path while it is running.
-      A REDIRECT goes to the agent it names, with the advocate's question, together with that round's
-      FALLS (to the decider) or UNDERINFORMED (to (a)). A NO stops the item: it is not applied unless the
-      objection is settled or the user overrides it, and the override is recorded in the ledger. Repeat
-      (b)–(d) for at most 3 rounds; the item goes on only with a final PASS.
-   Only decisions that survived (c) and passed (d), or that the user cleared, go to step 4.
+   **Decision loop** (each role's instructions are in its file under `.claude/agents/`; the board and its
+   convening table are in `docs/board/README.md`):
+   a. **decider, convening round**: give it the decisions. It returns **CONVENE**: a nine-row convening
+      table (every seat convened or recorded not required with the reason), a brief per convened seat,
+      and its first-pass knowledge inventory with any RESEARCH NEEDED questions.
+   b. **seats and researcher, in parallel**: run every convened seat (`seat1-…` to `seat9-…`) with its
+      brief verbatim, all in one message so they run concurrently; run the **researcher** at the same
+      time whenever the decider named a gap or a load-bearing fact lies outside the corpus. Collect the
+      seats' positions (`SEAT <n> POSITION` or `NOT MY MATTER`) and the dossier. If a seat asked for a
+      claim to be verified, pass it to the researcher before the decision round. A seat whose agent type
+      is not registered in this session (new in this session) is run as a `general-purpose` worker given
+      its agent file verbatim, and the transcript says so.
+   c. **decider, decision round**: give it the positions and the dossier. It returns, per decision, the
+      tension map, the minimum-tension working, **DECISION** with load-bearing claims and future-debt
+      register, or **RESEARCH NEEDED** (back to the researcher) or **NEEDS MAISARA** (every option
+      carries a seat's veto-grade rating; the user decides, and an override is recorded in the ledger).
+   d. **interrogator, decision mode**: **SURVIVES** / **SURVIVES WITH CORRECTIONS** / **UNDERCONVENED**
+      (run the named seats, back to (c)) / **TENSION MISREAD** (back to (c) with the seat's words) /
+      **FALLS** (back to (c)) / **UNDERINFORMED** (back to the researcher, then (c)). A seat is re-run
+      only when the decider composed a variant it must rate or the interrogator asks what the seat meant;
+      give it the provisional decision and the other seats' positions, and it answers only what changed.
+   Repeat (c)–(d) for at most 3 rounds; the item goes on only with SURVIVES or SURVIVES WITH
+   CORRECTIONS, or when the user cleared it. After 3 rounds, what is still contested goes to the user as
+   NEEDS MAISARA with each side's last word.
+   Save every round's output under `docs/review/<target>/` (decider, seats, researcher, interrogator,
+   one file per round) so the steward and the reviewer can check the map against the seats' words.
 4. Send the verified decisions back to the plan-editor to apply (resume it, or brief a new one with them).
 5. Run the **interrogator** on the finished diff (the changed passages only) to check the science of what
    was written. Anything WRONG goes back through steps 2–4; at most 3 rounds, then report what is left.
-6. Record the decisions, verdicts and final status in `docs/review/ledger.md` (under the target's
-   heading, citing the corpus revision), commit with `plan: <summary>`, and push.
+6. Record the decisions, the convening tables, the verdicts and the final status in
+   `docs/review/ledger.md` (under the target's heading, citing the corpus revision), commit with
+   `plan: <summary>`, and push.
 7. Report to the **steward** with the session brief (CLAUDE.md, "Reporting: the steward"): what changed,
-   which decisions were verified and how, and the ledger rows. Close its CONTINUE gaps. Report to the user
-   only on READY TO REPORT or NEEDS MAISARA, with what changed, which decisions were verified and how, and
-   which decisions still need her.
+   which decisions were verified and how (which seats were convened, the worst-off seat and what it gets
+   back later, the interrogator's outcome), and the ledger rows. Close its CONTINUE gaps. Report to the
+   user only on READY TO REPORT or NEEDS MAISARA, with what changed, which decisions were verified and
+   how, and which decisions still need her.
