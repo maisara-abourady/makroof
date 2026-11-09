@@ -378,6 +378,39 @@ def lean_solve(rk: rh.RoomKernel, inc: np.ndarray, gath: np.ndarray, v: int = 0,
     return np.maximum(np.fft.irfft((Gf * Tf).sum(axis=1), n=L, axis=1)[:, :T], 0.0)
 
 
+def chunked_solve(rk: rh.RoomKernel, inc: np.ndarray, gath: np.ndarray, v: int = 0, b: int = 0, tol: float = 1e-9,
+                  max_generations: int = 2000, chunk: int = 48, workers: int = 4) -> np.ndarray:
+    """lean_solve without holding the kernel's transform (phase-05b2 §3 D-T2, R1 for CR4: the 1.25 m kernel is
+    5.1 GB per band in float32 and its complex64 transform another 10.2 GB). Each generation transforms the
+    kernel again, ``chunk`` emitting patches at a time, and accumulates Y_f = Σ_k K_f[:, l, k] Φ_f[k]. Same
+    recursion, same linear convolution and truncation as ref_hybrid.solve / lean_solve: (P, T)."""
+    import scipy.fft as sfft
+    N, T = rk.N, rk.T
+    L = 2 * T
+    F = L // 2 + 1
+    K = rk.kernel(v, b)  # (N, N, T) view
+    D = rk.variants[v].diffuse[rk.bands[b]][rk.p.face]
+    phi = D[None, :, None] * inc[:, v, b]
+    total = phi.copy()
+    e0 = phi.sum()
+    for g in range(max_generations):
+        Pf = np.transpose(sfft.rfft(phi, n=L, axis=2, workers=workers), (2, 1, 0)).astype(np.complex64)  # (F, N, P)
+        Yf = np.zeros((F, N, phi.shape[0]), dtype=np.complex64)
+        for k0 in range(0, N, chunk):
+            k1 = min(N, k0 + chunk)
+            Kc = np.transpose(sfft.rfft(K[k0:k1], n=L, axis=2, workers=workers), (2, 1, 0)).astype(np.complex64)  # (F, l, k)
+            Yf += np.matmul(Kc, Pf[:, k0:k1, :])
+        y = sfft.irfft(np.transpose(Yf, (2, 1, 0)), n=L, axis=2, workers=workers)[:, :, :T]
+        phi = D[None, :, None] * np.maximum(y, 0.0)
+        total += phi
+        log(f"chunked_solve: generation {g + 1}, emitted {phi.sum():.3e} of {total.sum():.3e}")
+        if phi.sum() <= tol * max(total.sum(), e0, 1e-300):
+            break
+    Gf = np.fft.rfft(gath[:, v, b], n=L, axis=2)
+    Tf = np.fft.rfft(total, n=L, axis=2)
+    return np.maximum(np.fft.irfft((Gf * Tf).sum(axis=1), n=L, axis=1)[:, :T], 0.0)
+
+
 def hybrid_env_factorised(c, size, t_end) -> np.ndarray:
     """One case's diffuse envelope (8, T) at patch size ``size`` with the air factored out: the hybrid
     run without air in one band column, then exp(−m_b·c·t) per 1 ms bin centre. Exact for the
@@ -439,7 +472,7 @@ def db(x):
 R1_MEMORY_BUDGET_GB = 12.0  # kernel + its complex64 transform on the 15 GB session machine
 
 
-def step_r1():
+def step_r1(rooms=None, chunked: bool = False):
     """AX36 (c), R1: E_target (500 Hz-2 kHz) and a* at 2.5 and 1.25 m in the selected BRAS rooms (initial α,
     Phase 05 positions), from the hybrid alone. Per band with the air factored out (exact per band: every
     path's air factor is exp(-m_b R) with R = c t, whatever α and s are). A rung whose dense kernel plus
@@ -448,7 +481,11 @@ def step_r1():
     d = load()
     m = scope6.air_m()
     out = {"rungs_m": [PREV_ELL_M, GATE_ELL_M], "bands_hz": [500, 1000, 2000], "rooms": {}}
+    if rooms is not None and "r1" in d:  # re-run selected rooms, keep the others as committed
+        out = d["r1"]
     for room in scope6.bras_rooms():
+        if rooms is not None and room not in rooms:
+            continue
         names = scope6.pair_names(room)
         sis = {n: scope6.scene_inputs(scope6.rv.SCENES / f"{n}.json") for n in names}
         dims = tuple(float(x) for x in sis[names[0]]["dims"])
@@ -464,7 +501,13 @@ def step_r1():
             need = N * N * T * 4 / 1e9 + N * N * (T + 1) * 8 / 1e9
             a_star = [radiosity.a_star(dims, (1 - var.alpha[:, b])[p_.face], p_) for b in AQ9_IDX]
             rung = {"patches": N, "memory_gb": need, "a_star": a_star}
-            if need > R1_MEMORY_BUDGET_GB:
+            # phase-05b2 D-T2 (R1 for CR4): above the dense budget, the chunked solver keeps only the
+            # float32 kernel (N²T·4 bytes) and one transformed chunk in memory
+            use_chunked = chunked and need > R1_MEMORY_BUDGET_GB and N * N * T * 4 / 1e9 < R1_MEMORY_BUDGET_GB
+            if use_chunked:
+                rung["solver"] = "chunked (phase-05b2 D-T2)"
+                rung["memory_gb_chunked"] = N * N * T * 4 / 1e9
+            if need > R1_MEMORY_BUDGET_GB and not use_chunked:
                 rung["e_target"] = None
                 rung["note"] = f"not computed (compute limit: {need:.1f} GB > {R1_MEMORY_BUDGET_GB} GB)"
                 log(f"R1 {room} {size} m: {rung['note']}")
@@ -474,6 +517,14 @@ def step_r1():
             tb = (np.arange(T) + 0.5) * rh.DT
             for b in AQ9_IDX:
                 rk = hybrid_fast.FastRoomKernel(dims, size, t_end, var0, b)
+                if use_chunked:  # all pairs in one solve: the kernel is transformed once per generation
+                    inc = np.stack([rh.injection(rk, sis[n]["src"]) for n in names])
+                    gat = np.stack([rh.gather_kernel(rk, sis[n]["rcv"]) for n in names])
+                    e_all = chunked_solve(rk, inc, gat)
+                    for i, n in enumerate(names):
+                        env[n][b] = e_all[i] * np.exp(-m[b] * rh.C_SOUND * tb)
+                    del rk, inc, gat
+                    continue
                 for n in names:
                     e0 = lean_solve(rk, rh.injection(rk, sis[n]["src"])[None], rh.gather_kernel(rk, sis[n]["rcv"])[None])[0]
                     env[n][b] = e0 * np.exp(-m[b] * rh.C_SOUND * tb)
@@ -564,10 +615,14 @@ def step_gate():
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("step", choices=["tracer", "selfcheck", "ell", "dtcheck", "gate", "r1"])
+    ap.add_argument("--rooms", nargs="*", help="r1 only: re-run these BRAS rooms (others kept as committed)")
+    ap.add_argument("--chunked", action="store_true", help="r1 only: chunked solver above the dense memory budget (phase-05b2 D-T2)")
     ap.add_argument("--max-rung", type=int, default=1, help="ell: deepest ladder rung to compute (0 = 5 m ... 3 = 0.625 m)")
     a = ap.parse_args(argv)
     if a.step == "ell":
         step_ell(a.max_rung)
+    elif a.step == "r1":
+        step_r1(a.rooms, a.chunked)
     else:
         {"tracer": step_tracer, "selfcheck": step_selfcheck, "dtcheck": step_dtcheck, "gate": step_gate, "r1": step_r1}[a.step]()
 

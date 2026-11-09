@@ -97,3 +97,18 @@ def test_case_list_is_the_plans():
     names = {c["name"] for c in p.cases()}
     assert {f"s_case_s{s}" for s in (0.1, 0.25, 0.4)} <= names
     assert {f"t52_layout{L}_s{s}" for L in (4, 5, 6) for s in (0.1, 0.25, 0.4, 1.0)} <= names
+
+
+def test_chunked_solver_equals_lean_solver():
+    """phase-05b2 D-T2 (R1 for CR4): the chunked solver is the same recursion as lean_solve / ref_hybrid.solve."""
+    from tools.acoustics import ref_hybrid as rh
+
+    var = rh.variant([[0.1, 0.2, 0.3, 0.1, 0.4, 0.2, 0.1, 0.3]] * 6, [0.3, 0.5, 0.2, 0.4, 0.6, 0.1], np.zeros(8))
+    rk = rh.RoomKernel((4.0, 5.0, 3.0), 2.0, 0.04, [var])
+    pairs = [((1.0, 1.5, 1.2), (3.0, 3.5, 1.6)), ((2.5, 1.0, 2.0), (1.0, 4.0, 1.0))]
+    inc = np.stack([rh.injection(rk, s) for s, _ in pairs])
+    gat = np.stack([rh.gather_kernel(rk, r) for _, r in pairs])
+    for b in (0, 4):
+        ref = p.lean_solve(rk, inc, gat, b=b)
+        got = p.chunked_solve(rk, inc, gat, b=b, chunk=5, workers=1)
+        assert np.max(np.abs(got - ref)) <= 1e-5 * np.max(ref)
