@@ -1,0 +1,29 @@
+# D1 (dry run) — Seat 6, the canvas designer (2026-11-09)
+
+Method: the registered `seat6-canvas-designer` agent, briefed with B6 of `1-decider-convene.md`; no dossier yet (dataset facts `[Hyp]`). Verbatim.
+
+---
+
+SEAT 6 POSITION
+
+1. **Reading.** Which dummy-head set becomes the hidden `generic-v1`; for my seat: whether the head is ever named in the UI, whether headphone mode needs a default-experience note, how B4's later selector shows "generic" beside a personal profile, and TTFS on headphones. Cues (§4): "a control named after an engine variable" (a head name is one), "a default that is not the most realistic state" (the default `output_mode` is binaural, from the code: `ParameterMap.h:74`), "positions that recompute heavily" (yaw follows the centroid, AX3, so drags sweep the HRTF grid).
+
+2. **Ranking.** No option touches a criterion I never trade away; all are *can live with*. Light order: (a) ≈ (d) KU100 ahead of (b) ≈ (c) KEMAR, on one sourced point only: the KU100 was designed for loudspeaker/headphone compatibility with an equalisation near Theile's diffuse-field response (corpus: Rumsey §3.2.4, §3.2.6), which protects first-minute trust when a producer plays the binaural default through monitors before finding the mode switch. If the converter's own DF-EQ (phase-08 scope 3) neutralises that difference, the order collapses to indifference; Seat 4 says. The dataset-agnostic condition: *prefer*, and I add one clause (§6). Own addition: none beyond that clause.
+
+3. **Tension now.** (a) 0, (b) 1, (c) 1, (d) 0 — the "1" is the mis-matched-chain case above, not a UI cost: no option adds a control, a click or a word to the first minute, because AQ6 fixes one set and no control. Condition: 0.
+
+4. **Tension later.** All options 1: the debt is (i) the B4 selector, where "generic" must be presented as a choice the user already understands ("Standard ears / My profile") and never as a campaign name, and (ii) the risk that the first beta's headphone default is heard inside or behind the head (Vorländer §16.1.2: with standard dummy heads a rather large portion of subjects report front–back confusion and median-plane uncertainty) and the blame lands on the room (Seat 9) or on a named head (a library request, S5). Evidence arrives at the phase-08 listening checklist and the Phase 13 DAW matrix / private beta. Undo cost with the agnostic condition: a converter rerun, the licence file, goldens for 3 scenes (a day); without it, `src/sim` rework. Condition without my clause: 1 (an About box hard-codes a head); with it: 0.
+
+5. **Evidence.**
+- Head names are engine labels; unnamed models judged by ear worked for Pro-R `{Obs; MR-ProR, SOS-ProR17; post; 1/6; H}`; directivity hidden inside a list users already pick from `{Obs; VSL-man; H}`.
+- Default-equals-reality, labelled as such `{Obs; IndMan; pre; H}`; honesty about engine limits in the UI `{SRi; FST21; post; H}`; the "where the simulation stops" note (Board §2.7).
+- Front–back confusion is the expected failure for a static, untracked generic head: corpus Vorländer §16.1.2; Roginska Ch. 4 device types (head without torso: missing shoulders may weaken elevation cues); Rumsey §3.2.4 (torso cues differ between individuals, confusing unless matched). Under AX3/F8 sources are mostly frontal at ear level, so the torso/elevation difference between (a)/(d) and (b)/(c) is, for the default scene, small — `[Hyp]`, Seat 1 decides (R8).
+- Base rate: IEM BinauralDecoder uses KU100 data (corpus: Zotter & Frank, abbreviations table and Ch. 4 note); relevance to our producers `[Hyp]`, R9.
+- Continuity gate (1° ≤ 1 dB / ≤ 30 µs) is what protects my criterion 4 when Phase 11 drags write automation and the yaw sweeps the grid; grid density per set is K5, unknown for SADIE/TH Köln `[Hyp]`, R3.
+- For the researcher: (R1 sub-question) does any candidate licence require attribution *visible in the product*, or only in documentation? That decides whether a head name is forced into the UI at all.
+
+6. **Conditions of acceptance.** (b)/(c) drop to 0 if Seat 4 confirms the converter's DF-EQ makes the sets' loudspeaker-compatibility equivalent. Condition clause: the `.bin` header carries the set identity *and a human-readable attribution string*, so any About/credits text is read from data and no UI code or string table ever knows which head shipped; the main window and the mode switch never show a dataset name. Default-experience note: one line in the output-mode tooltip or the manual, no modal, no head name; wording for Phase 11 to test by the predict-from-name method — along the lines of "Headphones uses one standard head; some listeners hear frontal sounds closer or behind. Personal profiles come later." B4 selector: a setup choice ("Standard" default, labelled as the ears the product was validated with; "My profile…" loads a SOFA), not an automatable parameter (audit criterion 5: a head swap is an IR swap, not an interpolable control); `hrtfId` moving from schema `const` to a string is a contract bump (Seats 2/4).
+
+7. **Hand-offs.** Audibility of head-vs-torso for the target listener, and whether the phase-08 gates are perceptual: Seat 1. Whether DF-EQ erases the KU100 compatibility edge, mic position, licence path: Seat 4. Naming "KU100/KEMAR/SADIE" in marketing and in-product attribution: Seat 7 and a lawyer. Whether the default `output_mode` should be headphones for producers/DJs (the user's real chain): Seat 8, then a human. Phase 11 display names ("Headphones"/"Speakers" over the frozen ids `binaural`/`stereoSpeakers`): mine, later phase, not this matter.
+
+8. **Premortem.** If the head is named in the UI and the first beta tester hears the default scene behind their head, they search the head's name, blame the dataset rather than the mode or their ears, and the first forum thread is "can you add KEMAR" — a library request created by naming; the tester notices first, Seat 9 gets the "boxy room" ticket second.

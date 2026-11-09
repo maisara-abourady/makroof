@@ -47,7 +47,24 @@ checksum in a script. Python requirements are pinned by version and SHA-256 (`to
 
 ## Planned (not yet added)
 
-An HRTF dataset arrives in a later phase (08). Add its row when it is pinned.
+The HRTF dataset arrives in Phase 08. Decided (board decision loop 2026-11-09, D1,
+`docs/review/board-smoke/hrtf-head/`; accepted by Maisara 2026-11-09): **SADIE II, subject D1 (Neumann
+KU100)**, University of York (AudioLab / Kearney), Zenodo record DOI
+[10.5281/zenodo.12092466](https://doi.org/10.5281/zenodo.12092466) version V2-2 (2024-06-18), file
+`D1_HRIR_SOFA.zip` (record MD5 `4850c1eb8e63e2d4f605edcdb4d5c883`; SHA-256 computed at the first download
+and pinned in `tools/hrtf/fetch_hrtf_source.py`; never committed). Licence
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) ("Copyright 2018, University of York";
+York-page condition: the original dataset must be referenced whenever used in original or modified form;
+cite Armstrong, Thresh, Murphy, Kearney 2018, Applied Sciences 8(11):2029, DOI
+[10.3390/app8112029](https://doi.org/10.3390/app8112029); Apache §4(2) change notice listing the
+converter's transformations), verified on the official record 2026-11-09 by the researcher and re-read at
+pin time. Shipped as the converted `resources/hrtf/generic-v1.bin` beside `resources/hrtf/LICENSE-generic-v1.txt`;
+the head is named only here, in that licence file and in the public testing record, never in UI or
+marketing copy, pending a lawyer's view on nominative use (Apache §6). Headphone compensation, when added
+(BUILD_PLAN §5 B14), will come from a different KU100 campaign (SADIE II publishes no KU100 HpTFs as far as
+read) and must pass a colouration listening check. Fallback (MIT KEMAR, under conditions) and the excluded
+TH Köln set: `docs/phases/phase-08.md` scope 1. Add the row proper (under "Linked into the product") when
+the data is pinned in Phase 08 session 1.
 
 Validation datasets for phase 05d (decider report 15, accepted by Maisara, 2026-11-05; facts from
 researcher reports 13/14, external). The 05d session pins them, confirms the licence on the live record

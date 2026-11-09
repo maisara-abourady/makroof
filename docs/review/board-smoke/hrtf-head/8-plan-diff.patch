@@ -1,0 +1,347 @@
+diff --git a/docs/BUILD_PLAN.md b/docs/BUILD_PLAN.md
+index ae9d958..fccf770 100644
+--- a/docs/BUILD_PLAN.md
++++ b/docs/BUILD_PLAN.md
+@@ -54,7 +54,7 @@ Size: **S** ≈ one short session, **M** ≈ one full session, **L** ≈ two ses
+ | Plugin validation | **pluginval** (pinned release, strictness 10) on all OSes; **auval** on macOS | Automated load/state/threading/automation stress tests. |
+ | CI | GitHub Actions matrix: `ubuntu-24.04`, `macos-15` (arm64; `macos-14` until GitHub retired that image on 2026-11-02), `windows-2022` | Your choice: full matrix on every PR. |
+ | Sanitizers | ASan + UBSan on Linux every PR; TSan on Linux for threading phases (06, 07, 10) | Catches memory and threading bugs that neither you nor a listening test can see. |
+-| Generic HRTF | SADIE II (Univ. of York) KU100 or KEMAR, converted offline from SOFA into an embedded binary | Measured dummy-head data with a permissive licence (**verify licence in Phase 8 before committing data**). Fallback: MIT KEMAR. |
++| Generic HRTF | **SADIE II subject D1 (Neumann KU100)**, University of York, Zenodo 10.5281/zenodo.12092466 V2-2, `D1_HRIR_SOFA.zip`, converted offline from SOFA into an embedded binary (≤ ~32 MB, dataset-agnostic header; phase-08 scope 1–3) | Measured dummy-head data under **Apache License 2.0**, verified 2026-11-09 by the researcher on the official record (board decision loop D1, `docs/review/board-smoke/hrtf-head/`; accepted by Maisara 2026-11-09); re-read at pin time. Fallback: MIT KEMAR under the conditions in phase-08 scope 1 (declared unmeasured zone below −40°, Voronoi-weighted averages, DF-EQ on by default, below-grid policy as header data). TH Köln KU100 excluded under "unclear licence" (CC BY-SA 3.0 in the paper vs CC BY 3.0 on Zenodo); re-entry condition in phase-08 scope 1. The head is named only in the licence file, `docs/THIRD_PARTY.md` and the public testing record; AX35 freezes the data behind the id. |
+ | Measured reference IRs | BRAS benchmark (TU Berlin, CC BY-SA 4.0), downloaded in CI by checksum, not committed | The first adopted open dataset with geometry, estimated materials and measured IRs; its authors say the CR rooms "cannot serve as a direct reference" (researcher finding F2, researcher report 9, `docs/review/phase-04-consult/9-researcher-measurements.md`); second source: phase 05d (decider report 11, accepted by Maisara, 2026-11-05; wording corrected by decider report 15, Challenge 1, accepted by Maisara, 2026-11-05). |
+ 
+ ### Architecture in code (the contract boundary)
+@@ -130,6 +130,7 @@ replace these with other answers. A change goes through an edit to this table pl
+ | **AX32** | **Bound on finite input samples (Phase 06b scope 3):** an input sample is taken into the convolver unchanged iff \|x\| ≤ **B = 2²⁰ (1 048 576, +120.4 dB re 1.0)**; otherwise (\|x\| > B, ±Inf, NaN) it is **replaced by 0**, in one comparison (`!(std::fabs(x) <= B)`, true for NaN) in the intake loop of `CrossfadingConvolver::process`, before the forward FFT; this replaces the Phase 06 NaN/Inf guard (same behaviour for non-finite samples; the existing non-finite test stays). **Guaranteed:** every FDL bin ≤ 2P·B ≤ 2³⁰ for any IR, so the FDL never holds a non-finite value. **Sufficient for finite output:** 2P·B·max_m Σ_n Σ\|h_{n,m}\| < FLT_MAX (3.40e38), i.e. Σ\|h\| per path < 1.58e29 at P = 512, N = 2 (largest over the 12 test scenes: 90.9; not a bound over all valid scenes; IrSet::create rejects only non-finite taps). **Not guaranteed:** that samples above B are preserved (they are discarded). **Test** (`[conv][engine]`, P = 128, 256, 512, seeded random host blocks, the 5 000-tap noise IR of the Phase 06 non-finite test, input σ 0.2 noise): (a) bursts of an isolated +1e38, an isolated −FLT_MAX and a same-sign run of 2P samples at +1e38 (overflows without the bound: 2P·1e38 > FLT_MAX) → every output sample finite, and −120 dB null (`residualDb`, the phase-06 AC 2 gate) against `renderOffline` of the input with exactly the \|x\| > B samples zeroed: shows the FDL is not poisoned (fails without the bound); (b) from output sample s_last + L + 4P on (no influence of a sample s at or after s + L + 3P; render length ≥ s_last + L + 4P + 4 096), −120 dB null against `renderOffline` of the burst-free original input: shows recovery, valid under any treatment; (c) single samples +B and −B are kept, single samples nextafter(+B, +∞) and nextafter(−B, −∞) are zeroed, each −120 dB against the matching reference (zeroing a kept ±B reads ≈ 0 dB, keeping a zeroed sample ≈ +87 dB, so both errors fail; says nothing about in-range accuracy, which (a) and the phase-06 nulls cover); (d) the phase-06 nulls at unchanged gates and zero allocations in `process` (AC 5). | Float hosts pass values far above 1.0. Izhaki Ch. 11 gives two theoretical extremes: summing a million tracks at integer full scale stays below B (10⁶ < 2²⁰), the ≈ 764 dB boost does not; neither is a working level. B sits 80.4 dB above a +40 dB hot bus; no source gives a largest legitimate level (researcher F17–F20), so B is a product choice inside the window +40 dB … 1.83e33 (≈ 2^110.5, P06B-22, P06B-55), taken low for a large finiteness margin and a small emitted maximum (\|y\| ≤ 1.9e8 at Σ\|h\| = 90.9). Zero rather than clamp: float audio is trimmed at the float-to-integer conversion on the master (Izhaki Ch. 11), so a clamped +120 dB burst would be heard as full-scale output until its reverb falls 104–114 dB (peak taps 0.155 in medium_room to 0.49, the largest over the test scenes), ≈ 1.7–1.9 T (seconds in halls and churches, FR-3D-3; in headphones in binaural mode, FR-SIM-3), while zeroing leaves a gap; the zero treatment also keeps the precedent null valid (P06B-24). Decider 2026-11-07 (phase-06b D3; interrogator P06B-46…56, 67–69; advocate PASS); accepted by Maisara 2026-11-08 (no vetoes). Reversal: a documented legitimate level above 2²⁰. | 06b, 07 (host input), 13 |
+ | **AX33** | **IR-build rate cap (AQ4):** the 20 ms cap is a minimum spacing between the starts of successive background builds. A request with no build running and none started in the last 20 ms starts at once; requests during a build or within 20 ms of the last start are coalesced into one build starting at max(last start + 20 ms, end of the running build). Non-realtime mode has no cap (synchronous, AQ4). | An isolated update reaches the output after at most rebuild + 2P (AX31), with no slot wait; steady-state spacing is unchanged (AQ4); within Vorländer Table 15.1 (700 ms); AQ4's recommendation. Phase 10 confirms or replaces it. Phase 07 decision loop 2026-11-08, decider D6, interrogator SURVIVES, advocate PASS; accepted by Maisara 2026-11-08 (no vetoes). | 07, 10 |
+ | **AX34** | **Unsupported host sample rate:** if prepareToPlay gets a rate outside AX6, the plugin catches the engine's refusal and enters the fallback: output = input delayed by the reported latency (P + 32 samples, 544 at P = 512, at every rate), unchanged (no output trim, no AX32 guard: like a host bypass, so delay compensation stays aligned); the warning flag is set (shown in Phase 11). In the fallback no IR is built anywhere (buildRoomIR throws at these rates): the builder is stopped before prepare (existing rule) and not restarted, reset steps 1–3 and 5 do nothing (step 3 records no submitted generation), offline processBlock does not build, and setStateInformation only validates and stores. A later prepareToPlay at a supported rate runs the normal path (synchronous build, flag cleared, builder started). No resampling in v1 (Phase 13 decides). | Hosts cannot refuse a rate (F5–F8); auval renders at 11.025/22.05/192 kHz (M1); silence would drop the track from the mix; the delay keeps delay compensation aligned (Izhaki Ch. 11). F/M ids: `docs/review/phase-07/research-dossier.md`. Phase 07 decision loop 2026-11-08, decider D8, interrogator SURVIVES WITH CORRECTIONS, advocate PASS; accepted by Maisara 2026-11-08 (no vetoes). | 07, 11, 13 |
++| **AX35** | **Data behind a released `hrtfId` is never replaced.** A different head, campaign or re-converted set is a new id (`generic-v2`), the old data retained, with the contract bump CLAUDE.md requires (NFR-6, FR-LIC-3). Before the Phase 08 goldens are frozen a converter re-run is a parameter change; between freezing and first release, one session (converter, goldens, listening pack, §6 row); after release, a second embedded set. | Saved projects render exactly as saved (NFR-6, FR-LIC-3): swapping the data under an existing id would change every saved project retroactively, so the head chosen in Phase 08 is frozen for the life of v1 projects (Seat 7, founder; the price of NFR-6 / FR-LIC-3). Board decision loop 2026-11-09 (dry run D1, `docs/review/board-smoke/hrtf-head/`: decider `4-decider-decision.md` + `6-decider-rebuttal.md`, interrogator `5-interrogator-round1.md` SURVIVES WITH CORRECTIONS, `7-interrogator-round2.md` SURVIVES WITH CORRECTIONS; researcher `3-researcher-dossier.md`; corpus c1b171f); accepted by Maisara 2026-11-09 ("accepted"). | 08, 12, 13, B4 |
+ 
+ ---
+ 
+@@ -335,6 +336,7 @@ Phase files for these get written once v1 is done and the Expert has answered th
+ | B11 | Early scattered energy in the hybrid IR (fixes the AX21 deficit): at each specular hit, s(1−α) of the incident energy into the Lambert boundary patch hit, propagated with the mixed specular/diffuse form (at each later hit, s re-radiated per Lambert and 1−s continuing specularly: Joyce's reflection matrix, Kuttruff §4.6 Eq. 4.35, with the §5.2 split; Gilbert, §4.6, splits the boundary into specular and non-specular portions), the diffuse part gathered at the listener (Eq. 4.29), added before t_mix (Kuttruff Eq. 4.24) | NFR-1, FR-SIM-6 | **v1 phase 05b** (`docs/phases/phase-05b.md`; after 05, before 08) (decider report 8, accepted by Maisara, 2026-11-05) | **Promotion rule** (decider D4, accepted by Maisara, 2026-11-05): promote only if (A) and (B) both pass. **(A)** Independent reference, CI gate in the promotion phase: the rendered energy envelope (ISM specular + hybrid diffuse) against a seeded Kuttruff §9.8 partially diffuse ray tracer, ±1 dB per 10 ms bin up to t_mix,e, all 8 bands, gating only bins with k = (ΣE)²/ΣE² ≥ 684 (tracer 3σ ≈ 0.5 dB, systematic budget 0.5 dB; AX11 convention); at least 3 gated bins per case, and with fewer the case **fails** (it is not skipped). The tracer uses energy multiplication (Kuttruff §9.8 step 3a; Vorländer Eqs. 11.14–11.18), with a seed independent of the rendered side; its seed is not changed to pass. Engineering note, not from the corpus: each detection is time-stamped at the ray's closest approach to the receiver point, which removes the ±r_d/c entry-time smear (±1.5 ms) from the systematic budget. Particles: receiver radius r_d = 0.5 m, N₀ = ⌈254·V⌉ (Vorländer Eq. 11.12 with k = 684, Δt = 10 ms; ≈ 1.52·10⁶ at 6 000 m³); if a case has fewer than 3 bins with k ≥ 684, N is doubled, up to 16·N₀, after which the case fails; N, the seed and the doubling count are logged. Cases: s = 0.1, 0.25 and 0.4 with uniform α = 0.15 on all faces and all 8 bands in the 20×30×10 m room, AX4 air absorption on both sides; and Kuttruff Table 5.2 layouts 4, 5 and 6 (10×20×30 m, in Table 5.2's notation) at s = 0.1, 0.25 and 0.4 plus the s = 1 anchor, with the solver called directly (decider report 7, FE-02, DN1, DN2; DN3, DN4 verified by the interrogator, report 6). Also compare the matching level directly with the tracer, per case and per band 500 Hz–2 kHz: ΔL_b,tr = 10·log10(E_target(AX16)/E_target(tracer)), and the hybrid's E_target against the tracer's, within ±1 dB, in the same Hann window, with tracer k ≥ 684 over the window. (i) If the hybrid's window level passes, tail-level matching switches to the hybrid whenever |ΔL_b,tr| > 1 dB anywhere, even if the per-bin render gate fails and early rendering is not promoted. (ii) If it fails, nothing switches: AX16 records ΔL_b,tr per case as a known deficit, and the diagnosis goes to Maisara. (iii) If Phase 05 accepted X-b (≤ 1 dB) but |ΔL_b,tr| > 1 dB anywhere, the acceptance is reversed and (i)/(ii) apply. The switch is valid only with SE(ΔL_b,tr) = 4.34/√k_tr ≤ 1/3 dB (threshold/3, AX11); k ≥ 684 gives ≤ 0.17 dB; realised k and SE are printed; the tracer seed is fixed, so the decision reproduces on re-run (decider report 11, FR-04 and C1, accepted by Maisara, 2026-11-05). Tracer bias: diagnose with two tracer self-checks against independent anchors: s = 0 against the ISM image energies in 10 ms bins (the lattice is exact, Kuttruff §4.1), and s = 1 against the Table 5.2 iteration T. Fix whichever side fails. Then halve the hybrid's time step and patches until the change is < 1 % (as in D2). If the remaining bias is ≤ 0.5 dB, it is within the stated systematic budget: the gate is unchanged and the bias is recorded. If it is > 0.5 dB in any gated bin, (A) fails and the branch above applies. N (beyond the pre-stated doubling rule), seeds and bins are never changed after results are seen (decider report 8, accepted by Maisara, 2026-11-05). Also re-derive the Phase 04 `open_field` check against the Lambert estimate (−23 to −43 dB per band, ledger OF). **(B)** BRAS paired check on the Phase 05 numbers: **not worse**, i.e. the room-averaged AQ9 error (EDT and C80, 500 Hz–2 kHz, equal room weight) with the hybrid is not higher by more than δ = 0.25 jnd for either metric (Δ̂ ≤ +δ), and no room's Δ̂ exceeds +1 jnd on either, each with SE ≤ threshold/3 from seed-paired ensembles sized per phase-05 scope 6 "Paired comparisons" (pilot n ≥ 51, then R ≥ max(144·σ₁,Δ², 9·σ₁,Δ,room², 9·σ₁,Δ,pair²), σ in jnd; decider report 7, FE-01, DN5). Vorländer Table 6.1 states these jnds for 500–1000 Hz only; at 2 kHz they are applied by extension (AQ9). The 500–1000 Hz mean is printed as the in-range figure. The per-room gain is reported sorted by absorption contrast, largest single-face share and broadband s, with no threshold. (B) is a safety check on estimated input data (researcher findings F2, F6, F7, BRAS documentation, outside the corpus), not a validation; n_rooms ≤ 3, so m ≤ 8 comparisons, false-failure ≈ 1.1 % (decider report 11, accepted by Maisara, 2026-11-05). With too few uneven-α or low-s BRAS rooms no minimum count applies; the limitation is recorded in the Phase 05 report and `bras_mapping.md` (F2). With no evaluable EDT/C80 pair, promotion needs Maisara's explicit sign-off on (A) alone. Rebuild time is measured against AQ10 and recorded; it does not block promotion. A check at s = 1 alone is circular. If the Phase 05 |ΔL_b| exceeds 1 dB anywhere, this phase also switches tail-level matching to the hybrid's propagated diffuse energy (AX16). Changes AX16, AX21; no contract change. Maisara decided on 2026-11-05 that the early part should contain scattered energy. |
+ | B12 | Tail decay source other than Eyring (radiosity a* or another predictor) | NFR-1, Q2 | new phase after 05 | Decision rule (decider report 8, accepted by Maisara, 2026-11-05): Phase 05 compares predicted T₆₀ (deterministic, so no seed noise, but not error-free: a* is converged to < 1 % per patch halving and the γ² choice moves γ²-Eyring by ≈ 0.4–3.6 % (Kuttruff Eqs. 5.33–5.34), both the size of the 1.25-point margin) with measured T30 at 500 Hz–2 kHz, room-averaged. A predictor replaces Eyring for all scenes (NFR-8: one predictor, no per-room choice) only if it lowers the mean \|error\| by ≥ 0.25 working jnd (1.25 % points) and makes no room worse by > 1 jnd (5 %). Otherwise Eyring stays. Shown separately for uniform and uneven α. Conditions (decider report 11, accepted by Maisara, 2026-11-05): (i) a predictor counts as lowering the error only if it does so with a* converged to < 0.4 % per halving (margin/3, by analogy with AX11); (ii) a predictor with a free modelling input (γ²) must meet the rule at every admissible value: the Table 5.1 row and 0.4; (iii) the 5 % T jnd is a working value from outside the corpus (Vorländer Table 6.1 gives 5 % for EDT, not for T); (iv) only the initial-estimate α set counts: the fitted set is circular in Eyring's favour by construction (its α were scaled so that Eyring matches the measured T; researcher finding F6, BRAS documentation, outside the corpus) and is reported only; (v) a* may not replace Eyring while ledger DB-1 (Table 5.2 / Fig. 5.10 case-4 gap) is unresolved; the AQ2 change request states this (D-B, decider 2026-11-06); e.g. Table 5.2 case 4 (absorbing floor): Eyring 1.38 s is 14 % above the Iteration value 1.21 s; under (v) Eyring stays for such rooms. An outcome from BRAS alone is labelled "input-limited" in the AQ2 change request, and Maisara decides on it (C2). Implemented through an AQ2 change. Not a* by default: a* assumes Lambert (s = 1) reflection on all walls (Kuttruff §5.7 Eqs. 5.49–5.56; §2.7, §5.2 Eq. 4.24). Phase 05f outcome (CR2, CR3, CR4; initial α; both meters; recommendation under C2, decider 2026-11-07; **accepted by Maisara 2026-11-07**): a* fails (i) and (v). γ²-Eyring meets the rule at the only admissible γ² (0.4; no BRAS box is tabulated in Kuttruff Table 5.1): −1.83 / −1.82 pts, worst room −1.22 pts; the gain grows with γ² (0.342: −1.56; 0.613: −2.87). **Recommended: not adopted; Eyring stays; AQ2 unchanged**, because the BRAS margin does not separate accurate from inaccurate predictors: Eyring under-predicts T in 8 of 9 room-bands, so any lengthening lowers the mean error, and Sabine, less accurate than Eyring on Kuttruff Table 5.2 (mean \|err\| ≈ 14.3 % vs ≈ 10.3 %), gains most (≈ 4.5 pts). Eq. 5.34 lengthens T for every γ² > 0 (Kuttruff §5.5) and fails this rule on Table 5.2 (lowers the mean by ≈ 0.1 pts; case 4 at γ² = 0.4: 1.47 s vs Eyring 1.38 s and Iteration 1.21 s, worse by ≈ 7.8 pts); γ² ≈ 0.4 is stated for rooms not far from a cube, and Eq. 5.30's condition σ_N²a²/2 ≪ 1 is not met over most of the T30 range (≈ 0.08 at −5 dB rising to ≈ 0.55 at −35 dB in case 4). Known cost of keeping Eyring: it is −22 % on Table 5.2 case 6, and absorption concentrated on the floor (audience) tends to put T below Eyring in auditoria (Kuttruff §5.7); γ²-Eyring makes such rooms worse and leaves case 6 at ≈ −21 %. **User-audible fact for Phase 13's beta list:** on initial α, the simulated T30 at 500 Hz–2 kHz misses the measured value by a room-mean \|error\| of 16.1 / 21.0 / 22.1 % (≈ 3.2–4.4 working jnd; condition iii); it is short in every band in CR2 and CR4 and mixed in CR3 (+22 % at 500 Hz, −12 / −29 % at 1–2 kHz). No predictor tested brings the predicted T within 10 % in any room (room means: Sabine 13.4–16.6 %, a* 14.9–17.7 %, γ²-Eyring 15.2–19.7 %, Eyring 16.4–22.8 %); the predictor moves the error by at most ≈ 8 pts, so most of the residual comes from input plus method. Reopen only on a measured dataset where (1) every face carrying ≥ 10 % of A in any AQ9 band has α measured independently of that room's T (product threshold), (2) Sabine does not also pass, and (3) γ²-Eyring passes at every admissible γ² including a room whose largest face carries the largest share of A. Phase 05d (Arni, dEchorate) is evidence, not validation, and counts only for rooms that its α-source rule shows meeting (1). (Ledger F5f-2 … F5f-26.) |
+ | B13 | `dry_wet` host parameter (left out in Phase 07 scope 2: the PRD wants the space, not a reverb send; noted there as a possible follow-up) | PRD "Target users, problem & success metrics" (Problem) | after 13 | Needs a product decision through the decision loop and a **new** frozen parameter ID (IDs are never renamed). |
++| B14 | **Headphone compensation** (headphone equalisation for the binaural output) | none (PRD silent on headphone EQ; FR-SIM-3 is the nearest) | none scheduled | No phase or test exists (PRD silent; checked in the D1 decision loop, D1-L17). The chain keeper's open debt from D1: compensation, when added, will be cross-campaign (SADIE II publishes no KU100 HpTFs as far as read) and must pass a colouration listening check (`docs/THIRD_PARTY.md` carries the same note). Recorded as a backlog row, not a scheduled phase: Maisara accepted the D1 report that flagged this as her call (2026-11-09). |
+ 
+ ---
+ 
+@@ -393,3 +395,4 @@ Phase files for these get written once v1 is done and the Expert has answered th
+ | 2026-11-08 | phase-07 wording/software fixes from the phase-07 interrogation (/fix-plan; ledger "docs/phases/phase-07.md — interrogation (2026-11-08)", builder answers, corpus c1b171f): AX2 per emitter path, outputMode ignored and omni forced (P07-3 wording, P07-18); scene a pure function of parameters and non-parameter fields, push-away never stored or written back (P07-6); dirty generation counter, final state always built, no-lost-update test (P07-27); `RealtimeEngine::reset()` and quiesced builder in non-realtime mode, processBlock the only submitter (P07-14, P07-15); AX32 bound restated (P07-21); state restore: parameters authoritative, setStateInformation before prepareToPlay builds in the next prepareToPlay (P07-17, P07-20); state round-trip and offline-determinism ACs made discriminating (P07-15, P07-16); no-lock AC by construction (P07-28); checklist notes on mono-preview comb colouring and symmetric positions for the PDC check (P07-4, P07-25); peak RSS at 96 kHz recorded in the PR (P07-10); rounds 2–3 (interrogator diff checks of e2f1d7a and docs/review/phase-07/interrogator-diff-check-2.md): `RealtimeEngine::reset()` semantics changed to drop the current and pending IR (state right after `prepare()`, next IR installed at once if in the mailbox before the first P samples), with the processor resubmitting the current scene's IR right after reset; `CrossfadingConvolver::reset()` gains the drop in Phase 07 (P07-15a); one reset sequence for `AudioProcessor::reset()` and entering non-realtime mode (quiesce builder and discard in-flight build, `RealtimeEngine::reset()` no-op when unprepared and dropping current/next/retiring IR and mailbox, resubmit current scene's IR and record its generation, snap trim smoother, restart builder only in realtime mode), full install condition, reset thread and allocation outside processBlock, host non-concurrency assumption not checkable, submitRoomIR/submitIrSet comment widened (P07-15b, d–j); isolated-update/AX31 wording for the 2P pickup (P07-15c); processBlock the only submitter during a bounce, setStateInformation/prepareToPlay submits deferred (P07-14); "at least one" non-parameter field (P07-16); atomic increment (fetch_add) (P07-27, P07-28); comb colouring less audible or inaudible binaurally (P07-4). No assumption value, threshold or golden changed; P07-3 headroom, 5, 7, 8, 11, 12, 13, 19, 22 await decisions. | /fix-plan (plan-editor) |
+ | 2026-11-08 | Phase 07 decisions (decision loop: decider round 2, interrogator decision round 2 SURVIVES / SURVIVES WITH CORRECTIONS, advocate round 2 PASS; accepted by Maisara 2026-11-08, no vetoes). **AX18** amended (bit-identical switch not made; equal-power for a state restore that changes the IR; equal-gain for position and room-size updates as a placeholder until Phase 10 sets the law and its gate; cross term Vorländer §4.3 Eq. 4.15; position-update correlation bound; breaks now include 07). Added **AX33** (D6: 20 ms cap = minimum spacing between build starts, isolated request starts at once; **AQ4** pointer now "settled by AX33 (Phase 07); Phase 10 confirms or replaces it") and **AX34** (D8: unsupported host rate → bypass-like delayed output, no IR built). **AX6** note: reachable from host parameters from Phase 07 (D3). phase-07: `output_trim_db` range −24…+24 → **−48…+24 dB** with the AX2 headroom note and an extreme-scene DoD record (D4); nearest-valid-point push-away with tests (D1); relative-position consequence and checklist room-size line (D2, D3); log room-size map with explicit endpoints (D9); 1.5 m-room Schroeder-frequency risk (D5); AX33 injected-clock test and rebuild-time record (D6); AX34 fallback and test, pluginval rate risk corrected (D8); diff-check fixes R3-1 (builder compares against the recorded submitted generation), R3-2 (record only on a successful submit; prepare() clears it) (extended to bit-identical skips, DC-1) and BP-389 (install condition in the row above). **D7** (decider rounds 1–3, interrogator decision round 3 SURVIVES WITH CORRECTIONS, advocate round 2 REDIRECT (narrow), cleared on interrogator confirmation; final advocate screen of the applied text PASS): phase-07 scope 3 switch rule and crossfade law (skip a bit-identical submit; restore flag consumed by the restore's own build decision at generation ≥ g_R, including prepareToPlay's synchronous build and reset step 3; EqualPower for that submit, EqualGain otherwise as the AX18 placeholder) with tests (a)–(f) and the −100 dB null-test conditions. Diff check of the applied decisions (DC-1…DC-8, software logic and wording): a bit-identical skip records its generation as handled (builder and offline dirty check; failed submits record nothing, prepare() clears the record); no-lost-update AC restated on the last handled generation and the engine's current IR; realtime setStateInformation makes the restore's decision itself (quiesce builder, build, submit or skip, record, consume the flag, restart builder) and test (d) aligned; D7 provenance; D7 tests in the AC list; AQ4 and phase-10 AX18 line mirror AX18 (position and room-size, placeholder); AQ4 slot wait 0 for an isolated request (AX33); `computeBlock` step 4. Follow-ups: phase-10 scope 8, AX18 placeholder note, position-fade gate AC; phase-11 scope 5–7; phase-13 scope 10–11. No threshold of an existing test, golden or contract changed. | Decision loop via /fix-plan (plan-editor) (`docs/review/phase-07/decider-round2.md` §3–§4, `advocate-round2.md`, `interrogator-decision-round2.md`, `interrogator-diff-check-3.md`, `decider-round3.md`, `interrogator-decision-round3.md`, `interrogator-decision-diff-check-1.md`; corpus c1b171f) |
+ | 2026-11-08 | Phase 07 follow-ups recorded in later phases (/fix-plan; source: PR #23 description "Follow-ups"; ledger P07F-1..10; Maisara 2026-11-08 asked that they be recorded so phase sessions pick them up). phase-10 scope 8: the builder's 1 ms idle poll of the dirty generation (`IrBuilderThread`, `kIdlePollS`) confirmed or replaced by a lock- and syscall-free wake-up, worst-case extra isolated-update delay stated. phase-13 scope 1: Phase 07 rebuild times (48/96 kHz, default/maximum room, 3 OSes) and Linux RSS +122.6 MB quoted from CI run 42465826545; memory per instance measured on all three OSes, any budget decided in Phase 13. phase-13 scope 12 (new): pluginval release cached in CI (run 42465826545 attempt 1, HTTP 504). §5 B13 (new): `dry_wet` host parameter. §4 Phase 10/13 summaries aligned. No assumption, threshold or golden changed; recorded measurements only. | plan-editor (Claude) |
++| 2026-11-09 | D1, the dataset behind `hrtfId = "generic-v1"`. Board decision loop 2026-11-09 (dry run D1, `docs/review/board-smoke/hrtf-head/`: decider `4-decider-decision.md` + `6-decider-rebuttal.md`, interrogator `5-interrogator-round1.md` SURVIVES WITH CORRECTIONS, `7-interrogator-round2.md` SURVIVES WITH CORRECTIONS; researcher `3-researcher-dossier.md`; corpus c1b171f); accepted by Maisara 2026-11-09 ("accepted"). Added **AX35** (data behind a released `hrtfId` is never replaced; `generic-v2` with the old data retained; the freeze window). phase-08: scope 1 (SADIE II D1 KU100, Zenodo 10.5281/zenodo.12092466 V2-2, `D1_HRIR_SOFA.zip` MD5 `4850c1eb8e63e2d4f605edcdb4d5c883`, SHA-256 pinned in `tools/hrtf/fetch_hrtf_source.py`; Apache 2.0 licence text, York attribution, citation and §4(2) change notice; "SOFA at the record's native rate, read at pin time" (C-2); MIT KEMAR fallback under conditions; TH Köln excluded, re-entry condition), scope 2 (≤ ~32 MB embed via grid subset keeping the −81° row and the 0° ring and/or float16, AC 2/AC 4 held; untrimmed round-trip reference; fade-out at the trim; dataset-agnostic header fields; build-step object embed), scope 3 (immutable process-wide `HrtfSet`, no L/R symmetry, `[alloc]` tests; solid-angle (Voronoi) weighted DF-EQ and coherence averages over the stored subset in one-third-octave bands, always applied, post-EQ 0 dB ± 0.1 dB test, pin-time source-state check ±1 dB per one-third-octave band 200 Hz–8 kHz with the 1 dB provenance per the interrogator's restatement), scope 5 (no 2° grouping until the benchmark shows the need), scope 7 (`render_cli --hrtf` validation-only override; preset validation logs record `hrtfId` and set identity), AC 3 (estimator named before the first measurement; window challenged, never widened), listening checklist (forced-choice form, anechoic direct-only render beside the room render, fixed acceptance set, head name off the pack, Seat 9 complaint protocol with the restated "thin" sentence, Phase 11 tooltip note), Risks. §1 "Generic HRTF" row updated. §5 **B14** (headphone compensation, open debt, no slot) added. `docs/THIRD_PARTY.md` "Planned" line names the dataset, licence, record and the cross-campaign compensation note (row proper when the data is pinned). No threshold of an existing test, golden or contract changed; AC 3's window unchanged, estimator to be named. | plan-editor (Claude) |
+diff --git a/docs/THIRD_PARTY.md b/docs/THIRD_PARTY.md
+index 51c5fa8..cda9099 100644
+--- a/docs/THIRD_PARTY.md
++++ b/docs/THIRD_PARTY.md
+@@ -47,7 +47,24 @@ checksum in a script. Python requirements are pinned by version and SHA-256 (`to
+ 
+ ## Planned (not yet added)
+ 
+-An HRTF dataset arrives in a later phase (08). Add its row when it is pinned.
++The HRTF dataset arrives in Phase 08. Decided (board decision loop 2026-11-09, D1,
++`docs/review/board-smoke/hrtf-head/`; accepted by Maisara 2026-11-09): **SADIE II, subject D1 (Neumann
++KU100)**, University of York (AudioLab / Kearney), Zenodo record DOI
++[10.5281/zenodo.12092466](https://doi.org/10.5281/zenodo.12092466) version V2-2 (2024-06-18), file
++`D1_HRIR_SOFA.zip` (record MD5 `4850c1eb8e63e2d4f605edcdb4d5c883`; SHA-256 computed at the first download
++and pinned in `tools/hrtf/fetch_hrtf_source.py`; never committed). Licence
++[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) ("Copyright 2018, University of York";
++York-page condition: the original dataset must be referenced whenever used in original or modified form;
++cite Armstrong, Thresh, Murphy, Kearney 2018, Applied Sciences 8(11):2029, DOI
++[10.3390/app8112029](https://doi.org/10.3390/app8112029); Apache §4(2) change notice listing the
++converter's transformations), verified on the official record 2026-11-09 by the researcher and re-read at
++pin time. Shipped as the converted `resources/hrtf/generic-v1.bin` beside `resources/hrtf/LICENSE-generic-v1.txt`;
++the head is named only here, in that licence file and in the public testing record, never in UI or
++marketing copy, pending a lawyer's view on nominative use (Apache §6). Headphone compensation, when added
++(BUILD_PLAN §5 B14), will come from a different KU100 campaign (SADIE II publishes no KU100 HpTFs as far as
++read) and must pass a colouration listening check. Fallback (MIT KEMAR, under conditions) and the excluded
++TH Köln set: `docs/phases/phase-08.md` scope 1. Add the row proper (under "Linked into the product") when
++the data is pinned in Phase 08 session 1.
+ 
+ Validation datasets for phase 05d (decider report 15, accepted by Maisara, 2026-11-05; facts from
+ researcher reports 13/14, external). The 05d session pins them, confirms the licence on the live record
+diff --git a/docs/phases/phase-08.md b/docs/phases/phase-08.md
+index 0bc01e8..f9dc238 100644
+--- a/docs/phases/phase-08.md
++++ b/docs/phases/phase-08.md
+@@ -1,6 +1,6 @@
+ # Phase 08 — Binaural output with a generic HRTF
+ 
+-Size: **L** (plan for two sessions; split into 08 and 08b if needed) · Depends on: 04, 05b, 07 (05b `done` in either outcome; with "not promoted", this phase builds on the specular-only early part, AX21) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ6, AX3, AX5) and §3 (F7, F8), PRD FR-SIM-3, FR-SIM-4, FR-3D-9, A1
++Size: **L** (plan for two sessions; split into 08 and 08b if needed) · Depends on: 04, 05b, 07 (05b `done` in either outcome; with "not promoted", this phase builds on the specular-only early part, AX21) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ6, AX3, AX5, AX35) and §3 (F7, F8), PRD FR-SIM-3, FR-SIM-4, FR-3D-9, A1; the D1 decision (`docs/review/board-smoke/hrtf-head/`, accepted by Maisara 2026-11-09) behind scope 1–3
+ 
+ ## Goal
+ 
+@@ -15,31 +15,105 @@ the Phase 06 convolver.
+ - **AX3**: the head is upright, and yaw points toward the horizontal centroid of the emitters. If the
+   centroid is within 0.1 m horizontally of the listener, the previous yaw is held (initial yaw = +y).
+ - **AX5**: deterministic; tail noise per ear is seeded from `tailSeed` with the per-output offset from Phase 04.
++- **AX35**: the data behind a released `hrtfId` is never replaced; a different head, campaign or re-converted
++  set is `generic-v2` with the old data retained. Before this phase's goldens are frozen a converter re-run
++  is a parameter change.
+ 
+ ## Scope
+ 
+ ### Session 1: HRTF data and lookup
+ 
+-1. **Licence first.** Pick the dataset: preferred is **SADIE II** (University of York), KU100 or KEMAR
+-   subject, 48 kHz, in SOFA format. Read its licence on the official site and record the licence text
+-   and attribution in `resources/hrtf/LICENSE-generic-v1.txt` and `docs/THIRD_PARTY.md`. If the licence
+-   doesn't allow commercial redistribution of derived data, fall back to **MIT KEMAR**, and check that
+-   licence the same way. If neither is clearly allowed, mark the phase `blocked` and escalate. Don't ship
+-   data under an unclear licence.
+-2. `tools/hrtf/convert_sofa.py` (uses `sofar` or `netCDF4`/`h5py`, pinned) — reads the SOFA file,
+-   resamples to 44.1/48/88.2/96 kHz (high-quality polyphase), trims to a common length (e.g. 256 taps
+-   at 48 kHz, scaled for other rates), removes the common onset delay while keeping the ITD as a
+-   separate per-direction value (`onset_left`, `onset_right` in fractional samples), and writes
+-   `resources/hrtf/generic-v1.bin` (a simple versioned binary: header, direction grid, minimum-phase or
+-   raw HRIRs, ITDs). The original SOFA is downloaded by checksum, **never committed**.
+-3. `src/sim/hrtf/HrtfSet.h/.cpp` — loads the embedded binary (via a generated C++ byte array or
+-   CMake `add_custom_command` resource step; `sim` stays JUCE-free). Lookup:
++1. **Licence first.** The dataset is decided (board decision loop D1, `docs/review/board-smoke/hrtf-head/`,
++   accepted by Maisara 2026-11-09): `generic-v1` = **SADIE II**, subject **D1 (Neumann KU100)**, University
++   of York, Zenodo record DOI 10.5281/zenodo.12092466, version **V2-2 (2024-06-18)**, file
++   `D1_HRIR_SOFA.zip` (record MD5 `4850c1eb8e63e2d4f605edcdb4d5c883`; SHA-256 computed at the first
++   download and pinned in `tools/hrtf/fetch_hrtf_source.py`, on the `fetch_corpus.sh` pattern: fetched by
++   checksum into a git-ignored directory, **never committed**; the round-trip test (AC 2) skips with a
++   marker when the source is absent unless `SPATIAL_REQUIRE_HRTF_SOURCE=1`, set in CI). SOFA at the
++   record's native rate, read at pin time: the SOFA convention, native sample rate and `GLOBAL_Comment`
++   are read and recorded then; the Armstrong et al. 2018 PDF is checked against the dossier's grid and
++   length facts (F11/F12); and the converter's source-state consistency check (scope 3) runs on the
++   pinned file in the same session, a "not confirmed" result being raised before any golden is frozen.
++   Licence: **Apache License 2.0** ("Copyright 2018, University of York"; the York page's condition that
++   the original dataset must be referenced whenever used in original or modified form; the citation
++   Armstrong, Thresh, Murphy, Kearney 2018, Applied Sciences 8(11):2029, DOI 10.3390/app8112029; an
++   Apache §4(2) change notice listing the converter's transformations: resampled, trimmed, grid subset,
++   diffuse-field EQ computed and applied, onset removed, ITD stored). Record the licence text and
++   attribution in `resources/hrtf/LICENSE-generic-v1.txt` and `docs/THIRD_PARTY.md`; the AC 1 script
++   matches `LICENSE-<id>.txt` to the **header's** set id, not to a filename. Re-read the licence on the
++   official record (the record's licence field and the SOFA `GLOBAL_License` attribute) at pin time.
++   **Fallback:** if at pin time the record's licence is no longer Apache 2.0, or a lawyer reads the York
++   sentence as more than attribution, fall to **MIT KEMAR** (check its licence the same way) under these
++   conditions: the zone below −40° elevation is a declared unmeasured zone, never mirrored; the DF-EQ and
++   tail-coherence averages are Voronoi-weighted with the missing cap reported in the header; DF-EQ on by
++   default; the below-grid policy stored as header data, not renderer code; the head confound against the
++   IEM baseline recorded. The TH Köln KU100 set is **excluded** under "unclear licence" (CC BY-SA 3.0 in
++   the paper vs CC BY 3.0 in the Zenodo field); it re-enters only if both the SOFA `GLOBAL_License`
++   attribute and a written answer from the record contact say CC BY, before the Phase 08 goldens are
++   frozen. If neither allowed dataset is clearly licensed at pin time, mark the phase `blocked` and
++   escalate. Don't ship data under an unclear licence.
++2. `tools/hrtf/convert_sofa.py` (uses `sofar` or `netCDF4`/`h5py`, pinned; dataset-agnostic: it converts
++   any SOFA set, the header below records which) — reads the SOFA file, resamples to 44.1/48/88.2/96 kHz
++   (high-quality polyphase), trims to a common length (e.g. 256 taps at 48 kHz, scaled for other rates)
++   with a **fade-out window at the trim, not a hard cut**, removes the common onset delay while keeping
++   the ITD as a separate per-direction value (`onset_left`, `onset_right` in fractional samples), and
++   writes `resources/hrtf/generic-v1.bin` (a simple versioned binary: header, direction grid,
++   minimum-phase or raw HRIRs, ITDs). The original SOFA is downloaded by checksum (scope 1), **never
++   committed**.
++   - **Embed bound.** The committed four-rate `.bin` is ≤ ~32 MB (the full 8802-direction grid in
++     four-rate float32 would be ≈ 104 MB): a grid subset of ≤ ~3000 directions that keeps the lowest
++     measured elevation row (−81°) and the 0°-elevation ring, and/or float16 storage, chosen in this
++     phase so that AC 2 (−60 dB) and AC 4 (continuity) hold on the real file. AC 2's reference is the
++     pinned-resampler output of the **untrimmed** resampled source (for SADIE II this equals the trimmed
++     one: York already trimmed to 512 samples at 96 kHz with fades). If the bound cannot be met with
++     AC 2 and AC 4 held, report it (decision reversal condition 3); don't loosen either gate.
++   - **Dataset-agnostic header.** `generic-v1.bin` records: set identity; lab and campaign; record
++     version and DOI; source SHA-256; converter version; sample rates and per-rate tap count; direction
++     count and grid type; lowest/highest measured elevation (SADIE II: −81°/+90°, the −90° point
++     interpolated by York); measurement distance (1.2 m); microphone position (built-in capsules); the
++     source EQ state as publisher-documented plus converter-confirmed / not confirmed (scope 3); the
++     converter's computed DF-EQ curve; the solid-angle (Voronoi) weights of the stored subset or their
++     sum check (Σ w_i = 1); the weighted DF-EQ curve per ear; the weighted tail-coherence target per
++     band; the unweighted DF curve for diagnostics; ITD method and sign convention; onset/minimum-phase
++     treatment; the stored triangulation; a human-readable attribution string; fixed little-endian. No UI
++     code or string table knows which head shipped: any About/credits text reads the header's attribution
++     string; the main window and the mode switch never show a dataset name.
++3. `src/sim/hrtf/HrtfSet.h/.cpp` — loads the embedded binary (embedded as a build-step object:
++   `add_custom_command` → object / `.incbin`-style; no generated C++ byte array; `sim` stays JUCE-free).
++   `HrtfSet` is one immutable process-wide object built off the audio thread, with an O(1)
++   direction → triangle index; it assumes **no left–right symmetry** (a B4 personal set breaks it; the
++   AC 3 mirror check stays a data test); `[alloc]` tests on `query` and on the BRIR build. Lookup:
+    - `query(azimuth, elevation) → {hrirL, hrirR, itd}` with interpolation: triangulate the measurement
+      grid (spherical Delaunay computed offline in the converter and stored), then barycentric
+-     interpolation of magnitude-aligned (onset-removed) HRIRs. ITD is interpolated separately and
+-     re-applied as a fractional delay.
+-   - **Diffuse-field equalization** of the set (computed in the converter, stored as an EQ filter), so the
+-     generic HRTF doesn't add a strong overall colouration. Keep the EQ switchable in code for tests.
++     interpolation of magnitude-aligned (onset-removed) HRIRs; prefer onset-removed/minimum-phase
++     interpolation (Begault Ch. 4 "Problems with Interpolation Algorithms"). ITD is interpolated
++     separately and re-applied as a fractional delay.
++   - **Diffuse-field equalization, computed once from the set and always applied.** The converter's
++     diffuse-field averages, the DF-EQ curve and the tail-coherence target (scope 5: the diffuse-field
++     average of the interaural cross-spectrum), are computed over the **stored** direction subset with
++     each direction weighted by the solid angle of its spherical Voronoi cell, w_i = Ω_i / 4π (the
++     Voronoi cells are the dual of the stored Delaunay triangulation), per ear (DF curve) / per band
++     (coherence target) in one-third-octave bands, stored in the `.bin` header beside the weights' sum
++     check (Σ w_i = 1), and reported by `--diagnostics` together with the unweighted curve, so the bias
++     the weighting removes is visible on the pinned file. The converter applies its own weighted
++     diffuse-field curve to every set it converts (per ear). The header records (i) the source's EQ
++     state as documented by the publisher (SADIE II: diffuse-field equalised by York), (ii) the
++     converter's computed curve, (iii) the post-EQ check: the weighted one-third-octave average of the
++     converted set is 0 dB within 0.1 dB in every band (automated test, the DF-EQ identity AC; a numerical identity
++     bound, one tenth of the level jnd). **Source-state consistency check (pin time):** if the computed
++     curve on the pinned `D1_HRIR_SOFA.zip` lies within ±1 dB in every one-third-octave band with centre
++     from 200 Hz to 8 kHz, the header records "source: diffuse-field equalised (publisher), converter
++     residual ≤ 1 dB"; if any band exceeds ±1 dB, the header records "source EQ state: not confirmed"
++     and the phase raises it with Maisara and through the interrogator before the Phase 08 goldens are
++     frozen. The curve above 8 kHz is reported, not gated. Nothing in the rule switches the application
++     off. Provenance of the numbers (the decider's product judgement, not load-bearing for the head
++     choice): 1 dB is Vorländer's general level jnd of roughly 1 dB (`vorlaender-auralization.md`
++     abbreviations table and line 3167); Table 6.1's 1 dB row is strength G at 500–1000 Hz, so the
++     per-one-third-octave-band use from 200 Hz to 8 kHz is by extension (as §5 B11 already says of
++     Table 6.1); one-third-octave bands: Rumsey §3.2.4, Begault Ch. 4 "Equalization of HRTFs"; 200 Hz:
++     the set's measured range (sweeps from 200 Hz, LF modelled below); 8 kHz: the top of
++     `contract::kOctaveBandsHz` and of the AC 3 ILD band; 0.1 dB: one tenth of the jnd. Begault's
++     ±1.5–2.5 dB diffuse-minus-free-field figure is not a tolerance.
+ 
+ ### Session 2: BRIR assembly and tail
+ 
+@@ -48,13 +122,15 @@ the Phase 06 convolver.
+ 5. `src/sim/binaural/BrirBuilder.h/.cpp` — for each emitter:
+    - **Early part:** for each image source (from Phase 03, using its per-band amplitude, delay and
+      direction), add `band-filtered(amplitudes) * HRIR(direction)` into the left and right ear buffers at
+-     the arrival time plus the per-ear ITD. For efficiency, group image sources by direction cell (e.g. 2°
+-     bins) above reflection order 3 and render each group once. Document the approximation and make sure the
+-     direct path and orders 1–3 are never grouped.
++     the arrival time plus the per-ear ITD. **No 2° grouping until the Phase 08 benchmark shows it is
++     needed; measure first.** Only if the measured BRIR build time calls for it, group image sources by
++     direction cell (e.g. 2° bins) above reflection order 3 and render each group once, and document the
++     approximation. The direct path and orders 1–3 are never grouped.
+    - **Late tail:** two noise tails (left/right seeds) with the Phase 04 per-band envelopes, then mixed per
+      band so the **interaural coherence** follows the diffuse-field model for a head: compute the target
+      coherence per band from the HRTF set itself (diffuse-field average of the interaural cross-spectrum,
+-     done in the converter), and apply it with the standard 2×2 mixing
++     solid-angle (Voronoi) weighted over the stored subset, done in the converter, scope 3), and apply it
++     with the standard 2×2 mixing
+      (`L = a·n1 + b·n2, R = a·n1 − b·n2` with a and b set from the target coherence), then apply the
+      diffuse-field HRTF magnitude per ear.
+    - Energy: the binaural BRIR's per-band energy (average of the two ears, diffuse-field equalized)
+@@ -62,7 +138,14 @@ the Phase 06 convolver.
+ 6. `sim::buildRoomIR(Kind::Binaural)` returns the 2×2 BRIR matrix: emitter L → ear L/R and emitter R →
+    ear L/R. The plugin sends `outputMode` through, so `binaural` now uses this path. `stereoSpeakers`
+    keeps using omni until Phase 09.
+-7. `render_cli --mode binaural`, listening-pack entries, goldens for 3 scenes.
++7. `render_cli --mode binaural`, listening-pack entries, goldens for 3 scenes. `render_cli --hrtf <file>`:
++   a **validation-only** override that renders through another converted `.bin` (CLI only, never in the
++   scene, no host parameter; `hrtfId` stays the schema const; the AX4 `--no-air-absorption` pattern), so
++   B9 can render through BRAS's FABIAN HRIRs (CC BY-SA 4.0: validation only, as the BRAS row in
++   `docs/THIRD_PARTY.md` states). Every preset validation log (the Phase 12 preset listening checklist
++   and its PR listening notes, the Phase 13 final listening pass through all presets, and the B9 (§5)
++   protocol logs) records the `hrtfId` and the header's set identity string of the build it was listened
++   through; this phase's checklist does the same.
+ 8. **Update-time check (ledger P06F-4):** once the head yaw follows the emitter centroid (AX3), emitter
+    moves change the HRTF set; check whether Vorländer Table 15.1's head-rotation row (35 ms; filter
+    content 'new HRTF') applies and, if so, whether the AQ4/AX31 isolated-update delay (slot wait +
+@@ -82,39 +165,74 @@ near-field HRTF correction (sources < 1 m; note it as a follow-up).
+ ## Acceptance criteria — automated
+ 
+ - [ ] Licence file present and `docs/THIRD_PARTY.md` updated (a CI script fails if `resources/hrtf/*.bin`
+-      exists without the matching `LICENSE-*.txt`).
+-- [ ] Converter round-trip: HRIRs decoded from `generic-v1.bin` match the SOFA source (resampled) within
+-      −60 dB at measured directions.
++      exists without the `LICENSE-<id>.txt` matching the **header's** set id).
++- [ ] Converter round-trip: HRIRs decoded from `generic-v1.bin` match the pinned-resampler output of the
++      untrimmed resampled SOFA source within −60 dB at every stored (measured) direction. The source is
++      fetched by checksum (scope 1); the test skips with a marker when it is absent unless
++      `SPATIAL_REQUIRE_HRTF_SOURCE=1` (CI).
+ - [ ] **ITD/ILD sanity** (anechoic scene: α = 1 everywhere, direct path only): an emitter at +90°
+       azimuth (left; define the azimuth sign convention in the code and docs) gives ITD between **0.6 and
+       0.75 ms** with the left ear leading, and ILD > 6 dB averaged over 2–8 kHz. The mirror holds at −90°.
+-      An emitter straight ahead gives |ITD| < 20 µs and |ILD| < 1 dB.
++      An emitter straight ahead gives |ITD| < 20 µs and |ILD| < 1 dB. The onset/ITD estimator (and the
++      sign convention) is named in this AC by the decision loop **before the first measurement**; if the
++      pinned file measures outside 0.6–0.75 ms, the window is challenged on that evidence through the
++      interrogator, never widened to pass (decider challenge C-1: York's own ITD plots read ≈ 0.85 ms for
++      D1 by an unstated method, dossier F21; a low-frequency/cross-correlation ITD exceeds an onset ITD,
++      Roginska & Geluso Ch. 1). Not a head reversal.
+ - [ ] **Interpolation continuity:** sweeping azimuth in 1° steps never changes broadband level by more than
+       1 dB or ITD by more than 30 µs per step.
+ - [ ] **Tail coherence:** measured interaural coherence of the late tail per band is within ±0.1 of the
+-      target curve (125 Hz–4 kHz).
++      target curve (125 Hz–4 kHz); the target is the solid-angle-weighted one (scope 3).
+ - [ ] **Energy:** binaural vs omni per-band energy within ±1 dB for all valid fixtures.
+ - [ ] **Orientation (AX3):** a unit test with emitters ahead, behind and on top of the listener gives
+       the documented yaw, and the hold rule triggers at < 0.1 m.
+ - [ ] T30 of each ear's BRIR within ±5% of the omni IR's T30 (250 Hz–4 kHz).
++- [ ] **DF-EQ identity:** the solid-angle-weighted one-third-octave average of the converted set is 0 dB
++      within 0.1 dB in every band (scope 3). The committed `.bin` is within the scope 2 embed bound with
++      this, AC 2 and AC 4 green on the real file; its size is recorded in the PR.
++- [ ] **Validation-only override:** `render_cli --hrtf <file>` renders through the given converted set;
++      the option exists only in the CLI (no scene field, no host parameter; `hrtfId` stays the schema
++      const), and the scene validator still rejects any other `hrtfId`.
+ - [ ] All earlier tests still pass. pluginval passes. Plugin CPU benchmark is recorded.
+ 
+ ## Listening / manual checklist (Maisara, headphones)
+ 
+-Listening pack (`binaural/`) and the plugin in a DAW with `output_mode = binaural`:
+-- [ ] Default scene with emitters at about ±30° ahead: the stereo image sits **in front** and outside your head.
+-      (Generic HRTFs often sound slightly "inside" or "above" for some people. Note what you hear; that's
+-      what B4 is for.)
++Listening pack (`binaural/`) and the plugin in a DAW with `output_mode = binaural`. The pack never names
++the head (the dataset is named only in the licence file, `docs/THIRD_PARTY.md` and the public testing
++record). Fixed acceptance set, rendered for every item: an **a cappella voice, pink-noise pulses and
++speech**. Every room render comes with an **anechoic direct-only render** (α = 1, direct path only) of the
++same emitter and listener positions beside it, and with the omni preview. Answer in the **forced-choice
++form**: location **front / back / above / inside / outside**; colour against the omni preview **none /
++boxy / thin / harsh**. Record the `hrtfId` and the header's set identity string of the build you listened
++through (scope 7).
++- [ ] Default scene with emitters at about ±30° ahead: where is the image (front / back / above / inside /
++      outside)? Expected: in front and outside your head. (Generic HRTFs are heard "inside" or "above" by
++      some people. Note what you hear; that's what B4 is for.)
+ - [ ] `anechoic_azimuth_sweep.wav`: a sound circling the head. It should be clearly left, right and
+       front. Front/back confusion is common with generic HRTFs, so note it.
+ - [ ] Move the listener close to the L emitter: the image pulls left and the room recedes.
+ - [ ] Large hall: the reverb surrounds you rather than sitting between the ears like a normal stereo reverb.
+-- [ ] Note any colouration (boxy, harsh, thin) compared with the omni preview.
++- [ ] Colour against the omni preview, for the room render and for its anechoic render: none / boxy / thin /
++      harsh.
++- [ ] **Complaint protocol (Seat 9):** a colour complaint on a preset is checked against the anechoic
++      render and the omni preview beside the preset before it is assigned to room, head or headphones.
++      Head shadow is not a low-frequency effect (Rumsey §2.1.2: the head is an appreciable barrier at HF,
++      not at LF), so a weak 125–250 Hz is not head shadow. A low-frequency loss can still come from the
++      HRIR window (Begault Ch. 4 "Methods for Data Reduction": rectangular windowing may lose
++      low-frequency information) or from the set's LF extension (SADIE II: below ~200 Hz modelled).
++      "Thin" that persists in the anechoic render is therefore checked against the converter's LF
++      response (the `--diagnostics` curve below 400 Hz) before it is assigned to room or headphones.
++- [ ] **Hand-off to Phase 11 (Seat 6):** one line in the PR for the output-mode tooltip or manual, a
++      default-experience note (what a listener may hear through the generic head: inside or behind for
++      some), with no head name.
+ 
+ ## Contractor review focus
+ 
+-Licence review, HRIR interpolation (triangulation, ITD handling), coordinate and sign conventions, the
+-image-source grouping approximation, the diffuse-coherence mixing, and energy normalization between modes.
++Licence review (licence re-read on the record at pin time; head named nowhere in UI), HRIR interpolation
++(triangulation, ITD handling, the named onset estimator), coordinate and sign conventions, the
++dataset-agnostic header and the Voronoi-weighted DF-EQ / coherence averages with the identity test, the
++image-source grouping approximation (if the benchmark introduced it), the diffuse-coherence mixing, energy
++normalization between modes, and the `--hrtf` override staying out of the scene and the plugin.
+ 
+ ## Risks
+ 
+@@ -122,8 +240,21 @@ image-source grouping approximation, the diffuse-coherence mixing, and energy no
+   expected limitation, recorded as evidence for B4.
+ - F8: the head always faces the emitters, so sources can't be put behind the listener. Report it if it
+   sounds odd in practice.
+-- BRIR build time with many image sources. The grouping keeps it within budget; measure it against AQ4's 20 ms cadence.
++- BRIR build time with many image sources. Measure it against AQ4's 20 ms cadence (AX33) first; grouping
++  (scope 5) is introduced only if the benchmark shows it is needed.
++- The four-rate embed may not reach ≤ ~32 MB with AC 2 and AC 4 held (scope 2). Report it; don't loosen a
++  gate (decision reversal condition 3: Maisara is told the deadline keeper's cell is back at 2).
++- AC 3's ITD window may fail as worded on the SADIE heads (York's plots read ≈ 0.85 ms by an unstated
++  method). Not a head reversal: name the estimator first, then challenge the window through the
++  interrogator on the measurement (C-1).
++- The pin-time source-state check (scope 3) may exceed ±1 dB in a band: the header records "not
++  confirmed", the dossier's F18 is marked contradicted and it is raised before any golden is frozen. The
++  converted output is the same either way (the set's own weighted curve is always applied).
++- Headphone compensation has no slot in the plan (§5 B14, open debt): expect colouration notes in the
++  checklist that no Phase 08 step addresses.
+ 
+ ## Definition of done
+ 
+-All automated criteria green; licence verified; status row 08 `done` (or 08b added); checklist in the PR.
++All automated criteria green; licence re-read on the official record at pin time and recorded (scope 1);
++the head named only in `LICENSE-generic-v1.txt`, `docs/THIRD_PARTY.md` and the public testing record;
++status row 08 `done` (or 08b added); checklist in the PR with the `hrtfId` and set identity string.
