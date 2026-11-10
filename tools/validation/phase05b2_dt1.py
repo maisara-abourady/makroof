@@ -359,7 +359,7 @@ def step_openfield(npaths: int = 400_000):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14", "c15"])
+    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14", "c15", "c16"])
     ap.add_argument("--paths", type=int, default=32_000)
     a = ap.parse_args(argv)
     if njit is None:
@@ -375,7 +375,7 @@ def main(argv=None):
     else:
         {"c3": step_c3, "c4": step_c4, "c5": step_c5, "c6": step_c6, "c7": step_c7, "c9b": step_c9b,
          "c12a": step_c12a, "c12b": step_c12b, "c12d": step_c12d,
-         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14, "c15": step_c15}[a.step]()
+         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14, "c15": step_c15, "c16": step_c16}[a.step]()
 
 
 
@@ -1587,6 +1587,139 @@ def step_c15(reps: int = 30, n_long: int = 1_000_000):
             out["cases"][f"{name}_e{e}"] = row
             log(name, e, row)
             d = load(); d["c15"] = out; save(d)
+
+
+# ------------------------------------------------------------------------------------------
+# C16 (interrogator round 2, 32-interrogator-round2-T1-T2-T6.md (f)-(h)): N-3W*** with JOINT accounting (decider round 3,
+# 29-decider-round3-T1-T2-T6.md §D-T1.3). One history = forward path h of emitter 0 + forward path h of emitter 1 + the
+# shared listener-started path h with NEE to both emitters' images. The listener-started trajectories do not depend on the
+# gather (same key, same path index), so per-emitter runs with SEED_REV reproduce the shared set exactly; joint work is the
+# sum of the four NEE evaluation counts.
+# ------------------------------------------------------------------------------------------
+
+def n3w_joint(prs, w_scene: float, n_max: int = 8000, block: int = 64, se_t: float = 0.083, floor: int = 1000,
+              final_start: int = 8000, rep: int = 0) -> dict:
+    xs = [[] for _ in prs]; work = 0.0; n = 0
+    while True:
+        for i, pr in enumerate(prs):
+            r = pr.nw4c(block, p0=n, rep=rep)
+            xs[i].append(r["x"] * block); work += float(r["ev_fwd"].sum() + r["ev_rev"].sum())
+        n += block
+        if n >= n_max or work >= w_scene / 2:
+            break
+    n_star = n; w_pilot = work
+    stats = []; need = 0
+    for i, pr in enumerate(prs):
+        x = np.concatenate(xs[i]) / n_star            # per-history scores scaled so they sum to the estimate
+        sp = summarise(x, pr.plan); st = tally_stats(x, pr.plan["target_specular"])
+        need = max(need, _need(n_star, float(np.max(sp["se_db"])), se_t))
+        stats.append({"pilot_se_db": float(np.max(sp["se_db"])), "pilot_VOV": max(st["VOV"]), "pilot_total": sp["total"]})
+    e_hist = w_pilot / n_star
+    ceil_b = lambda v: int(-(-v // block) * block)
+    n_want = ceil_b(max(need, n_star))
+    n_cap = int(max(0.0, np.floor((w_scene - w_pilot) / e_hist)) // block * block)
+    nf = min(n_want, n_cap)
+    out = {"n_star": n_star, "pilot_work_over_wscene": w_pilot / w_scene, "e_hist": e_hist, "n_need": need, "n_want": n_want,
+           "n_cap": n_cap, "n": nf, "cap_hit": bool(need > n_cap), "floor_truncated": bool(n_star > n_cap),
+           "pilot_floor_flag": bool(n_star < floor), "pilot_shipped": bool(n_cap < block), "emitters": []}
+    wf = 0.0
+    for i, pr in enumerate(prs):
+        if n_cap < block:
+            tot = stats[i]["pilot_total"]; se = stats[i]["pilot_se_db"]
+        else:
+            r = pr.nw4c(nf, p0=final_start, rep=rep); s_ = summarise(r["x"], pr.plan)
+            tot = s_["total"]; se = float(np.max(s_["se_db"])); wf += float(r["ev_fwd"].sum() + r["ev_rev"].sum())
+        out["emitters"].append({"total_1k": float(tot[4]), "se_db": se, "pilot_VOV": stats[i]["pilot_VOV"], "pilot_se_db": stats[i]["pilot_se_db"]})
+    # the listener-started set is shared: its trajectory work is counted once in the shipping design, but its NEE
+    # evaluations to each emitter are separate, so the sum above is the joint work exactly
+    out["work_over_wscene"] = (w_pilot + wf) / w_scene
+    return out
+
+
+def u_note(both_near: bool, r: dict) -> list:
+    """U = (both-near AND (cap hit OR pilot VOV ≥ 0.1)) OR (cap hit AND achieved SE > 0.33 dB), per emitter."""
+    return [bool((both_near and (r["cap_hit"] or e["pilot_VOV"] >= 0.1)) or (r["cap_hit"] and e["se_db"] > 0.33)) for e in r["emitters"]]
+
+
+def _joint_cases() -> dict:
+    """Two-emitter scenes for (f): C13 §2/§3 placements (second emitter at its default), C14 (b), (d) and the cubes."""
+    out = {}
+    e1_default = (13.0, 20.0, 2.0)
+    for rn, cs in c12_scenes().items():
+        for k, c in cs.items():
+            out[f"{rn}/{k}"] = (c, dict(c, src=e1_default))
+    w1 = bench_scenes()[0]
+    for dd in (0.3, 0.5):
+        c = dict(w1, src=(7.0, 30.0 - dd, 2.0), rcv=(10.0, dd, 1.7)); out[f"W1/both_wall_{dd}"] = (c, dict(c, src=e1_default))
+    for r_ in ("club", "living_room", "dead_booth", "classroom", "concert_hall_box", "stone_box"):
+        sc = json.loads((REPO / "tests" / "scenes" / "valid" / f"{r_}.json").read_text())
+        si = scope6.scene_inputs(REPO / "tests" / "scenes" / "valid" / f"{r_}.json")
+        D = np.asarray(si["dims"], float)
+        base = {"dims": tuple(D), "alpha": np.asarray(si["alpha"], float).reshape(6, 8).tolist(), "s": [float(x) for x in si["s"]]}
+        ems = [tuple(float(x) for x in e["position"]) for e in sc["emitters"]]
+        rcv = np.asarray(si["rcv"], float)
+        out[f"{r_}/default"] = (dict(base, src=ems[0], rcv=tuple(rcv)), dict(base, src=ems[1], rcv=tuple(rcv)))
+        def near(x):
+            x = np.asarray(x, float).copy(); g = np.r_[x, D - x]; i = int(np.argmin(g)); ax = i % 3
+            x[ax] = 0.1 if i < 3 else D[ax] - 0.1
+            return tuple(x)
+        out[f"{r_}/listener_wall_0.1"] = (dict(base, src=ems[0], rcv=near(rcv)), dict(base, src=ems[1], rcv=near(rcv)))
+        out[f"{r_}/emitter0_wall_0.1"] = (dict(base, src=near(ems[0]), rcv=tuple(rcv)), dict(base, src=ems[1], rcv=tuple(rcv)))
+        if r_ in ("club", "living_room"):
+            s0 = np.asarray(ems[0], float)
+            for dd in (0.1, 0.3, 0.5):
+                r2 = rcv.copy(); a2 = s0.copy(); r2[1] = dd; a2[1] = D[1] - dd
+                out[f"{r_}/both_wall_{dd}"] = (dict(base, src=tuple(a2), rcv=tuple(r2)), dict(base, src=ems[1], rcv=tuple(r2)))
+                r3 = r2.copy(); r3[0] = dd; a3 = a2.copy(); a3[0] = D[0] - dd
+                out[f"{r_}/both_edge_{dd}"] = (dict(base, src=tuple(a3), rcv=tuple(r3)), dict(base, src=ems[1], rcv=tuple(r3)))
+    sr = {"dims": (3.0, 2.5, 2.5), "alpha": [[0.03] * 8] * 6, "s": [0.1] * 6, "rcv": (1.5, 0.667, 0.425)}
+    out["dt6_small_room"] = (dict(sr, src=(1.05, 1.667, 0.5)), dict(sr, src=(1.95, 1.667, 0.5)))
+    big = [0.1, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2, 0.22]
+    cubes = {"cube100_alpha0.10-0.22_s0.3": ([big] * 6, [0.3] * 6), "cube100_lowalpha0.05_s0.3": ([[0.05] * 8] * 6, [0.3] * 6),
+             "cube100_lowalpha0.05_s1": ([[0.05] * 8] * 6, [1.0] * 6),
+             "cube100_flutter_fallback": ([[0.02] * 8] * 2 + [[0.95] * 8] * 4, [0.0, 0.0, 0.05, 0.05, 0.05, 0.05]),
+             "cube100_absorbing_floor_s1": ([[0.05] * 8] * 4 + [[0.95] * 8, [0.05] * 8], [1.0] * 6)}
+    for k, (al, sv) in cubes.items():
+        c = {"dims": (100.0, 100.0, 100.0), "alpha": al, "s": sv, "rcv": (50.0, 30.0, 1.7)}
+        out[k] = (dict(c, src=(45.0, 70.0, 2.0)), dict(c, src=(55.0, 70.0, 2.0)))
+    return out
+
+
+def step_c16():
+    d = load(); out = {"w_scene": 2 * W_MAX_1T, "block": 64, "cases": {}}
+    for k, (c0, c1) in _joint_cases().items():
+        prs = [_Prep(c0), _Prep(c1)]
+        dl = wall_distance(c0["dims"], c0["rcv"]); de = [wall_distance(c["dims"], c["src"]) for c in (c0, c1)]
+        bn = [bool(dl < 0.70 and x < 0.70) for x in de]
+        row = {"d_L": dl, "d_E": de, "both_near": bn}
+        for nm in (8000, 1024):
+            r = n3w_joint(prs, 2 * W_MAX_1T, n_max=nm)
+            u = [bool((bn[i] and (r["cap_hit"] or e["pilot_VOV"] >= 0.1)) or (r["cap_hit"] and e["se_db"] > 0.33)) for i, e in enumerate(r["emitters"])]
+            row[f"nmax{nm}"] = {kk: vv for kk, vv in r.items()}; row[f"nmax{nm}"]["U"] = u
+        out["cases"][k] = row
+        log(k, "bn", bn, {nm: (row[f"nmax{nm}"]["n_star"], row[f"nmax{nm}"]["n"], row[f"nmax{nm}"]["cap_hit"], [round(e["se_db"], 3) for e in row[f"nmax{nm}"]["emitters"]], row[f"nmax{nm}"]["U"]) for nm in (8000, 1024)})
+        d = load(); d["c16"] = out; save(d)
+    # (g) AX16 against the C15 1 M-history long runs (1 kHz)
+    g = {}
+    for k, (c0, c1) in _joint_cases().items():
+        if not k.startswith("cube100") or "flutter" in k:
+            continue
+        for e, c in enumerate((c0, c1)):
+            key = f"{k}_e{e}"
+            if key in d.get("c15", {}).get("cases", {}):
+                pr = _Prep(c); lt = d["c15"]["cases"][key]["long_total_1k"]
+                g[key] = {"ax16_1k": float(pr.plan["target_ax16"][4]), "long_1k": lt, "long_se_db": d["c15"]["cases"][key]["long_se_db"],
+                          "ax16_minus_long_db": float(10 * np.log10(pr.plan["target_ax16"][4] / lt))}
+                log("ax16", key, g[key])
+    out["g_ax16_vs_long"] = g
+    # (h) one-block overrun as a fraction of W_scene, by block size, at the joint e_hist of each case
+    h = {}
+    for k, row in out["cases"].items():
+        eh = row["nmax8000"]["e_hist"]
+        h[k] = {f"block{b}": b * eh / (2 * W_MAX_1T) for b in (32, 64, 128, 256)}
+    out["h_overrun"] = h
+    out["h_8000_multiple"] = {f"block{b}": 8000 % b == 0 for b in (32, 64, 128, 256)}
+    d = load(); d["c16"] = out; save(d)
 
 if __name__ == "__main__":
     main()
