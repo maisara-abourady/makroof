@@ -1,6 +1,6 @@
 # 36 — Decider: round 2 on Raise items 2 and 3 (answers interrogator file 34)
 
-phase-05h (session 2). Verbatim decider output (the orchestrator saved it). Orchestrator note: the decider read Seat 7's file 35 as absent (the two ran in parallel; file 35 landed while this round was in flight) and stripped the notes clause, which is Seat 7's option (A) rated 0 now / 1 later in file 35; the seat's cell is handed to Phase 13's notes question (its scope 6) as the decider says.
+phase-05h (session 2). Verbatim decider output (the orchestrator saved it). Orchestrator note: the decider read Seat 7's file 35 as absent (the two ran in parallel; file 35 landed while this round was in flight) and stripped the notes clause; the addendum below, written after it read file 35, settles the clause on the seat's cells (CONVENE row, tension map, (A) by the tie-break).
 
 # Decider — round 2 on file 33 (Raise items 2 and 3), answering interrogator file 34
 
@@ -92,3 +92,56 @@ Corpus c1b171f. `docs/review/phase-05h/35-seat7-raise-item-3-notes-clause.md` wa
 - R3: the 8-instance 100 m load at 96 kHz (20.4–25.6 s, CI run 42909003931) crossed the 10 s line; recorded as a finding of a build that never ships; remedy phase-07c conditions 9 (or 07d) and 10; re-measured there with time-to-audible and time-to-settle shown; Phase 13 item 3 applies the 10 s line to the release build; nothing decided about the compatibility notes (Phase 13, with Seat 7) (L101, NFR-2, NFR-1, NFR-6, L42). Seat 7 gives the most (the wait outlives this phase, and P1 is open); repaid at 07c and Phase 13. `AMENDS her decision of 2026-11-10: "I accept the board's answer by definition."` (AX38 (iv).)
 
 **NEEDS MAISARA:** none. **State:** R2 revised (PRD MISREAD accepted, findings named); R3 revised (clause stripped, corrections and P1 row applied); both proposed for the interrogator's round-2 check.
+
+
+---
+
+# Decider — round-2 addendum: R3's notes clause settled on Seat 7's cell (file 35)
+
+Supplements my round-2 report (same decisions R2 and R3; only the notes clause and its convening change here). Corpus c1b171f. No file written.
+
+## CONVENE row (one row, the clause only)
+
+`7 Founder | convened (the notes clause of R3 only) | README convening table, Seat 7: "public wording and marketing claims"; a load-time sentence or figure in the first release's compatibility notes is public wording, and AX38 (i)'s scoped sentence covers only the stop stall (interrogator file 34 Q3) | brief: file 33 L19/L25 clause; options (A) strip now, Phase 13 decides with Seat 7 convened; (B) keep as written (a figure in AX38 (i)'s scoped form if Phase 13's interim-audible time is above 10 s); (C) a weaker form (plan text committing Phase 13 to decide the sentence with Seat 7, no number as a promise, no host, not in launch copy); read phase-13 L15–20, L81–89, BUILD_PLAN L139 AX38 (i); rate now/later, conditions of acceptance | answered: file 35`
+
+All other seats: not required for the clause (Seat 6's "settling" wording is a hand-off recorded below, not a rating on notes content).
+
+## Tension map (the clause; Seat 7 from file 35 word for word)
+
+| option | Seat 7 now / later | Seat 7's reason |
+|---|---|---|
+| (A) strip | 0 / 1 | now: "Nothing lost; the rule lives in file 6 and phase-13 items 3–4 instead of plan text" (L18); later: "Same debt plus the small risk Phase 13 reads the notes as scope-6 bookkeeping and writes them without a seat round; caught by the decider's convening table" (L23) |
+| (B) as written | 1 / 2 | now: "A public-wording rule set without me, on a form borrowed from a different fact, before the figure exists" (L19); later: "commits the notes to carry a *number* measured on release machines, which is not the customer's machine … after publication: a public correction, the costly kind" (L24); conditions L35: "figure" → a sentence in (i)'s form, trigger → what a customer would notice before the settling state explains it; then 0 / 1 |
+| (C) weaker form | 0 / 1 | now: "writes down the two rules I actually hold … and leaves the sentence to the moment the number and the 'settling' UI exist" (L17); later: "Commits Phase 13 to convene me on scope 6; undo is a plan edit (hours)" (L22) |
+
+Other eight seats 0 / 0 (not required; reason in the convening row).
+
+## Working
+
+1. Bounds: none broken by (A) or (C); (B) as written conflicts with AX38 (i)'s "no stall figure as a product promise" by form (Seat 7 L9: "internally contradictory"), and the PRD is silent on notes content — not a PRD reading, so (B) could not be answered for her without a seat (file 34).
+2. Veto-grade: none.
+3. Worst-off: (A) max 1, (C) max 1, (B) max 2 → (B) out as written.
+4. Compose: (B) with Seat 7's two edits (L35) is, in the seat's words, "(C) and I would rate it 0/1" — it is (C), not a new variant; nothing lowers the maximum below 1.
+5. Sum: (A) 1, (C) 1 — tie.
+6. Reversibility: (A) writes nothing, so there is nothing to undo when Phase 13 item 3's record arrives; (C)'s undo is "a plan edit (hours)" (L22). (A) is cheaper → **(A) strip**, with (A)'s later-1 risk closed by a register row rather than plan text.
+7. Decided: **(A).** The notes clause is struck from R3's answer and from the AX38 (iv) addition (as my round-2 report already has it). Seat 7's preference for (C) "by a hair" is recorded; the cells tie and the ordering's tie-break, not my taste, picks (A). Seat 7's hand-off L40 ("Phase 13's convening table must list Seat 7 for scope 6 whichever option wins") is adopted as the register row below, which is exactly what Seat 7 says catches (A)'s risk (L23).
+
+**R3's quoted answer stands as in my round-2 report**, ending: "What goes in the first release's compatibility notes is Phase 13's question, with Seat 7; this answer puts no figure there." No AX38 (iv) or phase-13 text on notes content is proposed. Phase-13 scope 6 is touched only through the register row; if the plan-editor prefers one line of plan text there ("notes content on project load: decided at Phase 13 with Seat 7 convened"), that is (C) and needs no new seat round (Seat 7 rated it 0 / 1), but it is not what this decision asks for.
+
+## Register rows added (R3)
+
+| seat | commits later phases to | undoing costs | evidence arrives | repaid when |
+|---|---|---|---|---|
+| 7 ((A) later 1) | Phase 13's convening table lists Seat 7 on scope 6 (the compatibility notes, project load included); no number as a product promise, no host, not in launch copy, unless Seat 7 rates otherwise then | nil (nothing written now) | Phase 13 item 3's release-machine record; the first beta tickets (Seat 7 L24) | Phase 13's notes decided with Seat 7 convened |
+| 6 (hand-off, Seat 7 L38) | the "settling" state at project load (AX38 (iii), Phase 11) is what makes any notes sentence true; its wording is Seat 6's | a Phase 11 UI item already scheduled | Phase 11 | Phase 11 |
+| 5 (hand-off, Seat 7 L39) | the release-machine measurement and the meaning of "audible at the interim level" on the first load of an imported scene (my Q5 answer: a project load carries the saved E_b; an import in a live session takes condition 5.2's fallback, never silence) | nil | 07c condition 7; Phase 13 item 3 | Phase 13 |
+
+**Strongest objection on the clause.** Seat 7 L43 premortem: "Phase 13 pastes 'up to 12 s' into the notes, a producer with 16 GB and eight 100 m stems measures 40 s, posts both numbers". (A) removes the rule that would have licensed the number; the residual risk (notes written as bookkeeping) is the register row, checked by the interrogator at Phase 13's convening.
+
+**Confidence** high (one seat, three options, no cell read from conditions, no acoustic claim; product claims cite AX38 (i) L139 and phase-13 L15–20, L81–89). **Reversal:** Phase 13 item 3's record plus a Seat 7 round there rating a sentence as needed — then Phase 13 writes it; nothing here to undo.
+
+## Revised "Decided for Maisara" line for R3 (replaces the round-2 one; R2 unchanged)
+
+- R3: the 8-instance 100 m load at 96 kHz (20.4–25.6 s, CI run 42909003931) crossed the 10 s line; recorded as a finding of a build that never ships; remedy phase-07c conditions 9 (or 07d) and 10; re-measured there with time-to-audible and time-to-settle shown; Phase 13 item 3 applies the 10 s line to the release build; the compatibility notes get no load-time rule or figure now — Phase 13 decides them with Seat 7 convened (L101, NFR-2, NFR-1, NFR-6, L42). Seat 7 gives the most (the wait outlives this phase, P1 open); repaid at 07c and Phase 13. `AMENDS her decision of 2026-11-10: "I accept the board's answer by definition."` (AX38 (iv).)
+
+**State:** R2 revised (findings F-a, F-b named); R3 revised (clause stripped on Seat 7's cells, corrections and P1 row applied, notes row added); both proposed for the interrogator's round-2 check. NEEDS MAISARA: none.
