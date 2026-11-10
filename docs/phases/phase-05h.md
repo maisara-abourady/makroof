@@ -51,14 +51,16 @@ verbatim: "I accept the board's answer by definition."; ledger P05B2-M-01…07):
   (`reset()` in the synchronous class); ≤ 128 MB additional resident; gate wait in the staleness metric and
   "settling"; W1/W2 include the whole diffuse computation (AQ10's 50 ms target unchanged); the 100 m
   memory gate, the records and their escalation; the synchronous restore gate at the two gated 100 m,
-  96 kHz builds is **blocking** (Challenge 1 = yes, AQ10 amended; pending the board's answer (decider file 43; ratings R1–R3 running)).
+  96 kHz builds is **blocking** (Challenge 1 = yes, AQ10 amended; a board answer, decider files 47 and
+  51, with the AX38 4c conditions).
 - **AX39 (D-T1.1):** the seeded Monte Carlo estimator, the ℓ → 0 form of `ref_hybrid`, with the
   determinism package D1–D7 (64-history blocks) and Seat 7's wording.
 - **AX40 (D-T1.2):** fixed key; E_target does not depend on `tailSeed`.
 - **AX41 (D-T1.3):** the joint path-count rule (pilot sized in work, fresh final range, integer stop test
   and N_cap, cap hit := N_need > N_cap, "floor truncated" reported separately, realised-work assertion);
-  W_max provisional 3.05 M image evaluations per emitter (W_scene 6.10 M, Q2a (A); pending the board's answer (decider file 43; ratings R1–R3 running));
-  n\*_max 1 024 (Q2b (i), the board's answer, decider file 43); both re-derived once from the C++ cost.
+  W_max provisional 3.05 M image evaluations per emitter (W_scene 6.10 M; Q2a (A) now: the restore budget
+  less D-H1's margin, pinned, re-derived once under (C)); n\*_max 1 024 (Q2b (i)); both board answers
+  (decider files 43, 47, 51), both re-derived once from the C++ cost.
 - **AX42 (D-T1.4):** τ = 0.25 dB; target SE 0.083 dB.
 - **AX43 (D-T1.5):** 70 cases / 560 case-bands, z_FW 4.290, stage 2, no reseed; the reported set; CI reports.
 - **AX44 (D-T1.6):** the NW-4C+ blend; both-near at 0.70 m; the note U with the union VOV; Seat 6 (i)–(iii);
@@ -70,15 +72,17 @@ verbatim: "I accept the board's answer by definition."; ledger P05B2-M-01…07):
 - **D-T3 not needed** (the estimator covers the whole AX6 range; holds under Q2a (A), ledger P05B2-M-07).
 - **AX16 switched** (on implementation here); AX21 stands; AX5 note (cross-architecture agreement of the
   estimator rests on D1–D7).
-- Q2a (C), moving the diffuse solve off the synchronous restore and prepare, is phase-13 scope 13, not here
-  (pending the board's answer (decider file 43; ratings R1–R3 running)).
+- Q2a (C), moving the diffuse solve off the synchronous restore, prepare and `reset()`, is its own phase,
+  [`phase-07c.md`](phase-07c.md), before the first public release (a board answer, decider files 47 §4
+  (iii) and 51), not here.
 - Phase 08 may precede this phase on Seat 4's conditions (i)–(iv) of AX37 (5.3); if it does, this phase
   re-renders the binaural goldens, re-measures binaural W1/W2 and re-runs phase-08 item 8 (scope 10).
 
 ## 2. Raise with Maisara (first message and PR)
 
-1. D-H1's outcome (section 3), **only if** it changes her Q2a (A) or Challenge 1 answers (W_max sized to
-   the restore watchdog; the blocking 100 m, 96 kHz restore gate). Otherwise none.
+1. D-H1's outcome (section 3), **only if** the non-diffuse build alone leaves W_max below Seat 1's floor
+   (SE ≤ 0.33 dB with VOV < 0.1) at a gated scene: it goes to her before any range change (AX38 4c).
+   Otherwise none (a margin above about 20 % of W_max returns to the seats, not to her).
 2. **The AX38 4c escalation** (when the C++ records exist, scope 6): the full-rebuild records go to
    Maisara against the 1 / 3 / 10 s marks, labelled **UI response-time anchors (Card et al. 1991), not
    audibility limits**, with Table 15.1's conditions stated (its 3 s row covers only translational
@@ -104,9 +108,21 @@ after seeing the gate's result.
     the block fails by design. The 1.884 s build is a best of 3 (BUILD_PLAN §0 row 07).
   - The W_max re-derivation rule must state the margin for the realised-work ratio and for the spread of
     the restore measurement; otherwise the block fails on timing noise.
+  - **Margin rule (board answer, decider files 47 §4 (i) and 51 §4 item 3):** the margin comes out of
+    W_max, not the gate; it is set from C++ data before the gate exists, from the pre-registered
+    realised-work ratio (AX41: about 1.05) and the restore spread taken from the worst of at least 10
+    runs, not a best of 3; it is reported with its cost, the SE at each gated scene and in layouts 4/5.
+  - **20 % trigger:** if the margin would take more than about 20 % of W_max [Hyp, Seat 3], it comes back
+    to the seats with the C++ numbers; their options are to accept the smaller W_max or to bring (C)
+    (phase-07c) forward, never a time cap or a narrower room range. **Expected:** the margin will
+    probably exceed the trigger: a 3 % spread on the 1.884 s build is 0.057 s, 22 % of the 0.259 s
+    diffuse budget, plus about 5 % for the realised-work ratio, about 27 % of W_max; a 27 % smaller W_max
+    raises the capped-scene SE by about 1/√0.73, about 17 % [Inferred] (e.g. layout 4 from about 1.33 to
+    1.56 dB, the low-α cube from about 0.50 to 0.58 dB) (file 51 §3).
   - Decided by the board loop from the C++ measurements (C++ cost per evaluation, realised against
-    planned work at block 64, restore spread) before the gate is implemented. A change to W_max or to the
-    gate's form goes to Maisara only if it changes her Q2a / Challenge 1 answers (section 2).
+    planned work at block 64, restore spread over ≥ 10 runs) before the gate is implemented. If the
+    margin leaves W_max below Seat 1's floor at a gated scene, the result goes to Maisara before any range
+    change (section 2).
 
 ## 4. Scope
 
@@ -122,7 +138,9 @@ after seeing the gate's result.
    class, cancellation on `quiesce()`, offline waiters never coalesce) and its tests. Before the gate's
    offline path is implemented, the researcher answers whether any host runs a freeze or offline render,
    or calls `reset()`, on a thread that also serves the real-time graph (ledger P05B2-T5T4-61). The
-   blocking restore gate is implemented only after D-H1 (section 3) is recorded.
+   blocking restore gate is implemented only after D-H1 (section 3) is recorded. **Solve seam (Seat 5,
+   AX38 4c / phase-07c condition 2):** restore, prepare and `reset()` invoke the diffuse solve through one
+   function, so phase-07c can move it off the synchronous path.
 3. **Matching switch** per D-T5 (AX37) in `planEmitter`/`matchTail`; k_real and the AX22 fallback stay on
    the AX16 entries (AX37 (5.2)); `bandsAxisShares` from specular entries only, labelled (AX37 (5.3));
    diagnostics (`render_cli --diagnostics`) gain the diffuse E_target per band beside the AX16 one, and the
@@ -206,8 +224,10 @@ after seeing the gate's result.
       peak working-set delta of the larger of the two gated 100 m, 96 kHz builds ≤ 1 GB (Linux;
       recorded on macOS and Windows), `ismFallback` stated per emitter.
 - [ ] **Blocking** (AQ10 amended, AX38 4c): the synchronous state restore at the two gated 100 m, 96 kHz
-      builds (the AX22-fallback (flutter) scene and the closed low-α cube), 14 × t_restore ≤ 30 s, with
-      D-H1's margin.
+      builds (the AX22-fallback (flutter) scene and the closed low-α cube), 14 × t_restore ≤ 30 s, on the
+      Release build, with D-H1's margin taken from W_max. A failure is a defect: no re-run, no W_max cut
+      after pinning, no room-range narrowing, no formulation seam; the remedy is bringing phase-07c forward.
+- [ ] The solve seam: restore, prepare and `reset()` call the diffuse solve through one function (scope 2).
 - [ ] Goldens updated only through `update_goldens.py` with the reason; nightly BRAS green; report
       regenerated.
 - [ ] pluginval strictness 10 and auval still pass (rebuild cost changes the builder's timing).
@@ -252,7 +272,7 @@ cases); the independence of the tracer comparison; the AX22 interaction (AX37 (5
 Early rendering of scattered energy (not promoted; re-run rule AX36 (e)); per-band scattering (B10);
 the tail decay rate (B12); Phase 08 directions beyond AX37 (5.3) (directional late tail: §5 B18); Phase 10
 caching beyond what AX39 needs (a kernel cache only through an AX, AX38); a both-near fallback (§5 B15);
-moving the diffuse solve off the synchronous restore and prepare (Q2a (C), phase-13 scope 13); any
+moving the diffuse solve off the synchronous restore, prepare and `reset()` (Q2a (C), phase-07c); any
 per-scene tuning.
 
 ## 10. Definition of done

@@ -1,6 +1,6 @@
 # Phase 13 — v1 hardening: performance, DAW matrix, signing
 
-Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12, including 05b, 05h, 05d, 05e and 05f (05f `done` or Maisara's recorded acceptance of the two-room label; 05d `done` or `blocked (reason)`, decider report 15, accepted by Maisara, 2026-11-05; with 05c, if it exists, `blocked` only on Maisara's recorded decision) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
+Size: **M** (L if notarization or optimization fights back; split into 13b) · Depends on: 00–12, including 05b, 05h, 07c, 05d, 05e and 05f (05f `done` or Maisara's recorded acceptance of the two-room label; 05d `done` or `blocked (reason)`, decider report 15, accepted by Maisara, 2026-11-05; with 05c, if it exists, `blocked` only on Maisara's recorded decision) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` (all of §2–§3), PRD NFR-2, NFR-4, NFR-6
 
 ## Raise with Maisara (she does not track these herself)
 
@@ -15,6 +15,9 @@ The session raises each item in its **first message** and again before the beta 
 3. **Load time with 8 instances (AX38 (iv), phase 05b).** If the recorded time until the last of 8
    instances is audible at project load at 100 m exceeds 10 s, it goes to Maisara before the first
    release.
+4. **Phase 07c not landed (conditional).** If the asynchronous diffuse solve (phase-07c) would land after
+   the first release without the estimator parameters versioned in saved state, Seat 7's condition fails
+   and the item returns to Maisara (decider file 47 §4, strongest objection).
 
 ## Goal
 
@@ -109,10 +112,12 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
     forward as a standalone tooling change before Phase 13.
 13. **Diffuse-estimator work limits and the restore (AX41, AQ10 amended 2026-11-10, phase 05b):**
     re-check W_max (provisional 3.05 M image evaluations per emitter, sized to pluginval's restore
-    watchdog; this basis pending the board's answer (decider file 43; ratings R1–R3 running)) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines; any change is
-    an output change (golden round, §6 row) and must be fixed before the first release. Move the diffuse
-    solve off the synchronous restore and prepare (Maisara's Q2a (C), about one phase of Phase 07 rework;
-    if it does not fit, split into 13b; pending the board's answer (decider file 43; ratings R1–R3 running)).
+    watchdog less D-H1's margin; re-derived once under phase-07c; board answer, decider files 43, 47, 51) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines; any change is
+    an output change (golden round, §6 row) and must be fixed before the first release. Q2a (C), moving the
+    diffuse solve off the synchronous restore, prepare and `reset()`, is its own phase,
+    [`phase-07c.md`](phase-07c.md) (board answer, decider files 47 §4 (iii), 51 §4 items 4 and 8): **it is a
+    prerequisite for the beta**; if it has not landed, the estimator parameters are versioned in saved
+    state before release.
 
 ## Out of scope
 

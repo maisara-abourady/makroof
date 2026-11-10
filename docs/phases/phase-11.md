@@ -54,7 +54,8 @@ PRD's vision. It is **not** the full 3D editor (deferred, B8).
    only for classes whose reported set shows SE ≥ the replicate SD, otherwise the class p95 or
    qualitative text. When U is raised on an emitter the user did not edit, the note names the scene, not
    that emitter, as the cause. **U′** (cap hit OR both-near, Seat 6 (iii)) appears only as a labelled
-   diagnostic tier in an advanced view.
+   diagnostic tier in an advanced view. **U's note reaches the producer's editor, not only the
+   diagnostics** (Seat 8's later 1 depends on it; decider file 51 §1, §4 item 6).
 9. **"Settling" state** (AX38 (iii)): shown on every instance waiting at the diffuse-solve gate, project
    load included.
 
