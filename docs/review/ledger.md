@@ -2063,3 +2063,20 @@ Round 3 (final) (`docs/review/phase-05b2/15-interrogator-T5-T4-round3.md`):
 | P05B2-T5T4-63 | D-T4c additions (correction 49, UI-anchor label) | faithful | closed |
 | P05B2-T5T4-64 | D-T4a final verdict | SURVIVES WITH CORRECTIONS (59, 60) | open until applied |
 | P05B2-T5T4-65 | D-T4c final verdict | SURVIVES | closed |
+
+
+## Phase 05b session 2 — Maisara's answers (2026-11-10)
+
+Her words, verbatim: "I accept the board's answer by definition." This was in reply to the board's answers as stated to her:
+accept all decisions; Challenge 1 yes; Q1 (a), the bias reading; Q2a (A) now and (C) in a later phase; Q2b (i), n\*_max 1 024.
+Packet: `docs/review/phase-05b2/40-packet-for-Maisara.md`.
+
+| id | item | outcome | status |
+|---|---|---|---|
+| P05B2-M-01 | D-T5.1–5.4, D-T4a–c (files 13, 15) | accepted | closed |
+| P05B2-M-02 | D-T1.1–1.6, D-T6, D-T3 not needed (files 34, 37, 39) | accepted | closed |
+| P05B2-M-03 | Challenge 1: 100 m, 96 kHz restore gate blocking (AQ10 amended) | yes | closed (apply via /fix-plan) |
+| P05B2-M-04 | Q1 / D-T2: AX36 applies to the estimator's bias, checked in CI | (a) | closed (apply via /fix-plan) |
+| P05B2-M-05 | Q2a: W_max sized to the restore watchdog (provisional 3.05 M per emitter); async restore (C) in a later phase | (A) + (C) later | closed (apply via /fix-plan) |
+| P05B2-M-06 | Q2b: n\*_max = 1 024 (re-derived from C++, ≥ 1 000) | (i) | closed (apply via /fix-plan) |
+| P05B2-M-07 | D-T3 "not needed" re-checked against the answers (steward round 3, second gap): holds under Q2a (A) | holds | closed |
