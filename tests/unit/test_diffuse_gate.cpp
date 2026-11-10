@@ -16,6 +16,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <mutex>
@@ -352,6 +353,97 @@ TEST_CASE("probe: denormals on the IR path (buildRoomIR without the guard, FTZ o
             }
             std::printf("probe-ir fs %.0f %-45s: IR without the guard, FTZ off vs on -> %s\n", fs, pr.label,
                         bitIdentical(off, on) ? "identical (no denormal reached the IR)" : "DIFFERENT (denormals matter)");
+        }
+}
+
+// Direct detector (hidden; D-H3 (c), docs/review/phase-05h/16-decider-convene-D-H3.md K-c3): the sticky
+// denormal-operand status flag of the FPU, read after an unguarded build with FTZ/DAZ off. x86-64: MXCSR DE
+// (bit 1); AArch64: FPSR IDC (bit 7). Unlike the bit-difference probe above, this sees a denormal that arose
+// and was flushed without changing an output bit (the whole build path is double; the IR is float only at the
+// end, Engine.cpp toFloatNoDenormal). Seat 3's candidate (file 17-seat3): a dead_booth-sized room with alpha 0.01
+// at 63 Hz and 0.999 above, whose fast bands' exp(-rate j) in BandNoiseGenerator::make reach the double subnormal
+// range (708 < rate j < 745) inside the 63 Hz band's long tail.
+namespace {
+unsigned long long denormalFlag() noexcept
+{
+#if defined(SPATIAL_DENORMALS_SSE)
+    return _mm_getcsr() & 0x2u; // MXCSR DE
+#elif defined(SPATIAL_DENORMALS_AARCH64)
+    std::uint64_t fpsr = 0;
+    asm volatile("mrs %0, fpsr" : "=r"(fpsr) : : "memory");
+    return fpsr & 0x80u; // FPSR IDC
+#else
+    return 0;
+#endif
+}
+void clearDenormalFlag() noexcept
+{
+#if defined(SPATIAL_DENORMALS_SSE)
+    _mm_setcsr(_mm_getcsr() & ~0x3Fu); // the six sticky exception flags
+#elif defined(SPATIAL_DENORMALS_AARCH64)
+    std::uint64_t fpsr = 0;
+    asm volatile("mrs %0, fpsr" : "=r"(fpsr) : : "memory");
+    fpsr &= ~0xFFull;
+    asm volatile("msr fpsr, %0" : : "r"(fpsr) : "memory");
+#endif
+}
+} // namespace
+
+TEST_CASE("probe: denormals on the IR path, direct FPU status-flag detector (unguarded build, FTZ off)",
+          "[.][probe-denormals-detector]")
+{
+    if (!sim::conv::ScopedFlushDenormals::isSupported())
+        SKIP("no FTZ/DAZ control on this platform");
+    struct Probe
+    {
+        const char* label;
+        contract::SceneDescription scene;
+    };
+    std::vector<Probe> probes;
+    probes.push_back({"absorbentScene (dead_booth, alpha 0.98, s 1)", absorbentScene()});
+    for (const char* name : {"dead_booth.json", "edge_values.json", "open_field.json", "medium_room.json"})
+        probes.push_back({name, pipeline_test::loadScene(name)});
+    {
+        auto sc = pipeline_test::loadScene("dead_booth.json");
+        for (auto& s : sc.room.surfaces)
+        {
+            s.bandsAbsorption = {0.01, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999};
+            s.scattering = 0.5;
+        }
+        probes.push_back({"dead_booth alpha 0.01 at 63 Hz, 0.999 above, s 0.5 (Seat 3)", sc});
+        for (auto& s : sc.room.surfaces)
+            s.bandsAbsorption.fill(0.999);
+        probes.push_back({"dead_booth alpha 0.999 s 0.5", sc});
+        sc.room.geometry.dimensions = {100.0, 100.0, 100.0};
+        sc.listener.position = {50.0, 30.0, 1.7};
+        sc.emitters[0].position = {45.0, 70.0, 2.0};
+        sc.emitters[1].position = {55.0, 70.0, 2.0};
+        probes.push_back({"100 m cube alpha 0.999 s 0.5", sc});
+        for (auto& s : sc.room.surfaces)
+            s.bandsAbsorption = {0.01, 0.01, 0.5, 0.999, 0.999, 0.999, 0.999, 0.999};
+        probes.push_back({"100 m cube alpha 0.01 at 63/125 Hz, 0.999 above", sc});
+    }
+    for (const double fs : {48000.0, 96000.0})
+        for (const auto& pr : probes)
+        {
+            sim::BuildOptions o;
+            o.sampleRate = fs;
+            o.kind = sim::BuildOptions::Kind::Omni;
+            o.ftzGuard = false;
+            clearDenormalFlag();
+            const sim::RoomIR off = sim::buildRoomIR(pr.scene, o);
+            const auto flagOff = denormalFlag();
+            sim::RoomIR on;
+            unsigned long long flagOn = 0;
+            {
+                const sim::conv::ScopedFlushDenormals ftz;
+                clearDenormalFlag();
+                on = sim::buildRoomIR(pr.scene, o);
+                flagOn = denormalFlag();
+            }
+            std::printf("probe-detector fs %.0f %-55s: denormal flag FTZ off %s, FTZ on %s; IRs %s\n", fs, pr.label,
+                        flagOff ? "SET (denormal operand seen)" : "clear", flagOn ? "SET" : "clear",
+                        bitIdentical(off, on) ? "bit-identical" : "DIFFERENT");
         }
 }
 
