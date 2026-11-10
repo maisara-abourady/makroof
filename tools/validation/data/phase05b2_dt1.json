@@ -27260,5 +27260,67 @@
     ]
    }
   }
+ },
+ "c18": {
+  "floor0.8_s0.5": {
+   "mix": 0.11353242020805729,
+   "n_star": 1024,
+   "n": 1024,
+   "cap": false,
+   "se": [
+    0.077,
+    0.071
+   ],
+   "U": [
+    false,
+    false
+   ],
+   "ax16_vs_plan": null
+  },
+  "floor0.8_s0.3": {
+   "mix": 0.11353242020805729,
+   "n_star": 1024,
+   "n": 1024,
+   "cap": false,
+   "se": [
+    0.046,
+    0.045
+   ],
+   "U": [
+    false,
+    false
+   ],
+   "ax16_vs_plan": null
+  },
+  "floor0.6_s0.5": {
+   "mix": 0.11353242020805729,
+   "n_star": 1024,
+   "n": 1152,
+   "cap": false,
+   "se": [
+    0.083,
+    0.071
+   ],
+   "U": [
+    false,
+    false
+   ],
+   "ax16_vs_plan": null
+  },
+  "floor0.6_s0.3": {
+   "mix": 0.11353242020805729,
+   "n_star": 1024,
+   "n": 1024,
+   "cap": false,
+   "se": [
+    0.053,
+    0.048
+   ],
+   "U": [
+    false,
+    false
+   ],
+   "ax16_vs_plan": null
+  }
  }
 }

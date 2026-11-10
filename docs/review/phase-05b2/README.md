@@ -51,3 +51,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `43-decider-board-answers-C1-Q2.md` | decider | board answers: Q2b = (i) 1 024 decided; Challenge 1 and Q2a not decidable on recorded cells (ratings R1–R3 and a (B) computation needed) |
 | `44-orchestrator-C17.md` | orchestrator | C17: layouts 4/5 under Q2a (B): one-end SE 0.06–0.22 dB (layout 4 meets the floor; layout 5 fails on pilot VOV); both-near still fail |
 | `45-seat<n>-R1-R3.md` | seats 1–9 | ratings R1 (Challenge 1), R2 (Q2a (B)), R3 (Q2a (C) now) asked by decider file 43 |
+| `46-orchestrator-C18.md` | orchestrator | C18: realistic halls (absorbing floor, s ≤ 0.5) are not in the capped class under (A): no cap, SE ≤ 0.083 dB, U silent |
