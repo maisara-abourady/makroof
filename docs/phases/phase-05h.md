@@ -289,8 +289,9 @@ after seeing the gate's result.
       **Scope now (D-H2 (a), H2-F1; decider file 19, interrogator file 21):** gated on the
       subset with a certified two-rung reference (ℓ_ref recorded), listed per case-band in the agreement
       golden with its status; the rest 'reported (reference pending)', never dropped; the report prints
-      '<gated> of 560 gated; <n> reported (reference pending)' (330 / 560 at the time of writing, after the
-      session-2 golden round; the four small rooms referenced at the 0.625 m rung, H3-F6); single-rung
+      '<gated> of 560 gated; <n> reported (reference pending)' (410 / 560 at the time of writing, after the
+      session-2 golden round; all 28 cases at the 1.25 m rung, the 150 reported case-bands the BRAS pairs'
+      outer bands; the four small rooms referenced at the 0.625 m rung, H3-F6); single-rung
       references printed with the fixed label `uncertified rung, no ℓ_ref, not pass/fail`, never asserted
       (AX43 (b)); the gated set keeps one per-band-α room and one mixed-s room, or the gap is reported.
 - [ ] Bias check (AX46): mean signed deviation ≤ 1 % per band and per case class, pooled and per class,

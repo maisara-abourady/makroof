@@ -52,8 +52,8 @@ case-band is gated through `update_goldens.py --extend` with its reason, never b
 ## 3. Scope (carried from phase 05h, exactly)
 
 1. **D-H2 (c)'s remaining references, in the committed priority order** (AX43 (c); decider file 19):
-   the CS-NW+ emitter-1 cases and the 0.3 m wall case (as gathers on the persisted W1 kernel) and W2 both
-   emitters, if not landed by phase 05h's push; then the BRAS pairs' 250 Hz and 4 kHz, then 125 Hz and
+   the CS-NW+ emitter-1 cases, the 0.3 m wall case and W2 both emitters landed in phase 05h's last push
+   (410 of 560 gated); what remains is the BRAS pairs' 250 Hz and 4 kHz, then 125 Hz and
    8 kHz, 63 Hz last (the 15 GB class: gated when certified, never claimed as a room validation below the
    Schroeder frequency). Produced offline by
    `tools/validation/hybrid_fast.py` at two rungs per band column, committed by script with provenance
@@ -78,9 +78,13 @@ case-band is gated through `update_goldens.py --extend` with its reason, never b
    the growth-bound baselines (median-of-10 restore per OS and scene) pinned from the first three-OS run
    with a CHANGELOG reason, and the register's medians re-baselined from that run; the 29.1 s strict /
    listed rule unchanged; no W_max cut, no range change, no seam.
-4. **Phase-05h §2 items 2 and 3 on the CI records**, if phase 05h's CI run did not fit them: the (iv)
-   8-instance load time at 100 m / 96 kHz against the 10 s anchor; the full-rebuild records against
-   1 / 3 / 10 s; evaluated by the decider for Maisara (section 2 items 1 and 2).
+4. **Phase-05h §2 items 2 and 3 on the CI records**: answered for Maisara in phase 05h on CI run
+   42909003931 (decider files 33/36, interrogator files 34/37, Seat 7 file 35): findings F-a (the contended
+   restore of the reported-set 100 m cube on Linux, worst 4.079 s of 3) and F-b (multi-instance load and
+   joint-rebuild staleness, about linear in instance count) recorded in AX38 4c, the 8-instance load above
+   10 s recorded in AX38 (iv) with the remedy (phase-07c conditions 9, or 07d, and 10) and the post-07c
+   two-time record; what 05i carries is the per-instance restore times inside the (iv) loop if 07c
+   condition 7 does not print them (file 36 Q4), and nothing else.
 5. **The AX41 lists kept current:** every fixture or preset where the pilot estimate ships
    (`edge_values` at the time of writing) and the known U cases (`edge_values`, `open_field`: cap; K-b3),
    as the reference set and the fixtures change; U at every user-reachable room stays asserted by the D5
