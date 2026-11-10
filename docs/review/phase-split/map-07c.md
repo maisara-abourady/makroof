@@ -3,7 +3,7 @@
 Drafted from `docs/phases/phase-07c.md` (pure reallocation; brief `0-drafting-brief.md`). No threshold, number,
 AX/AQ value, criterion wording or decision is changed. Item labels below are the phase file's own: §0–§10,
 scope conditions 1–8 (§5), automated criteria A1–A9 (§6, in file order), listening items L1–L3 (§7), contractor
-focus F1–F7 (§8, split at its semicolons), decisions D-C1–D-C3 and researcher questions R1–R3 (§4), Raise item
+focus F1–F6 (§8, split at its semicolons), decisions D-C1–D-C3 and researcher questions R1–R3 (§4), Raise item
 §2.1, timing bullets T1–T3 (§3).
 
 Automated criteria, as numbered here (verbatim first words):
@@ -138,7 +138,6 @@ replacing `phase-07d.md` in the size line); L1 assigned to 07c-2 (see coverage n
 | §10 DoD: PR with listening checklist, contractor focus, AX/ledger links, Raise item if it applies | §10 | umbrella (shared) | each sub-phase PR its own share; Raise item with 07c-2 |
 | Risks | — | — | the file has no risks section; §0's capped-class SE is the rationale (umbrella) |
 
-(F1–F6: §8 has six items when split at its semicolons; "F7" in the preamble is not used.)
 
 ## 4. References
 
