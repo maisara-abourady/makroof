@@ -139,3 +139,16 @@ Corpus present (`SOURCE_COMMIT` c1b171f per the decider); no corpus line was re-
 **Commitment and undo.** Commits later phases to the pool-wide-FTZ convention and the standing probe; undoing is deleting one line and re-running the probe (minutes). No golden, no scene logic, no audio-thread exposure (the pool never runs on the audio thread, AX38 (i)).
 
 **Condition.** None needed at 0 / 1. If the same-run re-check does move a hash or E_target on any OS, that is a finding about a subnormal I have ruled out above, and I would want its scene named before (f) is taken as the fallback.
+
+
+---
+
+## Round 3: (f9) cell
+
+**SEAT 2, round 3 (D-H3 (a), P05H-77).** Only the (f9)-as-CHECK cell.
+
+**(f9) as the CHECK (|mean (C++ − ref)| dB per band ≤ 3·SE_pool + mean ℓ_ref; the as-written and per-room statistics printed as records): 0 now / 1 later; prefer over (e′) (my 1 / 1).**
+
+*Now 0, reason:* it is the per-case test's own reading of ℓ_ref (τ − ℓ_ref: a bounded, signed, systematic residual added, never a 1-σ term in quadrature) carried into the pooled test, so one reading throughout; it passes on the data (1 kHz: 0.0008 dB against 0.0040 + 0.0051 dB), needs no cluster key in the golden, and is what the tree already prints (L312–319). Power against a shared estimator bias is kept: the catch threshold is 0.009 dB (≈ 0.2 %) at 500 Hz–2 kHz, 2× inside Seat 1's 0.02 dB and 5× inside AX46's 1 %; (e′)'s is ≈ 0.005 dB [derived: 0.64 × a typical √(SE² + ℓ²) of 0.008 dB], a sharpness nobody's criterion asks for, bought with a second reading of ℓ_ref.
+
+*Later 1, reason (two debts to write into the test comment and the register, no new constant):* (i) the allowance is a mean of magnitudes, so adding ℓ-sensitive cases (the s = 1 layouts at 0.19–0.33 %) loosens the bound for the whole band by their share; the catch threshold in dB must be restated at each golden round. (ii) An unweighted mean in dB loses the cluster structure: a one-room estimator defect (dead_booth at +0.017 dB, z 8, 2.3 ℓ_ref) is invisible to this CHECK, so the per-room table stays a printed record and my round-1 condition stands (the dead_booth / AX36 finding in the register; the cheap 0.625 m rung for the small rooms; the ladder-direction sign check). Undo: the same test edit as (e′), smaller.

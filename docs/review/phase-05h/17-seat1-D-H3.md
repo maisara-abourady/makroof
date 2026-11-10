@@ -127,3 +127,19 @@ Narrow: what the producer monitoring hears across a host reset under each option
 **7. Hand-offs.** Thread share per host and the measurement: Seat 5 (RQ-H3-3). The `quiesce()` bound and the cancel points: Seat 2 (K-e6). Keeping a stale IrSet across a realtime reset, and the crossfade rules: Seat 3. What "settling" says during a silent start: Seat 6. Compatibility-note wording: Seat 7.
 
 **8. Premortem.** Under (e-a) without (e-d)'s assert and measurement, a common host delivers `setProcessing(false)` on the audio thread; a producer in a 100 m room stops the transport mid-edit and the whole session glitches for two seconds; the first report reads "the plugin freezes my DAW on stop", and nothing in CI says which path did it.
+
+
+---
+
+## Round 3: (f9) cell
+
+**(f9) as the CHECK, |mean (C++ − ref)| dB per band ≤ 3·SE_pool + mean ℓ_ref, with the as-written and per-room z′ statistics printed as records: now 0 / later 1.** Label: can live with, and I would rank it level with (e′).
+
+- **Now 0.** It costs my seat nothing it measures. The unweighted mean in dB is the quantity my rule was about (a shared level shift), and it is no longer carried by the three small-SE rooms that carried the as-written z (dead_booth z +8 at SE 0.002 dB, file 18): that was the as-written failure, and (f9) removes it without a clustering rule. The additive ℓ_ref term is the conservative reading of the reference error (fully correlated across rooms), so by construction the CHECK cannot go red on a reference residual inside ℓ_ref: it is a test of the estimator, which is what I asked for [Inferred from the form; from the code, `test_diffuse_agreement.cpp` L312–319, it is already printed each run].
+- **Later 1.** The catch drifts with the set: mean ℓ_ref rises when poorly certified rooms are gated (living_room-type ℓ_ref 0.023 dB) and falls as rungs certify; SE_pool falls with M. On the current set the drift stays inside my intent, but the one-sign failure of the premise (every room's residual with the same sign at the bound) is not caught by the CHECK and must stay visible in the printed per-room record. Repaid when: the catch value (3·SE_pool + mean ℓ_ref) is printed per band each run beside the mean deviation, so the drift is read, not assumed.
+
+**Does it keep the catch?** Yes. On the current set at 500 Hz–2 kHz the catch for a shared estimator bias is 3 × 0.0040 + 0.0051 ≈ **0.009 dB** (at 1 kHz the measured mean is +0.0008 dB against 0.0091 dB), between (e′)'s ≈ 0.0055 dB and the ≈ 0.02 dB my rule was meant to provide; all three are ≤ 0.02 jnd of G [corpus: Vorländer Table 6.1, L2060], so none is a perceptual line and the difference between them is diagnostic power only. (f9) is less powerful than a 1/SE-weighted form for the same M, which is the price of not letting the smallest-SE rooms dominate; at 0.009 dB that price is inside my intent. Nothing my rule 4 forbids changes (no reseed, no added N, no wider τ, no dropped case).
+
+**Hand-offs.** The per-room record's one-sign watch and the dead_booth sign (two references agree): Seat 2. Implementation of the printed catch line: Seat 5.
+
+**Premortem.** Under (f9) without the printed catch value, five poorly certified rooms are gated over two phases, mean ℓ_ref doubles, the catch drifts to 0.02 dB unnoticed, and a 0.015 dB shared bias from a refactor passes; the contracted engineer notices when the per-room record shows every room on the same side.
