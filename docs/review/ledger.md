@@ -1934,3 +1934,28 @@ Source: `docs/review/phase-05b2/26-interrogator-T1-T2-T6.md` (on decider rounds 
 | P05B2-T1T2T6-34 | D-T6 gate N and stage-2 / no-reseed rule unstated (Seat 5 round 1) | IMPRECISE | open |
 | P05B2-T1T2T6-35 | D-T6 cells, sums, D6-L1, D6-L2; W1 "before any number" (B6-1 is a relation) | CORRECT / faithful | closed |
 | P05B2-T1T2T6-36 | Orchestrator computations (a)–(e) above | requested | open |
+
+
+Round 2 (on decider round 3, `docs/review/phase-05b2/32-interrogator-round2-T1-T2-T6.md`, 2026-11-10):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-T1T2T6-37 | Corrections 1, 3, 6, 9–14, 17, 18 applied | faithful | closed |
+| P05B2-T1T2T6-38 | 70 cases / 560 case-bands, z_FW 4.290; D-T6 72 case-bands, z_FW 3.81; Q1 (b) table; Q2 (A)/(B) against C14 | CORRECT | closed |
+| P05B2-T1T2T6-39 | Seat 7 D-T6 cells and conditions (i)–(iii) | faithful | closed |
+| P05B2-T1T2T6-40 | C15: 16/16 rows pass Seat 2's pre-registered bounds | CORRECT | closed |
+| P05B2-T1T2T6-41 | D-T1.3 map: S2 "?" should be 0/1 (condition met by C15); S4 1/1 (2/2 if n\*_max 8 000) | correction (not folded) | open |
+| P05B2-T1T2T6-42 | Seat 4's CI list of pilot-estimate ships not in text or /fix-plan | correction | open |
+| P05B2-T1T2T6-43 | D4 block size unpinned; Seat 5's confirmation not sought; overrun bound and 8 000-start disjointness depend on it | open premise (Seat 5 cell unconfirmed) | open |
+| P05B2-T1T2T6-44 | "C15 re-run under joint rule" collides with file 31; per-emitter figures as an upper bound on cost are [Inferred] | correction | open |
+| P05B2-T1T2T6-45 | "Old error +0.09 / −0.06 dB" at 100 m cubes (builder §3, within estimator SE 0.10–0.11 dB); "the one place the switch adds error"; low-α s = 1 cube omitted | NOT CHECKABLE (unresolved) | open (compute (g)) |
+| P05B2-T1T2T6-46 | D-T1.4 "achieved SE lower than the target allows" (inverted); "target met wherever cap does not bind" false at n\*_max ≈ 1 020 (0.124 dB) | IMPRECISE | open |
+| P05B2-T1T2T6-47 | D-T1.6 S6 shown 1/1, but Seat 6 rates U as written 2/1; its condition (i) not in the text | TENSION MISREAD (fold-in pending; winner unchanged) | open |
+| P05B2-T1T2T6-48 | Seat 6 (ii) (presets: fix placement, not predicate) against the decider's reversal and phase-12 "reported"; (iii) unrecorded | correction | open |
+| P05B2-T1T2T6-49 | "Where U fires" omits both-near placements in `club`, `living_room` and W1 at 0.1–0.5 m with good estimates; Seat 6's U′ example also fires under U | INCONSISTENT (with C13 §3) | open (compute (f)) |
+| P05B2-T1T2T6-50 | AX text "no such rise next to an absorbing face" | IMPRECISE (R = 1 derivation; reduced for α < 1) | open |
+| P05B2-T1T2T6-51 | Q1 (a) "ℓ_ref up to 0.37 % in the gated set" (W1 corner 0.63–0.65 %, CS-NW+) | WRONG | open |
+| P05B2-T1T2T6-52 | Q1 (b) precision range omits L2-F2's 0.0145 dB | IMPRECISE | open |
+| P05B2-T1T2T6-53 | /fix-plan list missing Seat 6 (i)/(ii), Seat 4's CI list, D4 block size, renamed re-run | correction | open |
+| P05B2-T1T2T6-54 | D-T1.1, D-T1.2, D-T1.5, D-T6 round-3 verdicts | SURVIVES | closed |
+| P05B2-T1T2T6-55 | D-T1.3, D-T1.4, D-T1.6, D-T2 (Q1), Q2 round-3 verdicts | SURVIVES WITH CORRECTIONS | open until applied |

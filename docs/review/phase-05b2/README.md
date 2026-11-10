@@ -37,3 +37,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `29-decider-round3-T1-T2-T6.md` | decider | rebuttal round 3: all 18 corrections accepted; D-T1.3 = N-3W\*\*\* (joint, work-bounded pilot); D-T1.6 note U; D-T6 9/9; Q1, Q2 restated; /fix-plan list |
 | `30-seat<n>-confirm-S<n>a.md` | seats 2, 4, 6 | confirmations on the round-3 text: S2-a N-3W\*\*\* + U prefer 1/1 (U′ 1/2); S4-a 1/1 (n\*_max 8 000 fixed 2/2); S6-a U 2/1 → 1/1 under condition (i) on the ±x text (U′ 3/2) |
 | `31-orchestrator-C15.md` | orchestrator | C15: 30 replicates in the closed 100 m cubes (Seat 2's condition): all pass (\|median\| ≤ 0.15 dB, p95 ≤ 0.89 dB) |
+| `32-interrogator-round2-T1-T2-T6.md` | interrogator | round 2 on decider round 3: all survive (D-T1.3, 1.4, 1.6, Q1, Q2 with corrections 1–14); computations (f)–(h) requested |
