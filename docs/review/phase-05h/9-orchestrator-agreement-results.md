@@ -53,3 +53,11 @@ as written and therefore fails on these two fixtures until the board reads it: o
 presets, and the two contract-limits fixtures are listed as known exceptions in the CI report (U correctly describes them);
 (b) the fixtures' placements or materials change (edge_values is a contract-limits fixture used by the validation tests;
 open_field's outcome is AX37 (5.4)'s); (c) the predicate changes (excluded by AX44 (ii)).
+
+## PR #27 m-10 (the gated set's coverage of per-face s and per-band α)
+
+The gated AX43 set at this K20 state contains rooms with per-band α and mixed per-face s: `club` (per-band α, s per face
+0.15 / 0.3 / 0.2 / 0.2 / 0.2 / 0.2 in `tests/scenes/valid/club.json`), `classroom`, `living_room` and `dead_booth` (per-band α and per-face s), all four
+gated in 8 bands for both emitters, and the 30 BRAS pairs (per-band α, 500 Hz–2 kHz). So the per-face scattering index and the
+per-band α mapping are exercised by gated case-bands (m-10 met); `concert_hall_box` and `stone_box` are reported only until
+their 1.25 m rung exists.
