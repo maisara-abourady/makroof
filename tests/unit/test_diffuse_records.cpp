@@ -57,16 +57,19 @@ struct GateEntry
     const char* scene;
     const char* os;
     double recorded14xS;     // 14 x (worst restore + worst solve), s
-    double recordedMedianMs; // median-of-10 restore, ms
-    bool listed;             // recorded > 29.1 s: a listed defect, growth bound instead of the strict 30 s
+    // median-of-10 restore WITH the solve, ms, the growth bound's baseline (D-H1 (v)(b)); file 1's medians were
+    // measured before the switch (no solve), so the baseline is re-baselined from the first three-OS CI run of
+    // this test (O18): 0 = baseline pending, the growth bound is printed and not asserted until it is pinned.
+    double baselineMedianMs;
+    bool listed; // recorded > 29.1 s: a listed defect, growth bound instead of the strict 30 s
 };
 constexpr GateEntry kGateRegister[] = {
-    {"cube100_flutter_fallback", "Linux", 10.59, 590.6, false},
-    {"cube100_flutter_fallback", "macOS", 7.59, 401.3, false},
-    {"cube100_flutter_fallback", "Windows", 9.65, 542.2, false},
-    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2032.5, true},
-    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1882.0, true},
-    {"cube100_lowalpha0.05_s0.3", "Windows", 29.04, 1935.8, false},
+    {"cube100_flutter_fallback", "Linux", 10.59, 0.0, false},
+    {"cube100_flutter_fallback", "macOS", 7.59, 0.0, false},
+    {"cube100_flutter_fallback", "Windows", 9.65, 0.0, false},
+    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 0.0, true},
+    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 0.0, true},
+    {"cube100_lowalpha0.05_s0.3", "Windows", 29.04, 0.0, false},
 };
 const GateEntry* gateRegisterEntry(const std::string& scene)
 {
@@ -304,12 +307,14 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
             const double fourteen = 14.0 * rs.max / 1000.0;
             if (entry->listed)
             {
-                std::printf("05h-records restore gate %-26s %s: LISTED defect (recorded 14 x worst %.2f s, median %.0f ms); "
-                            "growth bound median %.0f <= %.0f ms%s\n",
-                            key, kOsName, entry->recorded14xS, entry->recordedMedianMs, rs.median,
-                            1.10 * entry->recordedMedianMs,
+                const bool pending = entry->baselineMedianMs <= 0.0;
+                std::printf("05h-records restore gate %-26s %s: LISTED defect (recorded 14 x worst %.2f s); 14 x worst now "
+                            "%.2f s; growth bound median %.0f <= %.0f ms%s%s\n",
+                            key, kOsName, entry->recorded14xS, fourteen, rs.median, 1.10 * entry->baselineMedianMs,
+                            pending ? " (BASELINE PENDING: pin this run's median with a CHANGELOG reason; not asserted)" : "",
                             fourteen <= 30.0 ? "; WARNING: this entry now passes 30 s, remove it through /fix-plan" : "");
-                REQUIRE(rs.median <= 1.10 * entry->recordedMedianMs);
+                if (!pending)
+                    REQUIRE(rs.median <= 1.10 * entry->baselineMedianMs);
             }
             else
             {
