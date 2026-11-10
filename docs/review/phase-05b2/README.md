@@ -33,3 +33,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `25-decider-round2-T1-T2.md` | decider | round 2: D-T1.6 = NW-4C+, D-T1.3 = N-3W\*\* (W_max to Maisara, Q2), D-T2 NEEDS MAISARA (Q1) |
 | `26-interrogator-T1-T2-T6.md` | interrogator | decision mode on D-T1 (all), D-T2, D-T6: D-T1.3 FAILS (calibration block unbounded); D-T6 UNDERCONVENED (Seat 7); others survive with corrections |
 | `27-orchestrator-C14.md` | orchestrator | C14: calibration cost at gated 100 m scenes; Phase 04 near-wall cases at W_max (A); Q2 (B) restores; D-T6 small room; gated case count |
+| `28-seat7-D-T6.md` | seat 7 | D-T6 rating after the UNDERCONVENED finding: RS-2+ / B6-1F / M-2 prefer, 0/1 |
