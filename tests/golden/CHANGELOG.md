@@ -62,3 +62,8 @@ Reason: CR4 added, pre-committed room (phase-05f: CR4 geometry accepted by the b
 - `validation_baseline`: extended by 20 new key(s): `bras_cr4_ls1_mp1`, `bras_cr4_ls1_mp1_fitted`, `bras_cr4_ls1_mp2`, `bras_cr4_ls1_mp2_fitted`, `bras_cr4_ls1_mp3`, `bras_cr4_ls1_mp3_fitted`, `bras_cr4_ls1_mp4`, `bras_cr4_ls1_mp4_fitted`, `bras_cr4_ls1_mp5`, `bras_cr4_ls1_mp5_fitted`, `bras_cr4_ls2_mp1`, `bras_cr4_ls2_mp1_fitted`, `bras_cr4_ls2_mp2`, `bras_cr4_ls2_mp2_fitted`, `bras_cr4_ls2_mp3`, `bras_cr4_ls2_mp3_fitted`, `bras_cr4_ls2_mp4`, `bras_cr4_ls2_mp4_fitted`, `bras_cr4_ls2_mp5`, `bras_cr4_ls2_mp5_fitted`
 - `validation_baseline`: rewritten, pinned values within tolerance
 
+## 2026-11-10
+
+Reason: phase 05h session 1: smoke-agreement reference of the C++ diffuse estimator (AX39, AX42 τ): ref_hybrid.target_hybrid at ℓ = 1.25 m, 8 bands, the 15 (A) cases, copied from tools/validation/data/phase05b.json by tools/validation/export_phase05h_smoke.py
+
+- `phase05h_dt1_smoke_reference`: created

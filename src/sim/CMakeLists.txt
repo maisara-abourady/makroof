@@ -30,7 +30,14 @@ add_library(spatial_sim STATIC
             conv/PartitionedConvolver.h
             conv/PartitionedConvolver.cpp
             conv/CrossfadingConvolver.h
-            conv/CrossfadingConvolver.cpp)
+            conv/CrossfadingConvolver.cpp
+            diffuse/Sampling.h
+            diffuse/FaceLists.h
+            diffuse/FaceLists.cpp
+            diffuse/ThreadPool.h
+            diffuse/ThreadPool.cpp
+            diffuse/DiffuseEstimator.h
+            diffuse/DiffuseEstimator.cpp)
 add_library(spatial::sim ALIAS spatial_sim)
 
 target_include_directories(spatial_sim PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
@@ -39,3 +46,15 @@ target_link_libraries(spatial_sim
                       PUBLIC spatial::contract
                       PRIVATE spatial::pffft
                               spatial::warnings)
+
+# AX39 D2: the diffuse estimator's paths and sums must not depend on FMA contraction or fast-math
+# (tools/ci/test_diffuse_sources.py checks this block).
+set(SPATIAL_DIFFUSE_SOURCES diffuse/FaceLists.cpp diffuse/ThreadPool.cpp diffuse/DiffuseEstimator.cpp)
+if(MSVC)
+    set_source_files_properties(${SPATIAL_DIFFUSE_SOURCES} PROPERTIES COMPILE_OPTIONS "/fp:precise")
+else()
+    set_source_files_properties(${SPATIAL_DIFFUSE_SOURCES} PROPERTIES COMPILE_OPTIONS
+                                "-ffp-contract=off;-fno-fast-math")
+endif()
+find_package(Threads REQUIRED)
+target_link_libraries(spatial_sim PRIVATE Threads::Threads)
