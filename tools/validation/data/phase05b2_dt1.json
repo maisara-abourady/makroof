@@ -26915,5 +26915,350 @@
    "changed": false
   },
   "_changed": []
+ },
+ "c17": {
+  "w_scene_B": 69526588.23529412,
+  "cases": {
+   "layout4_s1/reference_positions": {
+    "n_star": 1024,
+    "n": 9024,
+    "cap_hit": true,
+    "se_db": [
+     0.09116831792327339,
+     0.09221975272251895
+    ],
+    "pilot_VOV": [
+     0.023327681276609204,
+     0.012972854977120104
+    ],
+    "seat1_floor_met": [
+     true,
+     true
+    ]
+   },
+   "layout4_s1/listener_wall": {
+    "n_star": 1024,
+    "n": 6976,
+    "cap_hit": true,
+    "se_db": [
+     0.1468069004905876,
+     0.14976413162986082
+    ],
+    "pilot_VOV": [
+     0.025243537992892154,
+     0.02362905593628426
+    ],
+    "seat1_floor_met": [
+     true,
+     true
+    ]
+   },
+   "layout4_s1/listener_edge": {
+    "n_star": 1024,
+    "n": 5248,
+    "cap_hit": true,
+    "se_db": [
+     0.17406078060973804,
+     0.2170679320194733
+    ],
+    "pilot_VOV": [
+     0.02381579404840651,
+     0.04198436306628285
+    ],
+    "seat1_floor_met": [
+     true,
+     true
+    ]
+   },
+   "layout4_s1/listener_corner": {
+    "n_star": 1024,
+    "n": 3776,
+    "cap_hit": true,
+    "se_db": [
+     0.20192376443557034,
+     0.21013273757134043
+    ],
+    "pilot_VOV": [
+     0.027219182685454386,
+     0.028630338140616537
+    ],
+    "seat1_floor_met": [
+     true,
+     true
+    ]
+   },
+   "layout4_s1/emitter_wall": {
+    "n_star": 1024,
+    "n": 7616,
+    "cap_hit": true,
+    "se_db": [
+     0.14690296436871111,
+     0.09963663695124772
+    ],
+    "pilot_VOV": [
+     0.03012978698154111,
+     0.012972854977120104
+    ],
+    "seat1_floor_met": [
+     true,
+     true
+    ]
+   },
+   "layout4_s1/emitter_edge": {
+    "n_star": 1024,
+    "n": 6528,
+    "cap_hit": true,
+    "se_db": [
+     0.15299459299701648,
+     0.1081076268574558
+    ],
+    "pilot_VOV": [
+     0.023215050529654873,
+     0.012972854977120104
+    ],
+    "seat1_floor_met": [
+     true,
+     true
+    ]
+   },
+   "layout4_s1/emitter_corner": {
+    "n_star": 1024,
+    "n": 5248,
+    "cap_hit": true,
+    "se_db": [
+     0.18491251449318008,
+     0.1206710097736118
+    ],
+    "pilot_VOV": [
+     0.024804338910971484,
+     0.012972854977120104
+    ],
+    "seat1_floor_met": [
+     true,
+     true
+    ]
+   },
+   "layout4_s1/both_wall": {
+    "n_star": 1024,
+    "n": 12992,
+    "cap_hit": true,
+    "se_db": [
+     0.5754532161533656,
+     0.11011466676928341
+    ],
+    "pilot_VOV": [
+     0.06918888393967622,
+     0.02362905593628426
+    ],
+    "seat1_floor_met": [
+     false,
+     true
+    ]
+   },
+   "layout4_s1/both_corner": {
+    "n_star": 1024,
+    "n": 4032,
+    "cap_hit": true,
+    "se_db": [
+     0.4557638007097364,
+     0.23258087578584244
+    ],
+    "pilot_VOV": [
+     0.9039933955487329,
+     0.030545594389904812
+    ],
+    "seat1_floor_met": [
+     false,
+     true
+    ]
+   },
+   "layout4_s1/listener_absorber": {
+    "n_star": 1024,
+    "n": 9152,
+    "cap_hit": true,
+    "se_db": [
+     0.1360932985927076,
+     0.135831317849918
+    ],
+    "pilot_VOV": [
+     0.02772853165687017,
+     0.030820459978820706
+    ],
+    "seat1_floor_met": [
+     true,
+     true
+    ]
+   },
+   "layout5_s1/reference_positions": {
+    "n_star": 1024,
+    "n": 4928,
+    "cap_hit": true,
+    "se_db": [
+     0.09102234648902992,
+     0.0844052624433003
+    ],
+    "pilot_VOV": [
+     0.02338294846631473,
+     0.018488220787655316
+    ],
+    "seat1_floor_met": [
+     true,
+     true
+    ]
+   },
+   "layout5_s1/listener_wall": {
+    "n_star": 1024,
+    "n": 28416,
+    "cap_hit": false,
+    "se_db": [
+     0.07313030494576411,
+     0.06472892928432201
+    ],
+    "pilot_VOV": [
+     0.22749076772774476,
+     0.26381382859198943
+    ],
+    "seat1_floor_met": [
+     false,
+     false
+    ]
+   },
+   "layout5_s1/listener_edge": {
+    "n_star": 1024,
+    "n": 83648,
+    "cap_hit": true,
+    "se_db": [
+     0.06885074933311303,
+     0.06263719775138125
+    ],
+    "pilot_VOV": [
+     0.45517671310194174,
+     0.1309134276659681
+    ],
+    "seat1_floor_met": [
+     false,
+     false
+    ]
+   },
+   "layout5_s1/listener_corner": {
+    "n_star": 1024,
+    "n": 67776,
+    "cap_hit": true,
+    "se_db": [
+     0.06281040758411385,
+     0.06394723867747391
+    ],
+    "pilot_VOV": [
+     0.08104161169594626,
+     0.2325032610096428
+    ],
+    "seat1_floor_met": [
+     true,
+     false
+    ]
+   },
+   "layout5_s1/emitter_wall": {
+    "n_star": 1024,
+    "n": 9728,
+    "cap_hit": true,
+    "se_db": [
+     0.13967442727435517,
+     0.05989131392324599
+    ],
+    "pilot_VOV": [
+     0.3066722293753015,
+     0.018488220787655316
+    ],
+    "seat1_floor_met": [
+     false,
+     true
+    ]
+   },
+   "layout5_s1/emitter_edge": {
+    "n_star": 1024,
+    "n": 9344,
+    "cap_hit": true,
+    "se_db": [
+     0.13033713961906954,
+     0.061458193119668846
+    ],
+    "pilot_VOV": [
+     0.2519908122681189,
+     0.018488220787655316
+    ],
+    "seat1_floor_met": [
+     false,
+     true
+    ]
+   },
+   "layout5_s1/emitter_corner": {
+    "n_star": 1024,
+    "n": 9024,
+    "cap_hit": true,
+    "se_db": [
+     0.1303627009511616,
+     0.06255404854866344
+    ],
+    "pilot_VOV": [
+     0.1531837145282457,
+     0.018488220787655316
+    ],
+    "seat1_floor_met": [
+     false,
+     true
+    ]
+   },
+   "layout5_s1/both_wall": {
+    "n_star": 1024,
+    "n": 42496,
+    "cap_hit": false,
+    "se_db": [
+     0.3062273155965985,
+     0.05374458917924341
+    ],
+    "pilot_VOV": [
+     0.1735140919206517,
+     0.26381382859198943
+    ],
+    "seat1_floor_met": [
+     false,
+     false
+    ]
+   },
+   "layout5_s1/both_corner": {
+    "n_star": 1024,
+    "n": 29184,
+    "cap_hit": true,
+    "se_db": [
+     2.1301241341242707,
+     0.10959631821666953
+    ],
+    "pilot_VOV": [
+     0.3150014692901647,
+     0.18628516410644066
+    ],
+    "seat1_floor_met": [
+     false,
+     false
+    ]
+   },
+   "layout5_s1/listener_absorber": {
+    "n_star": 1024,
+    "n": 12736,
+    "cap_hit": true,
+    "se_db": [
+     0.11317485828283726,
+     0.15453210384039398
+    ],
+    "pilot_VOV": [
+     0.07105243378325966,
+     0.29416890981904836
+    ],
+    "seat1_floor_met": [
+     true,
+     false
+    ]
+   }
+  }
  }
 }

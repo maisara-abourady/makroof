@@ -49,3 +49,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `41-interrogator-plan-diff-check.md` | interrogator | /fix-plan diff check of AX37–AX46 and the phase edits: faithful; correction 1 (restore-gate margin) → phase-05h D-H1; corrections 2–8 wording |
 | `42-interrogator-plan-diff-check-round2.md` | interrogator | round 2 of the diff check: corrections, D-H1 and phase-05h faithful; row 05b status premature (fixed); two phase-05h wording items |
 | `43-decider-board-answers-C1-Q2.md` | decider | board answers: Q2b = (i) 1 024 decided; Challenge 1 and Q2a not decidable on recorded cells (ratings R1–R3 and a (B) computation needed) |
+| `44-orchestrator-C17.md` | orchestrator | C17: layouts 4/5 under Q2a (B): one-end SE 0.06–0.22 dB (layout 4 meets the floor; layout 5 fails on pilot VOV); both-near still fail |
