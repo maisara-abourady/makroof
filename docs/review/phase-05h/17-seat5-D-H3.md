@@ -205,3 +205,12 @@ Append to `docs/review/phase-05h/17-seat5-D-H3.md`. Everything in my first repor
 **Hand-offs.** Cancel points in `BandNoiseGenerator` (where a check is cheap and deterministic): Seats 2, 3, for 07c. **Premortem (unchanged).**
 
 Files added for this addendum: `/home/user/makroof/docs/review/phase-05h/18-orchestrator-D-H3-code-tasks.md` (K-c3, K-e6), `/home/user/makroof/tests/unit/test_diffuse_gate.cpp` L363–448.
+
+
+---
+
+## Round 3: (f9) cell
+
+**(f9) as the CHECK: now 0 / later 1.** From the code (`/home/user/makroof/tests/unit/test_diffuse_agreement.cpp` L311–319): the additive form is already computed every run from quantities in hand (`pooledDev`, `pooledLRef`, `pooledSe2` → `3·SE_pool`) and printed as "within / OUTSIDE"; making it the CHECK is one line (`CHECK(std::abs(pooledDev[b].mean()) <= pooledLRef[b].mean() + 3.0 * sePool)`), with the as-written mean z and the per-room z′ (e′) demoted to the `[record]` prints that already exist; no golden regenerates and the `room` column stays data. On file 18's numbers it passes every band (band 4: |+0.0008| vs 0.0051 + 0.0040 dB; bands 0–2, 6, 7: |−0.0046| vs 0.0060 + 3·SE_pool ≈ 0.006 dB), so nothing is red in the atomic push and the benchmark step cannot mask pluginval/auval — my criterion for item (a) is met.
+
+Later 1, one line: the bound is cluster-blind (a room's shared rung error enters as a mean, not as a correlated term), so if RQ-H3-1 or a later room set shows the shared error must be grouped, the form is swapped for (e′) at the cost of a test edit; and being a plain-dB bound with ℓ_ref inside it, it is the form most easily quoted as a "tolerance" in Phase 13 wording — Seat 7's rule, not mine. Whether it is principled rather than a loosening is Seats 1, 2 and 9's ground; on CI-gate integrity and implementability it is the cheapest option on the table.
