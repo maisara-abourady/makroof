@@ -2176,3 +2176,9 @@ Round 2 of the J1 diff check and decision mode on file 53 (`docs/review/phase-05
 | P05B2-J1FX-20 | "Any further rise" without tolerance; "every reasonable placement" undefined | IMPRECISE | open |
 
 J1FX-19 closed: Seat 1 accepts clause (d) at the gated closed 100 m cubes at s = 0.3 (`docs/review/phase-05b2/55-seat1-confirm-clause-d.md`). Its two conditions are that the replicates run the shipping rule as built, on disjoint, pre-registered streams, and that the check is repeated on the C++ build. "The VOV part in the closed cubes" comes off its D-T1.3 failing list. Its 2/2 under (A) stands on layouts 4/5 at s = 1 and the low-α s = 1 cube.
+
+Closure notes from steward round 5 (2026-11-10):
+- P05B2-C1Q2-05…08 and 10…13 are closed. Each is applied in decider file 51 (`51-decider-addendum-J1.md`) and in the plan, commits bf3f5bd and 346ae07.
+- P05B2-C1Q2-14 is closed. J1 survives with its corrections applied (files 51, 53, 54).
+- P05B2-J1FX-17 is closed, with Trigger 1's clause (d) accepted by Seat 1 (file 55).
+- P05B2-J1FX-18 and P05B2-J1FX-20 are carried to phase-05h §3 D-H1 (OPEN premises), AX38 4c and phase-12 ("Hall presets and J1", OPEN), commit 1aa4c4e.
