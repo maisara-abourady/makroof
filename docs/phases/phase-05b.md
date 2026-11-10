@@ -4,7 +4,7 @@ Size: **M** (L if gate (A) or the tracer fights back; split the remainder into a
 
 Created by decider report 8, accepted by Maisara, 2026-11-05: B11 is a v1 phase, after 05 and before 08.
 
-**Session 2:** the tail-level switch (scope 4 (i), AX36 (c)) is specified in [`phase-05b2.md`](phase-05b2.md) (Maisara, 2026-11-09).
+**Session 2:** the tail-level switch (scope 4 (i), AX36 (c)) is specified in [`phase-05b2.md`](phase-05b2.md) (Maisara, 2026-11-09); its decisions are AX37–AX46 (accepted by Maisara 2026-11-10).
 
 ## Goal
 
@@ -87,7 +87,7 @@ t_mix,e. This phase promotes the Phase 05 reference hybrid's early Lambert-scatt
    - The switch is valid only with SE(ΔL_b,tr) = 4.34/√k_tr ≤ 1/3 dB (threshold/3, AX11); k ≥ 684 gives ≤ 0.17 dB. Realised k and SE are printed. The tracer seed is fixed, so the decision reproduces on re-run. Near 1 dB either branch leaves the level error within about 1 dB + 3·SE (decider report 11, FR-04; the trigger uses |ΔL_b,tr|, C1, accepted by Maisara, 2026-11-05).
    - Independently of these, if Phase 05's |ΔL_b| exceeded 1 dB anywhere, tail-level matching switches
      to the hybrid's propagated diffuse energy (AX16), under the same validation.
-   - **Compute limit (AX36, 2026-11-08, accepted by Maisara 2026-11-09):** E_target is certified at ℓ = 2.5 m and evaluated at 1.25 m with an ℓ-sensitive flag per case-band, and any tail-level switch from (i) or the bullet above waits for R1, R2 and Maisara's decision, with ΔL_b,tr recorded in AX16 as a known deficit meanwhile.
+   - **Compute limit (AX36, 2026-11-08, accepted by Maisara 2026-11-09):** E_target is certified at ℓ = 2.5 m and evaluated at 1.25 m with an ℓ-sensitive flag per case-band, and any tail-level switch from (i) or the bullet above waited for R1, R2 and Maisara's decision, with ΔL_b,tr recorded in AX16 as a known deficit meanwhile. **Settled 2026-11-10:** R1 is certified at 2.5 m in CR2, CR3 and CR4; R2 is D-T1.1 (AX39); the switch is decided and specified in [`phase-05b2.md`](phase-05b2.md) per AX37–AX46 (AX36 (c) resolved; accepted by Maisara 2026-11-10).
 5. **Tracer-bias diagnosis** (BUILD_PLAN §5 B11, decider report 8, item 2e). If the per-bin difference
    converges to a bias above 0.3 dB, diagnose with two tracer self-checks against independent anchors:
    - s = 0 against the ISM image energies in 10 ms bins (the lattice is exact, Kuttruff §4.1);
