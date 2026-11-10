@@ -52,7 +52,9 @@ When the orchestrator presents a new or changed brief, check it before any work 
   phase dependencies, the acceptance criteria, the listening checklist and contractor review focus in the
   PR, the change-log row, and the `/fix-plan` route for plan changes.
 - Is anything ambiguous enough that two reasonable readings would produce different work? That needs
-  Maisara, not a guess. Phrase the one question that settles it.
+  an answer, not a guess. If the PRD or her recorded words settle it, the decider answers it
+  (`docs/board/README.md`, "Who answers Maisara's questions"). Otherwise it is Maisara's. Either way,
+  phrase the one question that settles it.
 
 Answer **BRIEF OK** or **BRIEF GAPS** (listed).
 
@@ -70,7 +72,9 @@ For every objective in the brief:
    (spot-check a cell against the seat's report); the chosen option has no veto-grade cell unless Maisara
    overrode it in the ledger; the future-debt register is present; the decision SURVIVES (or SURVIVES
    WITH CORRECTIONS) the interrogator; the researcher's dossier says READY, and findings are marked read,
-   not unverified. A claim you cannot check is **UNPROVEN**, not met.
+   not unverified; every applied `FOR MAISARA` answer survived the interrogator's PRD-proxy check (no
+   PRD MISREAD) and is on the brief's "Decided for Maisara" list. A claim you cannot check is
+   **UNPROVEN**, not met.
 3. **Faithfulness.** Does what was done match Maisara's words, or a drifted version of them? Has
    something been done that no objective asks for (scope creep, another phase's work)? That goes to
    follow-ups, not into the deliverable.
@@ -86,7 +90,9 @@ Then list the **gaps**. For each, give:
   "CI green on all three OSes for commit X");
 - **severity**: **blocking** (an objective cannot be MET without it) or **non-blocking** (a quality or
   completeness point);
-- **whose call**: **orchestrator** (it can be closed by work), or **Maisara** (only she can decide it).
+- **whose call**: **orchestrator** (it can be closed by work, including a decision the decider takes
+  for Maisara), or **Maisara** (only the three cases in `docs/board/README.md`, "Who answers Maisara's
+  questions", or an action only a person can take).
 
 Do not name which agent should close a gap and do not write the delegation plan. If a gap can only be
 closed by a kind of evidence that a particular role produces (a corpus check, a researched reference, a
@@ -107,7 +113,7 @@ End every report with exactly one verdict:
   - a gap that keeps failing for want of a decision.
 
   Only these are hers:
-  - (a) the PRD is silent or contradicts itself;
+  - (a) the PRD is silent or contradicts itself, and none of her recorded decisions settles it;
   - (b) a change to the PRD itself (reading or amending one of her recorded decisions is the decider's,
     reported to her);
   - (c) overriding a seat's veto-grade rating;

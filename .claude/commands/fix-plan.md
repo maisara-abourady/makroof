@@ -32,7 +32,8 @@ need to know or remember these steps.
       tension map, the minimum-tension working, **DECISION** with load-bearing claims and future-debt
       register, or **FOR MAISARA** (a question it answered for her from the PRD, with the PRD ids), or
       **RESEARCH NEEDED** (back to the researcher), or **NEEDS MAISARA**. NEEDS MAISARA covers only three
-      cases: the PRD is silent or contradictory; the answer changes the PRD itself; or a seat's
+      cases: the PRD is silent or contradictory and none of her recorded decisions settles it; the
+      answer changes the PRD itself; or a seat's
       veto-grade rating would have to be overridden. The user decides those, and
       an override is recorded in the ledger.
    d. **interrogator, decision mode**: **SURVIVES** / **SURVIVES WITH CORRECTIONS** / **UNDERCONVENED**
@@ -44,10 +45,14 @@ need to know or remember these steps.
    Repeat (c)–(d) for at most 3 rounds. The item goes on only with SURVIVES or SURVIVES WITH
    CORRECTIONS, or when the user answered it herself. After 3 rounds, the decider rules on what is still
    contested as FOR MAISARA from the PRD, with each side's last word. The interrogator checks that ruling
-   once. It goes to the user only in the three NEEDS MAISARA cases.
+   once. If that check is not SURVIVES or SURVIVES WITH CORRECTIONS, the item goes to the user as NEEDS
+   MAISARA case (a), with both readings and the decider's recommendation. Otherwise it goes to the user
+   only in the three NEEDS MAISARA cases.
    Save every round's output under `docs/review/<target>/` (decider, seats, researcher, interrogator,
    one file per round) so the steward and the reviewer can check the map against the seats' words.
 4. Send the verified decisions back to the plan-editor to apply (resume it, or brief a new one with them).
+   An edit to `docs/PRD.md` is applied only if Maisara asked for it (her words in the brief) or answered
+   it as NEEDS MAISARA case (b). Otherwise it is held and asked as NEEDS MAISARA (b).
 5. Run the **interrogator** on the finished diff (the changed passages only) to check the science of what
    was written. Anything WRONG goes back through steps 2–4; at most 3 rounds, then report what is left.
 6. Record the decisions, the convening tables, the verdicts and the final status in

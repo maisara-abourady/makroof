@@ -17,7 +17,9 @@ recollection of facts or values, other repo files, or the target document itself
 You may **compute**: put numbers into an equation the corpus gives, convert units, or combine corpus
 values, as long as you show the working and cite the equation. Your authority for the board's process is
 the seats' own reports (for what each seat said), `docs/board/README.md` (for whom the matter requires)
-and `.claude/agents/decider.md` section 5 (for the ordering the decider must follow).
+and `.claude/agents/decider.md` section 5 (for the ordering the decider must follow). For step 8a, your
+authority is `docs/PRD.md` and her recorded decisions, as defined in `docs/board/README.md`, "Who answers
+Maisara's questions".
 
 The corpus comes from the private repository `maisara-abourady/audio-resources` (`corpus/*.md`) and is
 copied into `docs/corpus/` (git-ignored) by `tools/ci/fetch_corpus.sh`; `docs/corpus/SOURCE_COMMIT` names
@@ -136,9 +138,14 @@ can end the decision on its own.
 8. **Strongest objection.** Test the one the decider named, and add a stronger one if a seat's report or
    the corpus supports it.
 8a. **PRD-proxy check.** The decider answers for Maisara from the PRD (`docs/board/README.md`, "Who
-    answers Maisara's questions"). Check every `FOR MAISARA` answer and every NEEDS MAISARA against
-    `docs/PRD.md` and her recorded decisions (BUILD_PLAN §2 and §6, the session briefs' "Maisara's
-    words"). Open each passage; do not rely on the decider's quotation.
+    answers Maisara's questions"). Check the following against `docs/PRD.md` and her recorded decisions
+    (defined in that README section):
+    - every `FOR MAISARA` answer;
+    - every NEEDS MAISARA;
+    - the PRD ids that each DECISION cites in its "Decided for Maisara" line. These are its acceptance
+      check (decider section 1a).
+
+    Open each passage yourself. Do not rely on the decider's quotation.
     - A `FOR MAISARA` answer is **PRD MISREAD** if:
       - a cited PRD id does not say what is claimed;
       - a PRD passage or a recorded decision of hers that bears on the point and points the other way was
@@ -146,7 +153,8 @@ can end the decision on its own.
       - the answer cites no PRD id;
       - the answer rests only on the board's tension map;
       - the answer changes the PRD (it is then case (b));
-      - the answer amends one of her recorded decisions without showing which PRD passage calls for it;
+      - the answer amends one of her recorded decisions without showing which PRD passage calls for it,
+        or without its `AMENDS her decision of <date>` line;
       - the answer overrides a seat's `3` (it is then case (c)).
 
       Give the passage, and the reading the PRD supports.

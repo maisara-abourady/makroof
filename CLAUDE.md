@@ -11,7 +11,10 @@ instructions: `docs/phases/phase-XX.md`.
 1. Read, in order: this file → `docs/BUILD_PLAN.md` (§0 status, §2 assumptions, §3 flags) → the
    phase file you were asked to execute → the PRD sections the phase file cites.
 2. If the phase file has a **"Raise with Maisara"** section, raise every item in it in your first
-   message and again in the PR description. Maisara does not track these herself.
+   message and again in the PR description. Maisara does not track these herself. In the first message,
+   note that the decider answers each question among them from the PRD unless one of the three cases in
+   `docs/board/README.md` ("Who answers Maisara's questions") applies. The PR gives the answers under
+   "Decided for Maisara".
 3. Check that every phase this one depends on is `done` in the status table. If one isn't, stop and
    report it. Don't build on unfinished phases.
 4. Set the phase to `in progress` in `docs/BUILD_PLAN.md` §0 and commit that first.
@@ -69,8 +72,7 @@ template in its README).
    three cases in `docs/board/README.md`, "Who answers Maisara's questions", and things only a person can
    do. Every other question goes to the decider. Append each new instruction from her to the brief
    verbatim. The "Raise with Maisara" items (step 2 of "The one rule for every session") still go in your
-   first message to her. Where the decider has answered a question among them, it goes as information,
-   with the answer.
+   first message to her.
 
 ## Assumptions and decisions
 
@@ -125,7 +127,8 @@ nine subject-matter seats (`docs/board/README.md`; personas in `docs/board/`, ag
     `docs/PRD.md` and her recorded decisions, and cites their ids.
   - Answers that survive are applied, then listed for her under "Decided for Maisara" in the report and
     the PR. She may veto any of them afterwards.
-  - Only three cases go to her as NEEDS MAISARA: the PRD is silent or contradicts itself; the answer
+  - Only three cases go to her as NEEDS MAISARA: the PRD is silent or contradicts itself (and none of
+    her recorded decisions settles it); the answer
     would change the PRD itself; a seat's veto-grade rating would have to be overridden. Plan text that
     sends a question to her is read under this rule.
   - The rule is set out in full in `docs/board/README.md`, "Who answers Maisara's questions".
@@ -330,6 +333,7 @@ Windows: run the CMake commands from an "x64 Native Tools Command Prompt for VS 
   PR link, session brief) may follow without a run.
 - Commit messages: `phase-XX: <imperative summary>`.
 - The PR description contains: what was done, acceptance-criteria checklist with CI evidence,
-  listening checklist for Maisara, contractor review focus, follow-ups, assumption/golden changes.
+  listening checklist for Maisara, contractor review focus, follow-ups, assumption/golden changes, and
+  "Decided for Maisara" (every answer the decider gave for her, with PRD ids, open to her veto).
 - Never commit downloaded datasets (BRAS, SOFA originals). Download by checksum in scripts. The
   converted embedded HRTF is the one exception, once its licence is confirmed.

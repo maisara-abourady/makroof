@@ -20,6 +20,29 @@
 
 > 2026-11-10 (on PR #25, which the change follows): "Merge when ci is done"
 
+The orchestrator's message of 2026-11-10 14:08 UTC that she answered with "Do it" (verbatim; the approved change):
+
+> Yes, it can reason from the PRD, and that's the authority it was missing. The PRD can now replace you as the decider's final reference. Your words are recorded in the session brief.
+>
+> **What changes:**
+> - **Decide from the PRD.** When a question would have come to you, the decider decides it from the PRD. That covers reinterpreting one of your settled decisions, like Q1's "does the 1 % rule apply to bias or to every random error". It also covers trade-offs the earlier rules left to you, like Q2's accuracy against load time.
+> - **Show the reasoning.** It must name the PRD requirements it relies on, such as NFR-2, NFR-6 or FR-SIM-6, and show how each option serves them.
+> - **Interrogator check.** The interrogator checks that reasoning against the PRD as it does everything else. The decision stands only if it survives.
+> - **No accept/veto stop.** The decision is applied and listed in the report. You can veto afterwards.
+>
+> **What I'd still bring to you, in only three cases:**
+> 1. **The PRD is silent or contradicts itself on the point.** Your judgement then is the missing input, and the fix is a PRD change.
+> 2. **A change to the PRD itself.** The north star shouldn't edit itself.
+> 3. **Overriding a seat's veto-grade rating.** A 3 means a seat judges an option unacceptable. Overruling it should stay yours, unless you'd rather the decider may override when the PRD clearly supports it.
+>
+> This session shows it would work. Q1, Q2 and Challenge 1 each had a defensible answer from the PRD's requirements. The board reached those answers itself once it was allowed to.
+>
+> Making it the rule is a small change to CLAUDE.md, `/fix-plan` step 3 and the decider's instructions. I'll do it as its own short session after the phase-05b merge, so it doesn't mix into this PR. One thing only you can settle is case 3: should a veto still come to you, or may the decider override it when the PRD supports that? I recommend it stays with you.
+>
+> Meanwhile CI on [maisara-abourady/makroof#25](https://github.com/maisara-abourady/makroof/pull/25) is still running. I'll merge when it's green, as you asked.
+
+The orchestrator's next message (14:08:57): "I'll make the governance change. On the one open point, I'm taking my recommendation: overriding a seat's veto stays with you."
+
 ## Objectives
 | id | objective | from | done when (evidence) |
 |---|---|---|---|
@@ -54,6 +77,9 @@
   reverse that (steward G6).
 - "Raise with Maisara" items are still raised in the first message and the PR (CLAUDE.md rule 2), as information
   where the decider has answered them.
+
+## Decided for Maisara
+- none (this session decides no product, acoustic or numeric question)
 
 ## Raise with Maisara
 - none

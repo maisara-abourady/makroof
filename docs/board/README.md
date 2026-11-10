@@ -79,30 +79,45 @@ reasoning, my north star is the prd that drives my decision making"; and, on thi
    - choosing between options the board left open;
    - an item still contested after the interrogator's 3 rounds;
    - a product trade-off or judgement;
-   - the scope or the reading of one of her earlier answers or recorded decisions (BUILD_PLAN §2 and §6),
-     and an amendment of one when the PRD calls for it (as Q1 reread AX36 and Q2 amended AQ10 on
+   - the scope or the reading of one of her earlier answers or recorded decisions, and an amendment of one
+     when the PRD calls for it (as the phase-05b2 brief's questions Q1 (AX36) and Q2 (AQ10) did on
      2026-11-10);
    - an ambiguity in her words that the PRD settles;
    - a question in a phase file's "Raise with Maisara" section.
 
-   Each answer cites the PRD ids it rests on (FR/NFR, goals, out-of-scope items, Q-defaults) and her recorded
-   decisions (BUILD_PLAN §2 and §6, session briefs). It must not lean on the board's minimum-tension ordering
+   Each answer cites the PRD ids it rests on (goals, FR/NFR, out-of-scope items) and her recorded
+   decisions. Q-ids from the PRD may be cited; their defaults are AQ rows. Answering a PRD open question
+   Q1–Q10 stays with the Expert the PRD names.
+
+   **Her recorded decisions** are:
+   - her words, verbatim, in the session briefs;
+   - the BUILD_PLAN §2/§6 rows, or parts of rows, that cite her by date.
+
+   The other AQ/AX rows are plan defaults. A board DECISION may change them through `/fix-plan`, as before.
+
+   Accepting a surviving DECISION for her is a PRD check: it breaks no hard constraint, and no PRD goal or
+   ranked requirement points to another surviving option. It must not lean on the board's minimum-tension ordering
    alone. The interrogator checks that reasoning (PRD MISREAD).
+
+   An answer that amends one of her recorded decisions says so in its line:
+   `AMENDS her decision of <date>: "<her words>"`.
 2. **Applied, then reported.** An answer that survives the interrogator is applied without waiting for her.
    The session report and the PR list it under "Decided for Maisara": one plain line per answer, with its
    PRD ids, so she can veto any of them afterwards. A veto is recorded in the ledger and undone through
    `/fix-plan`.
 3. **Only three things still go to her** (NEEDS MAISARA). Each comes with the decider's recommendation and its
    PRD reasoning:
-   - **(a) The PRD is silent or contradicts itself** on the point. The decider names the PRD passages it
-     searched.
+   - **(a) The PRD is silent or contradicts itself** on the point, and none of her recorded decisions
+     settles it. The decider names the PRD passages it searched. This case also covers a ruling after 3
+     contested rounds that fails the interrogator's check.
    - **(b) The answer would change the PRD itself:** a requirement, a hard constraint or an out-of-scope
      item. The north star does not edit itself.
    - **(c) Overriding a seat's veto-grade rating.** A `3` is a seat's judgement that an option is
      unacceptable. Overruling it stays hers; she may hand it to the decider later.
 
    Things only a person can do are not decisions and stay hers as before: listening checklists, accounts,
-   access, payments, legal signatures.
+   access, payments, legal signatures. So does a gap that is not a decision and is still failing after 3
+   steward rounds.
 4. **Plan text that routes a question to her is read under this rule.** This covers a "Raise with Maisara"
    item, and an AX/AQ row or phase file that says something "goes to Maisara". The decider answers the
    question unless it falls in one of the three cases. Such text is not rewritten for this rule. When it
