@@ -51,3 +51,43 @@ Options: (a) the test asserts what holds (bit-identical IRs with the caller's FT
 probe's finding, the "asserted to produce denormals" clause read as satisfied by the probe's negative result (a FOR MAISARA
 reading of AX37 (5.1) (i)); (b) keep searching for a scene (which one, and how long); (c) a synthetic denormal injected into
 the IR path for the test only (a formulation seam in test code; it would assert the guard, not the premise).
+
+## Addendum (c): the IR-path probe's result
+
+`[.][probe-denormals-ir]` (Release, this box): buildRoomIR without the guard, caller's FTZ off vs on, 8 scenes × 2 rates:
+
+```
+probe-ir fs 48000 absorbentScene (dead_booth, alpha 0.98, s 1) : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 48000 dead_booth.json                              : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 48000 edge_values.json                             : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 48000 open_field.json                              : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 48000 medium_room.json                             : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 48000 dead_booth alpha 0.999 s 0.5                 : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 48000 100 m cube alpha 0.999 s 0.5                 : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 48000 100 m cube alpha 0.01 at 63/125 Hz, 0.999 above: IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 96000 absorbentScene (dead_booth, alpha 0.98, s 1) : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 96000 dead_booth.json                              : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 96000 edge_values.json                             : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 96000 open_field.json                              : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 96000 medium_room.json                             : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 96000 dead_booth alpha 0.999 s 0.5                 : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 96000 100 m cube alpha 0.999 s 0.5                 : IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+probe-ir fs 96000 100 m cube alpha 0.01 at 63/125 Hz, 0.999 above: IR without the guard, FTZ off vs on -> identical (no denormal reached the IR)
+```
+
+No probed scene produces a denormal that reaches the IR (the estimator probe over 24 scenes gave the same). The premise
+"asserted to produce denormals without FTZ" has no instance in reach; the test asserts the guard's property instead.
+
+## D-H3 (d) — "W1 both_corner asserts the cap flag" (AX44, Seat 5) fails on the C++ joint rule
+
+Evidence: `13-orchestrator-reported-set.md`. At W1 both_corner (listener (0.1, 0.1, 0.1), emitter 0 at the opposite corner,
+emitter 1 at its default), the C++ shipping rule gives n\* 1 024, N_need ≤ N_cap = 1 088, N = 1 024, **cap hit 0**, while the
+final range's achieved SE is 1.122 dB (VOV_union 0.567) and U is raised through the both-near ∧ VOV_union ≥ 0.1 leg. The
+pilot's 1 024 histories missed the heavy tail the final range met (a pilot SE ≤ 0.086 dB implies N_need ≤ 1 088), so the cap
+flag, which is N_need > N_cap, did not fire; in the prototype (C16, W1/both_corner) the pilot's draw gave a large N_need and
+N_cap 2 624 (the C++ N_cap is 1 088 because the C++ work count is larger, review Q-3), so the flag fired there. Whether the
+cap flag fires at this placement is therefore a property of the pilot's draw at a VOV ≈ 0.6 case, not of the rule. Options:
+(a) read Seat 5's assertion as "U is raised at W1 both_corner" (which holds, through the VOV leg) and record the cap flag's
+value (a FOR MAISARA reading of AX44's "W1 both_corner asserts the cap flag"); (b) keep the assertion as written and record the
+failure (the records test stays red); (c) assert "cap hit or floor truncated or U" (a reading as (a) in different words).
+Nothing here changes the predicate or the rule.
