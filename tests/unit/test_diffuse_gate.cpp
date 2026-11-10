@@ -11,6 +11,7 @@
 #include "sim/Engine.h"
 #include "sim/conv/Denormals.h"
 #include "sim/diffuse/DiffuseEstimator.h"
+#include "sim/diffuse/ThreadPool.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -364,19 +365,32 @@ TEST_CASE("probe: denormals on the IR path (buildRoomIR without the guard, FTZ o
 // at 63 Hz and 0.999 above, whose fast bands' exp(-rate j) in BandNoiseGenerator::make reach the double subnormal
 // range (708 < rate j < 745) inside the 63 Hz band's long tail.
 namespace {
-unsigned long long denormalFlag() noexcept
+// Sticky FPU exception flags, read as (denormal-operand, underflow). x86-64 MXCSR: DE bit 1 (a denormal operand
+// was consumed; not set under DAZ), UE bit 4 (a tiny inexact result; set when FTZ flushes one). AArch64 FPSR:
+// IDC bit 7 (an input denormal was flushed because FZ = 1; never set with FZ off), UFC bit 3 (underflow).
+// So a denormal shows as DE or UE without the guard on x86, and as UFC without the guard / IDC or UFC with
+// it on AArch64 (Seat 5, file 17-seat5 addendum): the probe prints both bits and both arms per architecture.
+struct DenormalFlags
 {
+    bool operand = false;
+    bool underflow = false;
+};
+DenormalFlags denormalFlags() noexcept
+{
+    DenormalFlags f;
 #if defined(SPATIAL_DENORMALS_SSE)
-    return _mm_getcsr() & 0x2u; // MXCSR DE
+    const unsigned csr = _mm_getcsr();
+    f.operand = (csr & 0x2u) != 0;
+    f.underflow = (csr & 0x10u) != 0;
 #elif defined(SPATIAL_DENORMALS_AARCH64)
     std::uint64_t fpsr = 0;
     asm volatile("mrs %0, fpsr" : "=r"(fpsr) : : "memory");
-    return fpsr & 0x80u; // FPSR IDC
-#else
-    return 0;
+    f.operand = (fpsr & 0x80u) != 0;
+    f.underflow = (fpsr & 0x8u) != 0;
 #endif
+    return f;
 }
-void clearDenormalFlag() noexcept
+void clearDenormalFlags() noexcept
 {
 #if defined(SPATIAL_DENORMALS_SSE)
     _mm_setcsr(_mm_getcsr() & ~0x3Fu); // the six sticky exception flags
@@ -386,6 +400,25 @@ void clearDenormalFlag() noexcept
     fpsr &= ~0xFFull;
     asm volatile("msr fpsr, %0" : : "r"(fpsr) : "memory");
 #endif
+}
+const char* flagText(DenormalFlags f) noexcept
+{
+    return f.operand && f.underflow ? "operand+underflow" : f.operand ? "operand" : f.underflow ? "underflow" : "clear";
+}
+// Calibration (Seat 5): the detector must see a known denormal operand and a known underflow, else it SKIPs.
+bool calibrateDetector(bool& operandSeenWithoutGuard)
+{
+    volatile double tiny = 1e-310, one = 1.0, small = 1e-300, smaller = 1e-20;
+    clearDenormalFlags();
+    volatile double a = tiny * one; // a denormal operand
+    const auto f1 = denormalFlags();
+    clearDenormalFlags();
+    volatile double b = small * smaller; // an underflowing result
+    const auto f2 = denormalFlags();
+    (void)a;
+    (void)b;
+    operandSeenWithoutGuard = f1.operand;
+    return (f1.operand || f1.underflow) && f2.underflow;
 }
 } // namespace
 
@@ -423,6 +456,12 @@ TEST_CASE("probe: denormals on the IR path, direct FPU status-flag detector (ung
             s.bandsAbsorption = {0.01, 0.01, 0.5, 0.999, 0.999, 0.999, 0.999, 0.999};
         probes.push_back({"100 m cube alpha 0.01 at 63/125 Hz, 0.999 above", sc});
     }
+    bool operandWithoutGuard = false;
+    if (!calibrateDetector(operandWithoutGuard))
+        SKIP("the FPU status-flag detector did not see a known denormal / underflow on this platform");
+    std::printf("probe-detector calibration: a denormal operand without the guard reads as %s on this architecture\n",
+                operandWithoutGuard ? "operand" : "underflow only (AArch64 form)");
+    sim::diffuse::ThreadPool oneThread(1); // every solve block runs on the instrumented thread (D4: same result)
     for (const double fs : {48000.0, 96000.0})
         for (const auto& pr : probes)
         {
@@ -430,20 +469,20 @@ TEST_CASE("probe: denormals on the IR path, direct FPU status-flag detector (ung
             o.sampleRate = fs;
             o.kind = sim::BuildOptions::Kind::Omni;
             o.ftzGuard = false;
-            clearDenormalFlag();
+            o.diffusePool = &oneThread;
+            clearDenormalFlags();
             const sim::RoomIR off = sim::buildRoomIR(pr.scene, o);
-            const auto flagOff = denormalFlag();
+            const auto flagsOff = denormalFlags();
             sim::RoomIR on;
-            unsigned long long flagOn = 0;
+            DenormalFlags flagsOn;
             {
                 const sim::conv::ScopedFlushDenormals ftz;
-                clearDenormalFlag();
+                clearDenormalFlags();
                 on = sim::buildRoomIR(pr.scene, o);
-                flagOn = denormalFlag();
+                flagsOn = denormalFlags();
             }
-            std::printf("probe-detector fs %.0f %-55s: denormal flag FTZ off %s, FTZ on %s; IRs %s\n", fs, pr.label,
-                        flagOff ? "SET (denormal operand seen)" : "clear", flagOn ? "SET" : "clear",
-                        bitIdentical(off, on) ? "bit-identical" : "DIFFERENT");
+            std::printf("probe-detector fs %.0f %-55s: flags FTZ off [%s], FTZ on [%s]; IRs %s\n", fs, pr.label,
+                        flagText(flagsOff), flagText(flagsOn), bitIdentical(off, on) ? "bit-identical" : "DIFFERENT");
         }
 }
 
