@@ -303,7 +303,8 @@ TEST_CASE(
     // (C++ - ref) dB| <= 3 SE_pool + mean l_ref, with SE_pool = sqrt(mean SE^2 / M): l_ref enters as a
     // bounded systematic residual of unknown sign, the same reading as the per-case N rule (z_FW SE <= tau -
     // l_ref), one reading throughout AX43. The right-hand side is the catch for a shared estimator bias
-    // (about 0.009 dB at 500 Hz-2 kHz on the file-18 set); it is a mean of magnitudes, so it moves with the
+    // (about 0.008 dB at 500 Hz-2 kHz and 0.010 dB elsewhere on the application run, interrogator file 28
+    // P05H-112); it is a mean of magnitudes, so it moves with the
     // gated set and is restated at each golden round (Seat 2); it is printed per band beside the mean
     // deviation (Seat 1) and returns to the board above 0.02 dB. Printed as records, never checked: the
     // as-written statistic (mean z against 3/sqrt(M)), the pooled mean z', the per-class means in both forms,
