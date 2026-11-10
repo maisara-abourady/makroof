@@ -91,3 +91,4 @@
 |---|---|---|---|---|
 | 0 | 2026-11-10 | BRIEF GAPS | G1, G2 (blocking); G3, G4 (non-blocking) | none |
 | 1 | 2026-11-10 | BRIEF OK | none (3 wording fixes: O4 file pattern, Constraints 13b line, log row 0) | G1, G2, G3, G4 |
+| 2 | 2026-11-10 | CONTINUE | G5 (O4 references.md missing, map-13 references on superseded numbering; blocking), G6 (follow-ups in the report; non-blocking) | none (O1–O3, O5–O8 MET) |
