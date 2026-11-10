@@ -69,8 +69,12 @@ constexpr GateEntry kGateRegister[] = {
     {"cube100_flutter_fallback", "Linux", 10.59, 0.0, false},
     {"cube100_flutter_fallback", "macOS", 7.59, 0.0, false},
     {"cube100_flutter_fallback", "Windows", 9.65, 0.0, false},
-    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 0.0, true},
-    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 0.0, true},
+    // Baselines pinned from the first three-OS run of this test (CI run 42909003931, 2026-11-10, W_max 3.05
+    // M): median-of-10 restore with the solve, Linux 2 043 ms (14 x worst 29.62 s: the listed entry passed 30
+    // s in that run, reported for removal through /fix-plan), macOS 2 106 ms (14 x worst 37.37 s). Re-pinned
+    // with a CHANGELOG reason whenever W_max or n*_max is re-derived (D-H1 (v)(b)).
+    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2043.0, true},
+    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 2106.0, true},
     {"cube100_lowalpha0.05_s0.3", "Windows", 29.04, 0.0, false},
 };
 const GateEntry* gateRegisterEntry(const std::string& scene)

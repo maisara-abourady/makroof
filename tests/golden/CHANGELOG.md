@@ -131,3 +131,9 @@ Reason: phase 05h: the BRAS validation scenes' simulated metrics after the AX37 
 Reason: phase 05h, review file 32 M4 (a): the H3-F6 re-export (the export script now takes the finest two rungs present per case) also moved the AX45 cases `dt6_small_room_e0` / `_e1` to the 0.625 m rung (their 2.5 → 1.25 → 0.625 m ladder converges, ratio 0.14) and, for the single-rung cases (W2, the CS-NW+ emitter-1 and 0.3 m placements, the emitter-wall case; still uncertified), records their one rung as `ref_fine` instead of `ref_coarse`; no gated value changed by this note, which only completes the record of that re-export. Provenance of the references: `tools/validation/data/phase05h_hybrid_references.provenance.json`.
 
 - `phase05h_agreement_reference`: record completed (no value changed)
+
+## 2026-11-10
+
+Reason: phase 05h, D-H1 (v)(b): the AX38 4c restore gate's growth-bound baselines (constants in tests/unit/test_diffuse_records.cpp, not a golden file) pinned from the first three-OS CI run of the records test (run 42909003931): median-of-10 restore with the diffuse solve at the gated low-alpha cube, 96 kHz: Linux 2043 ms (14 x worst 29.62 s), macOS 2106 ms (14 x worst 37.37 s); Windows and the flutter scene stay strict. Re-pinned here whenever W_max or n*_max is re-derived.
+
+- `(records-test constants)`: restore-gate baselines pinned (no golden file changed)

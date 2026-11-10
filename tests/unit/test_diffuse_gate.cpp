@@ -379,6 +379,11 @@ const char* flagText(DenormalFlags f) noexcept
                                     : "clear";
 }
 // Calibration (Seat 5): the detector must see a known denormal operand and a known underflow, else it SKIPs.
+// Calibration, per architecture. x86-64: a denormal operand sets DE and an underflowing product sets UE with
+// FTZ/DAZ off. AArch64 (K-c4, the macOS run of 2026-11-10: with FZ off neither a denormal operand nor an
+// underflowing product raised a cumulative flag on Apple silicon), so there the observable is IDC under FZ =
+// 1, the guard's own mode: a denormal operand consumed while flushing sets IDC. The arms the [pipeline] test
+// asserts follow: x86-64 asserts the flags in the unguarded arm; AArch64 asserts IDC in the guarded arm.
 bool calibrateDetector(bool& operandSeenWithoutGuard)
 {
     volatile double tiny = 1e-310, one = 1.0, small = 1e-300, smaller = 1e-20;
@@ -391,7 +396,19 @@ bool calibrateDetector(bool& operandSeenWithoutGuard)
     (void)a;
     (void)b;
     operandSeenWithoutGuard = f1.operand;
+#if defined(SPATIAL_DENORMALS_AARCH64)
+    DenormalFlags f3;
+    {
+        const sim::conv::ScopedFlushDenormals fz;
+        clearDenormalFlags();
+        volatile double c = tiny * one; // a denormal operand flushed under FZ = 1 -> IDC
+        f3 = denormalFlags();
+        (void)c;
+    }
+    return f3.operand || ((f1.operand || f1.underflow) && f2.underflow);
+#else
     return (f1.operand || f1.underflow) && f2.underflow;
+#endif
 }
 } // namespace
 
@@ -452,8 +469,10 @@ TEST_CASE(
     REQUIRE((flagsOff.operand || flagsOff.underflow)); // DE | UE set: denormals arose
     REQUIRE_FALSE(flagsOn.operand);                    // DAZ: no denormal operand reaches an instruction
 #elif defined(SPATIAL_DENORMALS_AARCH64)
-    REQUIRE(flagsOff.underflow);                     // UFC: denormal results arose with FZ off
-    REQUIRE((flagsOn.operand || flagsOn.underflow)); // IDC | UFC: something was flushed under FZ = 1
+    // K-c4 (the macOS run): with FZ off no cumulative flag is raised on Apple silicon, so the premise is read
+    // in the guarded arm: a denormal operand was consumed and flushed under FZ = 1 (IDC), which is what the
+    // guard is for.
+    REQUIRE(flagsOn.operand);
 #endif
 }
 
