@@ -297,3 +297,24 @@ None. The AX36 caveat and the AX38 4c finding are recorded findings, not rule ch
 - **P05H-71:** the pre-survival application recorded; reconciled by items 2 and 4; the two debt-row corrections applied.
 
 Nothing written to the tree; the orchestrator saves this as `/home/user/makroof/docs/review/phase-05h/25-decider-decision-D-H3-r2.md` and hands it to the interrogator.
+
+
+---
+
+## Addendum: G6, the finest certified rung at the small rooms
+
+### `FOR MAISARA H3-F6` — AX43's "finest certified rung" at dead_booth, living_room, classroom, club
+
+**Question.** AX43 (BUILD_PLAN L143) says "Reference: the finest certified rung, with ℓ_ref recorded"; D-H2 (a) certifies a case-band on a two-rung reference with the finer change < 1 %. The 0.625 m rung is now computed and certified at four rooms (file 18 K-a4 (iii); file 25 K-a7), yet the golden gates them at 1.25 m. Move now (A) or defer to 05i (B)?
+
+**Answer: (A).** "The agreement golden's reference for dead_booth, living_room, classroom and club (both emitters, 8 bands) is the 0.625 m rung, with ℓ_ref = the 1.25 → 0.625 m change (dead_booth 0.28 %, up from 0.17 %), written by `export_phase05h_references.py` from the finest two rungs present, through `update_goldens.py` with the reason 'K-a4 (iii): the finest certified rung per AX43; the suite was green at 1.25 m and is green at 0.625 m; no tolerance, N or case changed'; the D-T6 small room stays ungated (no C++ run)." AX43's rule sentence is unchanged; its rationale gains "(applied to the four small rooms in the 05h golden round, D-H3 G6)". `AMENDS her decision of 2026-11-10: "I accept the board's answer by definition" (AX43: a record of application, no rule change).`
+
+**Rests on:** NFR-1 (match measured IRs; thresholds from the Expert: the row's own rule names the finest certified rung); CLAUDE.md (a golden changes only when intended, with its reason; here the check is green before and after, so nothing is regenerated "to pass").
+
+**Reasoning.** (B) keeps a reference whose recorded ℓ_ref (0.0075 dB) is shown smaller than its residual (+0.017 dB, the AX36 caveat) against the row's text, and would need an amendment with no PRD ground; (A) follows the text, and dead_booth's ℓ_ref rising is the honest value. Per-case: C++ within 0.007 dB ≪ τ; N rule: z_FW·SE 0.009 ≤ τ − ℓ_ref 0.238 dB; pooled (e′): dead_booth z′ ≈ 0.45.
+
+**Seats' earlier words.** Seat 1: debt "repaid when the 0.625 m references land for the Phase 04 rooms (golden round)" → (A). Seat 2: the 0.625 m rung is "the non-circular check"; ℓ → 0 form → (A). Seat 5: nothing red; N pre-registered, no reseed → met. Seat 7: "a tolerance changed after the data" — none changes; the reason states green-before-and-after → met. Seat 9: "if the reference moves toward the C++ … the golden is the thing to change (golden process, with reason)" → (A).
+
+**Veto reading:** "a golden regenerated after the data" (CLAUDE.md). It stands because the suite passes at both rungs and the move is the row's rule, not a fix.
+
+**Decided for Maisara:** the four small rooms' references move to the finest certified rung now, with the reason recorded (NFR-1; verification culture). `AMENDS … (AX43: note only).`
