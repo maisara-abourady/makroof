@@ -1,6 +1,7 @@
 # Orchestrator computation C13: N-3W\* under the seats' second-round conditions
 
-2026-11-10. Asked for by the second-round seat positions (`23-seat<n>-round2-T1-T2.md`). Prototype outside `src/sim`:
+2026-11-10 (§2 corrected the same day: the first version's readings quoted errors against the reference under the
+long-run heading; the decider found the mismatch). Asked for by the second-round seat positions (`23-seat<n>-round2-T1-T2.md`). Prototype outside `src/sim`:
 `tools/validation/phase05b2_dt1.py` steps `c13`, `c13g` and `c13x`; data in `tools/validation/data/phase05b2_dt1.json`, sections
 `c13`, `c13g` and `c13x`. Work is counted in image evaluations, so nothing here depends on this machine's speed.
 
@@ -56,42 +57,43 @@ Readings:
 
 ## 2. Near-wall cases: shipped estimate at the 1-thread W_max, 30 replicates against the C12 long runs (1 kHz)
 
-| case | w | n\* | N | cap hit | final SE (dB) | pilot VOV | replicates vs long: p5 / median / p95 (dB) | largest |error| (dB) | 2-thread SE (dB) |
-|---|---|---|---|---|---|---|---|---|---|
-| W1/reference_positions | 0.419 | 8000 | 8000 | no | 0.023 | 0.008 | -0.04 / -0.01 / +0.03 | 0.06 | 0.023 |
-| W1/listener_wall | 0.002 | 3907 | 3907 | no | 0.040 | 0.022 | -0.05 / -0.00 / +0.06 | 0.08 | 0.030 |
-| W1/listener_edge | 0.002 | 3229 | 3229 | no | 0.054 | 0.029 | -0.06 / -0.01 / +0.07 | 0.08 | 0.037 |
-| W1/listener_corner | 0.002 | 2769 | 2769 | no | 0.046 | 0.040 | -0.04 / +0.02 / +0.07 | 0.08 | 0.032 |
-| W1/emitter_wall | 0.997 | 3311 | 3311 | no | 0.049 | 0.036 | -0.05 / +0.01 / +0.09 | 0.16 | 0.031 |
-| W1/emitter_edge | 0.997 | 2485 | 2485 | no | 0.048 | 0.046 | -0.08 / +0.01 / +0.07 | 0.08 | 0.032 |
-| W1/emitter_corner | 0.997 | 2186 | 2141 | no | 0.053 | 0.048 | -0.10 / +0.01 / +0.08 | 0.11 | 0.039 |
-| W1/both_wall | 0.500 | 1771 | 1766 | **yes** | 0.082 | 0.876 | -0.60 / -0.35 / +0.50 | 1.35 | 0.187 |
-| W1/both_corner | 0.500 | 935 | 914 | **yes** | 0.081 | 0.275 | -1.49 / -1.20 / +4.43 | 6.95 | 0.306 |
-| layout4_s1/reference_positions | 0.419 | 432 | 459 | **yes** | 0.387 | 0.028 | -0.76 / -0.07 / +0.44 | 1.06 | 0.282 |
-| layout4_s1/listener_wall | 0.002 | 347 | 356 | **yes** | 0.682 | 0.082 | -1.38 / +0.02 / +1.17 | 2.33 | 0.444 |
-| layout4_s1/listener_edge | 0.002 | 273 | 274 | **yes** | 0.672 | 0.073 | -0.98 / +0.01 / +0.97 | 1.22 | 0.497 |
-| layout4_s1/listener_corner | 0.002 | 256 | 176 | **yes** | 0.862 | 0.101 | -1.35 / -0.06 / +1.28 | 2.18 | 0.563 |
-| layout4_s1/emitter_wall | 0.997 | 335 | 341 | **yes** | 0.699 | 0.126 | -1.01 / -0.01 / +0.82 | 1.46 | 0.497 |
-| layout4_s1/emitter_edge | 0.997 | 271 | 270 | **yes** | 0.638 | 0.075 | -1.30 / -0.29 / +1.05 | 1.84 | 0.470 |
-| layout4_s1/emitter_corner | 0.997 | 256 | 145 | **yes** | 1.113 | 0.079 | -1.44 / +0.34 / +1.70 | 2.46 | 0.753 |
-| layout4_s1/both_wall | 0.500 | 2470 | 2554 | **yes** | 0.924 | 0.403 | -2.96 / -2.45 / +1.32 | 5.04 | 0.549 |
-| layout4_s1/both_corner | 0.500 | 256 | 90 | **yes** | 1.008 | 0.208 | -9.28 / -6.72 / -0.45 | 10.84 | 0.869 |
-| layout4_s1/listener_absorber | 0.002 | 444 | 460 | **yes** | 0.571 | 0.068 | -0.88 / -0.13 / +0.66 | 2.01 | 0.418 |
-| layout5_s1/reference_positions | 0.419 | 264 | 262 | **yes** | 0.403 | 0.099 | -0.45 / -0.15 / +0.42 | 0.82 | 0.299 |
-| layout5_s1/listener_wall | 0.002 | 4243 | 4434 | **yes** | 0.162 | 0.039 | -0.42 / -0.01 / +0.26 | 0.47 | 0.128 |
-| layout5_s1/listener_edge | 0.002 | 4471 | 4596 | **yes** | 0.320 | 0.104 | -0.50 / -0.07 / +0.39 | 0.61 | 0.210 |
-| layout5_s1/listener_corner | 0.002 | 3520 | 3571 | **yes** | 0.221 | 0.130 | -0.37 / +0.07 / +0.30 | 0.58 | 0.167 |
-| layout5_s1/emitter_wall | 0.997 | 3491 | 3748 | **yes** | 0.224 | 0.111 | -0.38 / +0.04 / +0.31 | 0.44 | 0.163 |
-| layout5_s1/emitter_edge | 0.997 | 2272 | 2396 | **yes** | 0.244 | 0.110 | -0.36 / -0.17 / +0.27 | 0.69 | 0.166 |
-| layout5_s1/emitter_corner | 0.997 | 1747 | 1785 | **yes** | 0.330 | 0.075 | -0.39 / -0.06 / +0.37 | 0.83 | 0.216 |
-| layout5_s1/both_wall | 0.500 | 1819 | 1879 | **yes** | 0.745 | 0.242 | -2.28 / -1.13 / +0.97 | 4.01 | 1.083 |
-| layout5_s1/both_corner | 0.500 | 867 | 872 | **yes** | 0.257 | 0.347 | -6.13 / -5.57 / +0.80 | 6.18 | 0.181 |
-| layout5_s1/listener_absorber | 0.002 | 319 | 309 | **yes** | 0.603 | 0.237 | -1.21 / -0.22 / +1.30 | 1.63 | 0.420 |
+| case | w | n\* | N | cap hit | final SE (dB) | pilot VOV | replicates vs long run: p5 / median / p95 (dB) | largest |error| vs long (dB) | replicates vs ref 1.25 m: p5 / median / p95 (dB) | 2-thread SE (dB) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| W1/reference_positions | 0.419 | 8000 | 8000 | no | 0.023 | 0.008 | -0.04 / -0.01 / +0.03 | 0.06 | -0.04 / -0.01 / +0.03 | 0.023 |
+| W1/listener_wall | 0.002 | 3907 | 3907 | no | 0.040 | 0.022 | -0.05 / -0.00 / +0.06 | 0.08 | -0.05 / -0.00 / +0.06 | 0.030 |
+| W1/listener_edge | 0.002 | 3229 | 3229 | no | 0.054 | 0.029 | -0.06 / -0.01 / +0.07 | 0.08 | -0.07 / -0.03 / +0.05 | 0.037 |
+| W1/listener_corner | 0.002 | 2769 | 2769 | no | 0.046 | 0.040 | -0.04 / +0.02 / +0.07 | 0.08 | -0.07 / -0.00 / +0.04 | 0.032 |
+| W1/emitter_wall | 0.997 | 3311 | 3311 | no | 0.049 | 0.036 | -0.05 / +0.01 / +0.09 | 0.16 | -0.06 / +0.00 / +0.08 | 0.031 |
+| W1/emitter_edge | 0.997 | 2485 | 2485 | no | 0.048 | 0.046 | -0.08 / +0.01 / +0.07 | 0.08 | -0.08 / +0.00 / +0.06 | 0.032 |
+| W1/emitter_corner | 0.997 | 2186 | 2141 | no | 0.053 | 0.048 | -0.10 / +0.01 / +0.08 | 0.11 | -0.11 / -0.00 / +0.07 | 0.039 |
+| W1/both_wall | 0.500 | 1771 | 1766 | **yes** | 0.082 | 0.876 | -0.60 / -0.35 / +0.50 | 1.35 | -0.64 / -0.39 / +0.46 | 0.187 |
+| W1/both_corner | 0.500 | 935 | 914 | **yes** | 0.081 | 0.275 | -1.49 / -1.20 / +4.43 | 6.95 | -1.73 / -1.44 / +4.18 | 0.306 |
+| layout4_s1/reference_positions | 0.419 | 432 | 459 | **yes** | 0.387 | 0.028 | -0.76 / -0.07 / +0.44 | 1.06 | -0.76 / -0.06 / +0.45 | 0.282 |
+| layout4_s1/listener_wall | 0.002 | 347 | 356 | **yes** | 0.682 | 0.082 | -1.38 / +0.02 / +1.17 | 2.33 | -1.37 / +0.03 / +1.18 | 0.444 |
+| layout4_s1/listener_edge | 0.002 | 273 | 274 | **yes** | 0.672 | 0.073 | -0.98 / +0.01 / +0.97 | 1.22 | -0.95 / +0.05 / +1.01 | 0.497 |
+| layout4_s1/listener_corner | 0.002 | 256 | 176 | **yes** | 0.862 | 0.101 | -1.35 / -0.06 / +1.28 | 2.18 | -1.52 / -0.23 / +1.11 | 0.563 |
+| layout4_s1/emitter_wall | 0.997 | 335 | 341 | **yes** | 0.699 | 0.126 | -1.01 / -0.01 / +0.82 | 1.46 | -1.02 / -0.03 / +0.80 | 0.497 |
+| layout4_s1/emitter_edge | 0.997 | 271 | 270 | **yes** | 0.638 | 0.075 | -1.30 / -0.29 / +1.05 | 1.84 | -1.16 / -0.15 / +1.19 | 0.470 |
+| layout4_s1/emitter_corner | 0.997 | 256 | 145 | **yes** | 1.113 | 0.079 | -1.44 / +0.34 / +1.70 | 2.46 | -1.60 / +0.18 / +1.54 | 0.753 |
+| layout4_s1/both_wall | 0.500 | 2470 | 2554 | **yes** | 0.924 | 0.403 | -2.96 / -2.45 / +1.32 | 5.04 | -2.60 / -2.09 / +1.67 | 0.549 |
+| layout4_s1/both_corner | 0.500 | 256 | 90 | **yes** | 1.008 | 0.208 | -9.28 / -6.72 / -0.45 | 10.84 | -8.78 / -6.22 / +0.05 | 0.869 |
+| layout4_s1/listener_absorber | 0.002 | 444 | 460 | **yes** | 0.571 | 0.068 | -0.88 / -0.13 / +0.66 | 2.01 | -0.89 / -0.13 / +0.66 | 0.418 |
+| layout5_s1/reference_positions | 0.419 | 264 | 262 | **yes** | 0.403 | 0.099 | -0.45 / -0.15 / +0.42 | 0.82 | -0.45 / -0.15 / +0.42 | 0.299 |
+| layout5_s1/listener_wall | 0.002 | 4243 | 4434 | **yes** | 0.162 | 0.039 | -0.42 / -0.01 / +0.26 | 0.47 | -0.43 / -0.02 / +0.25 | 0.128 |
+| layout5_s1/listener_edge | 0.002 | 4471 | 4596 | **yes** | 0.320 | 0.104 | -0.50 / -0.07 / +0.39 | 0.61 | -0.68 / -0.25 / +0.21 | 0.210 |
+| layout5_s1/listener_corner | 0.002 | 3520 | 3571 | **yes** | 0.221 | 0.130 | -0.37 / +0.07 / +0.30 | 0.58 | -0.74 / -0.31 / -0.08 | 0.167 |
+| layout5_s1/emitter_wall | 0.997 | 3491 | 3748 | **yes** | 0.224 | 0.111 | -0.38 / +0.04 / +0.31 | 0.44 | -0.35 / +0.07 / +0.34 | 0.163 |
+| layout5_s1/emitter_edge | 0.997 | 2272 | 2396 | **yes** | 0.244 | 0.110 | -0.36 / -0.17 / +0.27 | 0.69 | -0.32 / -0.12 / +0.32 | 0.166 |
+| layout5_s1/emitter_corner | 0.997 | 1747 | 1785 | **yes** | 0.330 | 0.075 | -0.39 / -0.06 / +0.37 | 0.83 | -0.45 / -0.12 / +0.31 | 0.216 |
+| layout5_s1/both_wall | 0.500 | 1819 | 1879 | **yes** | 0.745 | 0.242 | -2.28 / -1.13 / +0.97 | 4.01 | -2.89 / -1.74 / +0.36 | 1.083 |
+| layout5_s1/both_corner | 0.500 | 867 | 872 | **yes** | 0.257 | 0.347 | -6.13 / -5.57 / +0.80 | 6.18 | -6.52 / -5.97 / +0.40 | 0.181 |
+| layout5_s1/listener_absorber | 0.002 | 319 | 309 | **yes** | 0.603 | 0.237 | -1.21 / -0.22 / +1.30 | 1.63 | -1.18 / -0.19 / +1.33 | 0.420 |
 
 Readings:
 1. **W1: every one-end case meets Seat 1's floor, with no cap hit.**
    - The final SE is 0.040–0.054 dB, and the pilot VOV is ≤ 0.048.
-   - Over 30 replicates the shipped error stays within −0.11 / +0.08 dB (p5 / p95). The largest error is 0.16 dB.
+   - Over 30 replicates the shipped error against the long runs stays within −0.10 / +0.09 dB (p5 / p95). The largest error
+     is 0.16 dB. Against the reference it is −0.11 / +0.08 dB.
 2. **Layouts 4 and 5 at s = 1 fail Seat 1's floor, at their reference positions as well.**
    - The cause is the window, not the walls: t_mix,e is 0.380 s in these rooms, against 0.114 s in W1.
      - The calibration block costs 3 400–8 800 evaluations per history in layout 4 (all cases but both_wall, 620) and
@@ -110,21 +112,22 @@ Readings:
      the floor near walls.
    - These two rooms are the C4 cases Seat 1 named, and they have the longest t_mix,e in the case set.
 3. **Both ends near a surface: the shipped estimate reads low.**
-   - The median replicate is below the long run:
+   - The median replicate is below both comparisons:
 
-     | case | median replicate vs long run |
-     |---|---|
-     | W1 both_wall | −0.39 dB |
-     | W1 both_corner | −1.44 dB |
-     | layout 5 both_wall | −1.74 dB |
-     | layout 4 both_wall | −2.09 dB |
-     | layout 5 both_corner | −5.97 dB |
-     | layout 4 both_corner | −6.22 dB |
+     | case | median vs long run | median vs ref 1.25 m |
+     |---|---|---|
+     | W1 both_wall | −0.35 dB | −0.39 dB |
+     | W1 both_corner | −1.20 dB | −1.44 dB |
+     | layout 5 both_wall | −1.13 dB | −1.74 dB |
+     | layout 4 both_wall | −2.45 dB | −2.09 dB |
+     | layout 5 both_corner | −5.57 dB | −5.97 dB |
+     | layout 4 both_corner | −6.72 dB | −6.22 dB |
 
-   - The upper tail reaches +4.2 dB (W1 both_corner p95).
+   - The upper tail reaches +4.4 dB against the long run (W1 both_corner p95).
    - This is the heavy tail's skew: the typical capped draw misses the rare large scores. It is the "tail too weak" case
      Seats 1, 4 and 8 described.
-   - Seat 1's condition (shipped error ≤ 1 dB at the 95th percentile) is met only in W1 both_wall (p5 / p95 −0.64 / +0.46 dB).
+   - Seat 1's condition (shipped error ≤ 1 dB at the 95th percentile) is met only in W1 both_wall (p5 / p95 against the long run
+     −0.60 / +0.50 dB).
      It is not met in W1 both_corner or in any both-near case of layouts 4 and 5.
 
 ## 3. Both ends near walls in Phase 04 rooms and in W1 at 0.3 and 0.5 m (Seats 3 and 8)
@@ -252,7 +255,7 @@ Two more disjoint ranges of NW-4C at the layout-4 emitter edge (1 kHz):
      The 2-thread W_max does not close the gap near walls.
    - **The gated 100 m cube** meets the SE part and misses the VOV part.
    - **W1, CR4, the Phase 04 grid and the six Phase 04 rooms' single-end cases** meet it.
-3. **Both ends near a surface: NW-4C under the cap reads low**, by a median of −0.4 to −6.2 dB against the long runs. These
+3. **Both ends near a surface: NW-4C under the cap reads low**, by a median of −0.35 to −6.72 dB against the long runs. These
    cases need the flag and a decision on what is shipped there; Seat 1 asks for a bounded fallback, designed by Seat 2.
 4. **The pilot-floor flag fires on scenes whose estimate is excellent** (W2 and the flutter cube). As specified, it flags
    expensive histories, not weak estimates.
