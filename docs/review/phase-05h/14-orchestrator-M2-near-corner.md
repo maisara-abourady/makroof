@@ -1,9 +1,9 @@
 # Orchestrator — M-2 tracer runs on the five mixed-α Phase 04 rooms and the independent near-corner reference (2026-11-10)
 
-Reported, not gated (AX45 M-2; AX43 / AX44 "the independent near-corner reference (Seat 2)"). Script: the session scratch 
+Reported, not gated (AX45 M-2; AX43 / AX44 "the independent near-corner reference (Seat 2)"). Script: the session scratch `m2_tracer.py` 
 (tools/acoustics/tracer.py, seed 0x05B7-family default, 4 × 10⁶ particles per run in the Phase 04 rooms, 16 × 10⁶ at the corner; the
 window of the Phase 04 plan; r_d below the listener's clearance at two radii). C++ E_target = the Python plan's specular target +
-the C++ diffuse estimate in reference units (, shipping rule, provisional W_max). Values: 10 log10(E_C++ / E_tracer)
+the C++ diffuse estimate in reference units (`render_cli --diagnostics`, shipping rule, provisional W_max). Values: 10 log10(E_C++ / E_tracer)
 per band (63 Hz … 8 kHz), with the tracer's own SE = 4.34/√k_tr.
 
 | room | emitter | t_mix,e (s) | r_d (m) | C++ − tracer (dB), 63 Hz … 8 kHz | tracer SE (dB) | C++ SE (dB, 1 kHz) |
