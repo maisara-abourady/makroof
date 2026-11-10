@@ -213,7 +213,7 @@ TEST_CASE("diffuse tally statistics R, VOV, slope (AX41)", "[diffuse]")
     CHECK_THAT(s.vov, WithinRel(10.25 / 25.0 - 0.25, 1e-14));
     // Strided read (second column of two).
     const double y[] = {9.0, 1.0, 9.0, 2.0, 9.0, 3.0, 9.0, 4.0};
-    CHECK(tallyStats(y + 1, 4, 2).vov == s.vov);
+    CHECK(sameBits(tallyStats(y + 1, 4, 2).vov, s.vov));
     // Slope: Pareto-like scores x_i = (i + 1)^(-1/a) have Hill index ~ 1/a, slope ~ 1 + a.
     std::vector<double> p(10000);
     for (std::size_t i = 0; i < p.size(); ++i)
@@ -224,8 +224,8 @@ TEST_CASE("diffuse tally statistics R, VOV, slope (AX41)", "[diffuse]")
 TEST_CASE("diffuse NW-4C weight, both-near at 0.70 m and the note U (AX44)", "[diffuse]")
 {
     const contract::Vec3 dims{10.0, 8.0, 4.0};
-    CHECK(nearestSurfaceDistance(dims, {5.0, 4.0, 0.3}) == 0.3);
-    CHECK(nearestSurfaceDistance(dims, {9.6, 4.0, 2.0}) == 10.0 - 9.6);
+    CHECK(sameBits(nearestSurfaceDistance(dims, {5.0, 4.0, 0.3}), 0.3));
+    CHECK(sameBits(nearestSurfaceDistance(dims, {9.6, 4.0, 2.0}), 10.0 - 9.6));
     CHECK_THAT(blendWeight(1.0, 2.0), WithinRel(0.2, 1e-15));
     CHECK_THAT(blendWeight(0.1, 0.1), WithinRel(0.5, 1e-15));
     CHECK(bothNear(0.69, 0.69));
@@ -323,7 +323,7 @@ TEST_CASE("diffuse estimate is zero without scattering and positive with it", "[
     CHECK(r.wPilot == 0);
     for (const auto& e : r.emitters)
         for (const double v : e.bandsDiffuse)
-            CHECK(v == 0.0);
+            CHECK(sameBits(v, 0.0));
 }
 
 // O5 (docs/sessions/2026-11-10-phase-05h.md): smoke agreement with ref_hybrid on the 15 (A) cases,
@@ -360,7 +360,7 @@ TEST_CASE("diffuse estimator agrees with ref_hybrid on the 15 (A) cases (smoke, 
         // The C++ plan reproduces the Python plan (window, fallback, specular target).
         REQUIRE_THAT(pe.emitter.mixS, WithinRel(c("py_mix_s"), 1e-9));
         REQUIRE_THAT(pe.emitter.windowStartS, WithinRel(c("py_window_start_s"), 1e-9));
-        REQUIRE(pe.fallback == (c("py_fallback") != 0.0));
+        REQUIRE(pe.fallback == (c("py_fallback") > 0.5));
         const auto r = estimateDiffuse(planned.problem, fixed);
         REQUIRE(r.count.n == 131072);
         const auto& er = r.emitters[0];
