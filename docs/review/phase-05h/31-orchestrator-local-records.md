@@ -387,3 +387,40 @@ agree-full summary: 330 gated AX43 case-bands, 72 gated AX45 case-bands, 230 rep
 probe-detector fs 48000 dead_booth alpha 0.01 at 63 Hz, 0.999 above, s 0.5 (Seat 3): flags FTZ off [operand+underflow], FTZ on [underflow]; IRs bit-identical
 ```
 
+
+## Final reference extension (commit 45565ee; local run `agree_full7.log`, Linux, Release, `[agree-full]`)
+
+The last `hybrid_fast` references of the session landed (W2 both emitters at 2.5 / 1.25 m; the CS-NW+
+emitter-1 placements and the 0.3 m wall case; the emitter-wall case): all 28 AX43 cases now hold the
+1.25 m rung, 80 case-bands promoted to gated through `update_goldens.py --extend` (CHANGELOG reason,
+`phase05h_hybrid_references.provenance.json`). Pinned in `test_diffuse_agreement.cpp`: `kGatedAx43 = 410`,
+`kGatedAx45 = 72`. The suite on the extended set: "All tests passed (14132 assertions in 1 test case)";
+0 failures, 0 stage-2 runs, max |C++ − ref| 0.0460 dB over the gated set (N_test 65536). The one
+case-band nearest the bound, `W1_listener_corner_0.1_e0` band 4, C++ − ref −0.039 dB (SE 0.0089 dB, z = dev/SE
+−4.38 as a record, ℓ_ref 0.628 %), is inside the gate (|C++ − ref| ≤ τ 0.25 dB at the pre-registered N,
+where z_FW·SE ≤ τ − ℓ_ref) and inside AX46's 1 %; it is read with that reference's ℓ_ref, not as an
+estimator bias (the additive pooled check carries it). What remains reported is the
+BRAS pairs' outer bands (63, 125, 250 Hz; 4, 8 kHz: 150 case-bands), phase-05i scope 1.
+
+```
+agree-full pooled bias band 0 [CHECK, additive]: mean (C++ - ref) -0.0051 dB over 40 case-bands; bound 3 SE_pool + mean l_ref = 0.0055 + 0.0039 = 0.0094 dB (within)
+agree-full pooled bias band 0 [record, per reference room, z']: mean over 23 rooms -0.224 (3/sqrt(M_rooms) 0.626); rooms +/- 7 / 16
+agree-full pooled bias band 1 [CHECK, additive]: mean (C++ - ref) -0.0053 dB over 40 case-bands; bound 3 SE_pool + mean l_ref = 0.0054 + 0.0041 = 0.0095 dB (within)
+agree-full pooled bias band 1 [record, per reference room, z']: mean over 23 rooms -0.229 (3/sqrt(M_rooms) 0.626); rooms +/- 7 / 16
+agree-full pooled bias band 2 [CHECK, additive]: mean (C++ - ref) -0.0054 dB over 40 case-bands; bound 3 SE_pool + mean l_ref = 0.0054 + 0.0042 = 0.0096 dB (within)
+agree-full pooled bias band 2 [record, per reference room, z']: mean over 23 rooms -0.234 (3/sqrt(M_rooms) 0.626); rooms +/- 7 / 16
+agree-full pooled bias band 3 [CHECK, additive]: mean (C++ - ref) -0.0009 dB over 70 case-bands; bound 3 SE_pool + mean l_ref = 0.0034 + 0.0046 = 0.0080 dB (within)
+agree-full pooled bias band 3 [record, per reference room, z']: mean over 26 rooms -0.139 (3/sqrt(M_rooms) 0.588); rooms +/- 10 / 16
+agree-full pooled bias band 4 [CHECK, additive]: mean (C++ - ref) -0.0011 dB over 70 case-bands; bound 3 SE_pool + mean l_ref = 0.0034 + 0.0046 = 0.0080 dB (within)
+agree-full pooled bias band 4 [record, per reference room, z']: mean over 26 rooms -0.139 (3/sqrt(M_rooms) 0.588); rooms +/- 11 / 15
+agree-full pooled bias band 5 [CHECK, additive]: mean (C++ - ref) -0.0012 dB over 70 case-bands; bound 3 SE_pool + mean l_ref = 0.0034 + 0.0046 = 0.0080 dB (within)
+agree-full pooled bias band 5 [record, per reference room, z']: mean over 26 rooms -0.137 (3/sqrt(M_rooms) 0.588); rooms +/- 11 / 15
+agree-full pooled bias band 6 [CHECK, additive]: mean (C++ - ref) -0.0056 dB over 40 case-bands; bound 3 SE_pool + mean l_ref = 0.0052 + 0.0046 = 0.0098 dB (within)
+agree-full pooled bias band 6 [record, per reference room, z']: mean over 23 rooms -0.226 (3/sqrt(M_rooms) 0.626); rooms +/- 8 / 15
+agree-full pooled bias band 7 [CHECK, additive]: mean (C++ - ref) -0.0057 dB over 40 case-bands; bound 3 SE_pool + mean l_ref = 0.0052 + 0.0046 = 0.0098 dB (within)
+agree-full pooled bias band 7 [record, per reference room, z']: mean over 23 rooms -0.222 (3/sqrt(M_rooms) 0.626); rooms +/- 8 / 15
+agree-full gated: 410 of 560 AX43 case-bands gated (150 reported, reference pending); 72 of 72 AX45 case-bands gated
+agree-full summary: 410 gated AX43 case-bands, 72 gated AX45 case-bands, 150 reported (uncertified), 0 without reference; max |C++ - ref| 0.0460 dB over the gated set; 0 stage-2 runs; 0 failures (N_test 65536)
+```
+
+The catch per band (3·SE_pool + mean ℓ_ref): 0.0094–0.0096 dB at 63–250 Hz over 40 case-bands, 0.0080 dB at 500 Hz–2 kHz over 70, 0.0098 dB at 4–8 kHz over 40; |mean (C++ − ref)| 0.0051–0.0057 dB in the outer bands and 0.0009–0.0012 dB at 500 Hz–2 kHz; 23 reference rooms in the outer bands and 26 at 500 Hz–2 kHz; no room with |mean z′| > 3 (worst −2.06, room 14, band 7).
