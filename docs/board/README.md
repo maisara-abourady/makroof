@@ -66,4 +66,37 @@ Seats and the roles around them, in one line each: the **decider** decides (mini
 later, inside the PRD's hard constraints); the **interrogator** pushes back (convening, tension map,
 future debt, facts against `docs/corpus/`); the **researcher** finds and verifies external evidence;
 the **plan-editor** applies verified decisions to the plan; the **steward** keeps the session's
-objectives. Maisara has the final say over every surviving decision.
+objectives. Maisara has the final say: she may veto any decision after it is applied.
+
+## Who answers Maisara's questions
+
+Maisara, 2026-11-10: "i created it particulary to answer when you need his answer"; "If it is capable of
+reasoning, my north star is the prd that drives my decision making"; and, on this rule, "Do it".
+
+1. **The decider answers for her.** It reasons from `docs/PRD.md` the way she would, and answers every
+   question the loop would otherwise stop to ask her. Examples:
+   - accepting or vetoing a surviving decision;
+   - choosing between options the board left open;
+   - an item still contested after the interrogator's 3 rounds;
+   - a product trade-off or judgement;
+   - the scope of one of her earlier answers;
+   - an ambiguity in her words that the PRD settles;
+   - a question in a phase file's "Raise with Maisara" section.
+
+   Each answer cites the PRD ids it rests on (FR/NFR, goals, out-of-scope items, Q-defaults) and her recorded
+   decisions (BUILD_PLAN §2 and §6, session briefs). It must not lean on the board's minimum-tension ordering
+   alone. The interrogator checks that reasoning (PRD MISREAD).
+2. **Applied, then reported.** An answer that survives the interrogator is applied without waiting for her.
+   The session report and the PR list it under "Decided for Maisara": one plain line per answer, with its
+   PRD ids, so she can veto any of them afterwards. A veto is recorded in the ledger and undone through
+   `/fix-plan`.
+3. **Only three things still go to her** (NEEDS MAISARA). Each comes with the decider's recommendation and its
+   PRD reasoning:
+   - **(a) The PRD is silent or contradicts itself** on the point, and none of her recorded decisions covers
+     it. The decider names the PRD passages it searched.
+   - **(b) The answer would change the PRD itself or one of her recorded decisions.** For the PRD, that means
+     a requirement, a hard constraint or an out-of-scope item.
+   - **(c) Overriding a seat's veto-grade rating.**
+
+   Things only a person can do are not decisions and stay hers as before: listening checklists, accounts,
+   access, payments, legal signatures.

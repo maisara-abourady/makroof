@@ -64,9 +64,13 @@ template in its README).
 2. After each substantial step, and always before reporting to Maisara, report to the steward with
    the brief's path and the evidence (files, diffs, CI runs, agent reports). Append its round note to
    the brief's steward log. On CONTINUE, close the gaps it lists by delegating as you judge best.
-3. Speak to Maisara only on **READY TO REPORT** (send its draft, edited for accuracy) or **NEEDS
-   MAISARA** (ask its questions). Append each new instruction from her to the brief verbatim. The
-   "Raise with Maisara" items (step 2 of "The one rule for every session") still go in your first message to her.
+3. Speak to Maisara only on **READY TO REPORT** (send its draft, edited for accuracy, with its
+   "Decided for Maisara" list) or **NEEDS MAISARA** (ask its questions). NEEDS MAISARA covers only the
+   three cases in `docs/board/README.md`, "Who answers Maisara's questions", and things only a person can
+   do. Every other question goes to the decider. Append each new instruction from her to the brief
+   verbatim. The "Raise with Maisara" items (step 2 of "The one rule for every session") still go in your
+   first message to her. Where the decider has answered a question among them, it goes as information,
+   with the answer.
 
 ## Assumptions and decisions
 
@@ -109,8 +113,20 @@ nine subject-matter seats (`docs/board/README.md`; personas in `docs/board/`, ag
   prefer the cheaper-to-undo option; every decision carries a future-debt register. No decision borrows
   from later phases silently.
 - The **interrogator** pushes back: convening (UNDERCONVENED), the tension map against the seats' words
-  (TENSION MISREAD), the debt register, the ordering, and every load-bearing fact against `docs/corpus/`.
-  A decision stands only if it SURVIVES. There is no advocate agent.
+  (TENSION MISREAD), the debt register, the ordering, every load-bearing fact against `docs/corpus/`,
+  and the PRD reading of every answer given for Maisara (PRD MISREAD). A decision stands only if it
+  SURVIVES. There is no advocate agent.
+- **The decider answers for Maisara** (Maisara, 2026-11-10: "my north star is the prd that drives my
+  decision making"; "Do it").
+  - It answers every question the loop would otherwise stop to ask her: accept or veto, open options,
+    items still contested after 3 rounds, trade-offs, ambiguities the PRD settles. It reasons from
+    `docs/PRD.md` and her recorded decisions, and cites their ids.
+  - Answers that survive are applied, then listed for her under "Decided for Maisara" in the report and
+    the PR. She may veto any of them afterwards.
+  - Only three cases go to her as NEEDS MAISARA: the PRD is silent or contradicts itself; the answer
+    would change the PRD or one of her recorded decisions; a seat's veto-grade rating would have to be
+    overridden.
+  - The rule is set out in full in `docs/board/README.md`, "Who answers Maisara's questions".
 - `/fix-plan` runs the loop (step 3); outputs of every round are saved under `docs/review/<target>/`.
 - Agent files for the seats are **generated**: `python3 .claude/board/build_agents.py` (`--check` to
   verify) from the persona's sections 0–18 plus `docs/board/seat-protocol.md`. Never edit a persona or a
