@@ -132,11 +132,11 @@ reasoning, my north star is the prd that drives my decision making"; and, on thi
      contested rounds that fails the interrogator's check.
    - **(b) The answer would change the PRD itself:** a requirement, a hard constraint or an out-of-scope
      item. The north star does not edit itself.
+   - **(c) Overriding a seat's veto-grade rating.** A `3` is a seat's judgement that an option is
+     unacceptable. Overruling it stays hers; she may hand it to the decider later.
 
    Her answer to (a) or (b) that calls for a PRD edit counts as her asking for that edit. It is applied
    through `/fix-plan` (step 4's PRD guard).
-   - **(c) Overriding a seat's veto-grade rating.** A `3` is a seat's judgement that an option is
-     unacceptable. Overruling it stays hers; she may hand it to the decider later.
 
    Things only a person can do are not decisions and stay hers as before: listening checklists, accounts,
    access, payments, legal signatures. So does a gap that is not a decision and is still failing after 3
