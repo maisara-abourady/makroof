@@ -120,3 +120,31 @@ Per run (cancel instant within the rebuild → wait):
 
 Reading: the three regimes are visible. A cancel during the solve is observed within one block (74–97 ms, runs 5, 6 and 1 of the low-α cube; 7–19 ms at the flutter scene whose solve is longer and whose synthesis is shorter). A cancel before the solve waits for the image-source planning to reach it (run 7: 416 → 743 ms). A cancel after the solve waits for the remainder of the synthesis and the IR-set build with no cancel point: up to **2 664 ms** at the low-α cube (run 9) and 491 ms at the flutter scene. So (e-c)'s wait is bounded by the build's remainder, not by the solve's block granularity: seconds, not tens of milliseconds, unless cancel points are added to the synthesis (a phase-07c change). The `reset()` path adds the synchronous `ResetStep3` build on top of this wait when the IR set is stale.
 
+
+## K-c3 — a direct denormal detector on the IR path (item (c)); Seat 3's candidate scene is positive
+
+Hidden probe `[.][probe-denormals-detector]` added to `tests/unit/test_diffuse_gate.cpp`: the FPU's sticky denormal-operand status flag (x86-64 MXCSR DE bit 1; AArch64 FPSR IDC bit 7) is cleared before and read after an unguarded `buildRoomIR` (`ftzGuard = false`) with the caller's FTZ off, then again with FTZ on; the IRs are compared bit for bit. This sees a denormal that arose and was flushed without changing an output bit, which the bit-difference probe cannot (file 16 K-c2). Probe set: the eight scenes of `[.][probe-denormals-ir]` plus Seat 3's candidate (file 17-seat3 (c): a dead_booth-sized room with α 0.01 at 63 Hz and 0.999 above, s 0.5, whose fast bands' exp(−rate·j) in `BandNoiseGenerator::make` reach the double subnormal range inside the 63 Hz band's long tail). Linux Release, x86-64, this box.
+
+| fs | scene | flag, FTZ off | flag, FTZ on | IRs |
+|---|---|---|---|---|
+| 48000 | absorbentScene (dead_booth, alpha 0.98, s 1) | clear | clear | bit-identical |
+| 48000 | dead_booth.json | clear | clear | bit-identical |
+| 48000 | edge_values.json | clear | clear | bit-identical |
+| 48000 | open_field.json | clear | clear | bit-identical |
+| 48000 | medium_room.json | clear | clear | bit-identical |
+| 48000 | dead_booth alpha 0.01 at 63 Hz, 0.999 above, s 0.5 (Seat 3) | **SET** | clear | bit-identical |
+| 48000 | dead_booth alpha 0.999 s 0.5 | clear | clear | bit-identical |
+| 48000 | 100 m cube alpha 0.999 s 0.5 | clear | clear | bit-identical |
+| 48000 | 100 m cube alpha 0.01 at 63/125 Hz, 0.999 above | clear | clear | bit-identical |
+| 96000 | absorbentScene (dead_booth, alpha 0.98, s 1) | clear | clear | bit-identical |
+| 96000 | dead_booth.json | clear | clear | bit-identical |
+| 96000 | edge_values.json | clear | clear | bit-identical |
+| 96000 | open_field.json | clear | clear | bit-identical |
+| 96000 | medium_room.json | clear | clear | bit-identical |
+| 96000 | dead_booth alpha 0.01 at 63 Hz, 0.999 above, s 0.5 (Seat 3) | **SET** | clear | bit-identical |
+| 96000 | dead_booth alpha 0.999 s 0.5 | clear | clear | bit-identical |
+| 96000 | 100 m cube alpha 0.999 s 0.5 | clear | clear | bit-identical |
+| 96000 | 100 m cube alpha 0.01 at 63/125 Hz, 0.999 above | clear | clear | bit-identical |
+
+Reading: **Seat 3's scene produces denormals without FTZ at 48 and 96 kHz** (the flag is set after the unguarded build and clear with FTZ on), and its IRs are bit-identical with FTZ off and on, as the build path's double sums and the final `toFloatNoDenormal` conversion predict (file 17-seat3). So AX37 (5.1) (i)'s clause "an absorbent room asserted to produce denormals without FTZ" is satisfiable literally: the `[pipeline]` FTZ test can build this scene, assert the flag set without the guard (where the platform exposes it) and assert bit-identity with the caller's FTZ off and on. None of the eight earlier probe scenes sets the flag at either rate. macOS (AArch64 FPSR IDC) and Windows (MSVC `_mm_getcsr`) are covered by the same probe in the next manual CI run (K-c4).
+
