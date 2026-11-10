@@ -1,0 +1,65 @@
+# Seat 9 — D-H3 (a), (b)
+
+SEAT 9 POSITION
+
+Corpus present (c1b171fe). No persona assumption falls here. One scope note up front: outdoor fields without reflectors are outside my incident coverage (§18), so every outdoor claim below is `[Hyp]` or `[Inf]` unless the corpus carries it.
+
+---
+
+## D-H3 (a) — the pooled bias check against the references' rung error
+
+**Reading.** Whether a pooled z over 53 case-bands may declare a 0.005–0.015 dB "bias" that the references' own discretisation residual (ℓ_ref 0.01–0.37 %) cannot resolve. Cue: coefficient and reference provenance (§4 row 8); "honest inputs" (§2 criterion 4: every reference carries its uncertainty band, and a test that ignores it is dishonest in the other direction).
+
+**How I read a round-robin.** Vorländer §11.5: each source–receiver pair is compared with *its own* measurement; the single-number rating is the mean of |sim − meas| over the pairs related to the jnd; a programme is judged good when it reaches "accuracy similar to the measurement standard deviation and the jnds" `[corpus]`. Kuttruff §8.7 (L3961): round robins on one specimen disagree "remarkably", most at low frequencies `[corpus]`. Two consequences: (i) the reference's uncertainty is the floor of what may be claimed; nobody attributes a shared deviation smaller than it to the simulation; (ii) the pooling unit is the measurement campaign (one room, one grid, one set of positions), because its systematic error is shared by its positions. So: per reference room (option (e)'s cluster) matches my reading; ℓ_ref in the denominator (option (a)) matches it only if the rung residual is random per case-band, which a discretisation error is not. A caution the decider must carry: file 6 records ℓ_ref as a magnitude only; within CR2 ls1 it varies 0.012–0.349 % across the five pairs (from the committed listing), so "same sign across a room's pairs" is asserted, not shown, and the rung residual may well have one sign across *every* reference at the same rung (same hybrid, same ℓ). If it does, no grouping helps and only an additive bound resolves the red. Second caution: a mean z is SE-weighted (the (A) cases sit at SE ≈ 0.017–0.03 dB, the BRAS pairs at 0.03–0.05 dB, from the code's per-case SE), so "mean z 0.44 ≈ 0.015 dB shared" is an approximation; K-a3 must give the dB figure.
+
+**Note what these references are.** The BRAS pairs carry measured geometry and α, but the agreement values are `ref_hybrid` computations: model against model. My seat's measured-room interest is the nightly BRAS validation with the Monte Carlo SE beside the ensemble spread (AX40). The deviation at issue, 0.11 % = 0.005 dB, is 1/200 of G's 1 dB jnd (Vorländer Table 6.1 `[corpus]`; 10·log10(1.0011) = 0.0048 dB, redone).
+
+**Ranking and tension (now / later).**
+
+| option | label | now | later | reason |
+|---|---|---|---|---|
+| (f) *mine*: pooled \|mean (C++ − ref)\| in dB ≤ 3·SE_pool + mean ℓ_ref per band (additive bound of unknown sign; optionally also per room cluster) | prefer | 1 | 1 | The only form that treats ℓ_ref as what it is: a bounded systematic residual. Tightens itself as finer rungs lower ℓ_ref. Form `[Hyp]` → researcher RQ-H3-1 (ISO 5725-4 bias against a reference with stated uncertainty). |
+| (e) per reference room, ℓ_ref in the denominator | prefer | 1 | 1 | Matches the round-robin unit; the cluster's ℓ_ref must not be divided by √10. Costs a clustering key in the golden. |
+| (a) quadrature per case-band | can live with | 1 | 1 | Honest about the band but treats a systematic term as random; on the decider's own figures still red at 2 kHz (0.464 × 0.985 ≈ 0.457 > 0.412, redone). |
+| (d) (a) + (b) | can live with | 1 | 1 | Passes by lowering M as much as by carrying ℓ_ref. |
+| (b) per class only | can live with | 1 | 2 | A room's residual still accumulates over its 10 pairs inside the BRAS class; when further rooms are certified the same round returns. |
+| (c) red by design | can live with | 2 | 2 | A permanently red check on *my* BRAS pairs says "C++ disagrees with the measured rooms" for 0.005 dB, and masks any real bias a later refactor introduces; Phase 13's accuracy wording cannot cite a red check. |
+
+**Commitments.** (a), (d), (e), (f): an AX43 formula amendment, no golden regeneration (ℓ_ref is in the golden per case-band, from the code); undoing is a parameter change. (b): a grouping rule that must be restated when small rooms and 100 m join. (c): nothing, and nothing learned.
+
+**Conditions.** (c) → 1: the CHECK becomes a printed finding with the pooled dB deviation and mean ℓ_ref beside it until RQ-H3-1 is read, and Phase 13 wording does not cite it. (b) → 1 later: paired with (a) or (f).
+
+**Hand-offs.** Seat 2: the sign of the 2.5 → 1.25 m change per case-band (print it; K-a3). Seat 1: whether 0.005–0.015 dB is the shared bias its rule meant. Seat 5: implementability. Researcher: RQ-H3-1, and whether a shared reference error is clustered or added.
+
+**Premortem.** (c) wins; a later refactor adds +0.03 dB estimator bias; it hides behind the permanent red, and I see it months later in the BRAS report's Monte Carlo SE column, not CI.
+
+---
+
+## D-H3 (b) — U at the default placement of `edge_values` and `open_field`
+
+**Reading.** Whether Seat 6 (ii)'s "valid fixture" covers two contract-limits scenes, and what U means on an outdoor preset. Cues: shape class before volume; "people in the room" (occupancy is a material); regime (modal / geometric / none).
+
+**Is either a room?** `edge_values` (from the code): a 1.5 × 100 × 4 m slot, ceiling α 1.0 in all 8 bands, xMin α alternating 0.01 / 1.0 per band, listener head centre 0.1 m from floor and end wall, one emitter at −60 dB 0.3 m away, the other at +12 dB 100 m away, order 0. Not a room and not a seat: α = 1.0 at 63 Hz needs a lining ≥ λ/3 ≈ 1.8 m (Kuttruff §6.8 `[corpus]`; λ = 343/63 = 5.4 m, redone) in a 4 m high room; a locally reacting surface in a diffuse field cannot exceed α_uni 0.951 (§2.5 `[corpus]`); no tabulated material alternates between octaves (Tables 9.2, 6.4 `[corpus]`; the steepest real swing is a plush curtain 0.15 → 0.90 over two octaves). Physics of the rigid bands: one absorbing face in an otherwise hard box is Kuttruff §4.3's extreme case, image system reduced to two "stores", decay ∝ 1/t, "far from isotropic" `[corpus]`; a 1.5 m duct 100 m long is a flutter corridor (§4.2 L2248). The estimator's large SE there is physics, not defect: a window that is very long and a field that is nowhere diffuse. `open_field`: a 100 × 100 m ground with five open faces. A field, legitimately in FR-3D-3, but not a room: the diffuse-field premises (Kuttruff §5 intro L2452, §5.1 L2459 "uniform, isotropic energy distribution is the crucial validity condition", §5.2 L2517 "perfect diffuseness only if total absorption is very small") fail entirely; the image set is one ground image; "reverberation = sum of all reflections except the very first" (§4.2) is a single ground reflection. E_target is the floor's single scattering (AX37 (5.4)), a near-zero quantity sampled by histories that mostly die at the first non-ground hit, so SE 2.4 dB is expected `[Inf]`. Both verdicts: **not rooms**; U is a true statement about the estimate's precision at a non-room.
+
+**Material-library bounds.** α alternating 0.01 / 1.0 is inside the contract (schema: α ∈ [0.01, 1.0], from the code) and inside Phase 12's materials-file criterion ("8 α values in [0.01, 1]"), but outside every *material*: no entry of a library built per my C2 (two sources, per-band bounds, smooth α(f)) could produce it. `open_air` α = 1.0 s = 0 (phase-12 scope 1) is an open face, not a surface, and is legitimately 1.0 (no reflected wave at R = 0).
+
+**What a U note on an outdoor preset means for Phase 12.** Nothing for validation and something dangerous for scope 7. Validation of `open_field` is branch (a), the single-scatter integral "in the log domain … or as an absolute bound below 1e−300" (AX37 (5.4)): an estimate with SE 2.4 dB cannot meet τ, and the row already provides for that; what Phase 12 must show is the −60 dB line after t_dir + 50 ms (C1 margin > 44 dB) and the listening item "almost dry with a ground reflection". The audible outdoor error is elsewhere: ground scatter missing from the early part under AX21 (my hand-off in file 3, Seat 2's). But scope 7 as written says a preset whose U stays raised through the capped branch at every reasonable placement **reopens J1**; `open_field` will do exactly that at the final W_max (K-b6), for a tail ≥ 60 dB down. That reopening would spend phase-07c or W_max on an inaudible quantity. `courtyard` (four hard walls, open sky) has a finite window and should behave as a room `[Inf]`; it is the preset to test, not to assume.
+
+**Ranking and tension (now / later).**
+
+| option | label | now | later | reason |
+|---|---|---|---|---|
+| (d) (a) + forward rules | prefer | 1 | 1 | Truthful and generic: "tail below the −60 dB line" is a computed property, not a name (NFR-8). It stops scope 7 reopening J1 for an inaudible tail. The −60 dB line is my end-of-decay convention applied by extension `[Inf]`; the note display rule is Seats 1 and 6's. |
+| (a) reading alone | can live with | 1 | 2 | Correct on the physics; but leaves Phase 12 scope 7 to meet `open_field` with no rule and the J1 trigger on its words. Evidence arrives at Phase 12's first run at final W_max. |
+| (b) change the fixtures | can live with | 2 | 2 | Changing a limits fixture so a flag goes silent is tuning the test set; `edge_values` then no longer probes the limits (my own check (a) in file 18 asked for it at 1.5 m); file 9 says no placement silences either (K-b3 must show it). |
+| (c) reopen U | can live with | 2 | 2 | A predicate re-fitted to silence two non-rooms is scene-specific logic by another route (NFR-8) and reopens my recorded 0.70 m debt on no room evidence. |
+
+**Commitments.** (d): AX44 gains the reading plus a generic −60 dB clause; Phase 12 scope 7 gains an outdoor sentence; the CI report prints cause and movability per fixture. (a): the same without the Phase 12 protection. (b): a new fixture pair and every test that reads them. (c): a loop before the push.
+
+**Conditions.** (a) → later 1: Phase 12 scope 7's J1 trigger is restated as applying to tails above the −60 dB line. (b) → 1: only if K-b3 finds a placement that silences U while every probed limit is kept (file 9 says none). (c) → 1: only if a *room* or preset raises U at every reasonable placement, the reversal as intended. For (a) or (d): the CI line for the two fixtures states the physics cause (one absorbing face, §4.3; open faces, §5.1) and, for `edge_values` too, the tail's level relative to the direct sound after t_dir + 50 ms, so "inaudible" is shown, not asserted (orchestrator code task beside K-b3).
+
+**Hand-offs.** Seat 1: ±2.4 dB on a tail ≥ 60 dB down; the note's truthfulness. Seat 6: scope of "valid fixture"; the display rule. Seat 2: the estimator's variance at open faces and at one-absorbing-face boxes; whether `courtyard` behaves as a room. Seat 8: the note's effect on an outdoor story. Phase 12 (Seat 6, founder): `materials.json` should carry per-entry low/high bounds and sources (my C2), so the library, not the contract, defines what a material may be. Maisara: nothing veto-grade.
+
+**Premortem.** (a) alone wins; at Phase 12 `open_field` raises U at every placement, scope 7 reopens J1, phase-07c is pulled forward for a tail nobody can hear; Seat 7 notices the cost first, and the interrogator notices that the alternative taken was to re-material the preset.
+
+Files read: `/home/user/makroof/docs/review/phase-05h/16-decider-convene-D-H3.md`, `11-orchestrator-D-H3-question.md`, `9-orchestrator-agreement-results.md`, `13-orchestrator-reported-set.md`, `14-orchestrator-M2-near-corner.md`, `6-orchestrator-K20-certified-listing.md` (BRAS rows); `/home/user/makroof/docs/BUILD_PLAN.md` AX36–AX46; `/home/user/makroof/docs/phases/phase-05h.md` §4, §5, §8; `/home/user/makroof/docs/phases/phase-12.md` scopes 1, 6, 7; `/home/user/makroof/docs/review/phase-05b2/3-seat9-T5-T4.md`, `18-seat9-T1-T2-T6.md`, `23-seat9-round2-T1-T2.md`; `/home/user/makroof/tests/unit/test_diffuse_agreement.cpp` L196–284, `/home/user/makroof/tests/unit/test_diffuse_records.cpp` L306–373, `/home/user/makroof/tests/scenes/valid/edge_values.json`, `/home/user/makroof/tests/scenes/valid/open_field.json`, `/home/user/makroof/docs/contract/scene-v1.schema.json` (α bounds); corpus: Kuttruff §2.5, §4.2, §4.3, §5 intro, §5.1, §5.2, §6.7–6.8, §8.7, Table 9.2; Vorländer §11.5, Table 6.1.
