@@ -378,13 +378,16 @@ const char* flagText(DenormalFlags f) noexcept
            : f.underflow            ? "underflow"
                                     : "clear";
 }
-// Calibration (Seat 5): the detector must see a known denormal operand and a known underflow, else it SKIPs.
-// Calibration, per architecture. x86-64: a denormal operand sets DE and an underflowing product sets UE with
-// FTZ/DAZ off. AArch64 (K-c4, the macOS run of 2026-11-10: with FZ off neither a denormal operand nor an
-// underflowing product raised a cumulative flag on Apple silicon), so there the observable is IDC under FZ =
-// 1, the guard's own mode: a denormal operand consumed while flushing sets IDC. The arms the [pipeline] test
-// asserts follow: x86-64 asserts the flags in the unguarded arm; AArch64 asserts IDC in the guarded arm.
-bool calibrateDetector(bool& operandSeenWithoutGuard)
+// Calibration (Seat 5; decision D-H3 (c), decider file 20 L183 (3)): 1e-310 x 1.0 must set DE (x86-64) or
+// IDC under FZ = 1 (AArch64: an exact product with a denormal operand raises no cumulative flag with FZ off,
+// K-c4, CI run 42909003931 on the macOS runner); 1e-300 x 1e-20 must set UE / UFC without the guard; on
+// failure the test SKIPs, never passes. The [pipeline] test then asserts the decision's per-architecture
+// form: x86-64 DE | UE set in the unguarded FTZ-off arm and DE clear in the FTZ-on arm; AArch64 UFC set in
+// the FZ-off arm and IDC | UFC set in the FZ-on arm. The macOS runner's pattern that decided the AArch64
+// form (CI run 42921348351, the named scene): FTZ off [underflow], FTZ on [underflow], IDC in neither arm on
+// the caller's thread (the denormal operands are consumed on the pool worker, under its own guard).
+bool calibrateDetector(bool& operandSeenWithoutGuard, bool& underflowSeenWithoutGuard,
+                       bool& operandSeenUnderGuard)
 {
     volatile double tiny = 1e-310, one = 1.0, small = 1e-300, smaller = 1e-20;
     clearDenormalFlags();
@@ -396,18 +399,21 @@ bool calibrateDetector(bool& operandSeenWithoutGuard)
     (void)a;
     (void)b;
     operandSeenWithoutGuard = f1.operand;
-#if defined(SPATIAL_DENORMALS_AARCH64)
+    underflowSeenWithoutGuard = f2.underflow;
     DenormalFlags f3;
     {
         const sim::conv::ScopedFlushDenormals fz;
         clearDenormalFlags();
-        volatile double c = tiny * one; // a denormal operand flushed under FZ = 1 -> IDC
+        volatile double c = tiny
+                            * one; // a denormal operand flushed under FZ/DAZ -> IDC (AArch64); x86 DAZ: no DE
         f3 = denormalFlags();
         (void)c;
     }
-    return f3.operand || ((f1.operand || f1.underflow) && f2.underflow);
+    operandSeenUnderGuard = f3.operand;
+#if defined(SPATIAL_DENORMALS_AARCH64)
+    return f3.operand && f2.underflow;
 #else
-    return (f1.operand || f1.underflow) && f2.underflow;
+    return f1.operand && f2.underflow;
 #endif
 }
 } // namespace
@@ -441,8 +447,8 @@ TEST_CASE(
     // FTZ/DAZ on the operand flag stays clear on x86-64 (DAZ suppresses DE; the flushed results still raise
     // UE) and on AArch64 the input-denormal flag IDC is raised only under FZ = 1 (Seat 5's reading, decided
     // by the three-OS run).
-    bool operandWithoutGuard = false;
-    if (!calibrateDetector(operandWithoutGuard))
+    bool operandWithoutGuard = false, underflowWithoutGuard = false, operandUnderGuard = false;
+    if (!calibrateDetector(operandWithoutGuard, underflowWithoutGuard, operandUnderGuard))
         SKIP("the FPU status-flag detector did not see a known denormal / underflow on this platform");
     sim::diffuse::ThreadPool oneThread(1);
     sim::BuildOptions unguarded = options;
@@ -460,19 +466,21 @@ TEST_CASE(
         flagsOn = denormalFlags();
     }
     std::printf(
-        "ftz: the absorbent room without the guard: flags FTZ off [%s], FTZ on [%s]; IRs %s (operand flag "
-        "without the guard on this architecture: %s)\n",
+        "ftz: the absorbent room without the guard: flags FTZ off [%s], FTZ on [%s]; IRs %s (calibration on "
+        "this architecture: denormal operand without the guard %s, underflow without the guard %s, operand "
+        "flag under the guard %s)\n",
         flagText(flagsOff), flagText(flagsOn), bitIdentical(off, on) ? "bit-identical" : "DIFFERENT",
-        operandWithoutGuard ? "yes" : "no");
+        operandWithoutGuard ? "yes" : "no", underflowWithoutGuard ? "yes" : "no",
+        operandUnderGuard ? "yes" : "no");
     REQUIRE(bitIdentical(off, on));
+    // D-H3 (c) (decider file 20 L183 (1)), the per-architecture form; the macOS runner's pattern (CI run
+    // 42921348351: FTZ off [underflow], FTZ on [underflow]) decided the AArch64 arms.
 #if defined(SPATIAL_DENORMALS_SSE)
     REQUIRE((flagsOff.operand || flagsOff.underflow)); // DE | UE set: denormals arose
     REQUIRE_FALSE(flagsOn.operand);                    // DAZ: no denormal operand reaches an instruction
 #elif defined(SPATIAL_DENORMALS_AARCH64)
-    // K-c4 (the macOS run): with FZ off no cumulative flag is raised on Apple silicon, so the premise is read
-    // in the guarded arm: a denormal operand was consumed and flushed under FZ = 1 (IDC), which is what the
-    // guard is for.
-    REQUIRE(flagsOn.operand);
+    REQUIRE(flagsOff.underflow);                     // UFC in the FZ-off arm
+    REQUIRE((flagsOn.operand || flagsOn.underflow)); // IDC | UFC in the FZ-on arm
 #endif
 }
 
@@ -573,12 +581,13 @@ TEST_CASE("probe: denormals on the IR path, direct FPU status-flag detector (ung
             s.bandsAbsorption = {0.01, 0.01, 0.5, 0.999, 0.999, 0.999, 0.999, 0.999};
         probes.push_back({"100 m cube alpha 0.01 at 63/125 Hz, 0.999 above", sc});
     }
-    bool operandWithoutGuard = false;
-    if (!calibrateDetector(operandWithoutGuard))
+    bool operandWithoutGuard = false, underflowWithoutGuard = false, operandUnderGuard = false;
+    if (!calibrateDetector(operandWithoutGuard, underflowWithoutGuard, operandUnderGuard))
         SKIP("the FPU status-flag detector did not see a known denormal / underflow on this platform");
-    std::printf(
-        "probe-detector calibration: a denormal operand without the guard reads as %s on this architecture\n",
-        operandWithoutGuard ? "operand" : "underflow only (AArch64 form)");
+    std::printf("probe-detector calibration on this architecture: denormal operand without the guard %s, "
+                "underflow without the guard %s, operand flag under the guard %s\n",
+                operandWithoutGuard ? "yes" : "no", underflowWithoutGuard ? "yes" : "no",
+                operandUnderGuard ? "yes" : "no");
     sim::diffuse::ThreadPool oneThread(
         1); // every solve block runs on the instrumented thread (D4: same result)
     for (const double fs : {48000.0, 96000.0})

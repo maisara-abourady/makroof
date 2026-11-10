@@ -424,3 +424,19 @@ agree-full summary: 410 gated AX43 case-bands, 72 gated AX45 case-bands, 150 rep
 ```
 
 The catch per band (3·SE_pool + mean ℓ_ref): 0.0094–0.0096 dB at 63–250 Hz over 40 case-bands, 0.0080 dB at 500 Hz–2 kHz over 70, 0.0098 dB at 4–8 kHz over 40; |mean (C++ − ref)| 0.0051–0.0057 dB in the outer bands and 0.0009–0.0012 dB at 500 Hz–2 kHz; 23 reference rooms in the outer bands and 26 at 500 Hz–2 kHz; no room with |mean z′| > 3 (worst −2.06, room 14, band 7).
+
+## The AArch64 arm of the FTZ test: the two macOS observations (K-c4)
+
+- CI run 42909003931 (d51dde0), `build (macos)`: the `[probe-denormals-detector]` probe SKIPped at its
+  calibration step (`1e-310 × 1.0` with FZ off raised no cumulative flag on the Apple-silicon runner: IDC
+  needs FZ = 1, and an exact product raises no UFC); the job failed on Catch2's all-skipped exit 4. ca6263b
+  read that as "no cumulative flag with FZ off" and moved the `[pipeline]` assertion to IDC in the guarded arm.
+- CI run 42921348351 (335fdbb), `build (macos)`: that form failed (`REQUIRE(flagsOn.operand)` false). The
+  named scene printed `flags FTZ off [underflow], FTZ on [underflow]; IRs bit-identical`: UFC is raised in
+  both arms on the caller's thread, IDC in neither (the denormal operands are consumed on the pool worker,
+  under its own guard). That is the pattern decision D-H3 (c) wrote for AArch64 (decider file 20 L183 (1):
+  UFC in the FZ-off arm, IDC | UFC in the FZ-on arm), so the test now asserts exactly that form, with the
+  calibration of file 20 L183 (3) (IDC under FZ = 1 for the operand, UFC for the underflow; SKIP on failure).
+  Linux x86-64, same test (local, Debug): `FTZ off [operand+underflow], FTZ on [underflow]; IRs bit-identical
+  (calibration: denormal operand without the guard yes, underflow without the guard yes, operand flag under
+  the guard no)`; the probe's calibration line reads the same.
