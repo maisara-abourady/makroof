@@ -39,3 +39,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `31-orchestrator-C15.md` | orchestrator | C15: 30 replicates in the closed 100 m cubes (Seat 2's condition): all pass (\|median\| ≤ 0.15 dB, p95 ≤ 0.89 dB) |
 | `32-interrogator-round2-T1-T2-T6.md` | interrogator | round 2 on decider round 3: all survive (D-T1.3, 1.4, 1.6, Q1, Q2 with corrections 1–14); computations (f)–(h) requested |
 | `33-orchestrator-C16.md` | orchestrator | C16: joint N-3W\*\*\* rule; where U fires (both n\*_max); AX16 vs C15 long runs (+0.02 dB s=0.3 cubes, +2.39 dB absorbing floor); block size 64 |
+| `34-decider-round4-final-T1-T2-T6.md` | decider | final round 4: corrections 1–14 applied; block 64; Seat 6 (i)–(iii) folded in; Q1 and Q2 final text; /fix-plan list rounds 1–4; S5-b and S6-b pending |
