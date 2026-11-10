@@ -272,15 +272,41 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
         const auto sc = cube(key);
         for (const double fs : {48000.0, 96000.0})
         {
-            const long before = peakRssKb();
+            // AX38 (i)/4c transient peak: RSS sampled every 2 ms by a sampler thread during the builds
+            // (steward round 10 G2: VmHWM is a process high-water mark that an earlier test in the same
+            // process sets, so its delta read 0 MB); delta = max sampled RSS - RSS before. Gated on Linux (<=
+            // 1 GB), recorded on macOS / Windows (currentRssKb() reads /proc and returns 0 elsewhere: the
+            // line then says "n/a").
             const long rssBefore = currentRssKb();
+            std::atomic<bool> sampling{true};
+            std::atomic<long> rssMax{rssBefore};
+            std::thread sampler([&] {
+                while (sampling.load())
+                {
+                    const long r = currentRssKb();
+                    long m = rssMax.load();
+                    while (r > m && !rssMax.compare_exchange_weak(m, r))
+                    {}
+                    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                }
+            });
             const auto sp = full(sc, fs, 3);
-            const long after = peakRssKb();
-            std::printf("05h-records full rebuild %-26s %6.0f Hz: min %.0f median %.0f max %.0f ms; peak RSS "
-                        "delta %.0f MB "
-                        "(VmHWM %ld -> %ld kB, RSS before %ld kB)\n",
-                        key, fs, sp.min, sp.median, sp.max, (after - before) / 1024.0, before, after,
-                        rssBefore);
+            sampling.store(false);
+            sampler.join();
+            const double deltaMb = (rssMax.load() - rssBefore) / 1024.0;
+            std::printf(
+                "05h-records full rebuild %-26s %6.0f Hz: min %.0f median %.0f max %.0f ms; transient RSS "
+                "delta %.0f MB (sampled max %ld kB, RSS before %ld kB)%s\n",
+                key, fs, sp.min, sp.median, sp.max, deltaMb, rssMax.load(), rssBefore,
+                rssBefore == 0 ? "  [RSS n/a on this OS: recorded, not gated]" : "");
+            const bool gatedBuild = std::string(key) != "cube100_lowalpha0.05_s1" && fs == 96000.0;
+#if defined(__linux__)
+            if (gatedBuild && rssBefore > 0)
+                REQUIRE(deltaMb
+                        <= 1024.0); // AX38 (i): at most 1 GB transient per diffuse solve, gated on Linux
+#else
+            (void)gatedBuild;
+#endif
         }
         // AX41 realised-work ratio, pre-registered 1.02 at each gated scene (D-H1 (iii), file 19); the
         // reported s = 1 cube prints it only.
@@ -300,7 +326,22 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                             static_cast<long long>(d.wFinal), static_cast<long long>(d.wScene),
                             d.achievedSeDb, diag.emitters[e].ismFallback ? "yes" : "no");
                 if (gateRegisterEntry(key) != nullptr)
+                {
                     REQUIRE(d.realisedWorkRatio <= 1.02);
+                    // D-H1 (iii): W_pilot and W_final per gated scene pinned exactly (deterministic, D7), as
+                    // constants with their provenance (this test's Release run, 2026-11-10, W_max 3.05 M,
+                    // n*_max 1 024), re-pinned with a CHANGELOG reason at each W_max / n*_max change (steward
+                    // round 10 G5: the constants form, as H3-F4 pins W1 both_corner; the D5 golden holds the
+                    // valid fixtures).
+                    const std::int64_t wPilotPinned = std::string(key) == "cube100_flutter_fallback"
+                                                          ? 3154338
+                                                          : 1696086;
+                    const std::int64_t wFinalPinned = std::string(key) == "cube100_flutter_fallback"
+                                                          ? 2547436
+                                                          : 4348889;
+                    REQUIRE(d.wPilot == wPilotPinned);
+                    REQUIRE(d.wFinal == wFinalPinned);
+                }
             }
         }
         // Synchronous restore with the solve, 96 kHz, worst of 10 (AX38 4c), alone and contended.

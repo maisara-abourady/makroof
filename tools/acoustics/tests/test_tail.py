@@ -614,3 +614,36 @@ def test_envelope_step_reported(render_cli_path, tmp_path, name):
     print(f"{name}: envelope step across the handover, R = {r}, [emitter][63 Hz..8 kHz]: measured {measured} dB; "
           f"AX21 prediction {predicted} dB (reported only)")
     assert all(math.isfinite(x) for row in measured for x in row)
+
+
+# ---------------------------------------------------------------------------------------------
+# Phase 05h: the AX41 diagnostics of the switched tail level in render_cli --diagnostics (§4 scope 5 "(test)")
+# ---------------------------------------------------------------------------------------------
+def test_diagnostics_carry_the_ax41_fields(render_cli_path):
+    """Every emitter's `diffuse` block carries the AX41 joint-rule fields and they are consistent with the rule:
+    n* a multiple of 64, N <= N_cap unless the pilot ships, cap hit := N_need > N_cap, the realised work ratio in
+    (0, 1.02], U per AX44, and the switched E_target = specular + diffuse per band (AX37 (5.1))."""
+    d = diag(str(render_cli_path), "medium_room")
+    assert d["emitters"], "no emitters in the diagnostics"
+    for e in d["emitters"]:
+        df = e["diffuse"]
+        assert df["computed"] is True
+        for key in ("nStar", "nNeed", "n", "nCap", "capHit", "floorTruncated", "pilotFloor", "pilotShipped",
+                    "achievedSeDb", "seDb", "pilotSeDb", "vov", "vovUnion", "vovUnionMax", "slope", "weight",
+                    "listenerDistanceM", "emitterDistanceM", "bothNear", "realisedWorkRatio", "wPilot", "wFinal",
+                    "wScene", "faceHash", "latticeImages", "targetEnergySpecular", "targetEnergyDiffuse",
+                    "targetEnergyAx16"):
+            assert key in df, key
+        assert df["nStar"] % 64 == 0 and df["nStar"] >= 64
+        assert df["capHit"] == (df["nNeed"] > df["nCap"])
+        if not df["pilotShipped"]:
+            assert df["n"] <= max(df["nCap"], df["nStar"])
+        assert 0.0 < df["realisedWorkRatio"] <= 1.02  # AX41 (D-H1 (iii))
+        assert df["wPilot"] + df["wFinal"] == pytest.approx(df["realisedWorkRatio"] * df["wScene"], rel=1e-9)
+        assert 0.0 <= df["weight"] <= 1.0
+        u = (df["bothNear"] and (df["capHit"] or df["vovUnionMax"] >= 0.1)) or (df["capHit"] and df["achievedSeDb"] > 0.33)
+        assert e["approximate"] == u  # AX44
+        for b in range(8):
+            spec, diffuse = df["targetEnergySpecular"][b], df["targetEnergyDiffuse"][b]
+            assert spec >= 0.0 and diffuse >= 0.0
+            assert e["targetEnergy"][b] == pytest.approx(spec + diffuse, rel=1e-9)

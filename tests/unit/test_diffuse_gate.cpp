@@ -316,7 +316,10 @@ contract::SceneDescription absorbentScene()
 // 3's scene, positive on the direct detector at 48 and 96 kHz, file 18 K-c3): dead_booth geometry, alpha 0.01
 // at 63 Hz and 0.999 above, s 0.5. The fast bands' exp(-rate j) in BandNoiseGenerator::make reach the double
 // subnormal range inside the 63 Hz band's long tail; the IR stays bit-identical because the whole path is
-// double and the final conversion flushes (Engine.cpp toFloatNoDenormal).
+// double and the final conversion flushes (Engine.cpp toFloatNoDenormal). The denormal needs the
+// long/short-band ratio (a near-rigid 63 Hz band, T60 about 5.9 s, against fast bands decaying in about 8.6
+// ms), not absorbency as such: alpha 0.999 on every band reads clear (file 18 K-c3), so absorbentScene()
+// reading clear is not a regression (D-H3 (c), P05H-60).
 contract::SceneDescription denormalScene()
 {
     auto scene = pipeline_test::loadScene("dead_booth.json");
