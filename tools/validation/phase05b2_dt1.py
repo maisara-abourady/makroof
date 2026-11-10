@@ -359,7 +359,7 @@ def step_openfield(npaths: int = 400_000):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g"])
+    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14"])
     ap.add_argument("--paths", type=int, default=32_000)
     a = ap.parse_args(argv)
     if njit is None:
@@ -375,7 +375,7 @@ def main(argv=None):
     else:
         {"c3": step_c3, "c4": step_c4, "c5": step_c5, "c6": step_c6, "c7": step_c7, "c9b": step_c9b,
          "c12a": step_c12a, "c12b": step_c12b, "c12d": step_c12d,
-         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g}[a.step]()
+         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14}[a.step]()
 
 
 
@@ -1445,6 +1445,114 @@ def step_c13g():
                                 "max_final_se_db": max(x["se_db"] for x in rows), "rows": rows}
         log("grid", gname, out[f"grid_{gname}"]["points"], out[f"grid_{gname}"]["cap_hits"], round(out[f"grid_{gname}"]["max_final_se_db"], 3))
     d = load(); d["c13g"] = out; save(d)
+
+
+def step_c14(reps: int = 30):
+    """C14 (interrogator, 26-interrogator-T1-T2-T6.md, 'For the orchestrator'): (a) calibration-block cost at the gated and
+    worst 100 m scenes; (b) the six Phase 04 rooms, listener then emitter at 0.1 m, at W_max (1 thread), n*_max 8 000 and
+    1 020; (c) Q2 (B) restore at the gated scenes; (d) the D-T6 small room; (e) the gated case count and z_FW."""
+    from statistics import NormalDist
+    out = {}
+    m = scope6.air_m()
+    S = 42.5e-9; T_BUILD = 1.884; T_BOUND = 30.0 / 14.0
+    big = [0.1, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2, 0.22]
+    s100 = ((45.0, 70.0, 2.0), (55.0, 70.0, 2.0)); r100 = (50.0, 30.0, 1.7)
+    gated = {
+        "cube100_alpha0.10-0.22_s0.3": {"alpha": [big] * 6, "s": [0.3] * 6},
+        "cube100_lowalpha0.05_s0.3": {"alpha": [[0.05] * 8] * 6, "s": [0.3] * 6},
+        "cube100_lowalpha0.05_s1": {"alpha": [[0.05] * 8] * 6, "s": [1.0] * 6},
+        "cube100_flutter_fallback": {"alpha": [[0.02] * 8] * 2 + [[0.95] * 8] * 4, "s": [0.0, 0.0, 0.05, 0.05, 0.05, 0.05]},
+        "cube100_absorbing_floor_s1": {"alpha": [[0.05] * 8] * 4 + [[0.95] * 8, [0.05] * 8], "s": [1.0] * 6},
+    }
+    ga = {}
+    for name, g in gated.items():
+        for e, src in enumerate(s100):
+            c = {"dims": (100.0, 100.0, 100.0), "alpha": g["alpha"], "s": g["s"], "src": src, "rcv": r100}
+            pr = _Prep(c)
+            cal = pr.nw4c(CAL)
+            e_cal = float(cal["ev_fwd"].sum() + cal["ev_rev"].sum()) / CAL
+            row = {"fallback": bool(pr.plan["fallback"]), "mix_s": pr.b, "e_cal": e_cal, "cal_work_over_wmax": CAL * e_cal / W_MAX_1T,
+                   "cal_over_half_wmax": bool(CAL * e_cal > W_MAX_1T / 2), "cal_over_wmax": bool(CAL * e_cal > W_MAX_1T)}
+            for nm in (8000, 1020):
+                for lab, wm in (("A", W_MAX_1T), ("B", 11.4 * W_MAX_1T)):
+                    r = n3w_c(pr, wm, n_max=nm)
+                    row[f"{lab}_nmax{nm}"] = {"n_star": r["n_star"], "n": r["n"], "cap_hit": r["cap_hit"], "work": r["work"],
+                                              "se_db": float(np.max(r["se_db"])), "work_over_wmax": r["work"] / wm}
+            ga[f"{name}_e{e}"] = row
+            log(name, e, {k: (round(v, 3) if isinstance(v, float) else v) for k, v in row.items() if not isinstance(v, dict)})
+    out["a_gated_100m"] = ga
+    # (c) restore under Q2 (B) and (A), per gated scene: both emitters' realised work at 1 thread, 42.5 ns per evaluation
+    rest = {}
+    for name in gated:
+        for nm in (8000, 1020):
+            for lab in ("A", "B"):
+                w = sum(ga[f"{name}_e{e}"][f"{lab}_nmax{nm}"]["work"] for e in (0, 1))
+                t = T_BUILD + w * S
+                rest[f"{name}/{lab}/nmax{nm}"] = {"restore_s": t, "x14_s": 14 * t, "over_watchdog": bool(14 * t > 30.0), "over_bound": bool(t > T_BOUND)}
+    out["c_restore"] = rest
+    d = load(); d["c14"] = out; save(d)
+    # (b) six Phase 04 rooms, listener then emitter at 0.1 m from the nearest surface, both emitters
+    b = {}
+    for r_ in ("dead_booth", "living_room", "classroom", "club", "concert_hall_box", "stone_box"):
+        sc = json.loads((REPO / "tests" / "scenes" / "valid" / f"{r_}.json").read_text())
+        si = scope6.scene_inputs(REPO / "tests" / "scenes" / "valid" / f"{r_}.json")
+        D = np.asarray(si["dims"], float)
+        base = {"dims": tuple(D), "alpha": np.asarray(si["alpha"], float).reshape(6, 8).tolist(), "s": [float(x) for x in si["s"]]}
+        emitters = [tuple(float(x) for x in e["position"]) for e in sc["emitters"]]
+        rcv0 = np.asarray(si["rcv"], float)
+        def near(x):
+            x = np.asarray(x, float).copy(); gaps = np.r_[x, D - x]; i = int(np.argmin(gaps)); ax = i % 3
+            x[ax] = 0.1 if i < 3 else D[ax] - 0.1
+            return tuple(x)
+        for e, src in enumerate(emitters):
+            for lab, c in (("listener", dict(base, src=src, rcv=near(rcv0))), ("emitter", dict(base, src=near(src), rcv=tuple(rcv0)))):
+                pr = _Prep(c)
+                row = {"w": pr.w}
+                for nm in (8000, 1020):
+                    r = n3w_c(pr, W_MAX_1T, n_max=nm)
+                    row[f"nmax{nm}"] = {"n_star": r["n_star"], "n": r["n"], "cap_hit": r["cap_hit"], "se_db": float(np.max(r["se_db"])),
+                                        "pilot_VOV": r["pilot_VOV"], "pilot_floor_flag": r["pilot_floor_flag"]}
+                b[f"{r_}_e{e}_{lab}_0.1m"] = row
+                log(r_, e, lab, row["nmax8000"], row["nmax1020"]["se_db"])
+    out["b_phase04_near_wall"] = b
+    d = load(); d["c14"] = out; save(d)
+    # (d) the D-T6 small room (3 × 2.5 × 2.5 m, α 0.03, s 0.1; AX28 positions scaled)
+    sr = {"dims": (3.0, 2.5, 2.5), "alpha": [[0.03] * 8] * 6, "s": [0.1] * 6, "rcv": (1.5, 0.667, 0.425)}
+    dd = {}
+    for e, src in enumerate(((1.05, 1.667, 0.5), (1.95, 1.667, 0.5))):
+        c = dict(sr, src=src)
+        pr = _Prep(c)
+        dl, de = wall_distance(c["dims"], c["rcv"]), wall_distance(c["dims"], c["src"])
+        row = {"d_L": dl, "d_E": de, "w": pr.w, "both_near_flag": bool(dl < 0.70 and de < 0.70), "mix_s": pr.b}
+        for nm in (8000, 1020):
+            r = n3w_c(pr, W_MAX_1T, n_max=nm)
+            row[f"nmax{nm}"] = {"n_star": r["n_star"], "n": r["n"], "cap_hit": r["cap_hit"], "se_db": float(np.max(r["se_db"])),
+                                "pilot_VOV": r["pilot_VOV"], "e_cal": r["e_cal"]}
+        tots = np.asarray([n3w_c(pr, W_MAX_1T, rep=1 + i)["total"] for i in range(reps)])
+        lg = pr.nw4c(256_000, p0=100_000); sl = summarise(lg["x"], pr.plan)
+        row["long_256k_total"] = sl["total"].tolist(); row["long_256k_se_db"] = sl["se_db"].tolist()
+        ref, _ = _ref_bands(c, (0.625, 0.3125, 0.15625), AQ9)
+        row["ref_ladder_1k"] = {k: float(v[4]) for k, v in ref.items()}
+        rf = float(ref["0.15625"][4])
+        err = 10 * np.log10(tots[:, 4] / rf)
+        row["reps_vs_ref_finest_db"] = {"p5": float(np.percentile(err, 5)), "p50": float(np.median(err)), "p95": float(np.percentile(err, 95)), "max_abs": float(np.max(np.abs(err)))}
+        row["long_vs_ref_finest_db"] = float(10 * np.log10(sl["total"][4] / rf))
+        row["ref_change_last_halving"] = float(abs(ref["0.15625"][4] / ref["0.3125"][4] - 1))
+        dd[f"e{e}"] = row
+        log("small room", e, {k: v for k, v in row.items() if k not in ("long_256k_total", "long_256k_se_db")})
+    out["d_dt6_small_room"] = dd
+    # (e) gated case count of CS-3 + CS-NW+ and z_FW (family α = 1 %, two-sided, Bonferroni over case-bands)
+    cnt = {"A_cases": 15, "phase04_rooms_both_emitters": 12, "W1_W2_both_emitters": 4, "BRAS_pairs": len([n for r_ in scope6.bras_rooms() for n in scope6.pair_names(r_)]),
+           "CS_NW_plus_as_listed": 5, "CS_NW_plus_both_emitters": 9}
+    for lab, nnw in (("as_listed", 5), ("both_emitters", 9)):
+        M = cnt["A_cases"] + cnt["phase04_rooms_both_emitters"] + cnt["W1_W2_both_emitters"] + cnt["BRAS_pairs"] + nnw
+        z = NormalDist().inv_cdf(1 - 0.01 / (2 * M * 8))
+        cnt[f"total_{lab}"] = M
+        cnt[f"z_FW_{lab}"] = z
+        cnt[f"family_false_fail_p0.999_per_case_{lab}"] = 1 - 0.999 ** M
+    out["e_case_count"] = cnt
+    log(cnt)
+    d = load(); d["c14"] = out; save(d)
 
 if __name__ == "__main__":
     main()
