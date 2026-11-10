@@ -92,7 +92,8 @@ Then list the **gaps**. For each, give:
   completeness point);
 - **whose call**: **orchestrator** (it can be closed by work, including a decision the decider takes
   for Maisara), or **Maisara** (only the three cases in `docs/board/README.md`, "Who answers Maisara's
-  questions", or an action only a person can take).
+  questions", an action only a person can take, or a gap that is not a decision and still fails after 3
+  rounds).
 
 Do not name which agent should close a gap and do not write the delegation plan. If a gap can only be
 closed by a kind of evidence that a particular role produces (a corpus check, a researched reference, a
