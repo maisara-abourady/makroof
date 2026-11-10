@@ -221,8 +221,12 @@ after seeing the gate's result.
     binaural W1/W2 and re-run phase-08 item 8. This also carries phase-08 scopes 9 and 10, which Phase 08
     could not meet before this phase: W1/W2 per output mode with the diffuse share and the AX38 (iv)
     records in binaural mode with the gate wait shown separately (phase-08 scope 9); the blocking restore
-    gate measured in the heaviest output mode with one W_max constant, and capped-room binaural goldens
-    with the SE-derived tolerance unless phase-07c has landed (phase-08 scope 10).
+    gate measured in the heaviest output mode with one W_max constant for all modes (phase-08 scope 10).
+    If the heaviest-mode build makes the pinned W_max fail the gate, phase-07c lands before this phase's
+    re-rendered binaural goldens are frozen, or those goldens carry the SE-derived tolerance (the 08-first
+    order of AQ10 / AX38 4c; in the 05h-first order the same rule applies to Phase 08's goldens).
+    Capped-room binaural goldens carry the SE-derived tolerance unless phase-07c has landed before they
+    are frozen (phase-07c condition 8).
 
 ## 5. Acceptance criteria — automated
 

@@ -2194,3 +2194,5 @@ Branch-review fixes diff check (`docs/review/phase-05b2/56-interrogator-branch-r
 | P05B2-BR-04 | phase-07c §3: comes forward only after 05h; heaviest-mode gate in phase-05h scope 10 if 08 went first | CORRECT | closed |
 | P05B2-BR-05 | J1 freeze-point rule (AQ10, AX38 4c) unqualified for the 08-first order; 05h scope 10 states only the SE-tolerance branch | IMPRECISE: /fix-plan, Seat 4 / decider to confirm | open |
 | P05B2-BR-06 | phase-05b2 §9 note (minor 4); §6 CLAUDE.md determinism row (minor 1) | CORRECT | closed |
+
+P05B2-BR-05 closed: freeze rule qualified for both orders in AQ10, AX38 4c and phase-05h scope 10 (Seat 4 confirmed, file 57).
