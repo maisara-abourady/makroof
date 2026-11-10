@@ -319,3 +319,26 @@ The probe now reads both sticky bits per architecture (x86-64: DE operand bit 1 
 | club_e1 | 3 | +0.0060 | +0.0024 | +0.40 | +0.0064 | +0.0040 | 0.0067 | 1776 / 353 |
 | club_e1 | 4 | +0.0061 | +0.0024 | +0.39 | +0.0064 | +0.0040 | 0.0067 | 1776 / 353 |
 | club_e1 | 5 | +0.0061 | +0.0024 | +0.39 | +0.0064 | +0.0040 | 0.0067 | 1776 / 353 |
+
+## K-a3 (iv) — the pre-registered application run of D-H3 (a) (file 27): the additive CHECK on the tree
+
+Release, Linux, after the H3-F6 golden move (402 certified case-bands; 25 reference rooms at 500 Hz–2 kHz, 22 elsewhere), the CHECK moved onto the additive bound (commit bbb9d85). Every band reads "within"; no room is labelled by the one-room watch; the rooms' signs are mixed on every band.
+
+```
+agree-full pooled bias band 0 [CHECK, additive]: mean (C++ - ref) -0.0047 dB over 30 case-bands; bound 3 SE_pool + mean l_ref = 0.0067 + 0.0032 = 0.0099 dB (within)
+agree-full pooled bias band 0 [record, per reference room, z']: mean over 22 rooms -0.258 (3/sqrt(M_rooms) 0.640); rooms +/- 6 / 16
+agree-full pooled bias band 1 [CHECK, additive]: mean (C++ - ref) -0.0047 dB over 30 case-bands; bound 3 SE_pool + mean l_ref = 0.0067 + 0.0032 = 0.0098 dB (within)
+agree-full pooled bias band 1 [record, per reference room, z']: mean over 22 rooms -0.262 (3/sqrt(M_rooms) 0.640); rooms +/- 6 / 16
+agree-full pooled bias band 2 [CHECK, additive]: mean (C++ - ref) -0.0047 dB over 30 case-bands; bound 3 SE_pool + mean l_ref = 0.0066 + 0.0032 = 0.0098 dB (within)
+agree-full pooled bias band 2 [record, per reference room, z']: mean over 22 rooms -0.268 (3/sqrt(M_rooms) 0.640); rooms +/- 6 / 16
+agree-full pooled bias band 3 [CHECK, additive]: mean (C++ - ref) +0.0002 dB over 60 case-bands; bound 3 SE_pool + mean l_ref = 0.0038 + 0.0040 = 0.0078 dB (within)
+agree-full pooled bias band 3 [record, per reference room, z']: mean over 25 rooms -0.165 (3/sqrt(M_rooms) 0.600); rooms +/- 9 / 16
+agree-full pooled bias band 4 [CHECK, additive]: mean (C++ - ref) +0.0000 dB over 60 case-bands; bound 3 SE_pool + mean l_ref = 0.0037 + 0.0040 = 0.0077 dB (within)
+agree-full pooled bias band 4 [record, per reference room, z']: mean over 25 rooms -0.165 (3/sqrt(M_rooms) 0.600); rooms +/- 10 / 15
+agree-full pooled bias band 5 [CHECK, additive]: mean (C++ - ref) +0.0001 dB over 60 case-bands; bound 3 SE_pool + mean l_ref = 0.0037 + 0.0040 = 0.0077 dB (within)
+agree-full pooled bias band 5 [record, per reference room, z']: mean over 25 rooms -0.162 (3/sqrt(M_rooms) 0.600); rooms +/- 10 / 15
+agree-full pooled bias band 6 [CHECK, additive]: mean (C++ - ref) -0.0046 dB over 30 case-bands; bound 3 SE_pool + mean l_ref = 0.0065 + 0.0032 = 0.0096 dB (within)
+agree-full pooled bias band 6 [record, per reference room, z']: mean over 22 rooms -0.259 (3/sqrt(M_rooms) 0.640); rooms +/- 7 / 15
+agree-full pooled bias band 7 [CHECK, additive]: mean (C++ - ref) -0.0046 dB over 30 case-bands; bound 3 SE_pool + mean l_ref = 0.0065 + 0.0031 = 0.0096 dB (within)
+agree-full pooled bias band 7 [record, per reference room, z']: mean over 22 rooms -0.256 (3/sqrt(M_rooms) 0.640); rooms +/- 7 / 15
+```
