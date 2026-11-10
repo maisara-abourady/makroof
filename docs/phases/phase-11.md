@@ -56,6 +56,17 @@ PRD's vision. It is **not** the full 3D editor (deferred, B8).
    that emitter, as the cause. **U′** (cap hit OR both-near, Seat 6 (iii)) appears only as a labelled
    diagnostic tier in an advanced view. **U's note reaches the producer's editor, not only the
    diagnostics** (Seat 8's later 1 depends on it; decider file 51 §1, §4 item 6).
+   **Display rule (AX44, D-H3 (b) / H3-F2, 2026-11-10; decider files 20, 25, 27; a note rule, not the
+   predicate):** the note is not shown where the tail it describes lies more than 60 dB below the direct
+   sound after t_dir + 50 ms by AX37 (5.4)'s kept check (broadband energy after the direct peak + 50 ms
+   over the peak's squared amplitude) with E_target raised by 3·SE; the rule keys on that measured ratio
+   only, never on a preset category or a scene name (NFR-8); U stays raised in the diagnostics and the U′
+   tier; if shown there: "Outdoor scene: the reverberant tail is more than 60 dB below the direct sound;
+   its level is only roughly estimated" (no ±x, no both-near wording unless both-near fired). Measured
+   (phase 05h reports test): `open_field` −85 dB (the rule applies), `edge_values` −30 / −16 dB (the note
+   shows, with the cap wording), `medium_room` +7 dB. Seat 7's report sentence "very long, very narrow or
+   near-rigid rooms can show the indicator at any placement" is the text candidate for that capped case
+   (Seat 6 owns the words, within AX39's wording rules).
 9. **"Settling" state** (AX38 (iii)): shown on every instance waiting at the diffuse-solve gate, project
    load included.
 

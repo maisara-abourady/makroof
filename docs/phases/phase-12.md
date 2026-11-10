@@ -58,6 +58,17 @@ data only. The engine must have no idea presets exist (PRD core principle, NFR-8
      SE ≤ 0.15 dB, C16 (f)), are **reported only**, with their SE.
    - **OPEN** (interrogator file 54; not decided here): the placement set for "every reasonable
      placement" (e.g. the preset's listener region) is stated before presets are frozen.
+   - **Outdoor presets and J1 (D-H3 (b) / H3-F2, 2026-11-10; decider files 20, 25, 27; interrogator files
+     22, 26, 28; AX41, AX44):** the J1 trigger's cause clause ("because the whole window is long") does
+     not cover a capped U on a near-zero total that sits below the −60 dB line (an open field); such a
+     preset is reported with that fact and its cause and does not reopen J1; `courtyard` (four walls, open
+     sky) is tested as a room, not assumed. The CI report states, for every preset where U is raised at
+     its default (the outdoor presets included), the cause (cap / both-near / VOV_union ≥ 0.1), whether a
+     placement change can silence it (a one-off record) and the tail's energy after t_dir + 50 ms relative
+     to the direct sound. AX44's display rule applies to the note (Phase 11 scope 8): not shown where that
+     tail lies more than 60 dB below the direct sound by AX37 (5.4)'s kept check with E_target raised by
+     3·SE, keyed on the measured ratio only, never on the preset category (NFR-8); U stays raised in the
+     diagnostics.
 8. **Room range (AX38 (vi)):** D-T3 was not needed (2026-11-10). If a D-T3 pass is ever triggered by the
    AX38 ceiling, its cost per scene class (closed reverberant box against open-face outdoor box) reaches
    Maisara before the presets are built.

@@ -81,12 +81,20 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
 6. **DAW compatibility matrix:** `docs/compat/v1.md` table: rows = DAW + OS + format (Logic/AU, Ableton
    macOS VST3, Reaper macOS VST3, Windows DAW(s) VST3); columns = load, play, automate, editor drag-record,
    offline bounce, reopen project, sample-rate change, 10 instances. Maisara fills it in. The public
-   compatibility notes state the Bitwig sandbox gap (AX38 (i)) until scope 3 has measured it.
+   compatibility notes state the Bitwig sandbox gap (AX38 (i)) until scope 3 has measured it. **The
+   matrix also receives the per-host trace results of phase-07c §5 condition 11** (D-H3 (e), AX38 (i)
+   half (2): the thread that serves `reset()`, `setNonRealtime` and freeze / offline render, per host and
+   situation, from the `SPATIAL_HOST_TRACE` build run as a person's action); they are evidence for the
+   compatibility notes, never a per-host code path (NFR-8). Until measured, the notes carry AX38 (i)'s
+   interim sentence (no host named, no stall figure as a product promise, not in launch copy).
 7. Placeholder identity (`AX8`: company name, plugin/manufacturer codes, bundle ID) confirmed or changed
    **before** the first beta, since changing it later breaks users' projects.
 8. **Flush-to-zero guard for MSVC on ARM64** (Windows on Arm): `sim/conv/Denormals.h` is a no-op there;
    implement with `_ReadStatusReg`/`_WriteStatusReg` (FPCR.FZ) together with an ARM64 Windows CI runner
-   that can test it (Phase 06 follow-up).
+   that can test it (Phase 06 follow-up). Until then **Windows-on-ARM runs unguarded**: the guard is a
+   no-op on MSVC ARM64, so the AX37 (5.1) (i) guard and the phase-05h pool-worker guard do not apply there
+   and the `[pipeline]` FTZ test SKIPs (D-H3 (c), decider files 20, 25; the public compatibility notes say
+   so until this scope lands).
 9. **Small-buffer callback timing on real macOS hardware** (Phase 06 follow-up, brief
    `docs/sessions/2026-11-07-phase-06-followups.md` O3(b)): with the Phase 06 work spreading (AX31), the
    worst callback at host buffer 64, 12 s IR, P = 512, while crossfading must stay under its real-time
@@ -118,6 +126,14 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
     [`phase-07c.md`](phase-07c.md) (board answer, decider files 47 §4 (iii), 51 §4 items 4 and 8): **it is a
     prerequisite for the beta**; if it has not landed, the estimator parameters are versioned in saved
     state before release.
+    **Accuracy wording (AX43, D-H3 (a) / H3-F1, 2026-11-10; decider file 27, interrogator file 28; Seat
+    7's (f9) sentence):** the copy is written from the agreement suite's printed lines and quotes the
+    per-case line (τ, the max |C++ − ref|) and the CHECKed pooled figure in this form: "Across the N
+    certified test cases the average offset from the reference is <mean signed deviation> dB (<x> %),
+    inside the references' own resolution (about <mean ℓ_ref> dB) plus three standard errors", with N
+    from the '<gated> of 560' line and the printed bound; never the as-written or per-room numbers as a
+    pass/fail, never "no bias" bare, never "validated" (AX39, AX43). Where its tail level is only
+    reported (reference pending), a room is not counted.
 
 ## Out of scope
 

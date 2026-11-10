@@ -37,6 +37,14 @@ macOS restore under the convention (14 × 2.33–2.59 s = 32.6–36.3 s); the AX
 closes only when the synthesis leaves the synchronous restore (condition 9, or `phase-07d.md` if 07c cannot
 carry it).
 
+**Scope extended by D-H3 (e) / H3-F5 (2026-11-10; decider `docs/review/phase-05h/25-decider-decision-D-H3-r2.md`
+"DECISION D-H3 (e)" and `27-decider-decision-D-H3-r3.md`, interrogator files 26 and 28 SURVIVES; AX38 (i) as
+corrected):** conditions 10 and 11 below. `reset()` and `setNonRealtime` may arrive on the VST3 processing
+thread (specification and the pinned JUCE 8.0.17 wrapper; AU unspecified), where the project's path waits for
+the in-flight build (measured worst 2 664 ms) and may build synchronously (≈ 3.6 s): condition 10 is the
+remedy and the first step of this phase; condition 11 builds the instrument that measures the freeze /
+offline thread per host.
+
 ## 1. Settled — do not reopen
 
 - AX37–AX46 and the AQ10 amendment (phase-05h §1).
@@ -84,7 +92,7 @@ ordering, not the decider's):
 - which hosts do not signal offline rendering reliably (Seat 5);
 - host hang dialogs and their timeouts in Logic, Live, Cubase and Bitwig (Seat 7).
 
-## 5. Scope — conditions 1–9 (conditions 1–8: decider file 47 §4 (iii); condition 9: D-H1 (v) / H1-F2, decider file 19)
+## 5. Scope — conditions 1–11 (conditions 1–8: decider file 47 §4 (iii); condition 9: D-H1 (v) / H1-F2, decider file 19; conditions 10 and 11: D-H3 (e) / H3-F5, decider files 20, 25, 27)
 
 The diffuse solve moves off the synchronous restore, prepare and `reset()`.
 1. **Timing** (section 3): before the first public release, with its W_max raise in one golden round;
@@ -134,6 +142,36 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()`.
    macOS 'closes at' names 07d. Alternatives recorded, not chosen: a cheaper generator (output-changing; a
    golden round; AQ10's "not optimised before Phase 13" to be read by the board); caching the constructor
    spectra per (fs, length) (bit-identical, ≈ 4 of 14 FFTs, [Hyp] 20–25 %, not enough alone).
+10. **The `reset()` half** (D-H3 (e) / H3-F5; decider files 20 and 25 "DECISION D-H3 (e)", file 27;
+    interrogator files 22, 26, 28; AX38 (i)'s register entry and remedy): **the first step of this phase,
+    with its own TSan `[pipeline]` round.** Design = Seat 3's (e-k) + Seat 2's (e-e): `reset()` and
+    `setNonRealtime(true)` only cancel (abandon flag, gate notify) and never wait or build; cancel points in
+    image-source planning, `BandNoiseGenerator` (between the band-pair IFFTs and every 2¹⁶ samples of the
+    sample and assembly loops) and the IR-set build, throwing `BuildCancelled`, output untouched — they
+    also shorten every quiesce (restore, prepare, release and the destructor), which with condition 9
+    bounds the AX38 4c K-e12 finding (a restore arriving mid-build); in realtime mode a reset clears the
+    convolver's history, pending output and counter but **keeps the current IrSet** (promoting `next_` if a
+    fade was running), so the stale → fresh switch arrives as an ordinary AQ4 / AX31 update and the output
+    is never silent; the offline branch is unchanged (drop, then the next `process()` builds before the
+    block: X11, NFR-6). Tests: a `[pipeline]` test asserts that `reset()` and `setNonRealtime(true)` never
+    wait on the builder and never build; the two-order test; the AX38 (i) transient-memory record (an
+    abandoned build's ISM/synthesis may overlap the offline build: Seat 5). Closes AX38 (i)'s register
+    entry (worst quiesce wait 2 664 ms, stale build ≈ 3.6 s, up to ≈ 6.3 s) and lifts its release rule (no
+    build reaches a producer outside the team, beta included, while the entry is open). Never a per-host
+    code path (NFR-8).
+11. **The trace build and the per-host measurement** (D-H3 (e); AX38 (i), half (2)): a CMake option
+    `SPATIAL_HOST_TRACE`, default OFF, excluded from release artefacts, guarded by `pytest tools/ci`: a
+    preallocated SPSC ring written from the host entry points and drained off-thread (nothing on the
+    realtime path allocates, locks or logs), logging entry id, native thread id, `isNonRealtime()`,
+    transport state, block size and time per call. The instrument is this phase's deliverable; **the run is
+    a person's action** on real machines with host licences (Maisara or the contractor; Seat 7's estimate
+    ≈ 1–2 person-days inside trial windows): Live 12, Logic (AU), Cubase (ASIO-Guard on and off), Bitwig
+    (each hosting mode), REAPER (anticipative FX on/off, each render mode), FL Studio and Studio One, on
+    macOS arm64 and Windows x64, in `docs/review/phase-05h/12-researcher-T5T4-61.md` §3's situations
+    (a)–(e) plus bypass/unbypass, mute/unmute and plugin removal, with a 100 m scene. Results go to Phase
+    13's host matrix and the compatibility notes as evidence for the notes, never a per-host code path
+    (NFR-8); they do not block this phase's merge. Until measured, the compatibility notes carry AX38
+    (i)'s interim sentence (no host named, no stall figure as a product promise, not in launch copy).
 
 ## 6. Acceptance criteria — automated
 
@@ -157,6 +195,13 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()`.
       pluginval strictness 10 and auval pass.
 - [ ] The Phase 12 (ii) preset check re-run under the new W_max and reported, if Phase 12 has run;
       otherwise Phase 12 runs it at 07c's W_max.
+- [ ] Condition 10: the `[pipeline]` test shows `reset()` and `setNonRealtime(true)` never wait on the
+      builder and never build; a realtime reset keeps the current IrSet (output never silent); the two-order
+      test and the transient-memory record; TSan `[pipeline]` green; the AX38 (i) register entry removed
+      through `/fix-plan`.
+- [ ] Condition 11: the `SPATIAL_HOST_TRACE` option builds, is OFF by default, is absent from release
+      artefacts (`pytest tools/ci` guard) and leaves the realtime path allocation-, lock- and log-free
+      (tracker test); the per-host run itself is a person's action and does not gate this phase.
 
 ## 7. Listening checklist (Maisara)
 
