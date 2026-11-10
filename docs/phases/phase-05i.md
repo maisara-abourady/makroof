@@ -55,7 +55,7 @@ case-band is gated through `update_goldens.py --extend` with its reason, never b
    the CS-NW+ emitter-1 cases and the 0.3 m wall case (as gathers on the persisted W1 kernel) and W2 both
    emitters, if not landed by phase 05h's push; then the BRAS pairs' 250 Hz and 4 kHz, then 125 Hz and
    8 kHz, 63 Hz last (the 15 GB class: gated when certified, never claimed as a room validation below the
-   Schroeder frequency); the D-T6 small room's C++ run (AX45). Produced offline by
+   Schroeder frequency). Produced offline by
    `tools/validation/hybrid_fast.py` at two rungs per band column, committed by script with provenance
    (tool commit, hash-pinned numba/numpy, rungs, ℓ_ref) and the CHANGELOG reason, never computed live in a
    gate. **Gating:** whatever certifies under D-H2 (a) (the finer-rung change < 1 %, ℓ_ref recorded) is

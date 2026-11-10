@@ -136,11 +136,11 @@ The session raises each item in its **first message** and again in the **PR desc
      `AudioProcessor::reset()` on (or the thread that enters non-realtime mode), which **may be the VST3
      processing thread** (AX38 (i), D-H3 (e), 2026-11-10: VST3 permits `setProcessing` there and the pinned
      JUCE wrapper maps `setProcessing(false)` to `reset()`; AU leaves the thread unspecified). It is not
-     concurrent with `processBlock` (one processing thread), but it is not a thread that tolerates a wait or a
+     concurrent with `processBlock` (one processing thread, F4, F21), but it is not a thread that tolerates a wait or a
      build: phase-07c condition 10 removes both from `reset()`. Assumed from the JUCE/host contract:
      `setStateInformation`, `prepareToPlay` and `reset()` are not called concurrently with each other. These
-     assumptions are **not checkable** by an automated test here; pluginval and auval exercise reset, neither
-     on an audio thread (researcher dossier `docs/review/phase-05h/12-researcher-T5T4-61.md`). The resubmit may allocate
+     assumptions are **not checkable** by an automated test here; pluginval exercises `reset()`, not on an
+     audio thread (researcher dossier `docs/review/phase-05h/12-researcher-T5T4-61.md`). The resubmit may allocate
      (`buildRoomIR`/`makeIrSet`) or free; it is a transport event outside `processBlock`, so the
      no-allocation rule for `processBlock` is unaffected.
    - **Non-realtime mode** (`isNonRealtime()`): entering it runs the reset sequence, which leaves the
