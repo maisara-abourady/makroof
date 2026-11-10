@@ -79,3 +79,21 @@ Read in full: file 16 (both deliveries), 11 (with addendum), 9, 13, 14, 18 (K-a3
 **7. Hand-offs.** Seat 5: the keep-IR variant's thread rules, the D7 skip-rule bookkeeping for a reset that no longer "always submits" (ScenePipeline L210–213), whether any realtime test asserts install-at-once after reset, the scope pull. Seat 2: cancel points outside the solve (K-e6). Seat 6/8: what "settling" shows during the stale window under (e-b) versus the keep-IR variant (nothing to show: the old room keeps playing).
 
 **8. Premortem.** (e-a) ships; a host delivers `setProcessing(false)` on its audio thread at every transport stop while the builder is mid-build in a 100 m room, the whole session drops out for ~2 s on stop, and Maisara hears it in her own DAW before any CI gate does. Under (e-b): "the reverb goes silent for half a second after play" is the first forum report.
+
+
+---
+
+## Round 2: (g) cell
+
+Read: file 20 §D-H3 (c) (map, working, H3-F3, the decision and its reversal), file 22 P05H-56/57, file 18 K-c3 (both runs) and, from the code, `ThreadPool.cpp` L34–39, L72, L95 (the guard is constructed once per share, caller and workers alike, RAII, restores the previous mode when the share ends; nothing allocated) and `Denormals.h` L24–44.
+
+**(g): prefer, 1 / 0** (my own cell, not read from (f)).
+
+- **Now 1.** The same one-off cost as (f): my scene goes into the `[pipeline]` test with Seat 5's per-architecture assertion and calibration; that work is Seat 5's and it is a test, not a render. The extra line in `runShare` costs one control-register read and write per share per `parallelFor`, not per history: nothing my cost criterion can measure, allocation-free, no scene logic (NFR-8). It cannot move E_target: the estimator is double end to end and its band accumulators sit ≥ 1e-41 even at open_field's 8 kHz (C1), so flushing a subnormal (≤ 2.2e-308) operand or result changes no double bit; the decision's same-run re-check (D5 hashes identical, cross-OS E_target within 1e-7) is the proof I want, and its reversal to (f) if it fails is right.
+- **Later 0, and better than (f)'s 0 by one thing (f) leaves open.** Pool workers are `std::thread`s that inherit the FP environment of whichever thread first touched the static pool; in a host that sets FTZ on its own threads, that is a different mode from `render_cli`'s. Without the worker guard the solve's determinism across host and CLI would rest on "no denormal ever arises in the estimator", true in the nine probed scenes and unprovable in general. With it, every thread a build runs on is in the same mode as the synthesis thread, which is the whole point of AX37 (5.1) (i). The positive on my scene is in the synthesis on the caller (already guarded), so (g) does not change what my test asserts; it removes a latent debt for phase-07c's background solve and any later pool user (Phase 10 kernel cache).
+
+**Commitment.** Later phases inherit "every pool share runs under FTZ/DAZ" as the pool's contract; a future pool job must be written for that (the renderer's own paths already are: convolver per block, build per thread). MSVC ARM64 stays a no-op guard (Seat 5's Phase 13 note). **Undo:** delete one line and re-run the hidden detector probe; no golden, no row text.
+
+**Condition (already in the decision, stated as mine):** (g) holds at 1 / 0 only with the same-run re-check on three OSes; a changed hash or an E_target shift beyond 1e-7 would mean a subnormal is load-bearing somewhere in the estimator, which is a finding under NFR-6, not a reason to keep or drop the line silently.
+
+**Premortem.** None new: if (g) fails, it fails in the re-check before the PR opens, and the orchestrator sees it, not a listener.
