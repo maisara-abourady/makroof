@@ -36,6 +36,10 @@ struct FixtureReport
     std::vector<std::array<double, 8>> targets; // per emitter: E_target per band (matching units)
     std::vector<bool> approximate;
     std::vector<double> achievedSeDb;
+    // Seat 9 (D-H3 (b), file 17-seat9 L59): the tail's energy later than t_dir + 50 ms relative to the direct
+    // sound's peak energy, per emitter (output 0), so "inaudible" is shown, not asserted (AX37 (5.4)'s line
+    // is -60 dB).
+    std::vector<double> lateReDirectDb;
 };
 
 std::vector<std::string> fixtureNames()
@@ -57,8 +61,26 @@ FixtureReport report(const std::string& name)
     options.sampleRate = 48000.0;
     options.kind = sim::BuildOptions::Kind::Omni;
     sim::HybridDiagnostics d;
-    (void)sim::buildRoomIR(*parsed.scene, options, &d);
+    const sim::RoomIR ir = sim::buildRoomIR(*parsed.scene, options, &d);
     FixtureReport r;
+    for (int e = 0; e < ir.numEmitters; ++e)
+    {
+        const auto& taps = ir.ir(e, 0);
+        std::size_t peakAt = 0;
+        double peak = 0.0;
+        for (std::size_t n = 0; n < taps.size(); ++n)
+            if (std::abs(taps[n]) > peak)
+            {
+                peak = std::abs(taps[n]);
+                peakAt = n;
+            }
+        double late = 0.0;
+        for (std::size_t n = peakAt + static_cast<std::size_t>(0.05 * options.sampleRate); n < taps.size();
+             ++n)
+            late += static_cast<double>(taps[n]) * taps[n];
+        r.lateReDirectDb.push_back(peak > 0.0 && late > 0.0 ? 10.0 * std::log10(late / (peak * peak))
+                                                            : -999.0);
+    }
     r.name = name;
     REQUIRE(!d.emitters.empty());
     const auto& first = d.emitters[0].match.diffuse;
@@ -250,7 +272,8 @@ TEST_CASE(
                     static_cast<long long>(r.nStar), static_cast<long long>(r.n), r.capHit ? 1 : 0,
                     r.floorTruncated ? 1 : 0, r.pilotFloor ? 1 : 0, r.pilotShipped ? 1 : 0);
         for (std::size_t e = 0; e < r.approximate.size(); ++e)
-            std::printf(" e%zu U %d SE %.3f dB", e, r.approximate[e] ? 1 : 0, r.achievedSeDb[e]);
+            std::printf(" e%zu U %d SE %.3f dB tail after t_dir+50 ms %.0f dB re direct", e,
+                        r.approximate[e] ? 1 : 0, r.achievedSeDb[e], r.lateReDirectDb[e]);
         std::printf("\n");
         if (std::any_of(r.approximate.begin(), r.approximate.end(), [](bool u) { return u; }))
             std::printf("d5 %-22s U raised at the default placement: cause %s%s; a placement change cannot "
