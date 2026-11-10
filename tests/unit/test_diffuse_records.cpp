@@ -42,6 +42,40 @@ Spread spread(std::vector<double> v)
     return {v.front(), 0.5 * (v[(v.size() - 1) / 2] + v[v.size() / 2]), v.back()};
 }
 
+// Register of the AX38 4c restore gate at the pinned W_max 3.05 M (D-H1 (v), file 19; recorded values from
+// docs/review/phase-05h/1-orchestrator-cpp-costs.md §4, 96 kHz, worst-of-10 restore + worst solve; medians to be
+// re-baselined from the first three-OS run, O18). Only the two gated builds have entries.
+#if defined(_WIN32)
+constexpr const char* kOsName = "Windows";
+#elif defined(__APPLE__)
+constexpr const char* kOsName = "macOS";
+#else
+constexpr const char* kOsName = "Linux";
+#endif
+struct GateEntry
+{
+    const char* scene;
+    const char* os;
+    double recorded14xS;     // 14 x (worst restore + worst solve), s
+    double recordedMedianMs; // median-of-10 restore, ms
+    bool listed;             // recorded > 29.1 s: a listed defect, growth bound instead of the strict 30 s
+};
+constexpr GateEntry kGateRegister[] = {
+    {"cube100_flutter_fallback", "Linux", 10.59, 590.6, false},
+    {"cube100_flutter_fallback", "macOS", 7.59, 401.3, false},
+    {"cube100_flutter_fallback", "Windows", 9.65, 542.2, false},
+    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2032.5, true},
+    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1882.0, true},
+    {"cube100_lowalpha0.05_s0.3", "Windows", 29.04, 1935.8, false},
+};
+const GateEntry* gateRegisterEntry(const std::string& scene)
+{
+    for (const auto& e : kGateRegister)
+        if (scene == e.scene && std::string(kOsName) == e.os)
+            return &e;
+    return nullptr;
+}
+
 contract::SceneDescription cube(const std::string& key)
 {
     std::array<contract::BandArray, 6> alpha{};
@@ -142,6 +176,26 @@ TEST_CASE("records: clause (d) replicates of the shipping rule at the gated cube
                 return std::sqrt(s2 / static_cast<double>(v.size() - 1));
             };
             const auto es = spread(errDb);
+            // Trigger 1 starting state (D-H1 (ii), file 19; the record of docs/review/phase-05h/10-orchestrator-
+            // clause-d-replicates.md, C++ shipping rule, 30 disjoint streams, 1 kHz, Linux Release): the fixed-key
+            // achieved SE and the replicate p95 per gated scene and emitter. A record, not a golden: a rise of the
+            // achieved SE >= 0.05 dB or of the p95 >= 0.10 dB above it is RECORDED here (a flagged line), never a
+            // CHECK; the escalations (SE crossing 0.33 dB, p95 crossing 1 dB) go to Maisara via phase-05h §2 item 1.
+            // Re-pinned with a CHANGELOG reason whenever W_max or n*_max is re-derived (Seat 5, file 17).
+            struct Start { const char* scene; double seDb[2]; double p95Db[2]; };
+            constexpr Start kStart[] = {{"cube100_lowalpha0.05_s0.3", {0.117, 0.115}, {0.250, 0.178}},
+                                        {"cube100_lowalpha0.05_s1", {0.381, 0.384}, {0.701, 0.810}},
+                                        {"cube100_flutter_fallback", {0.002, 0.002}, {0.003, 0.005}}};
+            for (const auto& s : kStart)
+                if (std::string(key) == s.scene)
+                {
+                    const double seNow = spread(seDb).median;
+                    const bool riseSe = seNow >= s.seDb[e] + 0.05, riseP95 = p95 >= s.p95Db[e] + 0.10;
+                    std::printf("05h-replicates trigger-1 %s e%zu: starting state SE %.3f p95 %.3f dB; now SE %.3f p95 %.3f dB%s%s\n",
+                                key, e, s.seDb[e], s.p95Db[e], seNow, p95,
+                                (riseSe || riseP95) ? "  RECORDED RISE (Trigger 1 record, not a failure)" : "",
+                                (seNow > 0.33 || p95 > 1.0) ? "  ESCALATE (phase-05h §2 item 1)" : "");
+                }
             std::printf("05h-replicates %s e%zu: 30 replicates at 1 kHz vs long run (2^20 histories, SE %.3f dB, %.0f ms): "
                         "median %+.3f dB, p95 |error| %.3f dB, max |error| %.3f dB, SD of error %.3f dB; achieved SE "
                         "median %.3f dB (SD %.4f); VOV_union median %.3f (SD %.3f); clause (d) %s\n",
@@ -202,6 +256,25 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                         "(VmHWM %ld -> %ld kB, RSS before %ld kB)\n",
                         key, fs, sp.min, sp.median, sp.max, (after - before) / 1024.0, before, after, rssBefore);
         }
+        // AX41 realised-work ratio, pre-registered 1.02 at each gated scene (D-H1 (iii), file 19); the reported s = 1
+        // cube prints it only.
+        {
+            sim::BuildOptions o;
+            o.sampleRate = 96000.0;
+            o.kind = sim::BuildOptions::Kind::Omni;
+            sim::HybridDiagnostics diag;
+            (void)sim::buildRoomIR(sc, o, &diag);
+            for (std::size_t e = 0; e < diag.emitters.size(); ++e)
+            {
+                const auto& d = diag.emitters[e].match.diffuse;
+                std::printf("05h-records work ratio %-26s e%zu: realised work / W_scene %.4f (W_pilot %lld, W_final %lld, "
+                            "W_scene %lld); achieved SE %.3f dB; fallback %s\n",
+                            key, e, d.realisedWorkRatio, static_cast<long long>(d.wPilot), static_cast<long long>(d.wFinal),
+                            static_cast<long long>(d.wScene), d.achievedSeDb, diag.emitters[e].ismFallback ? "yes" : "no");
+                if (gateRegisterEntry(key) != nullptr)
+                    REQUIRE(d.realisedWorkRatio <= 1.02);
+            }
+        }
         // Synchronous restore with the solve, 96 kHz, worst of 10 (AX38 4c), alone and contended.
         const auto values = module3d::parameterValuesFromScene(sc);
         const auto smallValues = module3d::defaultParameterValues();
@@ -221,6 +294,32 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
         std::printf("05h-records restore %-26s 96 kHz with the solve, %d runs: min %.0f median %.0f worst %.0f ms; "
                     "14 x worst %.2f s (30 s)\n",
                     key, kRuns, rs.min, rs.median, rs.max, 14.0 * rs.max / 1000.0);
+        // AX38 4c blocking restore gate (D-H1 (v), docs/review/phase-05h/19-decider-decision-D-H1-D-H2-r2.md; H1-F2):
+        // at the two gated builds, 14 x worst-of-10 restore (the solve included) <= 30 s is asserted strictly where
+        // the recorded value at the pinned W_max is <= 29.1 s; an OS/scene recorded above 29.1 s is a listed defect
+        // (register below, remedy phase-07c condition 9) asserted through its growth bound instead: median-of-10
+        // <= 1.10 x the recorded median. A listed entry that passes 30 s is reported for removal through /fix-plan.
+        if (const auto* entry = gateRegisterEntry(key))
+        {
+            const double fourteen = 14.0 * rs.max / 1000.0;
+            if (entry->listed)
+            {
+                std::printf("05h-records restore gate %-26s %s: LISTED defect (recorded 14 x worst %.2f s, median %.0f ms); "
+                            "growth bound median %.0f <= %.0f ms%s\n",
+                            key, kOsName, entry->recorded14xS, entry->recordedMedianMs, rs.median,
+                            1.10 * entry->recordedMedianMs,
+                            fourteen <= 30.0 ? "; WARNING: this entry now passes 30 s, remove it through /fix-plan" : "");
+                REQUIRE(rs.median <= 1.10 * entry->recordedMedianMs);
+            }
+            else
+            {
+                std::printf("05h-records restore gate %-26s %s: strict (recorded %.2f s <= 29.1 s): 14 x worst %.2f s <= 30 s\n",
+                            key, kOsName, entry->recorded14xS, fourteen);
+                REQUIRE(fourteen <= 30.0);
+            }
+        }
+        else
+            std::printf("05h-records restore gate %-26s %s: reported set, not gated\n", key, kOsName);
         // Contended: a second pipeline restores the same 100 m scene on another thread at the same time.
         plugin::ScenePipeline other;
         other.prepare(96000.0, 512, false);

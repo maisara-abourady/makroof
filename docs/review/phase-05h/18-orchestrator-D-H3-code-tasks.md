@@ -302,3 +302,20 @@ K-a3 and K-a4 above were computed with the **per-case-band** ℓ_ref stored in t
 ### K-c3, corrected detector (Seat 5's three corrections applied)
 
 The probe now reads both sticky bits per architecture (x86-64: DE operand bit 1 and UE underflow bit 4; AArch64: IDC bit 7 and UFC bit 3), calibrates first with a known denormal operand and a known underflowing product (SKIPs if either is unseen), and runs the solve on a one-thread pool so every block executes on the instrumented thread. Linux x86-64 Release, re-run: calibration reads "operand"; Seat 3's scene reads **[operand+underflow]** without the guard and **[underflow]** with FTZ/DAZ on (the flushed results still raise UE, as Seat 5 predicted), IRs bit-identical, at 48 and 96 kHz; the eight other scenes read clear in both arms at both rates. The AArch64 form (IDC only under FZ = 1) is what the next manual CI run on macOS will show; the per-architecture assertion Seat 5 wrote out is the form the `[pipeline]` FTZ test takes if D-H3 (c) adopts it.
+
+### K-a4 (iii), continued: classroom and club at 0.625 m
+
+| case | band | ref 2.5 → 1.25 dB | ref 1.25 → 0.625 dB | ratio | C++ − ref_1.25 dB | C++ − ref_0.625 dB | SE dB | patches / s at 0.625 m |
+|---|---|---|---|---|---|---|---|---|
+| classroom_e0 | 3 | -0.0065 | -0.0013 | +0.20 | -0.0082 | -0.0069 | 0.0039 | 684 / 68 |
+| classroom_e0 | 4 | -0.0067 | -0.0014 | +0.20 | -0.0084 | -0.0070 | 0.0039 | 684 / 68 |
+| classroom_e0 | 5 | -0.0066 | -0.0014 | +0.20 | -0.0084 | -0.0070 | 0.0039 | 684 / 68 |
+| classroom_e1 | 3 | -0.0065 | -0.0013 | +0.20 | +0.0001 | +0.0014 | 0.0039 | 684 / 47 |
+| classroom_e1 | 4 | -0.0067 | -0.0014 | +0.20 | -0.0001 | +0.0013 | 0.0039 | 684 / 47 |
+| classroom_e1 | 5 | -0.0066 | -0.0014 | +0.20 | -0.0001 | +0.0013 | 0.0039 | 684 / 47 |
+| club_e0 | 3 | +0.0060 | +0.0024 | +0.40 | -0.0046 | -0.0070 | 0.0067 | 1776 / 362 |
+| club_e0 | 4 | +0.0061 | +0.0024 | +0.39 | -0.0046 | -0.0070 | 0.0067 | 1776 / 362 |
+| club_e0 | 5 | +0.0061 | +0.0024 | +0.39 | -0.0046 | -0.0070 | 0.0067 | 1776 / 362 |
+| club_e1 | 3 | +0.0060 | +0.0024 | +0.40 | +0.0064 | +0.0040 | 0.0067 | 1776 / 353 |
+| club_e1 | 4 | +0.0061 | +0.0024 | +0.39 | +0.0064 | +0.0040 | 0.0067 | 1776 / 353 |
+| club_e1 | 5 | +0.0061 | +0.0024 | +0.39 | +0.0064 | +0.0040 | 0.0067 | 1776 / 353 |
