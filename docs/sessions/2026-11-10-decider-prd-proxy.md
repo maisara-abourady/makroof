@@ -20,6 +20,8 @@
 
 > 2026-11-10 (on PR #25, which the change follows): "Merge when ci is done"
 
+> 2026-11-10 (after PR #26 opened, CI run 42836296191 still queued; all changed paths fingerprint-excluded prose): "Merge 26"
+
 The orchestrator's message of 2026-11-10 14:08 UTC that she answered with "Do it" (verbatim; the approved change):
 
 > Yes, it can reason from the PRD, and that's the authority it was missing. The PRD can now replace you as the decider's final reference. Your words are recorded in the session brief.
@@ -95,3 +97,4 @@ The orchestrator's next message (14:08:57): "I'll make the governance change. On
 | 2 | 2026-11-10 | BRIEF OK | none | G1, G2, G3, G4, G5, G6 |
 | 3 | 2026-11-10 | CONTINUE | G7 (`/review-phase-pr` not run before opening; review reports unsaved), G8 (non-blocking: PR draft heading, grep scope, CI skip wording, person-only list), G9 (non-blocking: steward.md whose-call omits the non-decision 3-round gap), G10 (PR and `ci ok` pending) | none open from earlier rounds; O1–O7 and O9 MET at a97fa99 |
 | 4 | 2026-11-10 | READY TO REPORT (once the PR link, a green or linked `ci ok`, and the G11 PR-body corrections are in) | G11 (non-blocking: PR body PRD guard should be (a) or (b); a97fa99 does not list findings), G12 (non-blocking: README item 3 paragraph splits the (b)/(c) bullets) | G7, G8, G9; G10 open until the PR and `ci ok` |
+| 5 | 2026-11-10 | (orchestrator note) Maisara: "Merge 26". O8 closed by her instruction: PR #26 merged while CI run 42836296191 was still queued (prose-only diff, fingerprint equal to 808d3b0's) | — | G10 (merge per her words) |
