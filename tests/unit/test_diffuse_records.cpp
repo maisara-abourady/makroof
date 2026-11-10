@@ -484,6 +484,151 @@ TEST_CASE(
     }
 }
 
+// AX38 4c records (steward round 10 G3): (1) the AQ4 intervals derived from the measured rebuilds (R = the
+// builder's position-only rebuild, which reuses the cached unit decays; "full" = a material / size rebuild)
+// with P = 512 samples (ScenePipeline::kPartitionSize): R + 2P, about 2R + 2P, full + 2P against AQ4's 100 ms
+// / 700 ms / 3 s; (2) the offline bounce of a 3-minute room-size automation at 100 m, 48 and 96 kHz, with its
+// ratio to real time, taken at a rebuild step of one size change every 5 s of audio (36 steps; each stated
+// with the record, AX38 (iv)); (3) callback p99.9 at host buffer 64 with 1, 4 and 8 concurrent builders
+// (other instances rebuilding the 100 m cube without pause while one real-time instance processes 64-sample
+// blocks).
+TEST_CASE(
+    "records: AQ4 intervals, the 3-minute room-size bounce at 100 m, callback p99.9 with 1/4/8 builders",
+    "[.][benchmark][diffuse-records-aq4]")
+{
+    const auto positionRebuildMs = [](const contract::SceneDescription& sc, double fs) {
+        plugin::ScenePipeline pipe;
+        pipe.prepare(fs, 512, false);
+        pipe.beginRestore();
+        pipe.restore(sc, module3d::parameterValuesFromScene(sc));
+        std::vector<double> t;
+        for (int i = 0; i < 3; ++i)
+        {
+            const auto t0 = Clock::now();
+            pipe.setParameter(module3d::kListenerX,
+                              static_cast<float>(sc.listener.position.x + 0.3 + 0.1 * i));
+            while (!pipe.builderIdle())
+                std::this_thread::sleep_for(std::chrono::microseconds(200));
+            t.push_back(ms(t0, Clock::now()));
+        }
+        return spread(t).median;
+    };
+    const auto fullRebuildMs = [](const contract::SceneDescription& sc, double fs) {
+        sim::BuildOptions o;
+        o.sampleRate = fs;
+        o.kind = sim::BuildOptions::Kind::Omni;
+        std::vector<double> t;
+        for (int i = 0; i < 3; ++i)
+        {
+            const auto t0 = Clock::now();
+            (void)sim::buildRoomIR(sc, o);
+            t.push_back(ms(t0, Clock::now()));
+        }
+        return spread(t).median;
+    };
+    for (const auto& [label, sc] : std::vector<std::pair<std::string, contract::SceneDescription>>{
+             {"AQ10 room", aq10Room()}, {"cube100_lowalpha0.05_s0.3", cube("cube100_lowalpha0.05_s0.3")}})
+        for (const double fs : {48000.0, 96000.0})
+        {
+            const double twoP = 2.0 * 512.0 / fs * 1000.0;
+            const double R = positionRebuildMs(sc, fs), F = fullRebuildMs(sc, fs);
+            std::printf("05h-records AQ4 %-26s %6.0f Hz: R (position-only, builder) %.0f ms, full rebuild "
+                        "%.0f ms, 2P %.1f ms; "
+                        "R + 2P %.0f ms (100 ms), 2R + 2P %.0f ms (700 ms), full + 2P %.0f ms (3 s)\n",
+                        label.c_str(), fs, R, F, twoP, R + twoP, 2 * R + twoP, F + twoP);
+        }
+    // (2) the stepped 3-minute bounce at 100 m: offline pipeline, room width/depth/height stepping down 1 m
+    // every 5 s of audio (36 rebuilds; the offline branch builds before the block whose scene changed, AX5 /
+    // X11).
+    for (const double fs : {48000.0, 96000.0})
+    {
+        const auto sc = cube("cube100_lowalpha0.05_s0.3");
+        auto values = module3d::parameterValuesFromScene(sc);
+        plugin::ScenePipeline pipe;
+        pipe.prepare(fs, 512, true);
+        pipe.beginRestore();
+        pipe.restore(sc, values);
+        std::vector<float> a(512, 0.1f), b(512, -0.1f);
+        const float* const in[2] = {a.data(), b.data()};
+        float* const out[2] = {a.data(), b.data()};
+        const double seconds = 180.0;
+        const std::int64_t blocks = static_cast<std::int64_t>(seconds * fs / 512.0);
+        const std::int64_t stepEvery = static_cast<std::int64_t>(5.0 * fs / 512.0);
+        int steps = 0;
+        const auto t0 = Clock::now();
+        for (std::int64_t k = 0; k < blocks; ++k)
+        {
+            if (k % stepEvery == 0 && k > 0)
+            {
+                ++steps;
+                const float size = static_cast<float>(100.0 - steps);
+                pipe.setParameter(module3d::kRoomW, size);
+                pipe.setParameter(module3d::kRoomD, size);
+                pipe.setParameter(module3d::kRoomH, size);
+            }
+            pipe.process(in, out, 512);
+        }
+        const double wall = ms(t0, Clock::now()) / 1000.0;
+        std::printf("05h-records bounce 100 m cube %6.0f Hz: 3-minute offline bounce with the room size "
+                    "stepping 1 m every 5 s "
+                    "(%d rebuilds): %.1f s wall, ratio to real time %.2f x\n",
+                    fs, steps, wall, wall / seconds);
+    }
+    // (3) callback p99.9 at host buffer 64 with 1 / 4 / 8 concurrent builders rebuilding the 100 m cube.
+    for (const int builders : {1, 4, 8})
+    {
+        const double fs = 48000.0;
+        const auto big = cube("cube100_lowalpha0.05_s0.3");
+        const auto bigValues = module3d::parameterValuesFromScene(big);
+        plugin::ScenePipeline rt;
+        const auto room = aq10Room();
+        rt.prepare(fs, 64, false);
+        rt.beginRestore();
+        rt.restore(room, module3d::parameterValuesFromScene(room));
+        std::vector<std::unique_ptr<plugin::ScenePipeline>> others;
+        for (int i = 0; i < builders; ++i)
+        {
+            others.push_back(std::make_unique<plugin::ScenePipeline>());
+            others.back()->prepare(fs, 512, false);
+            others.back()->beginRestore();
+            others.back()->restore(big, bigValues);
+        }
+        std::atomic<bool> stop{false};
+        std::thread churn([&] {
+            float x = 50.0f;
+            while (!stop.load())
+            {
+                x += 0.1f;
+                for (auto& o : others)
+                    o->setParameter(module3d::kListenerX,
+                                    x); // a builder rebuild each time (position-only, cached decays)
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        });
+        std::vector<float> a(64, 0.1f), b(64, -0.1f);
+        const float* const in[2] = {a.data(), b.data()};
+        float* const out[2] = {a.data(), b.data()};
+        std::vector<double> us;
+        const double period = 64.0 / fs * 1e6;
+        const auto tEnd = Clock::now() + std::chrono::seconds(10);
+        while (Clock::now() < tEnd)
+        {
+            const auto c0 = Clock::now();
+            rt.process(in, out, 64);
+            us.push_back(std::chrono::duration<double, std::micro>(Clock::now() - c0).count());
+            std::this_thread::sleep_for(std::chrono::microseconds(static_cast<long>(period)));
+        }
+        stop.store(true);
+        churn.join();
+        std::sort(us.begin(), us.end());
+        const double p999 = us[static_cast<std::size_t>(std::ceil(0.999 * us.size())) - 1];
+        std::printf("05h-records callback p99.9 at host buffer 64 (%.0f us period), %d concurrent builder%s "
+                    "at 100 m: p99.9 %.0f us, "
+                    "max %.0f us over %zu callbacks (10 s)\n",
+                    period, builders, builders == 1 ? "" : "s", p999, us.back(), us.size());
+    }
+}
+
 // AX38 (iv) records (subset): 1, 4 and 8 instances at the AQ10 room and at 100 m, 48 and 96 kHz: the time
 // until the last instance is audible at project load (instances restored one after another on one host
 // thread, as a host loads a project; the gate serialises their solves), and per-instance staleness when they

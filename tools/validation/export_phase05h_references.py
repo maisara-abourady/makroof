@@ -65,6 +65,10 @@ COLUMNS = (["dims_x", "dims_y", "dims_z"] + [f"alpha_{f}_{b}" for f in FACES for
 REASON_ROOM = ("phase 05h D-H3 (a) (docs/review/phase-05h/20-decider-decision-D-H3.md): AX43's pooled bias check pools per "
                "reference room with z' = (C++ - ref) / sqrt(SE^2 + l_ref^2); the room id (the reference that shares a "
                "case's discretisation residual) is written by the generating script, a schema addition")
+REASON_0625 = ("phase 05h H3-F6 (docs/review/phase-05h/25-decider-decision-D-H3-r2.md addendum; K-a4 (iii)): the finest "
+               "certified rung per AX43: dead_booth, living_room, classroom and club (both emitters, 8 bands) referenced at "
+               "0.625 m with l_ref = the 1.25 -> 0.625 m change (dead_booth 0.28 %, up from 0.17 %); the agreement suite was "
+               "green at 1.25 m and is re-run at 0.625 m; nothing regenerated to pass")
 SUITES = {"AX43": 0.0, "AX45": 1.0}
 # AX46 classes: 0 reference positions, 1 one-end near-wall, 2 absorbing face, 3 small rooms, 4 100 m (none here),
 # 5 BRAS (measured-room pairs), 6 both-near / placements reported only
@@ -151,10 +155,16 @@ def main() -> int:
     names, rows = [], []
 
     def s2_ref(case):
+        # The finest two rungs present (AX43 "the finest certified rung, with l_ref recorded"; H3-F6, file 25
+        # addendum: the small rooms move to 0.625 m once that rung is computed; a case with one rung stays
+        # single-rung / uncertified).
         m = s2.get(case, {})
-        f = m.get("1.25", {}).get("target_hybrid", [float("nan")] * 8)
-        cc = m.get("2.5", {}).get("target_hybrid", [float("nan")] * 8)
-        return f, cc
+        rungs = sorted((float(k) for k in m), reverse=False)
+        if not rungs:
+            return [float("nan")] * 8, [float("nan")] * 8
+        fine = m[str(rungs[0])]["target_hybrid"]
+        coarse = m[str(rungs[1])]["target_hybrid"] if len(rungs) > 1 else [float("nan")] * 8
+        return fine, coarse
 
     def add(name, suite, cls, c, srcs, ref_emitter, fine, coarse):
         names.append(name)
@@ -266,6 +276,10 @@ def main() -> int:
     for stem, reason in (("phase05h_agreement_reference", REASON_AGREE), ("phase05h_tracer_reference", REASON_TRACER)):
         if f"`{stem}`: created" not in log:
             log = log.rstrip("\n") + f"\n\n## {datetime.date.today().isoformat()}\n\nReason: {reason}\n\n- `{stem}`: created\n"
+    if "`phase05h_agreement_reference`: the four small rooms at the 0.625 m rung" not in log:
+        log = (log.rstrip("\n") + f"\n\n## {datetime.date.today().isoformat()}\n\nReason: " + REASON_0625
+               + "\n\n- `phase05h_agreement_reference`: the four small rooms at the 0.625 m rung (dead_booth, living_room, "
+               "classroom, club; l_ref = the 1.25 -> 0.625 m change; no tolerance, N or case changed)\n")
     if "`phase05h_agreement_reference`: `room` column added" not in log:
         log = (log.rstrip("\n") + f"\n\n## {datetime.date.today().isoformat()}\n\nReason: " + REASON_ROOM
                + "\n\n- `phase05h_agreement_reference`: `room` column added (schema only; no reference value changed)\n")
