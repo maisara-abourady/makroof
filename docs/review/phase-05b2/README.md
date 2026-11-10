@@ -53,3 +53,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `45-seat<n>-R1-R3.md` | seats 1–9 | ratings R1 (Challenge 1), R2 (Q2a (B)), R3 (Q2a (C) now) asked by decider file 43 |
 | `46-orchestrator-C18.md` | orchestrator | C18: realistic halls (absorbing floor, s ≤ 0.5) are not in the capped class under (A): no cap, SE ≤ 0.083 dB, U silent |
 | `47-decider-board-answers-C1-Q2a-final.md` | decider | board answer J1: Challenge 1 yes, Q2a (A) now, (C) scheduled before the first public release, with conditions; S3-c and S4-c pending |
+| `48-seat<n>-confirm-S<n>c.md` | seats 3, 4 | confirmations on file 47: S3-c (A) 1/1 with (C) scheduled; S4-c yes 0/1 |
