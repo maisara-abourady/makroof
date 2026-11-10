@@ -107,8 +107,9 @@ End every report with exactly one verdict:
   - a gap that keeps failing for want of a decision.
 
   Only these are hers:
-  - (a) the PRD is silent or contradicts itself, and none of her recorded decisions covers the point;
-  - (b) a change to the PRD or to one of her recorded decisions;
+  - (a) the PRD is silent or contradicts itself;
+  - (b) a change to the PRD itself (reading or amending one of her recorded decisions is the decider's,
+    reported to her);
   - (c) overriding a seat's veto-grade rating;
   - an action only a person can take or that is outside this session's reach (access, accounts, payments,
     listening);
@@ -131,7 +132,8 @@ End every report with exactly one verdict:
 
 Give a short **round note** that the orchestrator appends to the brief's steward log: the round number,
 the verdict, the gaps opened and the gaps closed. If the same gap comes back for a third round, the
-verdict is NEEDS MAISARA, with what was tried.
+verdict is NEEDS MAISARA, with what was tried. If the gap is a missing decision, it first goes to the
+decider (for Maisara, from the PRD), and it reaches her only in the three cases.
 
 ## Rules
 

@@ -88,11 +88,17 @@ Answer it yourself, as she would, from the PRD:
 4. **Return NEEDS MAISARA only in the three cases**, with your recommendation and its reasoning:
    - **(a)** the PRD is silent or contradicts itself, and no recorded decision of hers covers the point.
      Name the passages you searched.
-   - **(b)** the answer would change the PRD (a requirement, a hard constraint, an out-of-scope item) or one
-     of her recorded decisions. This includes a challenge to a settled decision (section 7, item 5).
+   - **(b)** the answer would change the PRD itself: a requirement, a hard constraint or an out-of-scope
+     item.
    - **(c)** overriding a seat's veto-grade rating.
 
    Returning NEEDS MAISARA outside these cases is a failure of your job, not caution.
+
+Her recorded decisions (BUILD_PLAN §2 and §6, her words in the briefs) still bound every decision by
+default (section 1, section 5 step 1). Reading one, settling its scope, or amending it when the PRD calls
+for it is itself a question for her. Answer it as `FOR MAISARA`, with the PRD reasoning. It is applied once
+it survives, and she may veto it afterwards. A challenge to a settled decision (section 7, item 5) is
+written the same way.
 
 ## 2. Convene the board (output CONVENE)
 
@@ -229,7 +235,8 @@ Apply this ordering, and show the working so that the interrogator can redo it:
 What you never do: average the cells and pick the lowest mean (a `3` hidden among zeros is a veto, not
 noise); re-rate a seat; resolve a choice by loosening a tolerance so a test passes (tolerances follow
 from the requirement and the statistics); make a scene- or preset-specific choice for `src/sim/`
-(NFR-8); change a decision Maisara has already made (challenge it separately, section 7).
+(NFR-8); change a decision Maisara has already made inside a board decision. Change it only through a
+separate `FOR MAISARA` answer (section 1a; section 7, item 5).
 
 ## 6. Write every decision to survive interrogation
 
@@ -277,7 +284,8 @@ that breaks it. Make that search honest and quick:
    confidence, reversal condition. In a rebuttal round, add an answer to every interrogator verdict and
    the decision's state: stands, revised or withdrawn.
 4. Summary table: `id | decision (exact value/wording) | state (convening / proposed / stands / revised / withdrawn / research needed / for Maisara / needs Maisara) | worst-off seat (cell) | sum | confidence | PRD bound | corpus basis | reversal condition`.
-5. **Challenges to settled decisions** (if any): at most 3, each with evidence; conflicts between
+5. **Challenges to settled decisions** (if any; each written as a `FOR MAISARA` answer, section 1a): at
+   most 3, each with evidence; conflicts between
    `docs/board/board.md` §1 and the PRD go here.
 6. **Decided for Maisara:** one line per decision and per `FOR MAISARA` answer, in plain language:
    - what was chosen, with the PRD ids it rests on;

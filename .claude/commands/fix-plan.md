@@ -32,8 +32,8 @@ need to know or remember these steps.
       tension map, the minimum-tension working, **DECISION** with load-bearing claims and future-debt
       register, or **FOR MAISARA** (a question it answered for her from the PRD, with the PRD ids), or
       **RESEARCH NEEDED** (back to the researcher), or **NEEDS MAISARA**. NEEDS MAISARA covers only three
-      cases: the PRD is silent or contradictory; the answer changes the PRD or one of her recorded
-      decisions; or a seat's veto-grade rating would have to be overridden. The user decides those, and
+      cases: the PRD is silent or contradictory; the answer changes the PRD itself; or a seat's
+      veto-grade rating would have to be overridden. The user decides those, and
       an override is recorded in the ledger.
    d. **interrogator, decision mode**: **SURVIVES** / **SURVIVES WITH CORRECTIONS** / **UNDERCONVENED**
       (run the named seats, back to (c)) / **TENSION MISREAD** (back to (c) with the seat's words) /

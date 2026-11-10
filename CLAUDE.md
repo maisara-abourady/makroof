@@ -108,7 +108,8 @@ nine subject-matter seats (`docs/board/README.md`; personas in `docs/board/`, ag
   dataset and licence documentation, statistics and base rates). Each seat is its own advocate: it
   ranks the options and rates its own tension **now** and **later** (0–3; 3 is veto-grade).
 - The decider decides at the **point of minimum tension among all nine, now and in the future**: inside
-  the PRD's hard constraints and Maisara's settled decisions, drop any option a seat rated veto-grade
+  the PRD's hard constraints and Maisara's settled decisions (amended only by a separate answer for her,
+  below), drop any option a seat rated veto-grade
   (only Maisara overrides a veto), then minimise the worst-off seat over both columns, then the sum, then
   prefer the cheaper-to-undo option; every decision carries a future-debt register. No decision borrows
   from later phases silently.
@@ -119,13 +120,14 @@ nine subject-matter seats (`docs/board/README.md`; personas in `docs/board/`, ag
 - **The decider answers for Maisara** (Maisara, 2026-11-10: "my north star is the prd that drives my
   decision making"; "Do it").
   - It answers every question the loop would otherwise stop to ask her: accept or veto, open options,
-    items still contested after 3 rounds, trade-offs, ambiguities the PRD settles. It reasons from
+    items still contested after 3 rounds, trade-offs, ambiguities the PRD settles. That includes
+    reading or amending one of her recorded decisions when the PRD calls for it. It reasons from
     `docs/PRD.md` and her recorded decisions, and cites their ids.
   - Answers that survive are applied, then listed for her under "Decided for Maisara" in the report and
     the PR. She may veto any of them afterwards.
   - Only three cases go to her as NEEDS MAISARA: the PRD is silent or contradicts itself; the answer
-    would change the PRD or one of her recorded decisions; a seat's veto-grade rating would have to be
-    overridden.
+    would change the PRD itself; a seat's veto-grade rating would have to be overridden. Plan text that
+    sends a question to her is read under this rule.
   - The rule is set out in full in `docs/board/README.md`, "Who answers Maisara's questions".
 - `/fix-plan` runs the loop (step 3); outputs of every round are saved under `docs/review/<target>/`.
 - Agent files for the seats are **generated**: `python3 .claude/board/build_agents.py` (`--check` to

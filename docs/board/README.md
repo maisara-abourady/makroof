@@ -79,7 +79,9 @@ reasoning, my north star is the prd that drives my decision making"; and, on thi
    - choosing between options the board left open;
    - an item still contested after the interrogator's 3 rounds;
    - a product trade-off or judgement;
-   - the scope of one of her earlier answers;
+   - the scope or the reading of one of her earlier answers or recorded decisions (BUILD_PLAN §2 and §6),
+     and an amendment of one when the PRD calls for it (as Q1 reread AX36 and Q2 amended AQ10 on
+     2026-11-10);
    - an ambiguity in her words that the PRD settles;
    - a question in a phase file's "Raise with Maisara" section.
 
@@ -92,11 +94,16 @@ reasoning, my north star is the prd that drives my decision making"; and, on thi
    `/fix-plan`.
 3. **Only three things still go to her** (NEEDS MAISARA). Each comes with the decider's recommendation and its
    PRD reasoning:
-   - **(a) The PRD is silent or contradicts itself** on the point, and none of her recorded decisions covers
-     it. The decider names the PRD passages it searched.
-   - **(b) The answer would change the PRD itself or one of her recorded decisions.** For the PRD, that means
-     a requirement, a hard constraint or an out-of-scope item.
-   - **(c) Overriding a seat's veto-grade rating.**
+   - **(a) The PRD is silent or contradicts itself** on the point. The decider names the PRD passages it
+     searched.
+   - **(b) The answer would change the PRD itself:** a requirement, a hard constraint or an out-of-scope
+     item. The north star does not edit itself.
+   - **(c) Overriding a seat's veto-grade rating.** A `3` is a seat's judgement that an option is
+     unacceptable. Overruling it stays hers; she may hand it to the decider later.
 
    Things only a person can do are not decisions and stay hers as before: listening checklists, accounts,
    access, payments, legal signatures.
+4. **Plan text that routes a question to her is read under this rule.** This covers a "Raise with Maisara"
+   item, and an AX/AQ row or phase file that says something "goes to Maisara". The decider answers the
+   question unless it falls in one of the three cases. Such text is not rewritten for this rule. When it
+   is next edited through `/fix-plan`, it may say "the decider (for Maisara)".

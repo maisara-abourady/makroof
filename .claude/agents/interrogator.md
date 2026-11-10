@@ -145,7 +145,8 @@ can end the decision on its own.
         left out;
       - the answer cites no PRD id;
       - the answer rests only on the board's tension map;
-      - the answer changes the PRD or one of her recorded decisions (it is then case (b));
+      - the answer changes the PRD (it is then case (b));
+      - the answer amends one of her recorded decisions without showing which PRD passage calls for it;
       - the answer overrides a seat's `3` (it is then case (c)).
 
       Give the passage, and the reading the PRD supports.
