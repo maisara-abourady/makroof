@@ -78,7 +78,7 @@ verbatim: "I accept the board's answer by definition."; ledger P05B2-M-01…07):
 
 1. D-H1's outcome (section 3), **only if** it changes her Q2a (A) or Challenge 1 answers (W_max sized to
    the restore watchdog; the blocking 100 m, 96 kHz restore gate). Otherwise none.
-2. **The AX38 4c escalation** (conditional on the C++ records, scope 6): the full-rebuild records go to
+2. **The AX38 4c escalation** (when the C++ records exist, scope 6): the full-rebuild records go to
    Maisara against the 1 / 3 / 10 s marks, labelled **UI response-time anchors (Card et al. 1991), not
    audibility limits**, with Table 15.1's conditions stated (its 3 s row covers only translational
    movement > 1 m, derived from 30–50 cm/s VR movement, has no row for room-geometry or material edits,
@@ -171,8 +171,7 @@ after seeing the gate's result.
    where the pilot estimate ships; the cross-OS E_target comparison; the RNG known-answer test; the D5
    hashes with n\* and N; the pre-registered flags at the gated scenes.
 10. **Only if Phase 08 went first** (AX37 (5.3), Seat 4 (iii)): re-render the binaural goldens, re-measure
-    binaural W1/W2 and re-run phase-08 item 8; Phase 08's listening items on concentrated absorption,
-    marked provisional there, are re-listened.
+    binaural W1/W2 and re-run phase-08 item 8.
 
 ## 5. Acceptance criteria — automated
 
@@ -221,6 +220,9 @@ after seeing the gate's result.
 - [ ] No new seam at the handover (the level change is at t_mix,e).
 - [ ] Moving a source or resizing the room under automation: no level jumps (Phase 10 will gate this;
       listen now).
+
+Note (an addition, not part of AX37 (5.3)): if Phase 08 went before this phase, its listening items on
+concentrated absorption, marked provisional there, are re-listened on the switched tail level.
 
 ## 7. Contractor review focus
 

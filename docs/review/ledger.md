@@ -2105,3 +2105,16 @@ Source: `docs/review/phase-05b2/41-interrogator-plan-diff-check.md` on `git diff
 | P05B2-FX-15 | AX38 (4b) "AQ10 is unchanged" against the AQ10 amendment | IMPRECISE | open |
 | P05B2-FX-16 | Corpus claims in the changed passages (Kuttruff Eqs. 2.49–2.50, 4.24, 4.29, 4.35, §2.7, §5.2, §8.7; Vorländer Table 6.1) | CORRECT ("absent at α = 1" derived from Eq. 2.49's R = 1 premise) | closed |
 | P05B2-FX-17 | No contradiction of a settled decision (AX22, phase-05b scope 0, NFR-8, Maisara's answers M-01…07) | CORRECT | closed |
+
+
+Round 2 of the diff check (`docs/review/phase-05b2/42-interrogator-plan-diff-check-round2.md`, 2026-11-10). P05B2-FX-22 closed by the orchestrator: row 05b set back to `in progress` until the phase-05b PR's CI is green; duplicated sentence removed.
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-FX-18 | File-41 corrections 2–8 applied as worded (AX41, AQ10/AX38 4c scenes, B15, AX37, AX36 (c)/B11/phase-05b, AX16, AX38 4b, AX44 derived note) | CORRECT | closed |
+| P05B2-FX-19 | D-H1 (phase-05h §3) and its pointers in AQ10, AX38 4c, AX41 faithful to correction 1 | CORRECT | closed (P05B2-FX-08 stays open until D-H1 is decided) |
+| P05B2-FX-20 | phase-05h faithful to phase-05b2 §4–§10 and AX37–AX46; atomicity and nightly-green-before-PR kept | CORRECT | closed |
+| P05B2-FX-21 | Split bookkeeping: row 05h, §4 entry, phase-08/-13 dependencies with the AX37 (5.3) exception, phase-05b2 header note | CORRECT | closed |
+| P05B2-FX-22 | §0 row 05b `done` set without PR link, CI evidence or done date (CLAUDE.md step 6); duplicated session-2 sentence | CONDITIONS VIOLATED (bookkeeping) | open (orchestrator) |
+| P05B2-FX-23 | phase-05h §2 item 2 "conditional" escalation, against AX38 4c's unconditional escalation | IMPRECISE | open (/fix-plan) |
+| P05B2-FX-24 | phase-05h §4 item 10 re-listening clause not in AX37 (5.3) | IMPRECISE (addition) | open (/fix-plan) |
