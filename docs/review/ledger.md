@@ -2182,3 +2182,15 @@ Closure notes from steward round 5 (2026-11-10):
 - P05B2-C1Q2-14 is closed. J1 survives with its corrections applied (files 51, 53, 54).
 - P05B2-J1FX-17 is closed, with Trigger 1's clause (d) accepted by Seat 1 (file 55).
 - P05B2-J1FX-18 and P05B2-J1FX-20 are carried to phase-05h §3 D-H1 (OPEN premises), AX38 4c and phase-12 ("Hall presets and J1", OPEN), commit 1aa4c4e.
+
+
+Branch-review fixes diff check (`docs/review/phase-05b2/56-interrogator-branch-review-fixes.md`, 2026-11-10):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-BR-01 | AX16 decided / implemented in 05h / shipped level still AX16 until 05h `done`; breaks column gains 05h (major 1) | CORRECT | closed |
+| P05B2-BR-02 | report-phase05b session-2 outcome line and generator `SESSION2`; session-1 line marked (major 2) | CORRECT | closed |
+| P05B2-BR-03 | phase-08 scopes 9/10 and criteria conditional on 05h; carried by phase-05h scope 10 and its new §5 criterion (major 4) | CORRECT | closed |
+| P05B2-BR-04 | phase-07c §3: comes forward only after 05h; heaviest-mode gate in phase-05h scope 10 if 08 went first | CORRECT | closed |
+| P05B2-BR-05 | J1 freeze-point rule (AQ10, AX38 4c) unqualified for the 08-first order; 05h scope 10 states only the SE-tolerance branch | IMPRECISE: /fix-plan, Seat 4 / decider to confirm | open |
+| P05B2-BR-06 | phase-05b2 §9 note (minor 4); §6 CLAUDE.md determinism row (minor 1) | CORRECT | closed |
