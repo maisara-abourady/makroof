@@ -59,7 +59,8 @@ contract::SceneDescription slowScene()
     return scene;
 }
 
-void processBlocks(plugin::ScenePipeline& p, int blocks, std::size_t* allocs = nullptr, std::size_t* frees = nullptr)
+void processBlocks(plugin::ScenePipeline& p, int blocks, std::size_t* allocs = nullptr,
+                   std::size_t* frees = nullptr)
 {
     std::vector<float> a(256, 0.1f), b(256, -0.1f);
     const float* const in[2] = {a.data(), b.data()};
@@ -81,8 +82,9 @@ void processBlocks(plugin::ScenePipeline& p, int blocks, std::size_t* allocs = n
 
 } // namespace
 
-TEST_CASE("Diffuse-solve gate: synchronous first, then offline and builder in turn, FIFO within a class (AX38 (i))",
-          "[pipeline][gate]")
+TEST_CASE(
+    "Diffuse-solve gate: synchronous first, then offline and builder in turn, FIFO within a class (AX38 (i))",
+    "[pipeline][gate]")
 {
     plugin::DiffuseSolveGate gate(1);
     REQUIRE(gate.enter(Class::Builder)); // the solve already running
@@ -121,7 +123,8 @@ TEST_CASE("Diffuse-solve gate: synchronous first, then offline and builder in tu
     REQUIRE(gate.solvesCompleted() == 6);
 }
 
-TEST_CASE("Diffuse-solve gate: a builder waiter leaves the queue when its pipeline is quiesced", "[pipeline][gate]")
+TEST_CASE("Diffuse-solve gate: a builder waiter leaves the queue when its pipeline is quiesced",
+          "[pipeline][gate]")
 {
     plugin::DiffuseSolveGate gate(1);
     REQUIRE(gate.enter(Class::Synchronous));
@@ -153,9 +156,10 @@ TEST_CASE("buildRoomIR throws BuildCancelled when the cancel flag is set (AX39 D
     REQUIRE(sim::buildRoomIR(scene, options).length() > 0);
 }
 
-TEST_CASE("Pipeline: every pipeline shares one gate; gate order never changes the output (two pipelines in either "
-          "order, one offline)",
-          "[pipeline][gate]")
+TEST_CASE(
+    "Pipeline: every pipeline shares one gate; gate order never changes the output (two pipelines in either "
+    "order, one offline)",
+    "[pipeline][gate]")
 {
     const auto x = pipeline_test::loadScene("living_room.json");
     const auto y = pipeline_test::loadScene("club.json");
@@ -200,9 +204,10 @@ TEST_CASE("Pipeline: every pipeline shares one gate; gate order never changes th
     REQUIRE(bitIdentical(*off.lastSubmittedIr(), refY));
 }
 
-TEST_CASE("Pipeline: a real-time pipeline beside one solving at the gate allocates nothing and never touches the "
-          "gate (AX38 (i)); reset() goes through the synchronous class",
-          "[pipeline][gate][alloc]")
+TEST_CASE(
+    "Pipeline: a real-time pipeline beside one solving at the gate allocates nothing and never touches the "
+    "gate (AX38 (i)); reset() goes through the synchronous class",
+    "[pipeline][gate][alloc]")
 {
     if (!test_support::trackerActive())
         SKIP("allocation tracking is off in this build (ASan)");
@@ -230,6 +235,32 @@ TEST_CASE("Pipeline: a real-time pipeline beside one solving at the gate allocat
     // Only the solver's builds entered the gate (3 restores; reset() reused its last build).
     REQUIRE(rt.gate().solvesCompleted() == before + 3);
     REQUIRE(pipeline_test::waitFor([&] { return rt.builderIdle(); }));
+    // D-H3 (e) (AX38 (i) register entry): Synchronous-class entries from a thread that had run a real-time
+    // process() are counted (debug builds), never asserted; here none is expected (the solver's thread never
+    // processed), so the count is a record of this harness, printed for the job summary. A host delivering
+    // reset() on its processing thread would raise it; the remedy is phase-07c's reset() half.
+    std::printf("gate: synchronous entries from a thread that ran a real-time process(): %llu (debug count; "
+                "0 in release)\n",
+                static_cast<unsigned long long>(rt.gate().synchronousEntriesFromRealtimeThreads()));
+    // A reset() delivered on the real-time thread itself (what VST3 permits, file 12 F1/F6) is counted, not
+    // asserted.
+    {
+        plugin::ScenePipeline host;
+        restoreScene(host, pipeline_test::loadScene("dead_booth.json"));
+        host.prepare(kRate, 256, false);
+        REQUIRE(pipeline_test::waitFor([&] { return host.builderIdle(); }));
+        const auto n0 = host.gate().synchronousEntriesFromRealtimeThreads();
+        std::size_t a = 0, f = 0;
+        processBlocks(host, 2, &a, &f); // this thread is now a "real-time" thread in the gate's eyes
+        host.setParameter(module3d::kListenerX, 0.7f);
+        REQUIRE(pipeline_test::waitFor([&] { return host.builderIdle(); }));
+        host.reset(); // ResetStep3 reuses the last build: no gate entry expected
+        const auto n1 = host.gate().synchronousEntriesFromRealtimeThreads();
+        std::printf("gate: reset() on the thread that processed: %llu new synchronous entries from it (a "
+                    "stale IR set "
+                    "would make it 1; the register's growth print)\n",
+                    static_cast<unsigned long long>(n1 - n0));
+    }
 }
 
 TEST_CASE("Pipeline: two pipelines, one switching to offline in the middle of the other's solve (TSan)",
@@ -281,11 +312,91 @@ contract::SceneDescription absorbentScene()
     return scene;
 }
 
+// The absorbent room AX37 (5.1) (i) names (D-H3 (c), docs/review/phase-05h/20-decider-decision-D-H3.md; Seat
+// 3's scene, positive on the direct detector at 48 and 96 kHz, file 18 K-c3): dead_booth geometry, alpha 0.01
+// at 63 Hz and 0.999 above, s 0.5. The fast bands' exp(-rate j) in BandNoiseGenerator::make reach the double
+// subnormal range inside the 63 Hz band's long tail; the IR stays bit-identical because the whole path is
+// double and the final conversion flushes (Engine.cpp toFloatNoDenormal).
+contract::SceneDescription denormalScene()
+{
+    auto scene = pipeline_test::loadScene("dead_booth.json");
+    for (auto& s : scene.room.surfaces)
+    {
+        s.bandsAbsorption = {0.01, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999};
+        s.scattering = 0.5;
+    }
+    return scene;
+}
+
+} // namespace
+
+namespace {
+// Sticky FPU exception flags, read as (denormal-operand, underflow). x86-64 MXCSR: DE bit 1 (a denormal
+// operand was consumed; not set under DAZ), UE bit 4 (a tiny inexact result; set when FTZ flushes one).
+// AArch64 FPSR: IDC bit 7 (an input denormal was flushed because FZ = 1; never set with FZ off), UFC bit 3
+// (underflow). So a denormal shows as DE or UE without the guard on x86, and as UFC without the guard / IDC
+// or UFC with it on AArch64 (Seat 5, file 17-seat5 addendum): the probe prints both bits and both arms per
+// architecture.
+struct DenormalFlags
+{
+    bool operand = false;
+    bool underflow = false;
+};
+DenormalFlags denormalFlags() noexcept
+{
+    DenormalFlags f;
+#if defined(SPATIAL_DENORMALS_SSE)
+    const unsigned csr = _mm_getcsr();
+    f.operand = (csr & 0x2u) != 0;
+    f.underflow = (csr & 0x10u) != 0;
+#elif defined(SPATIAL_DENORMALS_AARCH64)
+    std::uint64_t fpsr = 0;
+    asm volatile("mrs %0, fpsr" : "=r"(fpsr) : : "memory");
+    f.operand = (fpsr & 0x80u) != 0;
+    f.underflow = (fpsr & 0x8u) != 0;
+#endif
+    return f;
+}
+void clearDenormalFlags() noexcept
+{
+#if defined(SPATIAL_DENORMALS_SSE)
+    _mm_setcsr(_mm_getcsr() & ~0x3Fu); // the six sticky exception flags
+#elif defined(SPATIAL_DENORMALS_AARCH64)
+    std::uint64_t fpsr = 0;
+    asm volatile("mrs %0, fpsr" : "=r"(fpsr) : : "memory");
+    fpsr &= ~0xFFull;
+    asm volatile("msr fpsr, %0" : : "r"(fpsr) : "memory");
+#endif
+}
+const char* flagText(DenormalFlags f) noexcept
+{
+    return f.operand && f.underflow ? "operand+underflow"
+           : f.operand              ? "operand"
+           : f.underflow            ? "underflow"
+                                    : "clear";
+}
+// Calibration (Seat 5): the detector must see a known denormal operand and a known underflow, else it SKIPs.
+bool calibrateDetector(bool& operandSeenWithoutGuard)
+{
+    volatile double tiny = 1e-310, one = 1.0, small = 1e-300, smaller = 1e-20;
+    clearDenormalFlags();
+    volatile double a = tiny * one; // a denormal operand
+    const auto f1 = denormalFlags();
+    clearDenormalFlags();
+    volatile double b = small * smaller; // an underflowing result
+    const auto f2 = denormalFlags();
+    (void)a;
+    (void)b;
+    operandSeenWithoutGuard = f1.operand;
+    return (f1.operand || f1.underflow) && f2.underflow;
+}
 } // namespace
 
 // AX37 (5.1) (i): buildRoomIR sets FTZ/DAZ through a scoped guard, so the IR does not depend on the
 // caller's mode. Built with the caller's FTZ off (the test thread's default) and on.
-TEST_CASE("buildRoomIR: the IR is bit-identical with the caller's FTZ/DAZ off and on (AX37 (5.1) (i))",
+TEST_CASE("buildRoomIR: the IR is bit-identical with the caller's FTZ/DAZ off and on (AX37 (5.1) (i)); the "
+          "absorbent "
+          "room produces denormals without FTZ (direct detector, per architecture)",
           "[pipeline][ftz]")
 {
     if (!sim::conv::ScopedFlushDenormals::isSupported())
@@ -293,7 +404,8 @@ TEST_CASE("buildRoomIR: the IR is bit-identical with the caller's FTZ/DAZ off an
     sim::BuildOptions options;
     options.sampleRate = kRate;
     options.kind = sim::BuildOptions::Kind::Omni;
-    for (const auto& scene : {absorbentScene(), pipeline_test::loadScene("medium_room.json")})
+    for (const auto& scene :
+         {denormalScene(), absorbentScene(), pipeline_test::loadScene("medium_room.json")})
     {
         const sim::RoomIR off = sim::buildRoomIR(scene, options);
         sim::RoomIR on;
@@ -303,13 +415,51 @@ TEST_CASE("buildRoomIR: the IR is bit-identical with the caller's FTZ/DAZ off an
         }
         REQUIRE(bitIdentical(off, on));
     }
+    // The premise, asserted on the named scene (D-H3 (c)): an unguarded build (validation-only ftzGuard =
+    // false), every solve block on this thread, sets the FPU's sticky denormal flags with FTZ off; with
+    // FTZ/DAZ on the operand flag stays clear on x86-64 (DAZ suppresses DE; the flushed results still raise
+    // UE) and on AArch64 the input-denormal flag IDC is raised only under FZ = 1 (Seat 5's reading, decided
+    // by the three-OS run).
+    bool operandWithoutGuard = false;
+    if (!calibrateDetector(operandWithoutGuard))
+        SKIP("the FPU status-flag detector did not see a known denormal / underflow on this platform");
+    sim::diffuse::ThreadPool oneThread(1);
+    sim::BuildOptions unguarded = options;
+    unguarded.ftzGuard = false;
+    unguarded.diffusePool = &oneThread;
+    clearDenormalFlags();
+    const sim::RoomIR off = sim::buildRoomIR(denormalScene(), unguarded);
+    const auto flagsOff = denormalFlags();
+    sim::RoomIR on;
+    DenormalFlags flagsOn;
+    {
+        const sim::conv::ScopedFlushDenormals ftz;
+        clearDenormalFlags();
+        on = sim::buildRoomIR(denormalScene(), unguarded);
+        flagsOn = denormalFlags();
+    }
+    std::printf(
+        "ftz: the absorbent room without the guard: flags FTZ off [%s], FTZ on [%s]; IRs %s (operand flag "
+        "without the guard on this architecture: %s)\n",
+        flagText(flagsOff), flagText(flagsOn), bitIdentical(off, on) ? "bit-identical" : "DIFFERENT",
+        operandWithoutGuard ? "yes" : "no");
+    REQUIRE(bitIdentical(off, on));
+#if defined(SPATIAL_DENORMALS_SSE)
+    REQUIRE((flagsOff.operand || flagsOff.underflow)); // DE | UE set: denormals arose
+    REQUIRE_FALSE(flagsOn.operand);                    // DAZ: no denormal operand reaches an instruction
+#elif defined(SPATIAL_DENORMALS_AARCH64)
+    REQUIRE(flagsOff.underflow);                     // UFC: denormal results arose with FZ off
+    REQUIRE((flagsOn.operand || flagsOn.underflow)); // IDC | UFC: something was flushed under FZ = 1
+#endif
 }
 
-// AX37 (5.1) (i), second half: the absorbent room is asserted to produce denormals without FTZ. The build runs
-// WITHOUT the guard (BuildOptions::ftzGuard = false, validation only) in the caller's mode, FTZ off and on; the
-// IRs differing proves a denormal was flushed somewhere on the IR path. Where no probed scene differs, that is a
-// finding for the decider (docs/review/phase-05h/11-orchestrator-D-H3-question.md), never a silent drop.
-TEST_CASE("probe: denormals on the IR path (buildRoomIR without the guard, FTZ off vs on)", "[.][probe-denormals-ir]")
+// AX37 (5.1) (i), second half: the absorbent room is asserted to produce denormals without FTZ. The build
+// runs WITHOUT the guard (BuildOptions::ftzGuard = false, validation only) in the caller's mode, FTZ off and
+// on; the IRs differing proves a denormal was flushed somewhere on the IR path. Where no probed scene
+// differs, that is a finding for the decider (docs/review/phase-05h/11-orchestrator-D-H3-question.md), never
+// a silent drop.
+TEST_CASE("probe: denormals on the IR path (buildRoomIR without the guard, FTZ off vs on)",
+          "[.][probe-denormals-ir]")
 {
     if (!sim::conv::ScopedFlushDenormals::isSupported())
         SKIP("no FTZ/DAZ control on this platform");
@@ -353,7 +503,8 @@ TEST_CASE("probe: denormals on the IR path (buildRoomIR without the guard, FTZ o
                 on = sim::buildRoomIR(pr.scene, o);
             }
             std::printf("probe-ir fs %.0f %-45s: IR without the guard, FTZ off vs on -> %s\n", fs, pr.label,
-                        bitIdentical(off, on) ? "identical (no denormal reached the IR)" : "DIFFERENT (denormals matter)");
+                        bitIdentical(off, on) ? "identical (no denormal reached the IR)"
+                                              : "DIFFERENT (denormals matter)");
         }
 }
 
@@ -361,66 +512,9 @@ TEST_CASE("probe: denormals on the IR path (buildRoomIR without the guard, FTZ o
 // denormal-operand status flag of the FPU, read after an unguarded build with FTZ/DAZ off. x86-64: MXCSR DE
 // (bit 1); AArch64: FPSR IDC (bit 7). Unlike the bit-difference probe above, this sees a denormal that arose
 // and was flushed without changing an output bit (the whole build path is double; the IR is float only at the
-// end, Engine.cpp toFloatNoDenormal). Seat 3's candidate (file 17-seat3): a dead_booth-sized room with alpha 0.01
-// at 63 Hz and 0.999 above, whose fast bands' exp(-rate j) in BandNoiseGenerator::make reach the double subnormal
-// range (708 < rate j < 745) inside the 63 Hz band's long tail.
-namespace {
-// Sticky FPU exception flags, read as (denormal-operand, underflow). x86-64 MXCSR: DE bit 1 (a denormal operand
-// was consumed; not set under DAZ), UE bit 4 (a tiny inexact result; set when FTZ flushes one). AArch64 FPSR:
-// IDC bit 7 (an input denormal was flushed because FZ = 1; never set with FZ off), UFC bit 3 (underflow).
-// So a denormal shows as DE or UE without the guard on x86, and as UFC without the guard / IDC or UFC with
-// it on AArch64 (Seat 5, file 17-seat5 addendum): the probe prints both bits and both arms per architecture.
-struct DenormalFlags
-{
-    bool operand = false;
-    bool underflow = false;
-};
-DenormalFlags denormalFlags() noexcept
-{
-    DenormalFlags f;
-#if defined(SPATIAL_DENORMALS_SSE)
-    const unsigned csr = _mm_getcsr();
-    f.operand = (csr & 0x2u) != 0;
-    f.underflow = (csr & 0x10u) != 0;
-#elif defined(SPATIAL_DENORMALS_AARCH64)
-    std::uint64_t fpsr = 0;
-    asm volatile("mrs %0, fpsr" : "=r"(fpsr) : : "memory");
-    f.operand = (fpsr & 0x80u) != 0;
-    f.underflow = (fpsr & 0x8u) != 0;
-#endif
-    return f;
-}
-void clearDenormalFlags() noexcept
-{
-#if defined(SPATIAL_DENORMALS_SSE)
-    _mm_setcsr(_mm_getcsr() & ~0x3Fu); // the six sticky exception flags
-#elif defined(SPATIAL_DENORMALS_AARCH64)
-    std::uint64_t fpsr = 0;
-    asm volatile("mrs %0, fpsr" : "=r"(fpsr) : : "memory");
-    fpsr &= ~0xFFull;
-    asm volatile("msr fpsr, %0" : : "r"(fpsr) : "memory");
-#endif
-}
-const char* flagText(DenormalFlags f) noexcept
-{
-    return f.operand && f.underflow ? "operand+underflow" : f.operand ? "operand" : f.underflow ? "underflow" : "clear";
-}
-// Calibration (Seat 5): the detector must see a known denormal operand and a known underflow, else it SKIPs.
-bool calibrateDetector(bool& operandSeenWithoutGuard)
-{
-    volatile double tiny = 1e-310, one = 1.0, small = 1e-300, smaller = 1e-20;
-    clearDenormalFlags();
-    volatile double a = tiny * one; // a denormal operand
-    const auto f1 = denormalFlags();
-    clearDenormalFlags();
-    volatile double b = small * smaller; // an underflowing result
-    const auto f2 = denormalFlags();
-    (void)a;
-    (void)b;
-    operandSeenWithoutGuard = f1.operand;
-    return (f1.operand || f1.underflow) && f2.underflow;
-}
-} // namespace
+// end, Engine.cpp toFloatNoDenormal). Seat 3's candidate (file 17-seat3): a dead_booth-sized room with alpha
+// 0.01 at 63 Hz and 0.999 above, whose fast bands' exp(-rate j) in BandNoiseGenerator::make reach the double
+// subnormal range (708 < rate j < 745) inside the 63 Hz band's long tail.
 
 TEST_CASE("probe: denormals on the IR path, direct FPU status-flag detector (unguarded build, FTZ off)",
           "[.][probe-denormals-detector]")
@@ -459,9 +553,11 @@ TEST_CASE("probe: denormals on the IR path, direct FPU status-flag detector (ung
     bool operandWithoutGuard = false;
     if (!calibrateDetector(operandWithoutGuard))
         SKIP("the FPU status-flag detector did not see a known denormal / underflow on this platform");
-    std::printf("probe-detector calibration: a denormal operand without the guard reads as %s on this architecture\n",
-                operandWithoutGuard ? "operand" : "underflow only (AArch64 form)");
-    sim::diffuse::ThreadPool oneThread(1); // every solve block runs on the instrumented thread (D4: same result)
+    std::printf(
+        "probe-detector calibration: a denormal operand without the guard reads as %s on this architecture\n",
+        operandWithoutGuard ? "operand" : "underflow only (AArch64 form)");
+    sim::diffuse::ThreadPool oneThread(
+        1); // every solve block runs on the instrumented thread (D4: same result)
     for (const double fs : {48000.0, 96000.0})
         for (const auto& pr : probes)
         {
@@ -481,8 +577,9 @@ TEST_CASE("probe: denormals on the IR path, direct FPU status-flag detector (ung
                 on = sim::buildRoomIR(pr.scene, o);
                 flagsOn = denormalFlags();
             }
-            std::printf("probe-detector fs %.0f %-55s: flags FTZ off [%s], FTZ on [%s]; IRs %s\n", fs, pr.label,
-                        flagText(flagsOff), flagText(flagsOn), bitIdentical(off, on) ? "bit-identical" : "DIFFERENT");
+            std::printf("probe-detector fs %.0f %-55s: flags FTZ off [%s], FTZ on [%s]; IRs %s\n", fs,
+                        pr.label, flagText(flagsOff), flagText(flagsOn),
+                        bitIdentical(off, on) ? "bit-identical" : "DIFFERENT");
         }
 }
 
@@ -497,9 +594,9 @@ TEST_CASE("probe: denormals in the diffuse estimator without the guard", "[.][pr
             {
                 std::array<contract::BandArray, 6> a{};
                 a.fill(diffuse_test::flat(alpha));
-                const auto scene = diffuse_test::scene({dim, dim, dim * 0.4}, a, {s, s, s, s, s, s},
-                                                       {dim * 0.5, dim * 0.3, dim * 0.1},
-                                                       {{dim * 0.45, dim * 0.7, dim * 0.1}, {dim * 0.55, dim * 0.7, dim * 0.1}});
+                const auto scene = diffuse_test::scene(
+                    {dim, dim, dim * 0.4}, a, {s, s, s, s, s, s}, {dim * 0.5, dim * 0.3, dim * 0.1},
+                    {{dim * 0.45, dim * 0.7, dim * 0.1}, {dim * 0.55, dim * 0.7, dim * 0.1}});
                 const auto planned = diffuse_test::plan(scene);
                 const auto off = sim::diffuse::estimateDiffuse(planned.problem);
                 sim::diffuse::DiffuseResult on;
@@ -510,11 +607,16 @@ TEST_CASE("probe: denormals in the diffuse estimator without the guard", "[.][pr
                 bool same = off.faceHash == on.faceHash && off.count.n == on.count.n;
                 for (std::size_t e = 0; e < off.emitters.size() && same; ++e)
                     for (std::size_t k = 0; k < 8; ++k)
-                        if (std::memcmp(&off.emitters[e].bandsDiffuse[k], &on.emitters[e].bandsDiffuse[k], sizeof(double)) != 0)
+                        if (std::memcmp(&off.emitters[e].bandsDiffuse[k], &on.emitters[e].bandsDiffuse[k],
+                                        sizeof(double))
+                            != 0)
                             same = false;
-                std::printf("probe alpha %.3f dim %.0f s %.1f: n* %lld N %lld hash off 0x%016llx on 0x%016llx -> %s\n", alpha,
-                            dim, s, static_cast<long long>(off.nStar), static_cast<long long>(off.count.n),
-                            static_cast<unsigned long long>(off.faceHash), static_cast<unsigned long long>(on.faceHash),
+                std::printf("probe alpha %.3f dim %.0f s %.1f: n* %lld N %lld hash off 0x%016llx on "
+                            "0x%016llx -> %s\n",
+                            alpha, dim, s, static_cast<long long>(off.nStar),
+                            static_cast<long long>(off.count.n),
+                            static_cast<unsigned long long>(off.faceHash),
+                            static_cast<unsigned long long>(on.faceHash),
                             same ? "identical" : "DIFFERENT (denormals matter)");
             }
 }
@@ -572,9 +674,10 @@ TEST_CASE("probe: split timer of the non-diffuse 100 m / 96 kHz build", "[.][pro
             std::sort(v.begin(), v.end());
             return v[v.size() / 2];
         };
-        std::printf("probe-split fs %.0f: T60max %.1f s, unit decay %zu samples; full build (no diffuse) median %.0f ms; "
+        std::printf("probe-split fs %.0f: T60max %.1f s, unit decay %zu samples; full build (no diffuse) "
+                    "median %.0f ms; "
                     "generator ctor %.0f ms; make x2 %.0f ms; position-only build (cached decays) %.0f ms\n",
-                    fs, *std::max_element(decay.bandsT60S.begin(), decay.bandsT60S.end()), len, med(tFull), med(tGen),
-                    med(tMake), med(tCached));
+                    fs, *std::max_element(decay.bandsT60S.begin(), decay.bandsT60S.end()), len, med(tFull),
+                    med(tGen), med(tMake), med(tCached));
     }
 }

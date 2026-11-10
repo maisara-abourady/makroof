@@ -340,6 +340,7 @@ jobs:
 
       # Phase 03/04: ISM and hybrid-IR benchmarks (AQ10 target: IR rebuild <= 50 ms, 20 x 30 x 10 m).
       # Hidden test case, run from the Release build so the number means something; printed to the log.
+      # Phase 05h (D-H3 (c), K-c4): the direct denormal detector probe runs after it on every OS, a standing record.
       - name: Benchmark (release)
         shell: bash
         run: |
@@ -347,8 +348,10 @@ jobs:
           if [[ "${RUNNER_OS}" == "Windows" ]]; then BIN="$BIN.exe"; fi
           if [[ "${RUNNER_OS}" == "Linux" ]]; then
             xvfb-run -a "$BIN" "[benchmark]" --benchmark-samples 10
+            xvfb-run -a "$BIN" "[probe-denormals-detector]"
           else
             "$BIN" "[benchmark]" --benchmark-samples 10
+            "$BIN" "[probe-denormals-detector]"
           fi
 
       - name: Install AU for validation (macOS)

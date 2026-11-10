@@ -33,6 +33,11 @@ namespace plugin {
 namespace detail {
 // > 0 while the calling thread is inside a real-time ScenePipeline::process() (debug builds only).
 extern thread_local int realtimeProcessDepth;
+// Set once a thread has run a real-time process() (debug builds only; D-H3 (e), AX38 (i) register entry): a
+// Synchronous-class gate entry from such a thread (a host delivering reset() or the offline switch on its
+// processing thread, which VST3 permits) is counted, never asserted, and printed by the tests. A thread-local
+// store; nothing on the real-time path allocates, locks or logs.
+extern thread_local bool ranRealtimeProcess;
 } // namespace detail
 
 class DiffuseSolveGate
@@ -61,6 +66,12 @@ public:
     // `abandon` became true while waiting (builder class: the pipeline was quiesced); synchronous and
     // offline waiters never abandon. Pair every true return with leave().
     bool enter(Class cls, const std::atomic<bool>* abandon = nullptr);
+    // D-H3 (e): Synchronous-class entries made from a thread that had run a real-time process() (debug builds
+    // count; release builds return 0). A record for the AX38 (i) register, not a gate.
+    std::uint64_t synchronousEntriesFromRealtimeThreads() const noexcept
+    {
+        return synchronousFromRealtime_.load(std::memory_order_relaxed);
+    }
     void leave();
     // Wakes the waiters so that one whose abandon flag is set can leave the queue.
     void notifyWaiters();
@@ -75,7 +86,8 @@ public:
     {
     public:
         Scope(DiffuseSolveGate& gate, Class cls, const std::atomic<bool>* abandon = nullptr)
-            : gate_(gate), entered_(gate.enter(cls, abandon))
+            : gate_(gate)
+            , entered_(gate.enter(cls, abandon))
         {}
         ~Scope()
         {
@@ -102,6 +114,7 @@ private:
     void remove(std::uint64_t ticket);
 
     sim::diffuse::ThreadPool pool_;
+    std::atomic<std::uint64_t> synchronousFromRealtime_{0};
     mutable std::mutex mutex_;
     std::condition_variable cv_;
     bool held_ = false;

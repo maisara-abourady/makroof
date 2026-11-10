@@ -79,3 +79,9 @@ Reason: phase 05h session 2: AX43 agreement and AX45 regression references of th
 Reason: phase 05h session 2: tracer window reference of the 15 (A) cases (500 Hz-2 kHz) and the outer-band check (layouts 4/5 at s = 1; 125 Hz, 4 kHz, 8 kHz), E_tr = E_AX16,py / 10^(dL_tr/10) from the committed phase05b.json gate and outer_bands entries, by tools/validation/export_phase05h_references.py
 
 - `phase05h_tracer_reference`: created
+
+## 2026-11-10
+
+Reason: phase 05h D-H3 (a) (docs/review/phase-05h/20-decider-decision-D-H3.md): AX43's pooled bias check pools per reference room with z' = (C++ - ref) / sqrt(SE^2 + l_ref^2); the room id (the reference that shares a case's discretisation residual) is written by the generating script, a schema addition
+
+- `phase05h_agreement_reference`: `room` column added (schema only; no reference value changed)

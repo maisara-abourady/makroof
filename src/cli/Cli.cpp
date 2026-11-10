@@ -513,8 +513,8 @@ bool writeDiagnostics(const std::filesystem::path& path, const contract::SceneDe
         arr(d.bandsDiffuseEnergy);
         os << ",\"targetEnergyDiffuseReferenceUnits\":";
         arr(d.bandsDiffuseReference);
-        os << ",\"nStar\":" << d.nStar << ",\"nNeed\":" << d.nNeed << ",\"n\":" << d.n << ",\"nCap\":" << d.nCap
-           << ",\"capHit\":" << (d.capHit ? "true" : "false")
+        os << ",\"nStar\":" << d.nStar << ",\"nNeed\":" << d.nNeed << ",\"n\":" << d.n
+           << ",\"nCap\":" << d.nCap << ",\"capHit\":" << (d.capHit ? "true" : "false")
            << ",\"floorTruncated\":" << (d.floorTruncated ? "true" : "false")
            << ",\"pilotFloor\":" << (d.pilotFloor ? "true" : "false")
            << ",\"pilotShipped\":" << (d.pilotShipped ? "true" : "false") << ",\"achievedSeDb\":";

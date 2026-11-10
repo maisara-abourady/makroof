@@ -61,7 +61,10 @@ COLUMNS = (["dims_x", "dims_y", "dims_z"] + [f"alpha_{f}_{b}" for f in FACES for
            + [f"ref_fine_{b}" for b in range(8)] + [f"ref_coarse_{b}" for b in range(8)] + [f"l_ref_{b}" for b in range(8)]
            + [f"certified_{b}" for b in range(8)] + [f"gated_{b}" for b in range(8)] + ["suite", "cls"]
            + ["py_window_start_s", "py_mix_s", "py_fallback"] + [f"py_t60_{b}" for b in range(8)]
-           + [f"py_target_specular_{b}" for b in range(8)] + [f"py_target_ax16_{b}" for b in range(8)])
+           + [f"py_target_specular_{b}" for b in range(8)] + [f"py_target_ax16_{b}" for b in range(8)] + ["room"])
+REASON_ROOM = ("phase 05h D-H3 (a) (docs/review/phase-05h/20-decider-decision-D-H3.md): AX43's pooled bias check pools per "
+               "reference room with z' = (C++ - ref) / sqrt(SE^2 + l_ref^2); the room id (the reference that shares a "
+               "case's discretisation residual) is written by the generating script, a schema addition")
 SUITES = {"AX43": 0.0, "AX45": 1.0}
 # AX46 classes: 0 reference positions, 1 one-end near-wall, 2 absorbing face, 3 small rooms, 4 100 m (none here),
 # 5 BRAS (measured-room pairs), 6 both-near / placements reported only
@@ -97,6 +100,20 @@ def plan(c: dict, src) -> dict:
     return rh.phase04_plan(c["dims"], var, src, c["rcv"])
 
 
+def room_of(name: str) -> str:
+    """The reference room that shares a case's discretisation residual (D-H3 (a), AX43's pooled check per reference
+    room): each BRAS room over its pairs, each Phase 04 room and W1/W2 over its emitters and placements, each (A)
+    case its own room."""
+    for prefix in ("bras_cr2", "bras_cr3", "bras_cr4", "dead_booth", "living_room", "classroom", "club", "concert_hall_box",
+                   "stone_box", "W1", "W2", "dt6_small_room"):
+        if name.startswith(prefix):
+            return prefix
+    return name
+
+
+ROOM_IDS: dict = {}
+
+
 def row_of(name, suite, cls, c, srcs, ref_emitter, fine, coarse, decision) -> list:
     fine = np.asarray(fine, float)
     coarse = np.asarray(coarse, float)
@@ -111,7 +128,8 @@ def row_of(name, suite, cls, c, srcs, ref_emitter, fine, coarse, decision) -> li
            + [float(x) if np.isfinite(x) else float("nan") for x in l_ref] + certified.astype(float).tolist() + gated.tolist()
            + [SUITES[suite], CLASSES[cls]] + [float(p["mix"]["windowStartS"]), float(p["mix"]["mixS"]), float(p["fallback"])]
            + np.asarray(p["t60"], float).tolist() + np.asarray(p["target_specular"], float).tolist()
-           + np.asarray(p["target_ax16"], float).tolist())
+           + np.asarray(p["target_ax16"], float).tolist()
+           + [float(ROOM_IDS.setdefault(room_of(name), len(ROOM_IDS)))])
     assert len(row) == len(COLUMNS), (len(row), len(COLUMNS))
     return [name] + row
 
@@ -248,6 +266,9 @@ def main() -> int:
     for stem, reason in (("phase05h_agreement_reference", REASON_AGREE), ("phase05h_tracer_reference", REASON_TRACER)):
         if f"`{stem}`: created" not in log:
             log = log.rstrip("\n") + f"\n\n## {datetime.date.today().isoformat()}\n\nReason: {reason}\n\n- `{stem}`: created\n"
+    if "`phase05h_agreement_reference`: `room` column added" not in log:
+        log = (log.rstrip("\n") + f"\n\n## {datetime.date.today().isoformat()}\n\nReason: " + REASON_ROOM
+               + "\n\n- `phase05h_agreement_reference`: `room` column added (schema only; no reference value changed)\n")
     CHANGELOG.write_text(log)
     n_cert = sum(int(r[1 + COLUMNS.index(f"certified_{b}")]) for r in rows for b in range(8))
     n_gated = sum(int(r[1 + COLUMNS.index(f"gated_{b}")]) for r in rows for b in range(8))

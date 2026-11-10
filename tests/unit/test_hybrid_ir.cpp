@@ -135,8 +135,10 @@ TEST_CASE("hybrid IR: emitters get independent tails (PCG32 stream = emitter cha
     CHECK(d.emitters[0].match.diffuse.bandsAx16Energy == d.emitters[1].match.diffuse.bandsAx16Energy);
     for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
     {
-        const double e0 = d.emitters[0].match.bandsTargetEnergy[b], e1 = d.emitters[1].match.bandsTargetEnergy[b];
-        const double se = std::max(d.emitters[0].match.diffuse.bandsSeDb[b], d.emitters[1].match.diffuse.bandsSeDb[b]);
+        const double e0 = d.emitters[0].match.bandsTargetEnergy[b],
+                     e1 = d.emitters[1].match.bandsTargetEnergy[b];
+        const double se = std::max(d.emitters[0].match.diffuse.bandsSeDb[b],
+                                   d.emitters[1].match.diffuse.bandsSeDb[b]);
         CHECK(std::abs(10.0 * std::log10(e0 / e1)) <= 4.0 * std::max(se, 1e-6) + 1e-9);
     }
     const std::size_t late = 48000; // 1 s
@@ -241,7 +243,8 @@ TEST_CASE("hybrid IR length: L_IR = 1.5 T60_max from emission (12 s cap), or the
 // finite-floor window integral in tools/acoustics/tests/test_tail.py); the shipped IR still renders no
 // scattered energy before t_mix,e (AX21) and the energy later than t_dir + 50 ms stays below -60 dB re
 // the direct sound (C1 margin > 44 dB; the sentinel check of phase04_open_field_omni, AX37 (5.4)).
-TEST_CASE("open_field (AX37 (5.4)): E_b finite and >= 0, nothing 50 ms after the direct sound (floor s 0.4 and 0.5)",
+TEST_CASE("open_field (AX37 (5.4)): E_b finite and >= 0, nothing 50 ms after the direct sound (floor s 0.4 "
+          "and 0.5)",
           "[sim][hybrid]")
 {
     for (const double floorScattering : {0.4, 0.5})

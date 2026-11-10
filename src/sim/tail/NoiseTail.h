@@ -117,11 +117,12 @@ double expectedUnitEnergyPer10ms(double t60S, double tS, double lengthS) noexcep
 // energy per 10 ms at t_mix,e, i.e. the reference's units times the band-filter energy g_b).
 struct DiffuseMatch
 {
-    bool computed = false; // false in a build that skipped the solve (validation: BuildOptions::tailLevelAx16)
-    contract::BandArray bandsDiffuseEnergy{};  // the propagated diffuse energy in the window
+    bool computed =
+        false; // false in a build that skipped the solve (validation: BuildOptions::tailLevelAx16)
+    contract::BandArray bandsDiffuseEnergy{};    // the propagated diffuse energy in the window
     contract::BandArray bandsDiffuseReference{}; // the same in the reference's units (no g_b; tests)
-    contract::BandArray bandsSpecularEnergy{}; // the specular entries alone
-    contract::BandArray bandsAx16Energy{};     // specular + AX16 scattered entries (Phase 04's E_target)
+    contract::BandArray bandsSpecularEnergy{};   // the specular entries alone
+    contract::BandArray bandsAx16Energy{};       // specular + AX16 scattered entries (Phase 04's E_target)
     // AX41 diagnostics (reported; cap hit, floor truncated and pilot floor are flags, R / VOV / slope
     // are reported only). The path counts are per scene (the joint rule), the statistics per emitter.
     std::int64_t nStar = 0;
@@ -144,7 +145,7 @@ struct DiffuseMatch
     double weight = 1.0; // NW-4C w (AX44)
     double listenerDistanceM = 0.0;
     double emitterDistanceM = 0.0;
-    bool bothNear = false; // d_L < 0.70 m and d_E < 0.70 m
+    bool bothNear = false;          // d_L < 0.70 m and d_E < 0.70 m
     double realisedWorkRatio = 0.0; // (W_pilot + W_final) / W_scene
     std::int64_t wPilot = 0;
     std::int64_t wFinal = 0;
@@ -161,8 +162,8 @@ struct TailMatch
     // propagated diffuse energy (diffuse.bandsSpecularEnergy + diffuse.bandsDiffuseEnergy) when
     // diffuse.computed, else the Phase 04 value (specular + AX16 scattered entries).
     contract::BandArray bandsTargetEnergy{};
-    contract::BandArray bandsExpectedUnitEnergy{}; // ebar_b
-    contract::BandArray bandsAmplitude{};          // E_b, with E_b^2 ebar_b = E_target,b
+    contract::BandArray bandsExpectedUnitEnergy{};                    // ebar_b
+    contract::BandArray bandsAmplitude{};                             // E_b, with E_b^2 ebar_b = E_target,b
     std::array<int, contract::kNumOctaveBands> bandsNonZeroEntries{}; // realised, in the window
     contract::BandArray bandsRealisedKeff{};    // k_real = (sum x)^2 / sum x^2 of the weighted entries
     contract::BandArray bandsRealisedSigmaDb{}; // 4.34 / sqrt(k_real) (0 when k_real = 0)

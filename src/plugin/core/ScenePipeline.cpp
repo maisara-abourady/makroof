@@ -446,7 +446,11 @@ void ScenePipeline::process(const float* const in[2], float* const out[2], int n
             : on(realtime)
         {
             if (on)
+            {
                 ++detail::realtimeProcessDepth;
+                detail::ranRealtimeProcess =
+                    true; // D-H3 (e): the gate counts later Synchronous entries from here
+            }
         }
         ~RealtimeMark() noexcept
         {

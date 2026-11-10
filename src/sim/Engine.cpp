@@ -107,8 +107,8 @@ struct EmitterPlan
 {
     tail::MixingTime mixing; // mixS = the handover actually used
     ism::ImageSourceSet set;
-    tail::TailMatch match;          // on the specular + AX16 scattered entries (Phase 04; AX37 (5.2))
-    tail::TailMatch specularMatch;  // on the specular entries alone (AX37 (5.1), (5.3))
+    tail::TailMatch match;         // on the specular + AX16 scattered entries (Phase 04; AX37 (5.2))
+    tail::TailMatch specularMatch; // on the specular entries alone (AX37 (5.1), (5.3))
     double gainSquared = 1.0;
     contract::BandArray bandsRealisedKeffAtMix{};
     bool ismFallback = false;
@@ -155,8 +155,8 @@ EmitterPlan planEmitter(const contract::SceneDescription& scene, const contract:
     // AX37 (5.1), (5.3): the specular entries alone (same window, referral and t_mix,e).
     ism::ImageSourceSet specularOnly;
     specularOnly.images = plan.set.images;
-    plan.specularMatch =
-        tail::matchTail(tail::energyEntries(specularOnly, bandEnergy), plan.mixing, decay, lengthS);
+    plan.specularMatch = tail::matchTail(tail::energyEntries(specularOnly, bandEnergy), plan.mixing, decay,
+                                         lengthS);
     return plan;
 }
 
@@ -177,7 +177,8 @@ void switchTailLevel(tail::TailMatch& match, const EmitterPlan& plan, const diff
         d.bandsDiffuseReference[b] = er.bandsDiffuse[b];
         match.bandsTargetEnergy[b] = d.bandsSpecularEnergy[b] + d.bandsDiffuseEnergy[b];
         match.bandsAmplitude[b] = match.bandsTargetEnergy[b] > 0.0 && match.bandsExpectedUnitEnergy[b] > 0.0
-                                      ? std::sqrt(match.bandsTargetEnergy[b] / match.bandsExpectedUnitEnergy[b])
+                                      ? std::sqrt(match.bandsTargetEnergy[b]
+                                                  / match.bandsExpectedUnitEnergy[b])
                                       : 0.0;
         d.bandsSeDb[b] = er.bandsSeDb[b];
         d.bandsPilotSeDb[b] = er.bandsPilotSeDb[b];
@@ -293,7 +294,8 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
             problem.room.bandsAbsorption[f] = scene.room.surfaces[f].bandsAbsorption;
             problem.room.scattering[f] = scene.room.surfaces[f].scattering;
         }
-        problem.room.bandsAirEnergyPerMetre = decay.bandsAirEnergyPerMetre; // AX4 (or the validation override)
+        problem.room.bandsAirEnergyPerMetre =
+            decay.bandsAirEnergyPerMetre; // AX4 (or the validation override)
         problem.listener = scene.listener.position;
         std::vector<std::size_t> channels;
         for (std::size_t e = 0; e < perChannel.size(); ++e)
@@ -312,8 +314,9 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
             d.gainSquared = plan.gainSquared;
             // The specular window target in the reference's units: the matching's value per g_b.
             for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
-                d.bandsSpecularTarget[b] =
-                    bandEnergy[b] > 0.0 ? plan.specularMatch.bandsTargetEnergy[b] / bandEnergy[b] : 0.0;
+                d.bandsSpecularTarget[b] = bandEnergy[b] > 0.0
+                                               ? plan.specularMatch.bandsTargetEnergy[b] / bandEnergy[b]
+                                               : 0.0;
             problem.emitters.push_back(d);
             channels.push_back(e);
         }

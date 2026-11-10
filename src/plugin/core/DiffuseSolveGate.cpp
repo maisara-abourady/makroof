@@ -8,7 +8,8 @@ namespace plugin {
 
 namespace detail {
 thread_local int realtimeProcessDepth = 0;
-}
+thread_local bool ranRealtimeProcess = false;
+} // namespace detail
 
 DiffuseSolveGate::DiffuseSolveGate(unsigned threads)
     : pool_(std::max(1u, threads))
@@ -54,7 +55,8 @@ void DiffuseSolveGate::remove(std::uint64_t ticket)
 {
     for (auto* q : {&synchronous_, &offline_, &builder_})
     {
-        const auto it = std::find_if(q->begin(), q->end(), [&](const Waiter& w) { return w.ticket == ticket; });
+        const auto it = std::find_if(q->begin(), q->end(),
+                                     [&](const Waiter& w) { return w.ticket == ticket; });
         if (it != q->end())
         {
             q->erase(it);
@@ -65,7 +67,12 @@ void DiffuseSolveGate::remove(std::uint64_t ticket)
 
 bool DiffuseSolveGate::enter(Class cls, const std::atomic<bool>* abandon)
 {
-    assert(detail::realtimeProcessDepth == 0 && "the diffuse-solve gate is unreachable from a real-time process()");
+    assert(detail::realtimeProcessDepth == 0
+           && "the diffuse-solve gate is unreachable from a real-time process()");
+#ifndef NDEBUG
+    if (cls == Class::Synchronous && detail::ranRealtimeProcess)
+        synchronousFromRealtime_.fetch_add(1, std::memory_order_relaxed);
+#endif
     std::unique_lock lock(mutex_);
     const std::uint64_t ticket = nextTicket_++;
     auto& queue = cls == Class::Synchronous ? synchronous_ : (cls == Class::Offline ? offline_ : builder_);
