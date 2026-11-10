@@ -73,7 +73,13 @@
   (`13-<n>b`), a reallocation recorded in the phase-13 coverage table.
 
 ## Decided for Maisara
-- (none yet)
+- D-PS1 — 08's four sub-phases carry the 05h exception verbatim; AX37 (5.3) (i) on 08-2 and 08-3, (ii)/(iv) on 08-3, (iii) on 08-4 — PRD FR-SIM-3, NFR-1 — `docs/review/phase-split/3-…`, `5-…`, `6-…` — vetoed? no
+- D-PS2 — 2° grouping decided on 08-4's benchmark; if it lands, L1/L3/L4/L5 re-heard before the golden freeze — PRD NFR-1, NFR-2, FR-SIM-3 — same files — vetoed? no
+- D-PS3 — Phase 11 split shell-first (11-1 editor shell → 11-2 canvas → 11-3 surfaces); 11-1's layout provisional, canvas region reserved — PRD Overview, FR-3D-5, FR-3D-8 — same files — vetoed? no
+- D-PS4 — Phase 13 in five parts: 13-1 performance (Seat 3), 13-2 engine limits (Seat 2), 13-3 platforms (S9 first), 13-4 hosts, 13-5 release; K1–K3 read from 13-1; Raise items in 13-1 and 13-5 — PRD NFR-2, NFR-4, NFR-6, line 174 — same files + `5b-seat2-r2.md` — vetoed? no
+- FM-1 — Phase 11 must be split rather than kept whole (her 2026-11-10 instruction settles it; PRD neutral) — PRD Overview, FR-3D-5, FR-3D-8, NFR-4, line 174 — same files — vetoed? no
+- Size ruling — the two-session limit applies per sub-phase, so total sessions rise — her 2026-11-10 instruction, CLAUDE.md — `1-decider-convening.md`, `4-…` — vetoed? no
+- Phase 09 kept whole; Phase 12 split in two — her 2026-11-10 instruction — `1-decider-convening.md` — vetoed? no
 
 ## Raise with Maisara
 - Phase 13's four Raise items (commissioning decision F2, DELTA panel report, load time with 8 instances AX38 (iv),
