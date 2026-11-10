@@ -2080,3 +2080,28 @@ Packet: `docs/review/phase-05b2/40-packet-for-Maisara.md`.
 | P05B2-M-05 | Q2a: W_max sized to the restore watchdog (provisional 3.05 M per emitter); async restore (C) in a later phase | (A) + (C) later | closed (apply via /fix-plan) |
 | P05B2-M-06 | Q2b: n\*_max = 1 024 (re-derived from C++, ≥ 1 000) | (i) | closed (apply via /fix-plan) |
 | P05B2-M-07 | D-T3 "not needed" re-checked against the answers (steward round 3, second gap): holds under Q2a (A) | holds | closed |
+
+
+## Phase 05b session 2 — /fix-plan diff check (2026-11-10)
+
+Source: `docs/review/phase-05b2/41-interrogator-plan-diff-check.md` on `git diff 3973a5c 19cabdb`. Corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-FX-01 | Item 3, cap-hit definition (AX41, AX44), word for word | CORRECT | closed |
+| P05B2-FX-02 | Item 4, D-T1.4 qualifier and the 1 024 figures (AX42) | CORRECT | closed |
+| P05B2-FX-03 | Item 5, final "Where U fires" list from C16b/C16c, main-text list superseded, W1 both_wall_0.3 debt (AX44) | CORRECT | closed |
+| P05B2-FX-04 | Item 6, BRAS report MC SE (AX40, phase-05b2 §4) | CORRECT | closed |
+| P05B2-FX-05 | Corrections 59 (`reset()`) and 60 (S4 rated) in AX38 | CORRECT | closed |
+| P05B2-FX-06 | AX46 bias reading (ℓ_ref 0.65 %, SE ≈ 0.12 % ≈ 0.005 dB) | CORRECT | closed |
+| P05B2-FX-07 | W_max 3.05 M / W_scene 6.10 M and n\*_max 1 024 with their re-derivation rules (AX41, AQ10, phase-05b2 §4, phase-13) | CORRECT | closed |
+| P05B2-FX-08 | Blocking restore gate (14 × t_restore ≤ 30 s) against W_max sized to the same budget with zero margin and a realised-work ratio up to ≈ 1.05 (prototype 29.98 s; 30.2 s at 1.05) | INCONSISTENT: resolve before the gate is implemented (decider) | open |
+| P05B2-FX-09 | AX41 cost line mixes n\*_max 8 000 and 1 024 figures | IMPRECISE | open |
+| P05B2-FX-10 | Restore gate's scene(s) not named (AX38 4c, AQ10) | IMPRECISE | open |
+| P05B2-FX-11 | B15 "flagged by note U" without U's conditions | IMPRECISE | open |
+| P05B2-FX-12 | AX37 "within 0.08 dB" without its conditions | IMPRECISE | open |
+| P05B2-FX-13 | AX36 (c) "R1 certified at 2.5 m" without band and position conditions | IMPRECISE | open |
+| P05B2-FX-14 | AX16 C16 (g) values not marked 1 kHz | IMPRECISE | open |
+| P05B2-FX-15 | AX38 (4b) "AQ10 is unchanged" against the AQ10 amendment | IMPRECISE | open |
+| P05B2-FX-16 | Corpus claims in the changed passages (Kuttruff Eqs. 2.49–2.50, 4.24, 4.29, 4.35, §2.7, §5.2, §8.7; Vorländer Table 6.1) | CORRECT ("absent at α = 1" derived from Eq. 2.49's R = 1 premise) | closed |
+| P05B2-FX-17 | No contradiction of a settled decision (AX22, phase-05b scope 0, NFR-8, Maisara's answers M-01…07) | CORRECT | closed |
