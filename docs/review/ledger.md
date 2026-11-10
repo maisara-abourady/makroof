@@ -2118,3 +2118,25 @@ Round 2 of the diff check (`docs/review/phase-05b2/42-interrogator-plan-diff-che
 | P05B2-FX-22 | §0 row 05b `done` set without PR link, CI evidence or done date (CLAUDE.md step 6); duplicated session-2 sentence | CONDITIONS VIOLATED (bookkeeping) | open (orchestrator) |
 | P05B2-FX-23 | phase-05h §2 item 2 "conditional" escalation, against AX38 4c's unconditional escalation | IMPRECISE | open (/fix-plan) |
 | P05B2-FX-24 | phase-05h §4 item 10 re-listening clause not in AX37 (5.3) | IMPRECISE (addition) | open (/fix-plan) |
+
+
+## Phase 05b session 2 — board answers to Challenge 1, Q2a, Q2b (2026-11-10)
+
+Decider files 43 and 47; ratings 45-seat*-R1-R3; confirmations 48-*; interrogator `docs/review/phase-05b2/49-interrogator-board-answers-C1-Q2.md`. Corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-C1Q2-01 | 43 Q2b = (i) n\*_max 1 024: cells, sums 19/21, preference handling | SURVIVES | closed |
+| P05B2-C1Q2-02 | 43: Challenge 1 / Q2a not decidable on recorded cells; 4c-2 cells not reused | correct process | closed |
+| P05B2-C1Q2-03 | R1–R3 convening (9/9) and per-question cells in 47 §2 | faithful | closed |
+| P05B2-C1Q2-04 | J5 dropped (bounds, S5 later 3); offline-only (B) not composed | CORRECT | closed |
+| P05B2-C1Q2-05 | S3-c (A) 1/1 and S4-c 0/1 folded: J1 19, J2 20 | correction | open |
+| P05B2-C1Q2-06 | S1 J1 cell: own composite 1/1 vs (A)-with-(C) 2/1; worse taken against the stated rule | IMPRECISE (state, or ask Seat 1) | open |
+| P05B2-C1Q2-07 | S8 J1 cell rests on "U reaches the producer in capped halls"; U silent in capped 100 m cubes (SE ≤ 0.15 dB) | TENSION MISREAD (unmarked †; winner unchanged) | open |
+| P05B2-C1Q2-08 | J2 S7 cell read from conditions not in J2 (should be 1/2; J2 21) | TENSION MISREAD (winner unchanged; prevents a tie) | open |
+| P05B2-C1Q2-09 | L1, L2, L4, L6 | CORRECT | closed |
+| P05B2-C1Q2-10 | L3 stale figures (0.29–1.33 → 0.13–1.33; low-α 0.44–0.50 at 1 024) | IMPRECISE | open |
+| P05B2-C1Q2-11 | L5 / For Maisara: "capped class = synthetic s = 1 layouts"; "realistic halls not affected" (100 m cubes capped, SE 0.09–0.15 dB; C18 is four 20 × 30 × 10 m rooms) | INCONSISTENT: fix before the record goes forward | open |
+| P05B2-C1Q2-12 | Seat 5's margin arithmetic (≈ 22 % + 5 %) already above Seat 3's 20 % trigger; not registered | debt not registered: fix before the record goes forward | open |
+| P05B2-C1Q2-13 | §5 plan list gaps (Seat 6 (a) escalation; (C) forward on any gate failure; research questions of Seats 5 and 7; Seat 1's step-size ruling; phase-10 cross-reference) | correction (/fix-plan) | open |
+| P05B2-C1Q2-14 | 47 final verdict: J1 (Challenge 1 yes, Q2a (A) now, (C) scheduled before the first public release) | SURVIVES WITH CORRECTIONS (winner unchanged under every reading) | open until applied |
