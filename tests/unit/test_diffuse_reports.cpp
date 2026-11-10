@@ -300,8 +300,8 @@ TEST_CASE(
             for (std::size_t b = 0; b < 8; ++b)
             {
                 const double a = r.targets[e][b], gb = g.targets[e][b];
-                if (gb == 0.0)
-                    CHECK(a == 0.0);
+                if (std::fpclassify(gb) == FP_ZERO)
+                    CHECK(std::fpclassify(a) == FP_ZERO);
                 else
                     CHECK(std::abs(a / gb - 1.0) <= 1e-7);
             }

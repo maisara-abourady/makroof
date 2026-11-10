@@ -501,56 +501,56 @@ bool writeDiagnostics(const std::filesystem::path& path, const contract::SceneDe
         os << ",\"expectedMixS\":";
         num(e.expectedMixS);
         // Phase 05h (AX37, AX41, AX44): the diffuse part of the matching beside the AX16 E_target.
-        const auto& d = m.diffuse;
+        const auto& dm = m.diffuse;
         os << ",\"axisSharesBasis\":\"specular entries only\"";
         os << ",\"approximate\":" << (m.approximate ? "true" : "false");
-        os << ",\"diffuse\":{\"computed\":" << (d.computed ? "true" : "false");
+        os << ",\"diffuse\":{\"computed\":" << (dm.computed ? "true" : "false");
         os << ",\"targetEnergyAx16\":";
-        arr(d.bandsAx16Energy);
+        arr(dm.bandsAx16Energy);
         os << ",\"targetEnergySpecular\":";
-        arr(d.bandsSpecularEnergy);
+        arr(dm.bandsSpecularEnergy);
         os << ",\"targetEnergyDiffuse\":";
-        arr(d.bandsDiffuseEnergy);
+        arr(dm.bandsDiffuseEnergy);
         os << ",\"targetEnergyDiffuseReferenceUnits\":";
-        arr(d.bandsDiffuseReference);
-        os << ",\"nStar\":" << d.nStar << ",\"nNeed\":" << d.nNeed << ",\"n\":" << d.n
-           << ",\"nCap\":" << d.nCap << ",\"capHit\":" << (d.capHit ? "true" : "false")
-           << ",\"floorTruncated\":" << (d.floorTruncated ? "true" : "false")
-           << ",\"pilotFloor\":" << (d.pilotFloor ? "true" : "false")
-           << ",\"pilotShipped\":" << (d.pilotShipped ? "true" : "false") << ",\"achievedSeDb\":";
-        num(d.achievedSeDb);
+        arr(dm.bandsDiffuseReference);
+        os << ",\"nStar\":" << dm.nStar << ",\"nNeed\":" << dm.nNeed << ",\"n\":" << dm.n
+           << ",\"nCap\":" << dm.nCap << ",\"capHit\":" << (dm.capHit ? "true" : "false")
+           << ",\"floorTruncated\":" << (dm.floorTruncated ? "true" : "false")
+           << ",\"pilotFloor\":" << (dm.pilotFloor ? "true" : "false")
+           << ",\"pilotShipped\":" << (dm.pilotShipped ? "true" : "false") << ",\"achievedSeDb\":";
+        num(dm.achievedSeDb);
         os << ",\"seDb\":";
-        arr(d.bandsSeDb);
+        arr(dm.bandsSeDb);
         os << ",\"pilotSeDb\":";
-        arr(d.bandsPilotSeDb);
+        arr(dm.bandsPilotSeDb);
         os << ",\"r\":";
-        arr(d.bandsR);
+        arr(dm.bandsR);
         os << ",\"vov\":";
-        arr(d.bandsVov);
+        arr(dm.bandsVov);
         os << ",\"pilotVov\":";
-        arr(d.bandsPilotVov);
+        arr(dm.bandsPilotVov);
         os << ",\"vovUnion\":";
-        arr(d.bandsVovUnion);
+        arr(dm.bandsVovUnion);
         os << ",\"vovUnionMax\":";
-        num(d.vovUnion);
+        num(dm.vovUnion);
         os << ",\"slope\":";
-        arr(d.bandsSlope);
+        arr(dm.bandsSlope);
         os << ",\"weight\":";
-        num(d.weight);
+        num(dm.weight);
         os << ",\"listenerDistanceM\":";
-        num(d.listenerDistanceM);
+        num(dm.listenerDistanceM);
         os << ",\"emitterDistanceM\":";
-        num(d.emitterDistanceM);
-        os << ",\"bothNear\":" << (d.bothNear ? "true" : "false") << ",\"realisedWorkRatio\":";
-        num(d.realisedWorkRatio);
-        os << ",\"wPilot\":" << d.wPilot << ",\"wFinal\":" << d.wFinal << ",\"wScene\":" << d.wScene
+        num(dm.emitterDistanceM);
+        os << ",\"bothNear\":" << (dm.bothNear ? "true" : "false") << ",\"realisedWorkRatio\":";
+        num(dm.realisedWorkRatio);
+        os << ",\"wPilot\":" << dm.wPilot << ",\"wFinal\":" << dm.wFinal << ",\"wScene\":" << dm.wScene
            << ",\"faceHash\":\"0x";
         {
             char buf[32];
-            std::snprintf(buf, sizeof buf, "%016llx", static_cast<unsigned long long>(d.faceHash));
+            std::snprintf(buf, sizeof buf, "%016llx", static_cast<unsigned long long>(dm.faceHash));
             os << buf;
         }
-        os << "\",\"latticeImages\":" << d.latticeImages << '}';
+        os << "\",\"latticeImages\":" << dm.latticeImages << '}';
         os << '}';
     }
     os << "]}\n";

@@ -113,15 +113,6 @@ contract::SceneDescription aq10Room()
 }
 
 // Peak resident set (Linux: VmHWM from /proc/self/status, kB; 0 elsewhere).
-long peakRssKb()
-{
-    std::ifstream in("/proc/self/status");
-    std::string line;
-    while (std::getline(in, line))
-        if (line.rfind("VmHWM:", 0) == 0)
-            return std::stol(line.substr(6));
-    return 0;
-}
 long currentRssKb()
 {
     std::ifstream in("/proc/self/status");
@@ -299,7 +290,7 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                 "delta %.0f MB (sampled max %ld kB, RSS before %ld kB)%s\n",
                 key, fs, sp.min, sp.median, sp.max, deltaMb, rssMax.load(), rssBefore,
                 rssBefore == 0 ? "  [RSS n/a on this OS: recorded, not gated]" : "");
-            const bool gatedBuild = std::string(key) != "cube100_lowalpha0.05_s1" && fs == 96000.0;
+            const bool gatedBuild = std::string(key) != "cube100_lowalpha0.05_s1" && fs > 90000.0;
 #if defined(__linux__)
             if (gatedBuild && rssBefore > 0)
                 REQUIRE(deltaMb
