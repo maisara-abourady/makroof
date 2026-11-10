@@ -59,3 +59,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `51-decider-addendum-J1.md` | decider | addendum to 47: corrections 1–9 applied; J1 19 vs J2 21; L3/L5 corrected; margin risk registered; complete plan list |
 | `52-interrogator-J1-plan-diff-check.md` | interrogator | J1 plan edits faithful; two triggers need the decider (Seat 1 floor escalation fires today; phase-12 capped-class reopening); five /fix-plan items |
 | `53-decider-J1-trigger-definitions.md` | decider | J1 trigger definitions: Seat 1 floor counted with (a)–(d), starting state recorded; phase-12 reopening only after the placement fix fails, SE ≤ 0.33 dB reported only |
+| `54-interrogator-J1-triggers-round2.md` | interrogator | J1 edits faithful; Trigger 2 SURVIVES; Trigger 1 SURVIVES WITH CORRECTIONS (gated cube s unpinned; Seat 1 to confirm clause (d) at the cubes; rise tolerance; placement set) |

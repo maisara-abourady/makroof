@@ -2160,3 +2160,17 @@ J1 plan-edit diff check (`docs/review/phase-05b2/52-interrogator-J1-plan-diff-ch
 | P05B2-J1FX-12 | phase-10 lacks the pointer to 07c; AQ10 stray punctuation | IMPRECISE (/fix-plan) | open |
 
 J1FX-06 and J1FX-07 closed on decider file 53 (`docs/review/phase-05b2/53-decider-J1-trigger-definitions.md`). The first trigger is Seat 1's floor counted with clauses (a)–(d), with the starting state recorded and escalated once. The second is the phase-12 reopening, which applies only after the placement fix fails; capped presets at SE ≤ 0.33 dB are reported only. Items J1FX-08 to -12 are applied by the plan-editor (2026-11-10).
+
+
+Round 2 of the J1 diff check and decision mode on file 53 (`docs/review/phase-05b2/54-interrogator-J1-triggers-round2.md`, 2026-11-10):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-J1FX-13 | Trigger 1 copied word for word into AQ10, AX38 4c, phase-05h §3; phase-05h §2 lists both triggers | CORRECT | closed |
+| P05B2-J1FX-14 | Trigger 2 copied word for word into phase-12; AX41 cross-reference | CORRECT | closed |
+| P05B2-J1FX-15 | 52 items 4–7 applied (phase-13 / 07c dependency with versioning fallback; 07c §6 conditional; 07c §4 ordering note; phase-10 pointer; AQ10 punctuation) | CORRECT | closed (closes J1FX-08…12) |
+| P05B2-J1FX-16 | File 53 Trigger 2 against Seats 9, 6 and 8 | SURVIVES | closed (closes J1FX-07) |
+| P05B2-J1FX-17 | File 53 Trigger 1: quotes faithful; flutter cube met via (a); closed s = 0.3 cubes met via (d) (C15 p95 ≤ 0.28 dB, per-emitter rule) | SURVIVES WITH CORRECTIONS | open |
+| P05B2-J1FX-18 | Gated closed low-α cube's s not pinned; at s = 1 SE 0.44–0.50 dB fails the floor on day one | IMPRECISE (premise): pin in AX38 4c | open |
+| P05B2-J1FX-19 | Clause (d) applied to the gated cubes beyond Seat 1's stated scope (layout 5 under (B)); Seat 1's D-T1.3 2/2 counts the cubes' VOV as a failure | needs Seat 1 confirmation | open |
+| P05B2-J1FX-20 | "Any further rise" without tolerance; "every reasonable placement" undefined | IMPRECISE | open |
