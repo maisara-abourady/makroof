@@ -251,14 +251,17 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
     std::vector<PerEmitter> perChannel(static_cast<std::size_t>(numEmitters));
     std::vector<EmitterPlan> plans(static_cast<std::size_t>(numEmitters));
     std::size_t length = 1;
+    // Phase 05h: every emitter is planned (the diffuse solve is one per scene for both emitters, AX39 /
+    // AX41, so a validation build of one channel matches the full build bit for bit); only the
+    // present ones are rendered.
+    std::vector<char> planned(static_cast<std::size_t>(numEmitters), 0);
     for (const auto& emitter : scene.emitters)
     {
         if (emitter.channel < 0 || emitter.channel >= numEmitters)
             continue; // impossible for a validated scene
-        if (options.onlyEmitterChannel >= 0 && emitter.channel != options.onlyEmitterChannel)
-            continue; // validation: one emitter only
         auto& pe = perChannel[static_cast<std::size_t>(emitter.channel)];
-        pe.present = true;
+        pe.present = options.onlyEmitterChannel < 0 || emitter.channel == options.onlyEmitterChannel;
+        planned[static_cast<std::size_t>(emitter.channel)] = 1;
         EmitterPlan plan = planEmitter(scene, emitter, options, decay, lengthS, bandEnergy, cap);
         pe.mixing = plan.mixing;
         pe.match = plan.match;
@@ -269,7 +272,7 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
         pe.diag.capTimeS = plan.capTimeS;
         const ism::ImageSourceSet& set = plan.set;
         pe.diag.handoverS = pe.mixing.mixS;
-        if (!options.tailOnly)
+        if (!options.tailOnly && pe.present)
             pe.early = ism::renderImageSources(set.images, shift, filterbank);
         length = std::max({length, pe.early.size(), tailEnd});
         pe.diag.channel = emitter.channel;
@@ -295,7 +298,7 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
         std::vector<std::size_t> channels;
         for (std::size_t e = 0; e < perChannel.size(); ++e)
         {
-            if (!perChannel[e].present)
+            if (!planned[e])
                 continue;
             const EmitterPlan& plan = plans[e];
             const auto it = std::find_if(scene.emitters.begin(), scene.emitters.end(), [&](const auto& em) {
@@ -327,9 +330,9 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
                                 bandEnergy);
         }
     }
-    for (auto& pe : perChannel)
-        if (pe.present)
-            pe.diag.match = pe.match;
+    for (std::size_t e = 0; e < perChannel.size(); ++e)
+        if (planned[e])
+            perChannel[e].diag.match = perChannel[e].match;
 
     std::vector<RoomIR> irs;
     irs.reserve(seeds.size());
