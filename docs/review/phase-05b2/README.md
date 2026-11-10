@@ -45,3 +45,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `37-decider-round4-addendum.md` | decider | addendum: S5-b and S6-b at 1/1 with their conditions folded in (integer cap arithmetic, n\* and N in D5, realised-work assertion; union VOV; unmoved-emitter wording); Q2b cost line restated |
 | `38-orchestrator-C16c.md` | orchestrator | C16c: union VOV at n\*_max 8 000 changes U in no case |
 | `39-interrogator-round3-final-T1-T2-T6.md` | interrogator | final round: all survive; items 1–2 fixed in the packet before Maisara; items 3–6 (cap-hit definition, D-T1.4 qualifier, final U list, BRAS MC SE) to /fix-plan |
+| `40-packet-for-Maisara.md` | orchestrator | the accept/veto packet: all decisions in one table; Challenge 1, Q1, Q2a, Q2b (interrogator final items 1–2 applied) |
