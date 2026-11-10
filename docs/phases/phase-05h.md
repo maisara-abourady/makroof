@@ -166,17 +166,17 @@ after seeing the gate's result.
     **Starting state (D-H1 (ii), R-e; decider file 19, interrogator file 21; Seat 5 file 17 L155–158).**
     The starting state per gated scene and emitter is the **record** in
     `docs/review/phase-05h/10-orchestrator-clause-d-replicates.md` (cited in the 05h PR and the ledger):
-    the fixed-key achieved SE (deterministic, AX40 / D7; the cross-OS E_target comparison of scope 9 shows
+    the fixed-key achieved SE (deterministic, AX40 / D7; the cross-OS E_target comparison of phase-05h scope 9 shows
     whether it differs by OS) and the replicate p95 (30 disjoint pre-registered streams). It is a record,
     not a golden: no test asserts on it, no file is regenerated, and the margin report reproduces it as its
     baseline column. If the floor already fails there at a gated scene, that is recorded as a finding and
     escalated once (at the pinned W_max it does not fail: H1-F3; the reported s = 1 cube's failure is a
-    finding of the reported set, recorded beside section 2 item 1). **Recorded** (a flagged line in the
+    finding of the reported set, recorded beside phase-05h §2 item 1). **Recorded** (a flagged line in the
     margin report of every later run that re-derives W_max or re-baselines the non-diffuse build, beside
     the baseline column): any rise of the achieved SE ≥ 0.05 dB or of the replicate p95 ≥ 0.10 dB above the
     starting state (two constants in plan text). The starting-state values are constants in the test, per
     gated scene, with the file-10 provenance in a comment, re-pinned with a CHANGELOG reason whenever W_max
-    or n\*_max is re-derived (Seat 5, file 17 L155–158). **Escalated** (section 2 item 1, to Maisara with
+    or n\*_max is re-derived (Seat 5, file 17 L155–158). **Escalated** (phase-05h §2 item 1, to Maisara with
     the SE, the VOV and the p95): the achieved SE crossing 0.33 dB, or the replicate p95 crossing 1 dB
     (1 jnd of G, Vorländer Table 6.1), at a gated scene, or the p95 crossing 1 dB at the reported s = 1
     cube. Nothing else escalates.
@@ -242,11 +242,10 @@ after seeing the gate's result.
 6. **Costs:** W1/W2 (AQ10) including the diffuse share, peak memory per instance at the AQ10 room, CR4
    and the largest supported room, the AX38 4c records and the AX38 (iv) multi-instance records, the flags
    at the gated scenes and the realised work against W_scene (AX41), recorded in §0 row 05h; the AX38 4c
-   escalation applied to them. **C++ re-derivation** of W_max (from the C++ cost at the CI runner's pool
-   size, the worst gated cost and the worst OS restore build, with D-H1's margin) and of n\*_max (from the
-   C++ W1 measurement, diffuse share ≤ 25 ms for two emitters), once, pinned as cross-platform constants
-   (AX41); the realised-work ratio pre-registered from C++ data before the first CI run. If n\*_max comes
-   out below 1 000, it goes back to Seats 1, 3 and 4.
+   escalation applied to them. W_max and n\*_max are pinned by D-H1 (iv) (3.05 M per emitter, 1 024; no
+   margin: the (A) formula gives no W_max ≥ 0 on macOS, section 3) as cross-platform constants (AX41); the
+   realised-work ratio 1.02 is pre-registered from the C++ data (D-H1 (iii)). n\*_max came out at 1 024
+   (W1 diffuse share ≤ 14 ms), so the "below 1 000 → Seats 1, 3 and 4" rule did not fire.
 7. **Plan bookkeeping** through `/fix-plan`: D-H1's AX change; AX16 "switched" confirmed with the
    implementation; the re-derived W_max and n\*_max in AX41 (and AQ10's amendment if they move); §6 rows.
 8. **Listening pack:** a `phase-05h` entry: Phase 04 tail level vs switched tail level, loudness-matched
@@ -359,12 +358,12 @@ concentrated absorption, marked provisional there, are re-listened on the switch
 Equivalence of the `src/sim` formulation to the validated model (not just to its numbers on a few
 cases); the independence of the tracer comparison; the AX22 interaction (AX37 (5.2)); memory scaling at
 100 m (AX38); determinism (the D1–D7 package, AX39); the AX38 gate (threading, three-class order,
-`reset()`); the cap-hit and floor-truncated flags (AX41); D-H1's margin; no per-scene logic.
+`reset()`); the cap-hit and floor-truncated flags (AX41); D-H1's register (v); no per-scene logic.
 
 ## 8. Risks and atomicity
 
-- The plan is recorded first: done (AX37–AX46, committed in phase 05b). D-H1 is the one decision still
-  open, and it blocks only the restore gate.
+- The plan is recorded first: done (AX37–AX46, committed in phase 05b). D-H1 is decided (section 3,
+  2026-11-10); the restore gate is implemented in its register form (section 5).
 - **Atomicity:** the matching change does not land in `src/sim` (commit to the branch) without, in the
   same push, the `ref_hybrid` agreement test, the tracer test and the updated goldens, and the PR is not
   opened before a manual nightly BRAS run on that push is green (CLAUDE.md "When CI runs").
