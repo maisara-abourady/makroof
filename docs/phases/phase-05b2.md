@@ -407,7 +407,8 @@ order, `reset()`); the cap-hit and floor-truncated flags (AX41); no per-scene lo
 Early rendering of scattered energy (not promoted; re-run rule AX36 (e)); per-band scattering (B10);
 the tail decay rate (B12); Phase 08 directions beyond D-T5 (3); Phase 10 caching beyond what D-T1 needs;
 any per-scene tuning; moving the diffuse solve off the synchronous restore and prepare (Q2a (C), phase-13
-scope 13).
+scope 13). *Note (2026-11-10): Q2a (C) is now its own phase, [`phase-07c.md`](phase-07c.md), not
+phase-13 scope 13; this section is kept as the record.*
 
 ## 10. Definition of done
 

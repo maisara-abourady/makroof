@@ -194,14 +194,17 @@ the Phase 06 convolver.
    that updates the specular and directional part without waiting for the diffuse solve, not a change to
    the gate. Seat 1 reads AX3's centroid-following yaw under the source-movement rows, not the
    head-rotation row [Inferred]; item 8 still measures.
-9. **Records from phase 05b (AX38):** W1/W2 per output mode with the diffuse share shown separately
+9. **Records from phase 05b (AX38)** (only if 05h is `done` when this phase runs; if this phase goes first
+   under AX37 (5.3), phase-05h scope 10 carries them):** W1/W2 per output mode with the diffuse share shown separately
    (AX38 4b); the AX38 (iv) multi-instance records repeated in binaural mode, with the gate wait shown
    separately.
 10. **Restore gate in the heaviest mode (AX38 4c, AQ10; board answer, decider files 47 §4 (i), 51 §4
-    item 5):** from this phase on, the blocking 100 m, 96 kHz restore gate measures the heaviest output
-    mode, and W_max stays one constant for all modes. If the heaviest-mode build makes the pinned W_max
-    fail the gate, phase-07c is brought forward to land before this phase's goldens are frozen (W_max is
-    then re-derived once, under phase-07c, with one golden round); W_max is never cut to pass. Goldens in
+    item 5; only if 05h is `done` when this phase runs; if this phase goes first under AX37 (5.3),
+    phase-05h scope 10 carries it):** from this phase on, the blocking 100 m, 96 kHz restore gate measures
+    the heaviest output mode, and W_max stays one constant for all modes. If the heaviest-mode build makes
+    the pinned W_max fail the gate, phase-07c (which depends on 05h) is brought forward, once 05h is
+    `done`, to land before this phase's goldens are frozen (W_max is then re-derived once, under
+    phase-07c, with one golden round); W_max is never cut to pass. Goldens in
     capped rooms carry a tolerance derived from the achieved SE, unless phase-07c has landed before they
     are frozen.
 
@@ -260,9 +263,11 @@ near-field HRTF correction (sources < 1 m; note it as a follow-up).
       the option exists only in the CLI (no scene field, no host parameter; `hrtfId` stays the schema
       const), and the scene validator still rejects any other `hrtfId`.
 - [ ] **E_b parity (AX44):** E_b is bit-identical between omni and binaural and between the ears.
-- [ ] All earlier tests still pass. pluginval passes. Plugin CPU benchmark is recorded; W1/W2 per output
-      mode with the diffuse share and the binaural AX38 (iv) records are recorded (scope 9).
-- [ ] **Restore gate, heaviest mode (scope 10):** 14 × t_restore ≤ 30 s at the AX38 4c scenes in the
+- [ ] All earlier tests still pass. pluginval passes. Plugin CPU benchmark is recorded. If 05h is `done`:
+      W1/W2 per output mode with the diffuse share and the binaural AX38 (iv) records are recorded
+      (scope 9); otherwise phase-05h scope 10 records them.
+- [ ] **Restore gate, heaviest mode (scope 10; if 05h is `done`, otherwise carried by phase-05h scope
+      10):** 14 × t_restore ≤ 30 s at the AX38 4c scenes in the
       heaviest output mode, with the one W_max constant; capped-room goldens with the SE-derived
       tolerance unless phase-07c has landed.
 

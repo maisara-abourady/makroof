@@ -46,7 +46,9 @@ synchronous paths so W_max no longer has to fit the restore watchdog.
   If it lands after release, the estimator parameters are versioned in saved state (Seats 5, 7;
   condition 1).
 - **Brought ahead of Phase 08's golden freeze** if Phase 08's heaviest-mode build makes the pinned W_max
-  fail the restore gate (AX38 4c; phase-08 scope 10).
+  fail the restore gate (AX38 4c; phase-08 scope 10). That gate exists only once 05h is `done`, so this
+  phase comes forward only after 05h (its dependency); if Phase 08 went first, the heaviest-mode gate is
+  run in phase-05h scope 10.
 - **Brought forward on any restore-gate failure** (AX38 4c: a gate failure is a defect, remedied only by
   moving work off the restore path).
 

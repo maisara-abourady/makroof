@@ -51,6 +51,9 @@ def gate_b(scope6: dict, results: dict) -> dict:
     return out
 
 
+SESSION2 = ("Session 2 outcome (2026-11-10): R1 certified at 2.5 m in CR2, CR3 and CR4 at 500 Hz–2 kHz at the Phase 05 positions (section 5b); R2 decided as D-T1.1 (AX39); the switch is decided (AX37–AX46, accepted by Maisara 2026-11-10) and is implemented in phase 05h. Until 05h is done, `src/sim` still matches the tail level on the AX16 entries and ΔL_b,tr (section 5) is a known deficit.")
+
+
 def write() -> str:
     d = json.loads(DATA.read_text())
     s6 = json.loads(SCOPE6.read_text())
@@ -74,7 +77,8 @@ def write() -> str:
         w(f"- **Window-level check** (scope 4): hybrid E_target vs tracer within ±1 dB everywhere: "
           f"{'yes' if g['window_pass'] else 'no'} (max |Δ| {g['max_abs_hybrid_vs_tracer_db']:.2f} dB; SE ≤ "
           f"{g['max_se_db']:.3f} dB); max |ΔL_b,tr| {g['max_abs_delta_lb_tr_db']:.2f} dB → branch **{g['branch']}**, "
-          f"tail-level switch to the hybrid's propagated diffuse energy: **{g['tail_level_switch']}** (section 5).")
+          f"tail-level switch to the hybrid's propagated diffuse energy: **{g['tail_level_switch']}** (section 5; session 1).")
+        w(f"- {SESSION2}")
     else:
         w("- Gate (A) and the window-level check: not computed yet.")
     w("")
@@ -180,8 +184,7 @@ def write() -> str:
             cert = {True: "yes", False: "no", None: "open (compute limit)"}[r["certified_at_2.5"]]
             w(f"| {room} | {a['patches']} / {b['patches']} | {ch} | {r['a_star_change']:.3%} | {cert} |")
         w("")
-        w("R2 (formulation, memory and rebuild cost across the supported room range) and Maisara's decision are still "
-          "needed before any `src/sim` switch (AX36 (c)); until then AX16 records ΔL_b,tr (section 5) as a known deficit.")
+        w(SESSION2)
         w("")
     # 6 gate B
     w("## 6. Gate (B) on the Phase 05 numbers (scope 6; `report-phase05.md` §6b)")

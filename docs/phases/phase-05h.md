@@ -218,7 +218,11 @@ after seeing the gate's result.
    where the pilot estimate ships; the cross-OS E_target comparison; the RNG known-answer test; the D5
    hashes with n\* and N; the pre-registered flags at the gated scenes.
 10. **Only if Phase 08 went first** (AX37 (5.3), Seat 4 (iii)): re-render the binaural goldens, re-measure
-    binaural W1/W2 and re-run phase-08 item 8.
+    binaural W1/W2 and re-run phase-08 item 8. This also carries phase-08 scopes 9 and 10, which Phase 08
+    could not meet before this phase: W1/W2 per output mode with the diffuse share and the AX38 (iv)
+    records in binaural mode with the gate wait shown separately (phase-08 scope 9); the blocking restore
+    gate measured in the heaviest output mode with one W_max constant, and capped-room binaural goldens
+    with the SE-derived tolerance unless phase-07c has landed (phase-08 scope 10).
 
 ## 5. Acceptance criteria — automated
 
@@ -256,6 +260,9 @@ after seeing the gate's result.
       Release build, with D-H1's margin taken from W_max. A failure is a defect: no re-run, no W_max cut
       after pinning, no room-range narrowing, no formulation seam; the remedy is bringing phase-07c forward.
 - [ ] The solve seam: restore, prepare and `reset()` call the diffuse solve through one function (scope 2).
+- [ ] Only if Phase 08 went first (scope 10): binaural goldens re-rendered, binaural W1/W2 per mode with
+      the diffuse share and the binaural AX38 (iv) records recorded, phase-08 item 8 re-run, and the
+      restore gate passed in the heaviest output mode (phase-08 scopes 9 and 10).
 - [ ] Trigger 1's clause (d) replicates at the gated cubes run on the C++ shipping rule, disjoint
       pre-registered streams (section 3, D-H1; Seat 1, file 55).
 - [ ] Goldens updated only through `update_goldens.py` with the reason; nightly BRAS green; report

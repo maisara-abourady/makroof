@@ -58,8 +58,8 @@ def test_ell_ladder_consistent():
         assert max(max(v.values()) for v in e["factorisation_check_2.5"].values()) < 1e-3
 
 
-@pytest.mark.skipif("gate" not in D, reason="window check not run")
-def test_window_check_follows_ax35():
+def test_window_check_follows_ax36():
+    assert "gate" in D, "window check record missing (phase-05b scope 4)"
     g = D["gate"]
     # AX36 (b): gate (A) per bin and the bias trigger are not evaluated; no per-bin numbers are stored
     assert g["gate_A"] == p.NOT_EVALUATED and g["bias_diagnosis"] == p.NOT_EVALUATED
@@ -112,3 +112,29 @@ def test_chunked_solver_equals_lean_solver():
         ref = p.lean_solve(rk, inc, gat, b=b)
         got = p.chunked_solve(rk, inc, gat, b=b, chunk=5, workers=1)
         assert np.max(np.abs(got - ref)) <= 1e-5 * np.max(ref)
+
+
+def test_r1_certification_rule():
+    """AX36 (c), R1: each selected BRAS room's tail path is certified at 2.5 m iff both E_target and a* change by
+    < 1 % from 2.5 to 1.25 m (500 Hz–2 kHz, all pairs); phase 05b2 needs all three rooms certified."""
+    r1 = D["r1"]
+    assert r1["rungs_m"] == [2.5, 1.25] and r1["bands_hz"] == [500, 1000, 2000]
+    assert set(r1["rooms"]) == {"CR2", "CR3", "CR4"}
+    for room, r in r1["rooms"].items():
+        ok = r["e_target_change"] < p.ELL_TOL and r["a_star_change"] < p.ELL_TOL
+        assert r["certified_at_2.5"] == ok, room
+        assert r["certified_at_2.5"], room
+    assert abs(r1["rooms"]["CR4"]["e_target_change"] - 0.0014035630659943177) < 1e-12  # report §5b: 0.140 %
+
+
+def test_outer_band_tracer_check():
+    """AX37 (5.1): the tracer check at 125 Hz, 4 kHz and 8 kHz on layouts 4 and 5 at s = 1 (±1 dB, SE ≤ 1/3 dB)."""
+    o = D["outer_bands"]
+    assert o["bands_hz"] == [125, 4000, 8000] and o["tolerance_db"] == p.WINDOW_DB
+    worst = 0.0
+    for c in o["cases"].values():
+        for v in c["bands"].values():
+            worst = max(worst, abs(v["hybrid_vs_tracer_db"]))
+            assert v["se_db"] <= o["se_max_db"]
+    assert abs(worst - o["max_abs_hybrid_vs_tracer_db"]) < 1e-12
+    assert o["pass"] == (worst <= o["tolerance_db"]) and o["pass"]

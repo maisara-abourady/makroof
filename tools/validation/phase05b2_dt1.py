@@ -26,7 +26,6 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
-import resource
 import sys
 import time
 
@@ -287,7 +286,7 @@ def step_dense():
     targets = [rh.target_hybrid(p, env[0, :, i]) for i, p in enumerate(plans)]
     out = {"W1": {"patches": rk.N, "bins": rk.T, "kernel_gb": rk.K.nbytes / 1e9,
                   "kernel_build_s": t1 - t0, "injection_gather_s": t2 - t1, "solve_s": t3 - t2, "generations": int(gens.max()),
-                  "peak_rss_gb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6,
+                  "peak_rss_gb": __import__("resource").getrusage(__import__("resource").RUSAGE_SELF).ru_maxrss / 1e6,  # kB on Linux
                   "E_target_1k": [float(t[4]) for t in targets],
                   "dL_ax16_vs_hybrid_db_1k": [float(10 * np.log10(p["target_ax16"][4] / t[4])) for p, t in zip(plans, targets)]}}
 
@@ -773,7 +772,7 @@ def step_c9b(npaths: int = 8000):
                                    "ms_for_se": {str(t): 1e3 * dtm * _need(npaths, worst, t) / npaths for t in SE_TARGETS_DB},
                                    "image_table_mb": M * 6 * 12 * 8 / 1e6, "worst_band": int(np.argmax(s["se_db"]))}
         log(c["name"], round(worst, 3), out["cases"][c["name"]]["ms_for_se"])
-    out["process_peak_rss_mb"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e3
+    out["process_peak_rss_mb"] = __import__("resource").getrusage(__import__("resource").RUSAGE_SELF).ru_maxrss / 1e3  # kB on Linux
     d = load(); d["c9b"] = out; save(d)
 
 # ------------------------------------------------------------------------------------------
