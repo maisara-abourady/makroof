@@ -2,7 +2,7 @@
 
 Size: **M** (about one phase of Phase 07 rework, decider file 47; split into `phase-07d.md` if it cannot be
 finished in two sessions, CLAUDE.md) · Depends on: 05h, 07 `done` · **Must be `done` before Phase 13's
-beta** · Read first, in this order: `CLAUDE.md`; this file in full; `docs/BUILD_PLAN.md` §2 **AQ4, AQ10
+beta** (or phase-13 scope 13's versioning fallback recorded) · Read first, in this order: `CLAUDE.md`; this file in full; `docs/BUILD_PLAN.md` §2 **AQ4, AQ10
 (amended 2026-11-10), AX5, AX18, AX33, AX38, AX41, AX44**; `docs/phases/phase-05h.md` (§3 D-H1, §4
 scope 2, the solve seam); `docs/phases/phase-07.md` (state restore, reset sequence, offline path);
 `docs/review/phase-05b2/47-decider-board-answers-C1-Q2a-final.md` §4 and
@@ -61,7 +61,8 @@ Decided through the board loop and recorded as AX rows before any code; not by t
 - **D-C3, the solved result in saved state:** Seat 8's question whether the solved result can travel in
   the saved state, a feasibility call for Seat 5.
 
-**Researcher questions** (before D-C1–D-C3; decider file 51 §4 item 9):
+**Researcher questions** (decider file 51 §4 item 9; asking them before D-C1–D-C3 is the plan-editor's
+ordering, not the decider's):
 - how long hosts tolerate a blocked `setStateInformation` (Seat 5);
 - which hosts do not signal offline rendering reliably (Seat 5);
 - host hang dialogs and their timeouts in Logic, Live, Cubase and Bitwig (Seat 7).
@@ -122,7 +123,8 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()`.
 - [ ] If E_b is saved in state: the state-version AX applied, old state fixtures still load (Phase 07 rule).
 - [ ] E_b bit-identical between modes and ears (AX44); allocation tracker, TSan `[conv],[pipeline]`,
       pluginval strictness 10 and auval pass.
-- [ ] The Phase 12 (ii) preset check re-run under the new W_max and reported.
+- [ ] The Phase 12 (ii) preset check re-run under the new W_max and reported, if Phase 12 has run;
+      otherwise Phase 12 runs it at 07c's W_max.
 
 ## 7. Listening checklist (Maisara)
 

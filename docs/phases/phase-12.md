@@ -47,10 +47,15 @@ data only. The engine must have no idea presets exist (PRD core principle, NFR-8
 7. **Preset placements (AX44, Seat 6 (ii)):** no preset's default placement may raise the "approximate"
    note U; if one does, the preset's placement is changed, not the predicate. This check is re-run under
    phase-07c's W_max once that phase has landed (decider files 47 §4 (iii) 8, 51 §4 item 7).
-   **Capped class (Seat 9):** hall presets, rooms near 100 m included, are checked for capped-class
-   membership (AX41 cap hit) at the final W_max and reported (the capped class is the long-window
-   synthetic s = 1 layouts and rooms near 100 m, file 51 §2 L5; a hall preset in it reopens the board answer,
-   file 47 §4, strongest objection).
+   **Hall presets and J1** (decider file 53 §2, exact text). Before Phase 12 presets are frozen, every
+   preset's default placement is computed at the final W_max, reporting SE, cap hit and U (Seat 9).
+   - A preset whose default placement raises U is first fixed by changing its placement, never the
+     predicate (Seat 6 (ii)).
+   - If U stays raised through the capped branch (cap hit AND achieved SE > 0.33 dB) at every reasonable
+     placement, because the whole window is long, the preset **reopens J1** (bring (C) forward, or
+     re-size W_max), and no preset is relabelled or re-materialed to hide it.
+   - Capped presets with achieved SE ≤ 0.33 dB, where U is silent (for example rooms near 100 m at
+     SE ≤ 0.15 dB, C16 (f)), are **reported only**, with their SE.
 8. **Room range (AX38 (vi)):** D-T3 was not needed (2026-11-10). If a D-T3 pass is ever triggered by the
    AX38 ceiling, its cost per scene class (closed reverberant box against open-face outdoor box) reaches
    Maisara before the presets are built.

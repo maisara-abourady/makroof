@@ -53,7 +53,10 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
    longer than 20 ms, the next build starts immediately with the latest scene. The audio thread keeps
    using the last IR and never blocks. Track and expose "IR staleness" (time between the parameter
    change and the IR going live) as a debug metric. Time spent waiting at the diffuse-solve gate counts in
-   it (AX38 (iii)); the same wait drives Phase 11's "settling" state.
+   it (AX38 (iii)); the same wait drives Phase 11's "settling" state. The split update (AX38 (v): a
+   Phase 10 AX that updates the specular and directional part without waiting for the diffuse solve) is
+   designed together with [`phase-07c.md`](phase-07c.md) condition 4 (atomic swap with an AQ4 crossfade;
+   the ISM update never held behind the diffuse solve), so it is not designed twice.
 4. **Parameter smoothing:** the 20 ms output-trim smoothing stays. Positions aren't smoothed per sample
    (they only drive IR rebuilds). Room-size changes go through the same path. Document that room-size
    automation at large rooms is stepwise (each step a full rebuild, AQ10; AX38 4c hand-off).

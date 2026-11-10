@@ -80,9 +80,12 @@ verbatim: "I accept the board's answer by definition."; ledger P05B2-M-01…07):
 
 ## 2. Raise with Maisara (first message and PR)
 
-1. D-H1's outcome (section 3), **only if** the non-diffuse build alone leaves W_max below Seat 1's floor
-   (SE ≤ 0.33 dB with VOV < 0.1) at a gated scene: it goes to her before any range change (AX38 4c).
-   Otherwise none (a margin above about 20 % of W_max returns to the seats, not to her).
+1. **Seat 1's floor at a gated scene** (section 3, decider file 53 §1), on either trigger: the re-derived
+   W_max leaves a gated scene where the floor is not met (i) after D-H1's margin, or (ii) after any growth
+   of the non-diffuse build. It goes to her before any range change, with the SE, the VOV and the
+   replicate p95. A floor failure already present in the starting state (the joint-rule replicates of
+   the reported set) is recorded as a finding and escalated once. Otherwise none (a margin above about
+   20 % of W_max returns to the seats, not to her).
 2. **The AX38 4c escalation** (when the C++ records exist, scope 6): the full-rebuild records go to
    Maisara against the 1 / 3 / 10 s marks, labelled **UI response-time anchors (Card et al. 1991), not
    audibility limits**, with Table 15.1's conditions stated (its 3 s row covers only translational
@@ -120,9 +123,24 @@ after seeing the gate's result.
     raises the capped-scene SE by about 1/√0.73, about 17 % [Inferred] (e.g. layout 4 from about 1.33 to
     1.56 dB, the low-α cube from about 0.50 to 0.58 dB) (file 51 §3).
   - Decided by the board loop from the C++ measurements (C++ cost per evaluation, realised against
-    planned work at block 64, restore spread over ≥ 10 runs) before the gate is implemented. If the
-    margin leaves W_max below Seat 1's floor at a gated scene, the result goes to Maisara before any range
-    change (section 2).
+    planned work at block 64, restore spread over ≥ 10 runs) before the gate is implemented.
+  - **Seat 1's floor at a gated scene** (decider file 53 §1, exact text). At each gated 100 m build of
+    AX38 4c, Seat 1's floor counts as **met** when the achieved SE is ≤ 0.33 dB per emitter and band and
+    at least one of these holds:
+    - (a) the pilot SE is ≤ target/3 (0.028 dB), so the VOV test does not apply;
+    - (b) the pilot VOV is < 0.1;
+    - (c) the final-range VOV is < 0.1;
+    - (d) 30 replicates of the shipping rule against a long run give p95 |error| ≤ 1 dB.
+
+    **Escalation.** If, after D-H1's margin or any growth of the non-diffuse build, the re-derived W_max
+    leaves a gated scene where this floor is **not met**, the result goes to Maisara before any range
+    change, with the SE, the VOV and the replicate p95. It is never fixed by a time cap, a narrower range
+    or a formulation seam.
+
+    **Starting state.** The joint-rule replicates at the gated scenes (phase-05h reported set) establish
+    the provisional (A) state. If the floor already fails there, that is recorded as a finding and
+    escalated once. After that, the trigger fires on any further rise of the achieved SE or the replicate
+    p95 at that scene.
 
 ## 4. Scope
 

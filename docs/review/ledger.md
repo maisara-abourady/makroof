@@ -2158,3 +2158,5 @@ J1 plan-edit diff check (`docs/review/phase-05b2/52-interrogator-J1-plan-diff-ch
 | P05B2-J1FX-10 | phase-07c §6 unconditional Phase 12 re-run | CONDITIONS VIOLATED (/fix-plan) | open |
 | P05B2-J1FX-11 | phase-07c §4 "researcher questions before D-C1–D-C3" (plan-editor ordering) | IMPRECISE (/fix-plan) | open |
 | P05B2-J1FX-12 | phase-10 lacks the pointer to 07c; AQ10 stray punctuation | IMPRECISE (/fix-plan) | open |
+
+J1FX-06 and J1FX-07 closed on decider file 53 (`docs/review/phase-05b2/53-decider-J1-trigger-definitions.md`). The first trigger is Seat 1's floor counted with clauses (a)–(d), with the starting state recorded and escalated once. The second is the phase-12 reopening, which applies only after the placement fix fails; capped presets at SE ≤ 0.33 dB are reported only. Items J1FX-08 to -12 are applied by the plan-editor (2026-11-10).
