@@ -124,3 +124,18 @@ Corpus present (`SOURCE_COMMIT` c1b171f per the decider); no corpus line was re-
 **Hand-offs.** Seat 5: thread-id assert, measurement design, scope pull. Seat 3: keeping a stale IrSet across a realtime reset. Seats 6/8: "settling" vs a stall.
 
 **Premortem.** (e-a) ships and a VST3 host calls `setProcessing(false)` on its processing thread at transport stop during a 100 m material edit: the whole graph stalls ≈ 2.5 s then rebuilds 2 s more; a producer reports "the DAW freezes when I press stop in the big room"; Seat 7 reads the support ticket first.
+
+
+---
+
+## Round 2: (g) cell
+
+**SEAT 2, round 2 (D-H3 (c), P05H-56).** Only what changed: the (g) cell, rated from my own criteria, not inferred.
+
+**(g) = (f) + every pool share under `ScopedFlushDenormals`: 0 now / 1 later, prefer over (f) (0 / 1) by a hair.** Reason now (0): the line (`ThreadPool.cpp` L36–39, in the tree) is generic, scene-free, allocation-free, one MXCSR/FPCR write per share; it is not tuning, so my earlier "nothing touches `src/sim`" (a virtue I named for items (b)/(d), where the interrogator must rule out scene-specific logic, NFR-8) is not violated by it. Reason later (1), the same as (f)'s: the standing probe re-run on each path change, plus one new convention to write into `ThreadPool.h`: everything that ever runs on the process pool runs flushed, which a later phase reusing the pool for float DSP must know (a benefit there, but a rule to remember).
+
+**Why I prefer (g) and why its reversal clause will not fire (from the code, my analysis, not only the probe).** The estimator's path is double, and no quantity in it approaches the double subnormal range in any AX6 room: the per-reflection weights are products of (1−α) over the hits a window admits (dead_booth, the worst case: ≈ 4–5 hits at reflect 0.001 in a 23 ms window → ≈ 1e-14); the decay factor exp(−13.8·(b−t)/T60) is bounded by window/T60 (≈ 37 in dead_booth → 1e-16; in a 100 m room the shortest T60 is ≈ 0.4 s, so smaller still); air and geometry factors are ≥ 1e-10. Without subnormals, FTZ on a worker is output-neutral, the D5 hashes are integer face sequences plus the RNG and cannot move, and E_target is unchanged to the bit. So the same-run re-check is the right trigger, and I expect it green; the guard's value is NFR-6 insurance against a worker inheriting a different FP mode from the thread that first touched the static pool [Hyp on which mode a new `std::thread` inherits per OS; irrelevant while no subnormal arises]. Choose (g).
+
+**Commitment and undo.** Commits later phases to the pool-wide-FTZ convention and the standing probe; undoing is deleting one line and re-running the probe (minutes). No golden, no scene logic, no audio-thread exposure (the pool never runs on the audio thread, AX38 (i)).
+
+**Condition.** None needed at 0 / 1. If the same-run re-check does move a hash or E_target on any OS, that is a finding about a subnormal I have ruled out above, and I would want its scene named before (f) is taken as the fallback.
