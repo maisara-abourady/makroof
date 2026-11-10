@@ -359,7 +359,7 @@ def step_openfield(npaths: int = 400_000):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d"])
+    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g"])
     ap.add_argument("--paths", type=int, default=32_000)
     a = ap.parse_args(argv)
     if njit is None:
@@ -374,7 +374,8 @@ def main(argv=None):
         step_openfield()
     else:
         {"c3": step_c3, "c4": step_c4, "c5": step_c5, "c6": step_c6, "c7": step_c7, "c9b": step_c9b,
-         "c12a": step_c12a, "c12b": step_c12b, "c12d": step_c12d}[a.step]()
+         "c12a": step_c12a, "c12b": step_c12b, "c12d": step_c12d,
+         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g}[a.step]()
 
 
 
@@ -1044,18 +1045,18 @@ class _Prep:
         self.alpha = np.asarray(c["alpha"], float).reshape(6, 8); self.s = np.asarray(c["s"], float); self.m = m
         self.w = nw4c_weight(c)
 
-    def run(self, end: str, n: int, p0: int = 0):
+    def run(self, end: str, n: int, p0: int = 0, rep: int = 0):
         fp, fs, fd, fc, _ = self.fl[end]
         st, gt = self.ends[end]
         out = np.zeros((n, 8)); nev = np.zeros(n, np.int64)
         if n > 0:
             mc5(self.dims, self.alpha, self.s, self.m, st, fp, fs, fd, fc, gt, self.a, self.b, self.rate, self.norm, n, p0,
-                float(n), SEED if end == "fwd" else SEED_REV, out, nev)
+                float(n), (SEED if end == "fwd" else SEED_REV) + 2 * rep, out, nev)
         return out, nev
 
-    def nw4c(self, n: int, p0: int = 0, timed: bool = False):
+    def nw4c(self, n: int, p0: int = 0, timed: bool = False, rep: int = 0):
         """Per-history NW-4C scores (n, 8): w·fwd_p + (1 − w)·rev_p (histories pair path p of each set)."""
-        t0 = time.perf_counter(); of, ef = self.run("fwd", n, p0); t1 = time.perf_counter(); orv, er = self.run("rev", n, p0)
+        t0 = time.perf_counter(); of, ef = self.run("fwd", n, p0, rep); t1 = time.perf_counter(); orv, er = self.run("rev", n, p0, rep)
         t2 = time.perf_counter()
         x = self.w * of + (1 - self.w) * orv
         return {"x": x, "fwd": of, "rev": orv, "ev_fwd": ef, "ev_rev": er, "s_fwd": t1 - t0, "s_rev": t2 - t1}
@@ -1272,6 +1273,178 @@ def step_c12b(w_max: float | None = None, se_t: float = 0.083):
         out["sweeps"][name] = res
         log(name, {k: (np.round(x, 3).tolist() if isinstance(x, list) else x) for k, x in res.items()})
         d = load(); d.setdefault("c12", {})["b"] = out; save(d)
+
+
+# ------------------------------------------------------------------------------------------
+# C13 (second seat round, docs/review/phase-05b2/23-seat*-round2-T1-T2.md): N-3W* under the seats' conditions.
+#  - W_max at Seat 5's correction: the 1-thread CI pool, the gated set's worst cost per evaluation (flutter cube,
+#    42.5 ns), Linux build 1.884 s: 0.1296 s per emitter -> 3.05 M evaluations; 2-thread pool ≈ 5.9 M.
+#  - pilot defined in work (Seats 1, 3, 4, 5, 6, 7, 8, 9): n* = min(8 000, ⌊(W_max/2) / e_cal⌋), with e_cal the mean
+#    image evaluations per history of a fixed calibration block [0, 256) (sized before the pilot is sampled, Seat 4);
+#    pilot floor 1 000 histories (Seats 1, 3): below it the "pilot floor" flag is raised;
+#  - final range starts at the fixed index 8 000 (Seat 4) and is disjoint from the pilot (Seat 1);
+#    N_final = max(N_need, n*) (Seats 1, 3, 5, 6, 7, 9), capped by the remaining work; cap hit flagged.
+# ------------------------------------------------------------------------------------------
+
+W_MAX_1T = 0.1296 / 42.5e-9   # Seat 5 round 2: ≈ 3.05 M
+W_MAX_2T = 5.9e6              # Seat 5 round 2: 2-thread pool, ≈ 1.95× scaling
+FINAL_START = 8000
+CAL = 256
+
+
+def n3w_c(pr: _Prep, w_max: float, se_t: float = 0.083, n_max: int = PILOT, share: float = 0.5, floor: int = 1000, rep: int = 0) -> dict:
+    cal = pr.nw4c(CAL, rep=rep)
+    e_cal = float(cal["ev_fwd"].sum() + cal["ev_rev"].sum()) / CAL
+    n_star = int(min(n_max, max(CAL, np.floor(share * w_max / max(e_cal, 1e-12)))))
+    pl = pr.nw4c(n_star, rep=rep)
+    sp = summarise(pl["x"], pr.plan)
+    worst = float(np.max(sp["se_db"]))
+    n_need = _need(n_star, worst, se_t)
+    w_pilot = float(pl["ev_fwd"].sum() + pl["ev_rev"].sum())
+    ev_pp = w_pilot / n_star
+    n_cap = int(max(0, np.floor((w_max - w_pilot) / max(ev_pp, 1e-12))))
+    n_want = max(n_need, n_star)
+    n = min(n_want, n_cap)
+    fin = pr.nw4c(n, p0=FINAL_START, rep=rep) if n > 0 else None
+    sf = summarise(fin["x"], pr.plan) if n > 0 else None
+    st = tally_stats(pl["x"], pr.plan["target_specular"])
+    return {"n_star": n_star, "e_cal": e_cal, "pilot_floor_flag": bool(n_star < floor), "pilot_se_db_worst": worst,
+            "n_need": n_need, "n_cap": n_cap, "n": n, "cap_hit": bool(n_need > n_cap), "min_final_binds": bool(n_star > n_need),
+            "work": w_pilot + (float(fin["ev_fwd"].sum() + fin["ev_rev"].sum()) if n > 0 else 0.0),
+            "total": (sf["total"] if n > 0 else sp["total"]), "se_db": (sf["se_db"] if n > 0 else sp["se_db"]),
+            "empty_final": n == 0, "pilot_R": max(st["R"]), "pilot_VOV": max(st["VOV"]),
+            "vov_rule_ok": bool(max(st["VOV"]) < 0.1 or worst <= se_t / 3)}
+
+
+def _row(r):
+    return {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in r.items()}
+
+
+def c13_scenes() -> dict:
+    sc = {}
+    for rn, cs in c12_scenes().items():
+        for k, c in cs.items():
+            sc[f"{rn}/{k}"] = c
+    w1 = bench_scenes()[0]
+    for dd in (0.3, 0.5):
+        sc[f"W1/both_wall_{dd}"] = dict(w1, src=(7.0, 30.0 - dd, 2.0), rcv=(10.0, dd, 1.7))
+    for r_ in ("club", "living_room"):
+        si = scope6.scene_inputs(REPO / "tests" / "scenes" / "valid" / f"{r_}.json")
+        D = tuple(float(x) for x in si["dims"])
+        base = {"dims": D, "alpha": np.asarray(si["alpha"], float).reshape(6, 8).tolist(), "s": [float(x) for x in si["s"]]}
+        src = np.asarray(si["src"], float); rcv = np.asarray(si["rcv"], float)
+        for dd in (0.1, 0.3, 0.5):
+            # listener to dd from its nearest wall (x or y), emitter to dd from the opposite wall along y
+            r2 = rcv.copy(); s2 = src.copy()
+            r2[1] = dd; s2[1] = D[1] - dd
+            sc[f"{r_}/both_wall_{dd}"] = dict(base, src=tuple(s2), rcv=tuple(r2))
+            r3 = r2.copy(); r3[0] = dd; s3 = s2.copy(); s3[0] = D[0] - dd
+            sc[f"{r_}/both_edge_{dd}"] = dict(base, src=tuple(s3), rcv=tuple(r3))
+    return sc
+
+
+def step_c13(reps: int = 30):
+    """C13: the conditioned N-3W* at W_max (1-thread) on reference positions, CS-NW+, Phase 04 near-wall cases, C12 (a)'s
+    W1/layout 4/5 cases and Seats 3/8's both-near cases; replicates (independent seeds) for the shipped-error spread."""
+    d = load()
+    out = d.get("c13", {"w_max_1t": W_MAX_1T, "w_max_2t": W_MAX_2T, "cases": {}})
+    a = d["c12"]["a"]
+    groups = {}
+    for c in bench_scenes():
+        if c["group"] in ("W1", "W2", "CR4", "cube100", "cube100_flutter"):
+            groups[f"ref/{c['name']}"] = c
+    for k, c in c13_scenes().items():
+        groups[f"nw/{k}"] = c
+    for key, c in groups.items():
+        if key in out["cases"]:
+            continue
+        pr = _Prep(c)
+        row = {"w": pr.w}
+        for wn, wm in (("1t", W_MAX_1T), ("2t", W_MAX_2T)):
+            row[wn] = _row(n3w_c(pr, wm))
+        nr = reps if key.startswith("nw/") else 0
+        if nr:
+            tots = np.asarray([n3w_c(pr, W_MAX_1T, rep=1 + i)["total"] for i in range(nr)])
+            row["reps_1t_total_1k"] = tots[:, 4].tolist()
+            k12 = key[3:]
+            if k12 in a:
+                ref = a[k12]["ref1.25_aq9"][1]; lng = a[k12]["long_total"][4]
+                e = 10 * np.log10(tots[:, 4] / ref)
+                row["reps_vs_ref1.25_db"] = {"p5": float(np.percentile(e, 5)), "p50": float(np.median(e)), "p95": float(np.percentile(e, 95)),
+                                             "max_abs": float(np.max(np.abs(e)))}
+                e2 = 10 * np.log10(tots[:, 4] / lng)
+                row["reps_vs_long_db"] = {"p5": float(np.percentile(e2, 5)), "p50": float(np.median(e2)), "p95": float(np.percentile(e2, 95)),
+                                          "max_abs": float(np.max(np.abs(e2)))}
+            ep = 10 * np.log10(tots[:, 4] / tots[:, 4].mean())
+            row["reps_spread_db"] = {"sd": float(np.std(ep)), "p95_abs": float(np.percentile(np.abs(ep), 95)), "max_abs": float(np.max(np.abs(ep)))}
+        out["cases"][key] = row
+        r1 = row["1t"]
+        log(key, "n*", r1["n_star"], "N", r1["n"], "cap", r1["cap_hit"], "SE", round(max(r1["se_db"]), 3), "VOV", round(r1["pilot_VOV"], 3),
+            "reps", row.get("reps_vs_ref1.25_db", row.get("reps_spread_db")))
+        d = load(); d["c13"] = out; save(d)
+
+
+def step_c13x():
+    """C13 extras: layout 4 emitter-edge rerun on two more disjoint ranges (Seats 1, 3, 6, 9); layout 5 edge/corner
+    reference ladder 2.5 -> 1.25 m (Seat 9)."""
+    d = load(); out = {}
+    sc = c12_scenes()
+    c = sc["layout4_s1"]["emitter_edge"]; pr = _Prep(c)
+    a = d["c12"]["a"]["layout4_s1/emitter_edge"]
+    for name, p0, n in (("range_300k_556k", 300_000, 256_000), ("range_1M_2M", 1_000_000, 1_000_000)):
+        r = pr.nw4c(n, p0=p0); s = summarise(r["x"], pr.plan)
+        out[f"l4_emitter_edge_{name}"] = {"total_1k": float(s["total"][4]), "se_db": float(s["se_db"][4]),
+                                         "vs_32k_db": float(10 * np.log10(a["total"][4] / s["total"][4])),
+                                         "vs_long_db": float(10 * np.log10(a["long_total"][4] / s["total"][4])),
+                                         "vs_ref1.25_db": float(10 * np.log10(s["total"][4] / a["ref1.25_aq9"][1])),
+                                         "max_share": float(s["max_path_share"][4])}
+        log(name, out[f"l4_emitter_edge_{name}"])
+    lad = {}
+    for k in ("listener_edge", "listener_corner", "emitter_edge", "emitter_corner"):
+        c = sc["layout5_s1"][k]
+        ref, _ = _ref_bands(c, (2.5,), AQ9)
+        r125 = d["c12"]["a"][f"layout5_s1/{k}"]["ref1.25_aq9"][1]
+        lad[k] = {"ref2.5_1k": float(ref["2.5"][4]), "ref1.25_1k": r125, "change_2.5_to_1.25": float(abs(r125 / ref["2.5"][4] - 1))}
+        log("layout5", k, lad[k])
+    out["layout5_ladder"] = lad
+    d = load(); d["c13x"] = out; save(d)
+
+
+def step_c13g():
+    """C13 (Seat 2): both-near sweep in W1 with the pilot's VOV per point (where VOV crosses 0.1), and the cap-hit rate
+    of the conditioned N-3W* (1-thread W_max) on a grid of ordinary positions in W1, club and concert_hall_box."""
+    d = load(); out = {}
+    w1 = bench_scenes()[0]
+    sw = []
+    for i in range(19):
+        dd = 1.0 - 0.05 * i
+        pr = _Prep(dict(w1, rcv=(10.0, dd, 1.7), src=(7.0, 30.0 - dd, 2.0)))
+        r = n3w_c(pr, W_MAX_1T)
+        sw.append({"d": dd, "pilot_VOV": r["pilot_VOV"], "pilot_se_db": r["pilot_se_db_worst"], "n": r["n"], "cap_hit": r["cap_hit"],
+                   "se_db": float(np.max(r["se_db"]))})
+        log("both", round(dd, 2), sw[-1])
+    out["W1_both_near_vov_sweep"] = sw
+    grids = {"W1": w1}
+    for r_ in ("club", "concert_hall_box"):
+        si = scope6.scene_inputs(REPO / "tests" / "scenes" / "valid" / f"{r_}.json")
+        grids[r_] = {"dims": tuple(float(x) for x in si["dims"]), "alpha": np.asarray(si["alpha"], float).reshape(6, 8).tolist(),
+                     "s": [float(x) for x in si["s"]], "src": tuple(float(x) for x in si["src"])}
+    for gname, base in grids.items():
+        D = np.asarray(base["dims"], float)
+        rows = []
+        for fx in (0.2, 0.5, 0.8):
+            for fy in (0.15, 0.35, 0.65, 0.85):
+                for zl in (1.2, 1.7):
+                    rcv = (fx * D[0], fy * D[1], min(zl, D[2] - 0.3))
+                    if np.linalg.norm(np.asarray(rcv) - np.asarray(base["src"])) < 1.0:
+                        continue
+                    r = n3w_c(_Prep(dict(base, rcv=rcv)), W_MAX_1T)
+                    rows.append({"rcv": rcv, "n": r["n"], "n_need": r["n_need"], "cap_hit": r["cap_hit"], "se_db": float(np.max(r["se_db"])),
+                                 "pilot_floor_flag": r["pilot_floor_flag"]})
+        out[f"grid_{gname}"] = {"points": len(rows), "cap_hits": int(sum(x["cap_hit"] for x in rows)),
+                                "max_final_se_db": max(x["se_db"] for x in rows), "rows": rows}
+        log("grid", gname, out[f"grid_{gname}"]["points"], out[f"grid_{gname}"]["cap_hits"], round(out[f"grid_{gname}"]["max_final_se_db"], 3))
+    d = load(); d["c13g"] = out; save(d)
 
 if __name__ == "__main__":
     main()
