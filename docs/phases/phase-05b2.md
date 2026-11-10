@@ -136,14 +136,39 @@ and without level jumps under automation (FR-SIM-6).
 - B12: Eyring stays. AX22/N_cap: unchanged. Mixing-time rule: unchanged.
 - Maisara 2026-11-09: build the switch in this session (option (b)).
 - AX36 accepted (Maisara 2026-11-09).
+- Maisara 2026-11-10, verbatim: "I accept the board's answer by definition." Every section 3 decision is
+  accepted (AX37–AX46), with Challenge 1 = yes, Q1 (a), Q2a (A) now and (C) in a later phase, Q2b (i);
+  D-T3 not needed (ledger P05B2-M-01…07). Section 3 lists them.
 
 ## 2. Raise with Maisara (first message and PR)
 
 1. AX36: accepted by Maisara 2026-11-09 ('W1: accept'); the window check's certification basis stands.
 2. Any room-range decision D-T3 produces (only if D-T1 finds no formulation that covers the whole
    contract range): present the numbers (memory, W1/W2 per room size) and the audible stakes (§0.1).
+   Not needed: D-T1 covers the whole AX6 range (D-T3 not needed, 2026-11-10; AX39).
 
-## 3. Open decisions — settle each through the decision loop **before** writing `src/sim` code
+## 3. Decisions — settled 2026-11-10 (the questions as posed are kept below)
+
+**Settled** (board decision loop, `docs/review/phase-05b2/`; accepted by Maisara 2026-11-10, ledger
+P05B2-M-01…07). The AX rows in `docs/BUILD_PLAN.md` §2 are the text to implement:
+
+- **D-T5 → AX37:** E_target = specular entries + propagated diffuse energy in all 8 bands (5.1, with the
+  RAII FTZ/DAZ guard and the outer-band tracer check); k_real and the AX22 fallback stay on the AX16
+  entries (5.2); `bandsAxisShares` from specular entries only, Phase 08 gets E_b and t_mix,e only (5.3);
+  `open_field` gets the generic outcome, with the finite-floor check (5.4).
+- **D-T4 → AX38:** ≤ 1 GB transient per diffuse solve, one solve per process through the three-class gate;
+  ≤ 128 MB additional resident; W1/W2 include the whole diffuse computation; the 100 m memory gate, the
+  records and their escalation; the 100 m, 96 kHz synchronous restore gate is blocking (Challenge 1, AQ10
+  amended).
+- **D-T1 → AX39–AX44:** the seeded Monte Carlo estimator with the determinism package D1–D7 (1.1); a fixed
+  key (1.2); the joint path-count rule with W_max provisional 3.05 M per emitter and n\*_max 1 024 (1.3);
+  τ 0.25 dB and target SE 0.083 dB (1.4); 70 cases / 560 case-bands, z_FW 4.290 (1.5); the near-listener
+  blend and the note U (1.6).
+- **D-T2 → AX46:** Q1 (a), AX36's < 1 % rule on the estimator's bias, checked in CI; AX36 (c) resolved.
+- **D-T6 → AX45:** the fixed room set, 72 case-bands, z_FW 3.81.
+- **D-T3: not needed** (D-T1 covers the whole AX6 range; holds under Q2a (A), ledger P05B2-M-07).
+
+**As posed** (record):
 
 Run the decision loop for each (`/fix-plan` step 3: decider convening round, the convened seats and the
 researcher, decider decision round, interrogator decision mode; `docs/board/README.md`). Record each as an
@@ -215,8 +240,9 @@ last, and only if needed. The D-T numbers are identifiers, not the order.
   AX16 entries: replacing them by a smooth envelope changes k_real and therefore the fallback decision
   and t_mix,e; the Python `phase04_plan` computes k_real from AX16 entries and is what session 1
   compared against): keep k_real on the AX16 entries (fallback unchanged), or redefine it (an AX22
-  change, out of scope unless the decision loop shows it is forced); (3) `bandsAxisShares` (used for
-  directional output in Phase 08) — the AX16 entries carry arrival directions; the Eq. 4.29 gather sums
+  change, out of scope unless the decision loop shows it is forced); (3) `bandsAxisShares` (a
+  diagnostic with no consumer; Phase 08 does not use it for directional output, it receives E_b and
+  t_mix,e only: D-T5.3, AX37 (5.3)) — the AX16 entries carry arrival directions; the Eq. 4.29 gather sums
   per-patch contributions along known lines dS′→P, so per-patch directions are available in the model;
   decide what Phase 08 receives. Also state the outcome for `open_field` (outdoor; in AX22 fallback,
   BUILD_PLAN §0 row 04) under the switch.
@@ -233,49 +259,100 @@ last, and only if needed. The D-T numbers are identifiers, not the order.
 
 ## 4. Scope (after section 3 is settled and committed)
 
-1. **R1 for CR4** (D-T2) and any further rung D-T2 requires; committed before code.
-2. **`src/sim` implementation** of the D-T1 formulation, generic (NFR-8), in `src/sim/tail/` (or a new
-   `src/sim/diffuse/` unit), no JUCE, no allocation on the audio thread (it runs on the builder thread
-   only), deterministic (AX5: any randomness keyed by `tailSeed`), no NaN/Inf/denormals, contract
+1. **R1 for CR4** (D-T2) and any further rung D-T2 requires; committed before code. Resolved in the
+   decision loop: R1 certified at 2.5 m in CR2, CR3 and CR4; D-T2 → AX46 (AX36 (c)).
+2. **`src/sim` implementation** of the D-T1 formulation (AX39–AX44: the seeded Monte Carlo estimator,
+   the D1–D7 determinism package with 64-history blocks, the joint path-count rule with the integer
+   stop test and N_cap, the near-listener blend and `TailMatch.approximate`), generic (NFR-8), in
+   `src/sim/tail/` (or a new `src/sim/diffuse/` unit), no JUCE, no allocation on the audio thread (it runs
+   on the builder thread only), deterministic (AX5: the noise tail keyed by `tailSeed`; the estimator's
+   key is fixed and independent of `tailSeed`, AX40), no NaN/Inf/denormals, contract
    unchanged (no new scene fields: s and α already exist; if D-T1 needs more, that is a contract change
-   and Maisara's).
-3. **Matching switch** per D-T5 in `planEmitter`/`matchTail`; diagnostics (`render_cli --diagnostics`)
+   and Maisara's). The AX38 diffuse-solve gate (three classes, `reset()` in the synchronous class) and
+   its tests; before the gate's offline path is implemented, the researcher answers whether any host runs
+   a freeze or offline render, or calls `reset()`, on a thread that also serves the real-time graph
+   (ledger P05B2-T5T4-61). The AX37 (5.1) RAII FTZ/DAZ guard in `buildRoomIR` and its `[pipeline]` test.
+3. **Matching switch** per D-T5 (AX37) in `planEmitter`/`matchTail`; diagnostics (`render_cli --diagnostics`)
    gain the diffuse E_target per band beside the AX16 one, so the switch is observable
    (atomicity rule: section 8).
 4. **Agreement tests** (Catch2): C++ E_target vs `ref_hybrid.target_hybrid` (exported reference values
-   as a small golden, generated by a script with its reason in `tests/golden/CHANGELOG.md`) on the cases
-   D-T1 states (candidates: the 15 (A) cases, the six Phase 04 rooms, the 30 BRAS pairs), to D-T1's
-   tolerance; and C++ E_target vs the
+   as a small golden, generated by a script with its reason in `tests/golden/CHANGELOG.md`) on the AX43
+   suite (70 cases, 560 case-bands, z_FW 4.290, stage 2, no reseed; Release, hidden tag, three OSes;
+   smoke cases in Debug, ASan and TSan) to τ = 0.25 dB (AX42); the AX46 bias check per band and case
+   class; the AX45 regression gate (72 case-bands, z_FW 3.81); and C++ E_target vs the
    tracer's committed window energies (`phase05b.json` cases) within the B11 window tolerance (±1 dB),
-   independently of the reference hybrid.
+   independently of the reference hybrid. Also, before the goldens:
+   - the **reported set** (AX43: the layout 4/5 near-wall cases; W1, `club` and `living_room` both-near at
+     0.1, 0.3 and 0.5 m), which also supplies the joint-rule replicates in the closed 100 m cubes (Seat 2's
+     C15 check ran on the per-emitter rule) and the per-class replicate p95 the AX44 note text uses;
+   - the independent **near-corner reference** (Seat 2) and W1 both_corner asserting the cap flag (Seat 5);
+   - the **M-2 tracer runs** on the five mixed-α Phase 04 rooms (AX45), reported;
+   - the AX37 (5.1) (ii) outer-band tracer check (125 Hz, 4 kHz, 8 kHz; layouts 4 and 5 at s = 1),
+     reported before any golden is updated;
+   - the AX37 (5.4) `open_field` finite-floor check, replacing the "no tail" asserts.
+   C16c (U at n\*_max 8 000 with the union VOV) is reported only (`38-orchestrator-C16c.md`: no change).
 5. **Goldens and validation:** every golden whose tail level changes is updated through
    `tools/ci/update_goldens.py --reason "phase 05b session 2: tail level from the propagated diffuse
-   energy (AX16 switch)"`; the BRAS validation (`tools/validation/run_validation.py`, nightly) is re-run
-   and `report-phase05.md` regenerated; AQ9 results are reported before/after (no gate change: AQ9 is
+   energy (AX16 switch)"`; new goldens, each created by script with its reason in the CHANGELOG: the
+   agreement reference, ΔL_ref (AX45), the D5 face-hash and per-case n\* / N golden, the RNG KAT vectors
+   (AX39); the BRAS validation (`tools/validation/run_validation.py`, nightly) is re-run
+   and `report-phase05.md` regenerated, printing the Monte Carlo SE beside the ensemble spread (Seat 9,
+   AX40); AQ9 results are reported before/after (no gate change: AQ9 is
    reported, B11 (B) is not re-run unless the decision loop says the switch affects it).
-6. **Costs:** W1/W2 (AQ10), peak memory per instance at the AQ10 room, CR4 and the largest supported
-   room, recorded in §0.
+6. **Costs:** W1/W2 (AQ10) including the diffuse share, peak memory per instance at the AQ10 room, CR4
+   and the largest supported room, the AX38 4c records and the AX38 (iv) multi-instance records, the flags
+   at the gated scenes and the realised work against W_scene (AX41), recorded in §0. **C++ re-derivation**
+   of W_max (from the C++ cost at the CI runner's pool size, the worst gated cost and the worst OS restore
+   build) and of n\*_max (from the C++ W1 measurement, diffuse share ≤ 25 ms for two emitters), once,
+   pinned as cross-platform constants (AX41); the realised-work ratio pre-registered
+   from C++ data before the first CI run. If n\*_max comes out below 1 000, it goes back to Seats 1, 3 and 4.
 7. **Plan bookkeeping** through `/fix-plan`: AX16 (switched, with the measured ΔL_b,tr table), AX21
-   (unchanged statement, cross-reference), AX36 (c) resolved, new AX rows D-T1…D-T6, §6 rows.
+   (unchanged statement, cross-reference), AX36 (c) resolved, new AX rows D-T1…D-T6, §6 rows (applied
+   2026-11-10: AX37–AX46, AQ10 amended).
 8. **Listening pack:** a `phase-05b2` entry: Phase 04 tail level vs switched tail level, loudness-matched
    **not** (the level difference is the point), through the six Phase 04 rooms, `open_field`, the BRAS
    scene with the largest real ΔL_b (`bras_cr3_ls1_mp2`) and three synthetic concentrated-absorption
    rooms (Table 5.2 layout 4 at s = 0.4, layout 4 at s = 1 (the largest deficit, +3.87 dB) and layout 5
-   at s = 1, as scenes), clicks and pink bursts. The scene choice is listening content, not a gate.
+   at s = 1, as scenes), clicks and pink bursts, and one both-near omni render (listener and an emitter
+   within 0.70 m of surfaces, AX44). The scene choice is listening content, not a gate.
+9. **CI reports** (AX43, AX41): U at the default placement of every valid fixture; every fixture or preset
+   where the pilot estimate ships; the cross-OS E_target comparison; the RNG known-answer test; the D5
+   hashes with n\* and N; the pre-registered flags at the gated scenes.
 
 ## 5. Acceptance criteria — automated
 
 - [ ] Section 3 decisions recorded as AX rows (ledger rows linked) **before** the first `src/sim` commit.
 - [ ] R1: CR4 2.5→1.25 m E_target change computed (or the D-T2 restatement's equivalent), < 1 % or the
-      next rung run.
-- [ ] C++ E_target = `ref_hybrid` within D-T1's tolerance on all listed cases (CI, three OSes).
+      next rung run (resolved in the decision loop: AX36 (c), AX46).
+- [ ] C++ E_target = `ref_hybrid` within τ = 0.25 dB (AX42) over the 70 pre-registered cases / 560
+      case-bands at z_FW 4.290, with the pooled bias check and stage 2, no reseed (AX43; Release, hidden
+      tag, three OSes).
+- [ ] Bias check (AX46): mean signed deviation ≤ 1 % per band and per case class, pooled and per class,
+      at the pre-registered test N (3·SE ≤ 1 % − ℓ_ref); classes with ℓ_ref ≥ 1 % reported.
 - [ ] C++ E_target vs tracer within ±1 dB on the 15 (A) cases (deterministic test on committed data).
-- [ ] Rooms where AX16 is exact per reflection order (uniform α) unchanged within D-T6's bound; mixed-α
-      rooms checked against the tracer / `ref_hybrid` and reported (D-T6), not tuned.
+- [ ] Rooms where AX16 is exact per reflection order (uniform α) unchanged within D-T6's bound: the AX45
+      gate, |ΔL_C++ − ΔL_ref| ≤ 0.25 dB per emitter and band over 72 case-bands at z_FW 3.81, stage 2;
+      mixed-α rooms checked against the tracer (M-2) / `ref_hybrid` and reported (D-T6), not tuned.
+- [ ] Determinism (AX39): RNG known-answer test, D5 face-sequence hashes with the per-case n\* and N
+      equal on the three OSes, cross-OS E_target comparison.
+- [ ] U silent at the default placement of every valid fixture (AX44, Seat 6 (ii)); W1 both_corner
+      asserts the cap flag; the pre-registered flags at the gated scenes (AX41).
+- [ ] Realised-work assertion at the gated scenes: realised work / W_scene ≤ the ratio pre-registered
+      from C++ data before the first CI run (AX41).
+- [ ] `open_field`: the AX37 (5.4) finite-floor check and the −60 dB check (PR CI, three OSes); the
+      outer-band tracer check (AX37 (5.1) (ii)) reported before any golden.
 - [ ] `render_cli --diagnostics` reports the diffuse E_target per band beside the AX16 one (test).
 - [ ] Same scene + seed → bit-identical IR on the same platform; no NaN/Inf/denormals; allocation-free
-      audio thread (existing tracker test) unchanged.
-- [ ] W1/W2 and peak memory recorded (AQ10; not a blocker unless D-T4 makes memory one).
+      audio thread (existing tracker test) unchanged; the FTZ on/off `[pipeline]` test bit-identical per
+      platform (AX37 (5.1)).
+- [ ] Gate (AX38): the debug assert and the real-time-beside-gate test (zero allocations, gate never
+      touched), covering `reset()`; the two-order output test, one pipeline offline; TSan `[pipeline]` with
+      two pipelines, one switching to offline mid-solve.
+- [ ] W1/W2 (with the diffuse share) and the AX38 records recorded (AQ10). Memory block (AX38 4c): the
+      peak working-set delta of the larger of the two gated 100 m, 96 kHz builds ≤ 1 GB (Linux;
+      recorded on macOS and Windows), `ismFallback` stated per emitter.
+- [ ] **Blocking** (AQ10 amended, AX38 4c): the synchronous state restore at 100 m and 96 kHz,
+      14 × t_restore ≤ 30 s.
 - [ ] Goldens updated only through `update_goldens.py` with the reason; nightly BRAS green; report
       regenerated.
 - [ ] pluginval strictness 10 and auval still pass (rebuild cost changes the builder's timing).
@@ -294,7 +371,8 @@ last, and only if needed. The D-T numbers are identifiers, not the order.
 
 Equivalence of the `src/sim` formulation to the validated model (not just to its numbers on a few
 cases); the independence of the tracer comparison; the AX22 interaction (D-T5 (2)); memory scaling and
-the room-range edge (D-T3); determinism; no per-scene logic.
+the room-range edge (D-T3); determinism (the D1–D7 package, AX39); the AX38 gate (threading, three-class
+order, `reset()`); the cap-hit and floor-truncated flags (AX41); no per-scene logic.
 
 ## 8. Risks and the split rule
 
@@ -314,13 +392,17 @@ the room-range edge (D-T3); determinism; no per-scene logic.
     `src/sim` matching change; in the same `/fix-plan` change, Phase 08's dependencies gain 05h (binaural
     rendering must not be built and checked on the AX16 tail level and AX16 `bandsAxisShares`, which
     D-T5 (3) may change; advocate, 2026-11-09), unless the decision loop records why 08 may go first;
-    the session stops there.
+    the session stops there. **Recorded (D-T5.3, AX37 (5.3)):** Phase 08 may go before 05h on Seat 4's
+    conditions (i) E_b and t_mix,e read only via `TailMatch`, (ii) parity checked within the same build,
+    (iii) 05h re-renders the binaural goldens, re-measures binaural W1/W2 and re-runs phase-08 item 8,
+    (iv) the Phase 08 listening items on concentrated absorption marked provisional.
 
 ## 9. Out of scope
 
 Early rendering of scattered energy (not promoted; re-run rule AX36 (e)); per-band scattering (B10);
 the tail decay rate (B12); Phase 08 directions beyond D-T5 (3); Phase 10 caching beyond what D-T1 needs;
-any per-scene tuning.
+any per-scene tuning; moving the diffuse solve off the synchronous restore and prepare (Q2a (C), phase-13
+scope 13).
 
 ## 10. Definition of done
 

@@ -12,6 +12,9 @@ The session raises each item in its **first message** and again before the beta 
 2. **DELTA panel report.** Check whether `docs/phases/phase-05d.md`'s PR recorded an answer. If not,
    remind her that the request (`docs/review/drafts/delta-report-request.md`) is still outstanding, and
    keep the Arni provenance label as is in the beta wording.
+3. **Load time with 8 instances (AX38 (iv), phase 05b).** If the recorded time until the last of 8
+   instances is audible at project load at 100 m exceeds 10 s, it goes to Maisara before the first
+   release.
 
 ## Goal
 
@@ -44,11 +47,13 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
    295.2 / 1509.1 ms. RSS per instance at 96 kHz, maximum room: +122.6 MB (Linux only; the pipeline
    keeps the last built and the last submitted `RoomIR`/`IrSet`). Measure memory per instance on all
    three OSes and report it in `docs/perf/v1.md`; any memory budget is a decision for this phase (no
-   number is set here).
+   number is set here). Input since phase 05b: AX38's working ceiling for the diffuse computation (≤ 1 GB
+   transient per solve, one solve per process; ≤ 128 MB additional resident per instance) and its records.
 2. **macOS universal binary** (arm64 + x86_64) via `CMAKE_OSX_ARCHITECTURES`. Test both slices in CI (the
    x86_64 slice runs through Rosetta on the arm64 runner).
 3. **Robustness tests** (Catch2 + pluginval options):
-   - 10 instances in one process, all processing; the CPU sum is recorded.
+   - 10 instances in one process, all processing; the CPU sum is recorded. Multi-instance RSS is recorded
+     on three OSes, including Bitwig's per-plugin sandbox, where the AX38 transient counts per instance.
    - Sample-rate change at runtime (44.1 ↔ 96 kHz) and buffer-size change without re-instantiation.
    - `processBlock` with 0-sample and 1-sample buffers, and with silence for 60 s (CPU must not spike;
      denormals off).
@@ -72,7 +77,8 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
    recording it in BUILD_PLAN §6.
 6. **DAW compatibility matrix:** `docs/compat/v1.md` table: rows = DAW + OS + format (Logic/AU, Ableton
    macOS VST3, Reaper macOS VST3, Windows DAW(s) VST3); columns = load, play, automate, editor drag-record,
-   offline bounce, reopen project, sample-rate change, 10 instances. Maisara fills it in.
+   offline bounce, reopen project, sample-rate change, 10 instances. Maisara fills it in. The public
+   compatibility notes state the Bitwig sandbox gap (AX38 (i)) until scope 3 has measured it.
 7. Placeholder identity (`AX8`: company name, plugin/manufacturer codes, bundle ID) confirmed or changed
    **before** the first beta, since changing it later breaks users' projects.
 8. **Flush-to-zero guard for MSVC on ARM64** (Windows on Arm): `sim/conv/Denormals.h` is a no-op there;
@@ -101,6 +107,12 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
     checksum) so that a GitHub Releases outage cannot fail CI (Phase 07 follow-up: CI run 42465826545
     attempt 1 failed only at the pluginval download, HTTP 504 on all three runners). May be pulled
     forward as a standalone tooling change before Phase 13.
+13. **Diffuse-estimator work limits and the restore (AX41, AQ10 amended 2026-11-10, phase 05b):**
+    re-check W_max (provisional 3.05 M image evaluations per emitter, sized to pluginval's restore
+    watchdog) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines; any change is
+    an output change (golden round, §6 row) and must be fixed before the first release. Move the diffuse
+    solve off the synchronous restore and prepare (Maisara's Q2a (C), about one phase of Phase 07 rework;
+    if it does not fit, split into 13b).
 
 ## Out of scope
 

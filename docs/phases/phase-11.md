@@ -13,6 +13,9 @@ PRD's vision. It is **not** the full 3D editor (deferred, B8).
 - **AX7**: one listener and two emitters. **AX3**: the listener's facing direction is derived, so the UI
   shows it as an arrow but can't edit it.
 - **AQ3**: materials are chosen from a list. The advanced view exposes per-band α and scattering.
+- **AX44** (phase 05b): the "approximate" note U (`TailMatch.approximate`, per emitter) and its text rules;
+  **AX38**: the diffuse-solve gate and the "settling" state; **AX39**: Seat 7's allowed and forbidden
+  wording for accuracy claims.
 
 ## Scope
 
@@ -33,6 +36,7 @@ PRD's vision. It is **not** the full 3D editor (deferred, B8).
    - **Status strip:** reported latency (ms), CPU estimate, the room's derived T60 at 500 Hz and 1 kHz
      (from `sim` via the contract: expose `sim::describeScene(const SceneDescription&)` returning summary
      numbers, so the UI never reaches into sim internals), and a warning badge if state failed to load (Phase 07).
+     The nominal Eyring T60 is not shown as an open field's reverb time (AX38 4c hand-off, Seat 6).
 2. **Model/view separation:** the UI talks only to `module3d::SceneModel` + APVTS through a small
    `EditorController` that's testable without rendering. The controller is the only place that converts
    between pixels and metres.
@@ -42,6 +46,17 @@ PRD's vision. It is **not** the full 3D editor (deferred, B8).
    parameters (automation of `room_*` still scales them; Phase 07 D2).
 6. **"Output above 0 dB" indicator:** display only, no auto-gain (AX2; Phase 07 D4).
 7. Show the **AX34 unsupported-rate warning flag** with the supported rates listed (Phase 07 D8).
+8. **"Approximate" note** (AX44, phase 05b): shown from `TailMatch.approximate` on the **settled** scene
+   only, in the info view, never mid-drag; wording by Seats 6 and 7 (within AX39's wording rules). Text
+   (Seat 6 (i)): both-near branch: no ±x from the achieved SE; either the measured replicate p95 of its
+   case class from the phase-05b C++ reported set, or qualitative text ("level unreliable with source and
+   listener this close to surfaces; move either about 0.7 m away"); capped branch: ±x from the achieved SE
+   only for classes whose reported set shows SE ≥ the replicate SD, otherwise the class p95 or
+   qualitative text. When U is raised on an emitter the user did not edit, the note names the scene, not
+   that emitter, as the cause. **U′** (cap hit OR both-near, Seat 6 (iii)) appears only as a labelled
+   diagnostic tier in an advanced view.
+9. **"Settling" state** (AX38 (iii)): shown on every instance waiting at the diffuse-solve gate, project
+   load included.
 
 ## Out of scope
 

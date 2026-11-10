@@ -272,7 +272,8 @@ Windows: run the CMake commands from an "x64 Native Tools Command Prompt for VS 
 - **Audio thread:** no heap allocation, locks, file I/O, logging or exceptions in `processBlock`
   or anything it calls. Hand data between threads through lock-free single-producer/single-consumer
   structures or atomic pointer swaps. Tests check this where they can (allocation-tracking test from Phase 06).
-- **Determinism:** anything random is seeded from scene data (`tailSeed`). Offline (non-realtime)
+- **Determinism:** anything random is seeded from scene data (`tailSeed`), except the diffuse tail-level estimator, whose
+  key is a fixed constant so that E_target never depends on `tailSeed` (AX40, Maisara 2026-11-10). Offline (non-realtime)
   rendering must be bit-identical run to run on the same platform.
 - Units: SI everywhere (metres, seconds, Hz). Angles in radians internally, degrees in JSON and UI.
   Axes: x right, y forward, z up (AQ1).

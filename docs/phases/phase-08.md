@@ -1,6 +1,6 @@
 # Phase 08 — Binaural output with a generic HRTF
 
-Size: **L** (plan for two sessions; split into 08 and 08b if needed) · Depends on: 04, 05b, 07 (05b `done` in either outcome; with "not promoted", this phase builds on the specular-only early part, AX21) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ6, AX3, AX5, AX35) and §3 (F7, F8), PRD FR-SIM-3, FR-SIM-4, FR-3D-9, A1; the D1 decision (`docs/review/board-smoke/hrtf-head/`, accepted by Maisara 2026-11-09) behind scope 1–3
+Size: **L** (plan for two sessions; split into 08 and 08b if needed) · Depends on: 04, 05b, 07 (05b `done` in either outcome; with "not promoted", this phase builds on the specular-only early part, AX21; if 05b splits into 05h, this phase may go before 05h on Seat 4's conditions (i)–(iv) in AX37 (5.3)) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ6, AX3, AX5, AX35) and §3 (F7, F8), PRD FR-SIM-3, FR-SIM-4, FR-3D-9, A1; the D1 decision (`docs/review/board-smoke/hrtf-head/`, accepted by Maisara 2026-11-09) behind scope 1–3
 
 ## Goal
 
@@ -15,6 +15,10 @@ the Phase 06 convolver.
 - **AX3**: the head is upright, and yaw points toward the horizontal centroid of the emitters. If the
   centroid is within 0.1 m horizontally of the listener, the previous yaw is held (initial yaw = +y).
 - **AX5**: deterministic; tail noise per ear is seeded from `tailSeed` with the per-output offset from Phase 04.
+- **AX37 (5.3)** (phase 05b): this phase receives E_b and t_mix,e per emitter through `TailMatch` and no
+  tail directions; `bandsAxisShares` is a labelled specular-only diagnostic. A directional late tail is
+  backlog (§5 B18), behind Seat 1's blind test. **AX39**: one diffuse solve per scene, shared across
+  output modes. **AX38**: the diffuse solve runs through the process-wide gate; W1/W2 include it.
 - **AX35**: the data behind a released `hrtfId` is never replaced; a different head, campaign or re-converted
   set is `generic-v2` with the old data retained. Before this phase's goldens are frozen a converter re-run
   is a parameter change.
@@ -160,10 +164,13 @@ the Phase 06 convolver.
      diffuse-field HRTF magnitude per ear.
    - Energy: the binaural BRIR's per-band energy (average of the two ears, diffuse-field equalized)
      equals the omni IR's per-band energy within ±1 dB. This keeps levels consistent between modes.
+   - E_b and t_mix,e are read only via `TailMatch` (AX37 (5.3)), from the one diffuse solve per scene
+     (AX39); E_b is bit-identical between omni and binaural and between the ears (AX44, Seat 4).
 6. `sim::buildRoomIR(Kind::Binaural)` returns the 2×2 BRIR matrix: emitter L → ear L/R and emitter R →
    ear L/R. The plugin sends `outputMode` through, so `binaural` now uses this path. `stereoSpeakers`
    keeps using omni until Phase 09.
-7. `render_cli --mode binaural`, listening-pack entries, goldens for 3 scenes. `render_cli --hrtf <file>`:
+7. `render_cli --mode binaural`, listening-pack entries (including one both-near binaural render:
+   listener and an emitter within 0.70 m of surfaces, AX44, Seat 4), goldens for 3 scenes. `render_cli --hrtf <file>`:
    a **validation-only** override that renders through another converted `.bin` (CLI only, never in the
    scene, no host parameter; `hrtfId` stays the schema const; the AX4 `--no-air-absorption` pattern), so
    B9 can render through BRAS's FABIAN HRIRs (CC BY-SA 4.0: validation only, as the BRAS row in
@@ -181,6 +188,15 @@ the Phase 06 convolver.
    (13.7, 24.3] ms at P = 512, where AX31's extra partition decides the row (31.3 vs 41.9 ms); so if the
    row applies, AX31's reversal clause applies (AX31 note, phase-06b D2). Under the 20 ms limit neither
    pickup variant meets it for W1 (20.6 > 20 ms) (ledger P06B-76).
+   **Since phase 05b (AX38 (v)):** item 8 measures the delay of one isolated update with the wait at the
+   diffuse-solve gate included, and records that the diffuse solve inside every rebuild, not the gate,
+   is what breaks Table 15.1's 35 ms head-rotation row. If that row applies, the remedy is a Phase 10 AX
+   that updates the specular and directional part without waiting for the diffuse solve, not a change to
+   the gate. Seat 1 reads AX3's centroid-following yaw under the source-movement rows, not the
+   head-rotation row [Inferred]; item 8 still measures.
+9. **Records from phase 05b (AX38):** W1/W2 per output mode with the diffuse share shown separately
+   (AX38 4b); the AX38 (iv) multi-instance records repeated in binaural mode, with the gate wait shown
+   separately.
 
 ## Out of scope
 
@@ -236,7 +252,9 @@ near-field HRTF correction (sources < 1 m; note it as a follow-up).
 - [ ] **Validation-only override:** `render_cli --hrtf <file>` renders through the given converted set;
       the option exists only in the CLI (no scene field, no host parameter; `hrtfId` stays the schema
       const), and the scene validator still rejects any other `hrtfId`.
-- [ ] All earlier tests still pass. pluginval passes. Plugin CPU benchmark is recorded.
+- [ ] **E_b parity (AX44):** E_b is bit-identical between omni and binaural and between the ears.
+- [ ] All earlier tests still pass. pluginval passes. Plugin CPU benchmark is recorded; W1/W2 per output
+      mode with the diffuse share and the binaural AX38 (iv) records are recorded (scope 9).
 
 ## Listening / manual checklist (Maisara, headphones)
 
