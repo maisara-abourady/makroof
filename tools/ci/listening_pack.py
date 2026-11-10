@@ -331,15 +331,21 @@ def _reference_status() -> dict[str, str]:
     gated = [cols.index(f"gated_{b}") for b in range(8)]
     fine = [cols.index(f"ref_fine_{b}") for b in range(8)]
     coarse = [cols.index(f"ref_coarse_{b}") for b in range(8)]
+    # The listening rooms only: <room>_e0 / _e1 of the six Phase 04 rooms, the BRAS pair, the three (A) layouts.
+    wanted = {f"{r}_e{e}": r for r in PHASE_05H_ROOMS if r != "open_field" for e in (0, 1)}
+    wanted.update({"bras_cr3_ls1_mp2": "bras_cr3_ls1_mp2", "t52_layout4_s0.4": "t52_layout4_s0.4",
+                   "t52_layout4_s1.0": "t52_layout4_s1", "t52_layout5_s1.0": "t52_layout5_s1"})
     status: dict[str, str] = {}
     for name, row in zip(g["names"], g["rows"]):
-        room = name.split("_e")[0] if "_e" in name and name[-1].isdigit() else name
-        if room.startswith("AX45/"):
+        if name not in wanted:
             continue
+        room = wanted[name]
         n_gated = sum(1 for i in gated if row[i] > 0.5)
         n_ref = sum(1 for i, j in zip(fine, coarse) if (row[i] == row[i]) or (row[j] == row[j]))
         s = (f"{n_gated}/8 bands gated" if n_gated else ("reported against an uncertified reference" if n_ref else "no reference yet"))
-        status[room] = status.get(room, "") + (f"; " if room in status else "") + f"{name}: {s}"
+        status[room] = status.get(room, "") + ("; " if room in status else "") + f"{name}: {s}"
+    status.setdefault("club_both_near_0.3", "reported set (AX43: club both-near at 0.3 m), not gated")
+    status.setdefault("open_field", "the finite-floor integral check (AX37 (5.4)), not a ref_hybrid reference")
     return status
 
 
@@ -417,8 +423,8 @@ def _phase_05h(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
         "REFERENCE STATUS PER ROOM (D-H2)",
         "-" * 60,
         *(f"{room}: {s}" for room, s in sorted(status.items())),
-        "(t52_* rooms: see the AX43 (A)-case references; open_field: the finite-floor integral check; bras_cr3_ls1_mp2: "
-        "the BRAS pairs' references at 500 Hz-2 kHz.)",
+        "(gated = certified ref_hybrid reference at two rungs, AX43; reported = one rung, no l_ref; the t52 rooms are "
+        "the (A) cases at alpha = 0 on the rigid faces.)",
     ]
     (pack / "README.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
