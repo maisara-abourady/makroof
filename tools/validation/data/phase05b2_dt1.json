@@ -25289,5 +25289,623 @@
    "block128": false,
    "block256": false
   }
+ },
+ "c16b": {
+  "W1/both_wall": {
+   "histories_used": 4800,
+   "vov_pilot": [
+    0.9853448740230645,
+    0.04696194674873607
+   ],
+   "vov_union": [
+    0.5512395020991103,
+    0.013510833991013228
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    true,
+    false
+   ],
+   "se_db": [
+    0.17397152499921958,
+    0.043354723140363725
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "W1/both_corner": {
+   "histories_used": 2624,
+   "vov_pilot": [
+    0.27304305474985324,
+    0.04911952915650041
+   ],
+   "vov_union": [
+    0.5020009182998804,
+    0.021568289393274195
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    true,
+    false
+   ],
+   "se_db": [
+    0.33620296952014694,
+    0.06895719652982246
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "layout4_s1/both_wall": {
+   "histories_used": 1216,
+   "vov_pilot": [
+    0.16062094927577747,
+    0.041987612484065524
+   ],
+   "vov_union": [
+    0.06088546180550533,
+    0.028946118709930982
+   ],
+   "U_pilot_vov": [
+    true,
+    true
+   ],
+   "U_union_vov": [
+    true,
+    true
+   ],
+   "se_db": [
+    0.28997188827547143,
+    0.5141956808091356
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    true
+   ]
+  },
+  "layout4_s1/both_corner": {
+   "histories_used": 384,
+   "vov_pilot": [
+    0.20791992868499873,
+    0.1315777210380242
+   ],
+   "vov_union": [
+    0.1751873800166463,
+    0.07623118979688182
+   ],
+   "U_pilot_vov": [
+    true,
+    true
+   ],
+   "U_union_vov": [
+    true,
+    true
+   ],
+   "se_db": [
+    1.330980235771319,
+    1.149506308352927
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    true
+   ]
+  },
+  "layout5_s1/both_wall": {
+   "histories_used": 5056,
+   "vov_pilot": [
+    0.1735140919206517,
+    0.26381382859198943
+   ],
+   "vov_union": [
+    0.8023911618519414,
+    0.028535733765299394
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    true,
+    false
+   ],
+   "se_db": [
+    1.0240376563934037,
+    0.1757631417328781
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "layout5_s1/both_corner": {
+   "histories_used": 2624,
+   "vov_pilot": [
+    0.3150014692901647,
+    0.18628516410644066
+   ],
+   "vov_union": [
+    0.08869028998870741,
+    0.05605093601452781
+   ],
+   "U_pilot_vov": [
+    true,
+    true
+   ],
+   "U_union_vov": [
+    true,
+    true
+   ],
+   "se_db": [
+    0.18550745157891893,
+    0.4577276475634012
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    true
+   ]
+  },
+  "W1/both_wall_0.3": {
+   "histories_used": 4416,
+   "vov_pilot": [
+    0.34516860796530136,
+    0.05981055309370216
+   ],
+   "vov_union": [
+    0.06378214760209515,
+    0.014256589837989624
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    false,
+    false
+   ],
+   "se_db": [
+    0.07735107684997727,
+    0.04706652772692462
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "W1/both_wall_0.5": {
+   "histories_used": 5056,
+   "vov_pilot": [
+    0.30753096885503095,
+    0.07545269007083713
+   ],
+   "vov_union": [
+    0.0890404061279974,
+    0.012221837285057503
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    true,
+    false
+   ],
+   "se_db": [
+    0.1219034476807661,
+    0.041268708146608345
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "club/both_wall_0.1": {
+   "histories_used": 8000,
+   "vov_pilot": [
+    0.39312884235241136,
+    0.005091433562220174
+   ],
+   "vov_union": [
+    0.28940834596703063,
+    0.0007094688988355933
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    true,
+    false
+   ],
+   "se_db": [
+    0.2314673640495361,
+    0.022424721875230962
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "club/both_edge_0.1": {
+   "histories_used": 4224,
+   "vov_pilot": [
+    0.730772641742157,
+    0.01314970664213512
+   ],
+   "vov_union": [
+    0.15976111837309645,
+    0.00296455535993989
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    true,
+    false
+   ],
+   "se_db": [
+    0.09917594897533565,
+    0.04935028964427362
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "club/both_wall_0.3": {
+   "histories_used": 6848,
+   "vov_pilot": [
+    0.264638545551436,
+    0.0052985522541489595
+   ],
+   "vov_union": [
+    0.06465828285285716,
+    0.0007993687728564396
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    false,
+    false
+   ],
+   "se_db": [
+    0.06862089049400669,
+    0.03190148900162582
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    false,
+    false
+   ]
+  },
+  "club/both_edge_0.3": {
+   "histories_used": 4480,
+   "vov_pilot": [
+    0.20804612233205833,
+    0.01622677993498236
+   ],
+   "vov_union": [
+    0.10959212292422023,
+    0.0029001828008278162
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    true,
+    false
+   ],
+   "se_db": [
+    0.16060498940538598,
+    0.04285313165714747
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "club/both_wall_0.5": {
+   "histories_used": 4096,
+   "vov_pilot": [
+    0.15434382739682914,
+    0.005041471405504553
+   ],
+   "vov_union": [
+    0.03207487182808133,
+    0.001282889883808017
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    false,
+    false
+   ],
+   "se_db": [
+    0.06616945593125816,
+    0.04275931177466387
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    false,
+    false
+   ]
+  },
+  "club/both_edge_0.5": {
+   "histories_used": 4672,
+   "vov_pilot": [
+    0.14813817288714998,
+    0.011597082225513897
+   ],
+   "vov_union": [
+    0.034321317287883395,
+    0.002402558729284139
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    false,
+    false
+   ],
+   "se_db": [
+    0.10623327900606815,
+    0.039053412192426196
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "living_room/both_wall_0.1": {
+   "histories_used": 5632,
+   "vov_pilot": [
+    0.40851286407584547,
+    0.00716806033801087
+   ],
+   "vov_union": [
+    0.12259390273414021,
+    0.001179642724735925
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    true,
+    false
+   ],
+   "se_db": [
+    0.06777589186152437,
+    0.020524366806565112
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "living_room/both_edge_0.1": {
+   "histories_used": 3328,
+   "vov_pilot": [
+    0.28757658143783627,
+    0.004754289724765596
+   ],
+   "vov_union": [
+    0.15673245179501927,
+    0.0016646026208619305
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    true,
+    false
+   ],
+   "se_db": [
+    0.21282907254181038,
+    0.02933424640554867
+   ],
+   "cap_hit": true,
+   "U_at_8000": [
+    true,
+    false
+   ]
+  },
+  "living_room/both_wall_0.3": {
+   "histories_used": 2048,
+   "vov_pilot": [
+    0.08242739139802178,
+    0.008150169381065454
+   ],
+   "vov_union": [
+    0.028878316943606017,
+    0.0035173892142222234
+   ],
+   "U_pilot_vov": [
+    false,
+    false
+   ],
+   "U_union_vov": [
+    false,
+    false
+   ],
+   "se_db": [
+    0.05259574059679916,
+    0.04230807351703542
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    false,
+    false
+   ]
+  },
+  "living_room/both_edge_0.3": {
+   "histories_used": 3136,
+   "vov_pilot": [
+    0.10645498684140436,
+    0.006561984240465651
+   ],
+   "vov_union": [
+    0.062372226797480626,
+    0.0019877416925203916
+   ],
+   "U_pilot_vov": [
+    true,
+    false
+   ],
+   "U_union_vov": [
+    false,
+    false
+   ],
+   "se_db": [
+    0.10507421297391355,
+    0.02723725125962177
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    false,
+    false
+   ]
+  },
+  "living_room/both_wall_0.5": {
+   "histories_used": 2048,
+   "vov_pilot": [
+    0.011123709789685984,
+    0.00793715024717935
+   ],
+   "vov_union": [
+    0.00508347724570768,
+    0.003330505807205416
+   ],
+   "U_pilot_vov": [
+    false,
+    false
+   ],
+   "U_union_vov": [
+    false,
+    false
+   ],
+   "se_db": [
+    0.03977682334600997,
+    0.03743884652946288
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    false,
+    false
+   ]
+  },
+  "living_room/both_edge_0.5": {
+   "histories_used": 2048,
+   "vov_pilot": [
+    0.014368838453506593,
+    0.008743246800656442
+   ],
+   "vov_union": [
+    0.006027158939598082,
+    0.0031161838958397225
+   ],
+   "U_pilot_vov": [
+    false,
+    false
+   ],
+   "U_union_vov": [
+    false,
+    false
+   ],
+   "se_db": [
+    0.07379264698939822,
+    0.03492575688937963
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    false,
+    false
+   ]
+  },
+  "dead_booth/listener_wall_0.1": {
+   "histories_used": 2048,
+   "vov_pilot": [
+    0.005908721996152826,
+    0.006089509550394775
+   ],
+   "vov_union": [
+    0.003233028353934818,
+    0.0030304109749221316
+   ],
+   "U_pilot_vov": [
+    false,
+    false
+   ],
+   "U_union_vov": [
+    false,
+    false
+   ],
+   "se_db": [
+    0.03495820661890023,
+    0.034460122840288876
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    false,
+    false
+   ]
+  },
+  "dt6_small_room": {
+   "histories_used": 2048,
+   "vov_pilot": [
+    0.00581444939606574,
+    0.0048864165514396615
+   ],
+   "vov_union": [
+    0.0027550194670333547,
+    0.002448483011386654
+   ],
+   "U_pilot_vov": [
+    false,
+    false
+   ],
+   "U_union_vov": [
+    false,
+    false
+   ],
+   "se_db": [
+    0.013390729276200802,
+    0.013335873825561681
+   ],
+   "cap_hit": false,
+   "U_at_8000": [
+    false,
+    false
+   ]
+  }
  }
 }

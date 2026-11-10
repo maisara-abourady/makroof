@@ -359,7 +359,7 @@ def step_openfield(npaths: int = 400_000):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14", "c15", "c16"])
+    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14", "c15", "c16", "c16b"])
     ap.add_argument("--paths", type=int, default=32_000)
     a = ap.parse_args(argv)
     if njit is None:
@@ -375,7 +375,7 @@ def main(argv=None):
     else:
         {"c3": step_c3, "c4": step_c4, "c5": step_c5, "c6": step_c6, "c7": step_c7, "c9b": step_c9b,
          "c12a": step_c12a, "c12b": step_c12b, "c12d": step_c12d,
-         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14, "c15": step_c15, "c16": step_c16}[a.step]()
+         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14, "c15": step_c15, "c16": step_c16, "c16b": step_c16b}[a.step]()
 
 
 
@@ -1720,6 +1720,37 @@ def step_c16():
     out["h_overrun"] = h
     out["h_8000_multiple"] = {f"block{b}": 8000 % b == 0 for b in (32, 64, 128, 256)}
     d = load(); d["c16"] = out; save(d)
+
+
+def _vov(x: np.ndarray) -> float:
+    dev = x - x.mean(); s2 = (dev ** 2).sum(); s4 = (dev ** 4).sum()
+    return float(s4 / s2 ** 2 - 1.0 / len(x)) if s2 > 0 else 0.0
+
+
+def step_c16b():
+    """C16b (Seat 6, S6-b condition): at n*_max 1 024, the note's VOV leg computed over pilot ∪ final range, up to the first
+    8 000 histories (per-history scores, 1 kHz and all bands), for every both-near case in C16; U recomputed with it."""
+    d = load(); c16 = d["c16"]["cases"]; out = {}
+    for k, (c0, c1) in _joint_cases().items():
+        row = c16[k]
+        if not any(row["both_near"]):
+            continue
+        r = row["nmax1024"]; ns, nf = r["n_star"], r["n"]
+        prs = [_Prep(c0), _Prep(c1)]
+        u_new = []; vovs = []
+        for i, pr in enumerate(prs):
+            pl = pr.nw4c(ns, p0=0)["x"] * ns
+            fi = pr.nw4c(nf, p0=8000)["x"] * nf if nf > 0 else np.zeros((0, 8))
+            x = np.concatenate([pl, fi])[:8000]
+            v = max(_vov(x[:, b]) for b in range(8))
+            vovs.append(v)
+            e = r["emitters"][i]
+            u_new.append(bool((row["both_near"][i] and (r["cap_hit"] or v >= 0.1)) or (r["cap_hit"] and e["se_db"] > 0.33)))
+        out[k] = {"histories_used": int(min(8000, ns + nf)), "vov_pilot": [e["pilot_VOV"] for e in r["emitters"]], "vov_union": vovs,
+                  "U_pilot_vov": r["U"], "U_union_vov": u_new, "se_db": [e["se_db"] for e in r["emitters"]], "cap_hit": r["cap_hit"],
+                  "U_at_8000": row["nmax8000"]["U"]}
+        log(k, out[k])
+    d = load(); d["c16b"] = out; save(d)
 
 if __name__ == "__main__":
     main()
