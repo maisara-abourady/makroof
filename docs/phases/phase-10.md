@@ -1,6 +1,6 @@
 # Phase 10 — Artifact-free movement under automation
 
-Size: **M** · Depends on: 06, 07, 08, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ4, AQ10, AX1, AX18, AX20, AX22, AX33), PRD FR-SIM-6, NFR-3, Q4
+Size: **M**, split into 10-1…10-3 · Depends on: 06, 07, 08, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ4, AQ10, AX1, AX18, AX20, AX22, AX33), PRD FR-SIM-6, NFR-3, Q4
 
 ## Goal
 
@@ -26,139 +26,72 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
 - **AX1**: no Doppler. Movement is a sequence of crossfaded static IRs. Fast moves sound slightly
   smeared rather than pitch-shifted. That's intended, and the PR must describe it.
 
-## Scope
+## Sub-phases
 
-1. **Automation in `render_cli`:** implement `--automation <json>`: a list of `{paramId, points:
-   [[timeSec, normalizedValue], ...]}` with linear interpolation. render_cli drives the same
-   `module3d::ParameterMap` and builder logic as the plugin, in **both** modes:
-   - `--offline` (default): synchronous rebuild per block whenever parameters changed (the plugin's
-     non-realtime path).
-   - `--realtime-sim`: the builder runs on a real background thread with the 20 ms cadence. The audio loop
-     runs as fast as possible, but the *simulated* clock decides when the builder's results are picked up,
-     so behaviour is reproducible for tests. Document the mechanism.
-2. **Tail cache:** cache the Phase 04/08/09 **unmatched, unit-energy per-band noise decay** (Phase 04
-   scope 3: it depends only on V, S, ᾱ_b, m_b, `tailSeed` and the sample rate, per output for 08/09),
-   stored **before** E_b scaling, `t_mix,e` gating and the ISM→tail crossfade. Key it by (room
-   dimensions, materials, mode, seed, sample rate). Every rebuild, including a position-only one,
-   recomputes the early part, the AX16 scattered-energy list, each emitter's `t_mix,e` (it follows the
-   emitter's direct-arrival time, so it depends on positions), the AX20 time-bounded image list (every
-   image of any order arriving before t_mix,e + 2.5 ms; `maxReflectionOrder` has no effect on it), E_b
-   (against ē_b, which depends only on T60_b, t_mix,e on the cached decay's emission-referenced time
-   axis and the IR length) and the crossfade from the new image list. Prove the
-   result equals a full rebuild (test), including a move that changes t_mix,e and the time-bounded
-   image list. Since phase 05b, E_b includes the diffuse solve (AX37, AX39), recomputed every rebuild with
-   no cache credit (AX38 4b). A cache of the diffuse computation (a room kernel) comes only through a new
-   AX, which reopens AX38 (ii) (128 MB additional resident) and AX38 4b together.
-3. **Rebuild scheduling:** the builder always works on the newest scene (coalescing). If a build takes
-   longer than 20 ms, the next build starts immediately with the latest scene. The audio thread keeps
-   using the last IR and never blocks. Track and expose "IR staleness" (time between the parameter
-   change and the IR going live) as a debug metric. Time spent waiting at the diffuse-solve gate counts in
-   it (AX38 (iii)); the same wait drives Phase 11's "settling" state. The split update (AX38 (v): a
-   Phase 10 AX that updates the specular and directional part without waiting for the diffuse solve) is
-   designed together with [`phase-07c.md`](phase-07c.md) condition 4 (atomic swap with an AQ4 crossfade;
-   the ISM update never held behind the diffuse solve), so it is not designed twice.
-4. **Parameter smoothing:** the 20 ms output-trim smoothing stays. Positions aren't smoothed per sample
-   (they only drive IR rebuilds). Room-size changes go through the same path. Document that room-size
-   automation at large rooms is stepwise (each step a full rebuild, AQ10; AX38 4c hand-off).
-5. **Negative control:** a build flag `MAKROOF_TEST_HARD_SWITCH` (test builds only) replaces the crossfade
-   with an instantaneous IR switch. The click detector **must** flag that build. This proves the detector
-   catches the problem this phase solves.
-6. **Automation scenario suite** `tests/automation/*.json` (20 scenarios): slow and fast linear sweeps of
-   the listener and each emitter across the room; step jumps (corner to corner) every 250 ms; sinusoidal
-   oscillation at 0.1, 1, 2 and 5 Hz; room size sweeps from min to max; output-mode toggles mixed with
-   movement; all parameters at once.
-7. CI job `automation` (Linux in every PR; macOS/Windows too, since it's fast with short renders) runs all
-   scenarios × 2 modes × {offline, realtime-sim} through `render_cli` with the sustained-tone input and
-   runs `clicks.py`.
-8. **Isolated-update cap:** confirm or replace AX33 (Phase 07: minimum 20 ms spacing between build
-   starts; an isolated request starts at once) and state the resulting isolated-update delay (at most
-   rebuild + 2P, AX31). Phase 07's `IrBuilderThread` (`src/plugin/core/IrBuilderThread.h`, `kIdlePollS`)
-   notices a parameter change by polling the dirty generation every 1 ms while idle: the audio-thread
-   parameter listener only does a lock-free `fetch_add`, so it never makes a system call or takes a lock
-   (Phase 07 follow-up, PR #23). Confirm this, or replace it with a wake-up that keeps the audio thread
-   free of locks and system calls, and state the resulting worst-case extra delay for an isolated update.
+| id | title | lead seat | size | depends on | ships | owns |
+|---|---|---|---|---|---|---|
+| [10-1](phase-10-1.md) | Position-only tail cache | Seat 2 (Engine architect) | S | 06, 07, 08, 09 | A keyed cache of the unmatched unit-energy per-band decay (per output for 08/09) used by every rebuild in the product path, with E_b (diffuse solve included), t_mix,e, the AX20 list, AX16 list and the ISM→tail crossfade recomputed each time | AC5 |
+| [10-2](phase-10-2.md) | Automation driver, rebuild scheduling and staleness | Seat 5 (Deadline keeper) | M | 06, 07, 08, 09, 10-1 | `render_cli --automation` in `--offline` and `--realtime-sim` (simulated clock), coalescing scheduler with the IR-staleness metric, the AX33 / idle-poll confirmation, the 20 scenarios and the `automation` CI job on 3 OSes with the staleness gate | AC3, AC4, AC8, AC9, AC10 |
+| [10-3](phase-10-3.md) | Crossfade law and artefact gates under movement | Seat 3 (Reverb renderer) | M | 06, 07, 08, 09, 10-2 (and 10-1 through it) | The AX18 law for position / room-size / large-jump switches set and gated (AX22 switch-point gate, position-fade gate), the `MAKROOF_TEST_HARD_SWITCH` negative control, and `clicks.py` in the `automation` job with 0 events | AC1, AC2, AC6, AC7 |
+
+Order: 10-1 → 10-2 → 10-3. Status: the umbrella is `done` when every sub-phase is. A dependency on phase 10 means
+all of its sub-phases unless a sub-phase is named.
 
 ## Out of scope
 
 Doppler / interpolated delay lines (would need a new AX entry and Expert input), dynamic reduction of the
 image list while moving (it would change AX20; needs an AX entry if introduced).
 
-## Acceptance criteria — automated
+## Where the original items went
 
-- [ ] All 20 scenarios × 2 modes × 2 timing modes: **0 click events** (Phase 02 detector, default threshold).
-- [ ] Negative control (`MAKROOF_TEST_HARD_SWITCH`) is flagged in ≥ 18 of 20 scenarios. (Scenarios with
-      no effective IR change may legitimately pass.)
-- [ ] Offline render of every scenario is **bit-identical** across two runs.
-- [ ] A static scene renders identically (within −120 dB) in offline and realtime-sim modes.
-- [ ] Tail-cache result equals a full rebuild within −120 dB.
-- [ ] **AX22 switch point:** a test scene and a position move that cross a realised-k switch point
-      (ISM-only fallback on one side, tail from t_mix,e on the other). Measured per output channel and
-      octave band (500 Hz, 1 kHz, 2 kHz; AX14 rule if adjacent bands differ > 15 dB) as the expected
-      instantaneous output power for a stationary input, computed from the two IRs:
-      P(g) = (1−g)²E₁ + g²E₂ + 2g(1−g)C₁₂ (E full-IR band energies, C₁₂ their band cross-energy),
-      against R(g) = (1−g)E₁ + gE₂, at every sample of the 30 ms ramp (instantaneous, no averaging
-      window; valid because Phase 06 gates the crossfade to the analytic one within −100 dB).
-      **Gate:** max_g of −10·log10(P/R) ≤ 1 dB. Reported: the dip at each g, the fade-averaged dip, ρ,
-      f (the segment's share of R(g*)), and the predicted worst case 10·log10(1 − f(1+ρ)/(1+√ρ)²) at
-      g* = 1/(1+√ρ). That prediction is for the segment only; the equal-gain dip of the correlated rest
-      when E₁ ≠ E₂ comes on top, and the gate, computed from P(g) with C₁₂, includes it. The predicted
-      worst case is ≤ 1 dB when f ≤ 0.2057(1+√ρ)²/(1+ρ): 0.41 at ρ = 1, 0.32 at ρ = 10, 0.21 for any ρ.
-      Instrument self-test: two independent seeded noise IRs at ρ = 10, f = 1 give 4.37 ± 0.1 dB at
-      g = 0.24 ± 0.01. This holds only with residual normalised cross-energy |ρ_c| ≤ 0.023 at 3σ, so use
-      noise IRs with 2BT ≥ 1.7·10⁴ per band (≈ 24 s at 500 Hz), or set the tolerance from 3/√(2BT) for
-      the chosen length (derived, not corpus). With a transient input the segment's own dip (up to
-      4.4 dB at 10:1) is reported, not gated (Vorländer Eq. 4.14, §1.7). The 1 dB is G's jnd (Table 6.1,
-      stated for 500–1000 Hz), applied to a 30 ms dip by extension. If the gate fails, this phase
-      proposes a time-segment-split crossfade as a new AX (decider report 8; measurement and formula:
-      decider report 11, FR-01, with the interrogator's corrections, report 12; accepted by Maisara,
-      2026-11-05).
-- [ ] **Position-fade gate (AX18 amendment):** every movement scenario states its speed in m/s and its
-      measured update interval. At each IR switch, per output channel and octave band 500 Hz, 1 kHz,
-      2 kHz (AX14 rule as above): P(g) = a(g)²E₁ + b(g)²E₂ + 2a(g)b(g)C₁₂ for the law's ramps a, b,
-      against R(g) = (1−g)E₁ + gE₂ at every ramp sample. **Gate:** max_g |10·log10(P/R)| ≤ 1 dB (dips
-      and bumps; G's jnd, Vorländer Table 6.1, 500–1000 Hz, extended to 2 kHz and a 30 ms fade).
-      Report ρ_b = C₁₂/√(E₁E₂) per band. If equal-gain fails, propose a law as a new AX, e.g. a
-      per-band or time-segment crossfade, or a correlation-matched law applied per band (Fink, Holters,
-      Zölzer 2016, DAFx-16, Eq. 11, ρ from the two IRs; researcher F20). Known limit: at ρ = 1 a band
-      step ≳ 8.5 dB between consecutive IRs exceeds 1 dB under any single-gain law (Fink's
-      equal-power-assumption law included); this phase either defines the gate's domain or proposes an
-      energy-aware law. Each scenario reports its largest band step (Phase 07 decision loop
-      2026-11-08, decider round 2 §4, advocate round 2).
-- [ ] Worst-case IR staleness in realtime-sim ≤ **100 ms** in all scenarios (recorded in the CI log;
-      failing it fails the job). The hybrid IR's image list is time-bounded (AX20), so its size follows
-      t_mix,e and the room, not `maxReflectionOrder`. If the ≤ 100 ms staleness gate fails only because
-      of a recorded AQ10 miss, this phase may apply the phase-13 scope 1 optimisations (output unchanged
-      beyond −100 dB). If it still fails, the phase is `blocked (AQ10 miss)` and Maisara chooses between
-      (a) a smaller N_cap (an output change; the AX22 sensitivity report shows the accuracy cost) and
-      (b) for fallback scenes only, a staleness bound taken from Vorländer Table 15.1 (700 ms,
-      translation > 0.25 m). The gate is not loosened otherwise (decider report 8, accepted by Maisara, 2026-11-05).
-- [ ] No allocation in `processBlock` during the automation scenarios (AllocationTracker through the plugin processor).
-- [ ] pluginval strictness 10 passes (its automation test exercises this path too).
+Labels: acceptance criteria AC1–AC10 in the original file order (AC1 0 click events; AC2 negative control; AC3
+offline bit-identical; AC4 static scene offline vs realtime-sim; AC5 tail cache; AC6 AX22 switch point; AC7
+position-fade gate; AC8 staleness; AC9 no allocation; AC10 pluginval); listening items L1–L5 in file order (the
+preamble "In Logic and one VST3 host, …" is shared); contractor review focus CR1–CR4 in sentence order; risks R1–R2.
+
+| original item | → |
+|---|---|
+| Goal; assumptions AQ4, AX18, AX1 | umbrella (shared; repeated in the sub-phases they bear on) |
+| Assumption AX22 | umbrella and [10-3](phase-10-3.md) |
+| Scope 1 (automation in `render_cli`, `--offline`, `--realtime-sim`) | [10-2](phase-10-2.md) |
+| Scope 2 (tail cache) | [10-1](phase-10-1.md) |
+| Scope 3 (rebuild scheduling, staleness metric, split update with phase-07c condition 4) | [10-2](phase-10-2.md) |
+| Scope 4 (parameter smoothing) | [10-2](phase-10-2.md) |
+| Scope 5 (negative control `MAKROOF_TEST_HARD_SWITCH`) | [10-3](phase-10-3.md) |
+| Scope 6 (automation scenario suite) | [10-2](phase-10-2.md) |
+| Scope 7, clause 1 (CI job `automation` … with the sustained-tone input) | [10-2](phase-10-2.md) |
+| Scope 7, clause 2 ("and runs `clicks.py`") | [10-3](phase-10-3.md) |
+| Scope 8 (isolated-update cap, AX33, `kIdlePollS`) | [10-2](phase-10-2.md) |
+| Out of scope | umbrella (shared) |
+| AC1, AC2, AC6, AC7 | [10-3](phase-10-3.md) |
+| AC3, AC4, AC8, AC9, AC10 | [10-2](phase-10-2.md) |
+| AC5 | [10-1](phase-10-1.md) |
+| Listening preamble | umbrella (shared by 10-2 and 10-3) |
+| L1–L4 | [10-3](phase-10-3.md) |
+| L5 | [10-2](phase-10-2.md) |
+| CR1 (scheduling and coalescing), CR3 (realtime-sim clock) | [10-2](phase-10-2.md) |
+| CR2 (cache-key completeness) | [10-1](phase-10-1.md) |
+| CR4 (negative control code path) | [10-3](phase-10-3.md) |
+| R1 (rebuild cost in large rooms) | [10-2](phase-10-2.md) |
+| R2 (detector blind spot below 2 kHz) | [10-3](phase-10-3.md) |
+| Definition of done: "All automated criteria green" | umbrella (shared: each sub-phase for the criteria it owns) |
+| Definition of done: "staleness numbers in the status notes" | [10-2](phase-10-2.md) |
+| Definition of done: "status row 10 `done`" | umbrella (set when 10-1…10-3 are `done`; each sub-phase sets its own row) |
 
 ## Listening / manual checklist (Maisara)
 
-In Logic and one VST3 host, on a sustained pad *and* on drums, both output modes:
-- [ ] Automate the L and R emitters from 1 m to 15 m away and back over 8 bars: smooth change in distance,
-      no clicks, zipper noise or level pumping.
-- [ ] Jump the listener between two corners every beat: the room snaps cleanly, with no clicks.
-- [ ] Sweep the room size over 4 bars: smooth.
-- [ ] Fast moves sound slightly "washy" but not pitch-wobbly. That's the intended no-Doppler design.
-      Say if you'd prefer audible Doppler; that's a product decision.
-- [ ] Bounce offline: the bounce sounds like the realtime playback.
+In Logic and one VST3 host, on a sustained pad *and* on drums, both output modes: (items L1–L4 in
+[10-3](phase-10-3.md), L5 in [10-2](phase-10-2.md))
 
-## Contractor review focus
+## Notes from the split
 
-Scheduling and coalescing logic, cache-key completeness (a stale tail is a nasty bug), the realtime-sim
-clock mechanism, and whether the negative control really exercises the same code path.
-
-## Risks
-
-- IR rebuild cost in large rooms (the AX20 image list grows with t_mix,e, whatever `maxReflectionOrder`
-  is) could exceed the 20 ms cadence and cause visible staleness. Measure it. If it's too slow, propose
-  (don't implement) a reduction of the image list while moving as an AX entry (it would change AX20).
-- The click detector's blind spots for very low-frequency artifacts (thumps below 2 kHz). Add one scenario
-  with a 40 Hz tone and a low-band detector variant if cheap.
+- 10-c1 NOT A DECISION: (A). (A) follows the data dependencies (AQ10: AC8 rebuild hits the tail cache; AC7 needs
+  the realtime-sim intervals). 10-c2 NOT A DECISION: (a), split at S7's existing clause, verbatim. 10-c3 NOT A
+  DECISION: (a), 10-1 standalone (owns AC5, one subject, carries risk CR2). (convening round,
+  `docs/review/phase-split/1-decider-convening.md`)
+- Map and coverage: `docs/review/phase-split/map-10.md`.
 
 ## Definition of done
 
-All automated criteria green; staleness numbers in the status notes; status row 10 `done`.
+All automated criteria green (shared; each sub-phase for the criteria it owns); status row 10 `done` (when
+10-1…10-3 are `done`).
