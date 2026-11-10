@@ -189,3 +189,30 @@ shell laid out before the canvas risks the core experience. Amends none of her r
 | FM-1 | split, Yes | for Maisara | — | — | medium | her veto |
 
 NEEDS MAISARA: none.
+
+---
+
+## Addendum — D-PS4, Seat 2's round-2 rating (`5b-seat2-r2.md`)
+
+Seat 2's condition adopted; the decision stands at max 1, sum 7 (without it Seat 2's later would be 2).
+- Corrected cell (replaces the (rc) 0/0): Seat 2 rates (a+5) **0/1** ("if `13-1b` reopens optimisation after 13-2,
+  rebuild time can move"; W_max, n*_max and N_cap rest on rebuild and solve time).
+- (a+5): S1 1/0, S2 0/1, S3 1/1, S5 1/1, S7 0/1 → max 1, sum 7; still the only survivor of steps 1–2. Confidence
+  medium (Seats 3, 5, 7 still read from conditions).
+
+**Instruction 3, final:** "If `13-1b` changes rebuild time or diffuse-solve time, 13-2's i₀ sentence, its N_cap rule
+and S13's W_max / n*_max re-check re-run before 13-3's records are taken."
+
+| seat | commits | undo cost | evidence | repaid when |
+|---|---|---|---|---|
+| S2 | if `13-1b` reopens after 13-2, 13-2's limits may go stale | a re-run, possibly one golden round | 13-3's S9 result | S9 passes, or 13-2 re-run before 13-3's records |
+
+Seat 2's hand-offs, adopted:
+1. 13-2's file states: "Depends on 13-1; and on 07c `done` or S13's versioning fallback recorded (header H)." (Header
+   H already carries it; made explicit, nothing added.)
+2. Instruction 6 now reads: "S13's 'release machines', in 13-2, and S9, in 13-3, need Apple-silicon hardware; Maisara
+   provides it (follow-up)."
+
+Decided for Maisara, D-PS4 revised: acceptance check unchanged. Seat 3 gives most (preferred measure-and-fix in one
+session); gets the 13-1 lead with `13-1b` before the platform records. Seat 2 gets 13-2's limits re-run if 13-1
+reopens.
