@@ -245,9 +245,9 @@ TEST_CASE(
                 if (k.suite == 0)
                 {
                     pooledZ[b].add(z);
-                    // D-H3 (a): z' carries the reference's own certified uncertainty (its last-halving
-                    // change, as a standard uncertainty); the pooled check groups by reference room (one
-                    // cluster mean per room).
+                    // D-H3 (a) (decider file 27, H3-F1): z' = (C++ - ref) / sqrt(SE^2 + l_ref^2) carries the
+                    // reference's certified uncertainty as a standard uncertainty; pooled per case-band and
+                    // per reference room it is printed as a record. The CHECK is the additive bound below.
                     const double zPrime = dbs[b] / std::sqrt(ses[b] * ses[b] + lRefDb * lRefDb);
                     pooledZPrime[b].add(zPrime);
                     classZ[k.cls][b].add(z);
@@ -298,44 +298,59 @@ TEST_CASE(
             }
         }
     }
-    // AX43 pooled bias per band, as amended by D-H3 (a) (docs/review/phase-05h/20-decider-decision-D-H3.md,
-    // H3-F1): z' = (C++ - ref) / sqrt(SE^2 + l_ref^2) per case-band; one cluster mean per reference room; the
-    // CHECK is |mean over rooms| <= 3 / sqrt(M_rooms). Printed beside it as records, never checked: the
-    // as-written statistic (mean z over case-bands against 3 / sqrt(M)), the per-class means in both forms,
-    // the pooled mean signed deviation in dB beside the mean l_ref and 3 SE_pool (the additive form), and the
-    // per-room table.
+    // AX43 pooled bias per band, as amended by D-H3 (a)
+    // (docs/review/phase-05h/27-decider-decision-D-H3-r3.md, H3-F1): the CHECK is the additive bound |mean
+    // (C++ - ref) dB| <= 3 SE_pool + mean l_ref, with SE_pool = sqrt(mean SE^2 / M): l_ref enters as a
+    // bounded systematic residual of unknown sign, the same reading as the per-case N rule (z_FW SE <= tau -
+    // l_ref), one reading throughout AX43. The right-hand side is the catch for a shared estimator bias
+    // (about 0.009 dB at 500 Hz-2 kHz on the file-18 set); it is a mean of magnitudes, so it moves with the
+    // gated set and is restated at each golden round (Seat 2); it is printed per band beside the mean
+    // deviation (Seat 1) and returns to the board above 0.02 dB. Printed as records, never checked: the
+    // as-written statistic (mean z against 3/sqrt(M)), the pooled mean z', the per-class means in both forms,
+    // and the per-room z' means (one per reference room, the `room` column written by
+    // tools/validation/export_phase05h_references.py, against 3/sqrt(M_rooms)). The per-room table is the
+    // watch for what the mean cannot see: a room with |mean z'| > 3 is labelled and the rooms' sign count is
+    // printed; either, with the per-case checks green, reopens the clause by a board round, with the per-room
+    // form ((e'), decider file 25) the pre-registered alternative.
     for (std::size_t b = 0; b < 8; ++b)
         if (pooledZ[b].n > 0)
         {
             const double limitWritten = 3.0 / std::sqrt(static_cast<double>(pooledZ[b].n));
             const double sePool = std::sqrt(pooledSe2[b].mean() / static_cast<double>(pooledSe2[b].n));
-            std::printf("agree-full pooled bias band %zu [record, as written]: mean z %+.3f over %d "
-                        "case-bands (3/sqrt(M) %.3f); "
-                        "mean z' %+.3f; mean (C++ - ref) %+.4f dB, mean l_ref %.4f dB, 3 SE_pool %.4f dB "
-                        "(additive form %s)\n",
-                        b, pooledZ[b].mean(), pooledZ[b].n, limitWritten, pooledZPrime[b].mean(),
-                        pooledDev[b].mean(), pooledLRef[b].mean(), 3.0 * sePool,
-                        std::abs(pooledDev[b].mean()) <= pooledLRef[b].mean() + 3.0 * sePool ? "within"
-                                                                                             : "OUTSIDE");
+            const double catchDb = pooledLRef[b].mean() + 3.0 * sePool;
+            const bool within = std::abs(pooledDev[b].mean()) <= catchDb;
+            std::printf(
+                "agree-full pooled bias band %zu [CHECK, additive]: mean (C++ - ref) %+.4f dB over %d "
+                "case-bands; bound 3 SE_pool + mean l_ref = %.4f + %.4f = %.4f dB (%s)\n",
+                b, pooledDev[b].mean(), pooledZ[b].n, 3.0 * sePool, pooledLRef[b].mean(), catchDb,
+                within ? "within" : "OUTSIDE");
+            CHECK(within);
+            std::printf(
+                "agree-full pooled bias band %zu [record, as written]: mean z %+.3f over %d case-bands "
+                "(3/sqrt(M) %.3f); mean z' %+.3f\n",
+                b, pooledZ[b].mean(), pooledZ[b].n, limitWritten, pooledZPrime[b].mean());
             for (const auto& [cls, stats] : classZ)
                 if (stats[b].n > 0)
                     std::printf("agree-full pooled bias band %zu [record, per class] %-10s: mean z %+.3f, "
-                                "mean z' %+.3f over %d "
-                                "(3/sqrt(M) %.3f)\n",
+                                "mean z' %+.3f over %d (3/sqrt(M) %.3f)\n",
                                 b, className(cls), stats[b].mean(), classZPrime[cls][b].mean(), stats[b].n,
                                 3.0 / std::sqrt(static_cast<double>(stats[b].n)));
             Stat rooms;
+            int roomsPositive = 0, roomsNegative = 0;
             for (const auto& [room, st] : roomZPrime[b])
             {
                 rooms.add(st.mean());
-                std::printf("agree-full pooled bias band %zu [room %d]: mean z' %+.3f over %d case-bands\n",
-                            b, room, st.mean(), st.n);
+                (st.mean() >= 0.0 ? roomsPositive : roomsNegative)++;
+                std::printf(
+                    "agree-full pooled bias band %zu [record, room %d]: mean z' %+.3f over %d case-bands%s\n",
+                    b, room, st.mean(), st.n,
+                    std::abs(st.mean()) > 3.0 ? "  |mean z'| > 3 (one-room watch)" : "");
             }
-            const double limit = 3.0 / std::sqrt(static_cast<double>(rooms.n));
-            std::printf("agree-full pooled bias band %zu [CHECK, per reference room, z']: mean over %d rooms "
-                        "%+.3f (limit %.3f)\n",
-                        b, rooms.n, rooms.mean(), limit);
-            CHECK(std::abs(rooms.mean()) <= limit);
+            const double limitRooms = 3.0 / std::sqrt(static_cast<double>(rooms.n));
+            std::printf(
+                "agree-full pooled bias band %zu [record, per reference room, z']: mean over %d rooms "
+                "%+.3f (3/sqrt(M_rooms) %.3f); rooms +/- %d / %d\n",
+                b, rooms.n, rooms.mean(), limitRooms, roomsPositive, roomsNegative);
         }
     // AX46: mean signed deviation <= 1 % per band and class, evaluated where 3 SE_class <= 1 % - l_ref.
     for (const auto& [cls, stats] : classDev)

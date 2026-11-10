@@ -228,3 +228,26 @@ None (as file 25).
 - H3-F6: its (e′) line becomes a record figure; (A) unchanged.
 
 Nothing written to the tree; the orchestrator saves this as `/home/user/makroof/docs/review/phase-05h/27-decider-decision-D-H3-r3.md` and hands it to the interrogator for its one check.
+
+
+---
+
+# Addendum to the round-3 document (file 27): restatements 7 and 8 of file 26 (P05H-103) applied to H3-F6
+
+Append to `/home/user/makroof/docs/review/phase-05h/27-decider-decision-D-H3-r3.md`, replacing its "## H3-F6 — the finest certified rung at the four small rooms (stands)" section with the section below. The ledger answer list for (a) gains the line "**P05H-103.** Restatements 7 and 8 applied to H3-F6 (below); (A) stands." The "Changes against file 25" list gains "**P05H-103:** H3-F6's reasoning sentence corrected (ℓ_ref rises at dead_booth; the AX36 caveat carries to 0.625 m; no CHECK changes colour); the three seats' words quoted exactly; the G6 golden round recorded as preceding this check."
+
+## H3-F6 — the finest certified rung at the four small rooms (stands, with corrections; P05H-103)
+
+**Process record (as P05H-71).** The G6 golden round (the 0.625 m references for dead_booth, living_room, classroom and club, through `update_goldens.py`) was applied to the tree before this check (`tests/golden/CHANGELOG.md` L119–121). If (A) fell, the tree would revert to the 1.25 m references by a second golden round with the reason; it stands, so nothing reverts.
+
+**Answer (A), rests on, veto reading, AMENDS line:** as file 25's addendum, unchanged.
+
+**Reasoning (corrected, restatement 7).** (B) keeps a reference whose recorded ℓ_ref (0.0073–0.0084 dB) is smaller than the next halving's change (0.0116–0.0126 dB; the AX36 caveat), against the row's text, and would need an amendment with no PRD ground; (A) follows the text. dead_booth's ℓ_ref rising to 0.28 % is the rule's value (the last-halving change, now 1.25 → 0.625 m); the ladder's ratio 1.50–1.62 means the AX36 caveat applies at 0.625 m as well (the residual there may still exceed its last change), and it is carried in the §0 record and the ledger for that rung too. Per-case: C++ within 0.007 dB of each room's 0.625 m reference ≪ τ; N rule: z_FW·SE 0.009 ≤ τ − ℓ_ref 0.238 dB. **No CHECK changes colour:** the (e′) CHECK was green at 1.25 m (A-L1) and is green at 0.625 m (dead_booth z′ ≈ 0.45, a record figure under (f9)); under (f9) the move lowers the pooled mean deviation and the bound alike (≈ +0.0004 dB against ≈ 0.008 dB at 500 Hz–2 kHz, the derived estimate in the (a) section; the application run confirms).
+
+**Seats' earlier words (quoted exactly, restatement 8).** Seat 1 (L31): evidence arrives at "the next certified rung (ℓ_ref shrinks)" — it rises at dead_booth (0.17 → 0.28 %) and falls at the other three rooms; (A) still follows, because the seat's debt is repaid by the rung landing, not by the direction of ℓ_ref. Seat 2 (L27): "the non-circular check is cheap … record whether the reference moves toward the C++" — it does, at all four rooms (K-a7), so the residual explanation holds; "ℓ → 0 form" is Seat 9's phrase (L76), not Seat 2's. Seat 5: nothing red; N pre-registered, no reseed — met. Seat 7: "a tolerance changed after the data" — none changes; the CHANGELOG reason states green before and after — met. Seat 9 (L76): "if the reference moves toward the C++, the C++ is confirming AX39's ℓ → 0 form and dead_booth's ℓ_ref in the golden is the thing to lower (golden process, with reason)" — the reference does move toward the C++; the recorded ℓ_ref nevertheless rises at dead_booth, because the rule's value is the last change and the step grew; the seat's route (the golden process, with reason) is the one taken, and the rising value is the honest one.
+
+**Decided for Maisara (H3-F6 line, unchanged in substance):** the four small rooms' references move to the finest certified rung now, with the reason recorded; at dead_booth the recorded uncertainty rises (0.17 → 0.28 %) because the ladder is not yet asymptotic, and the AX36 caveat is carried to that rung (NFR-1; verification culture). `AMENDS her decision of 2026-11-10: "I accept the board's answer by definition" (AX43: note only).`
+
+The summary-table row for H3-F6 reads: state "stands, with corrections (P05H-103)"; reversal "the suite not green at 0.625 m (it is); a room whose reference moves away from the C++ at a later rung (an estimator finding, Seat 9 L76)".
+
+Everything else in file 27 as delivered. Nothing written to the tree; the orchestrator appends this to file 27 before handing it to the interrogator for its one check.
