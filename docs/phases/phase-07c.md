@@ -1,7 +1,7 @@
 # Phase 07c — Asynchronous diffuse solve (Q2a (C))
 
-Size: **M** (about one phase of Phase 07 rework, decider file 47; split into `phase-07d.md` if it cannot be
-finished in two sessions, CLAUDE.md) · Depends on: 05h, 07 `done` · **Must be `done` before Phase 13's
+Size: **split into 07c-1…07c-2** (originally M, about one phase of Phase 07 rework, decider file 47; each
+sub-phase's two-session remainder is `07c-<n>b`, CLAUDE.md) · Depends on: 05h, 07 `done` · **Must be `done` before Phase 13's
 beta** (or phase-13 scope 13's versioning fallback recorded) · Read first, in this order: `CLAUDE.md`; this file in full; `docs/BUILD_PLAN.md` §2 **AQ4, AQ10
 (amended 2026-11-10), AX5, AX18, AX33, AX38, AX41, AX44**; `docs/phases/phase-05h.md` (§3 D-H1, §4
 scope 2, the solve seam); `docs/phases/phase-07.md` (state restore, reset sequence, offline path);
@@ -54,92 +54,28 @@ synchronous paths so W_max no longer has to fit the restore watchdog.
 
 ## 4. Decisions before implementation (decision loop, `/fix-plan` step 3)
 
-Decided through the board loop and recorded as AX rows before any code; not by the implementer alone
-(decider file 51 §4 item 4):
-- **D-C1, the provisional-to-final step:** Seat 1's ruling on the size of the level step from the interim
-  level to the final solve, which Seat 6 (d) and condition 5 depend on.
-- **D-C2, the interim level and saved E_b:** the interim-level design (condition 5); if E_b is stored in
-  the project state, a state-version AX (`pluginStateVersion` bump, state fixtures, Phase 07 rules).
-- **D-C3, the solved result in saved state:** Seat 8's question whether the solved result can travel in
-  the saved state, a feasibility call for Seat 5.
-
-**Researcher questions** (decider file 51 §4 item 9; asking them before D-C1–D-C3 is the plan-editor's
-ordering, not the decider's):
-- how long hosts tolerate a blocked `setStateInformation` (Seat 5);
-- which hosts do not signal offline rendering reliably (Seat 5);
-- host hang dialogs and their timeouts in Logic, Live, Cubase and Bitwig (Seat 7).
+Moved verbatim to [phase-07c-1](phase-07c-1.md) (D-C1–D-C3, R1–R3; see "Where the original items went").
 
 ## 5. Scope — conditions 1–8 (decider file 47 §4 (iii))
 
 The diffuse solve moves off the synchronous restore, prepare and `reset()`.
 1. **Timing** (section 3): before the first public release, with its W_max raise in one golden round;
    after release only with the estimator parameters versioned in saved state.
-2. **Seam:** phase 05h already invokes the solve through one function from restore, prepare and `reset()`
-   (Seat 5; phase-05h scope 2); this phase moves that one call off the synchronous path.
-3. **W_max re-derived under (C)** from the background budget: Seat 6's 3 s per emitter, the AX38 (iv)
-   load mark, and Table 15.1's 700 ms / 3 s rows (Seats 1 (i), 3 (5), 5). It is not kept at (A). It stays a
-   pinned work count, the same on every platform (AX41), re-derived from the C++ cost, never a time cap;
-   AX41 and the AQ10 amendment are updated through `/fix-plan`.
-4. **No real-time waiting.**
-   - The real-time path adopts the solved snapshot by atomic swap with an AQ4 crossfade, exactly one step
-     per solve and never mid-drag. The UI shows "settling" (AX38 (iii)) (Seats 1 (iii), 3 (2), 5, 6 (c),
-     8 (ii)).
-   - The ISM update is never held behind the diffuse solve (Seat 3 (4)). Cross-reference: this is the
-     split update that AX38 (v) names as the remedy for Table 15.1's head-rotation row (a Phase 10 AX that
-     updates the specular and directional part without waiting for the diffuse solve); the two are
-     designed together with phase-10's update scheduling (decider file 51 §4 item 4, 8 (e)).
-5. **Interim level, in order of preference:**
-   1. the E_b saved in the project state, when the scene and W_max match, so that the restore level
-      equals the final level (Seats 3 (1), 4, 8 (iii); feasibility is Seat 5's, D-C3);
-   2. otherwise the (A)-budget estimate or the previous level (Seat 6 (b)).
 
-   It is never silence and never the AX16 level where AX16 is known to be more than 1 dB off (1 jnd of G,
-   Vorländer Table 6.1), such as layouts 4/5 and the absorbing-floor cube (Seats 1, 4, 9). The
-   provisional-to-final step stays within Seat 1's ruling (D-C1; Seat 6 (d)).
-6. **Offline.** Offline renders, bounces and `render_cli` always wait for the final solve and stay
-   bit-identical. Where the host's offline signal is unreliable, the render log records it (Seats 1 (ii),
-   2, 4, 5, 6 (e), 8 (i), 9).
-7. **Gates re-scoped after the move.** The restore gate (AX38 4c) measures restore without the solve; the
-   solve time moves to the staleness records (AX38 (iv)) (Seat 5 (5)). E_b stays shared across modes and
-   ears (Seat 4; AX39, AX44).
-8. **Follow-on checks.** The Phase 12 (ii) preset check (no preset default raises U) is re-run under this
-   phase's W_max (Seat 6 (e)). Phase 08 goldens in capped rooms carry a tolerance derived from the
-   achieved SE, unless this phase lands before they are frozen (Seat 4).
+Conditions 2, 4, 5, 6 and 7 are in [phase-07c-1](phase-07c-1.md); conditions 3 and 8 in
+[phase-07c-2](phase-07c-2.md); condition 1 is shared with phase-07c-2 (verbatim in both).
 
 ## 6. Acceptance criteria — automated
 
-- [ ] D-C1–D-C3 recorded as AX rows (ledger rows linked) before the first code commit; the researcher's
-      answers recorded.
-- [ ] Restore, prepare and `reset()` never run the diffuse solve synchronously; the restore gate (AX38 4c)
-      passes measuring restore without the solve, on the Release build; the solve time is in the
-      staleness records.
-- [ ] The real-time path adopts each solved snapshot by atomic swap with an AQ4 crossfade, one step per
-      solve, never mid-drag; the ISM update is never held behind the solve (tests); "settling" is shown
-      while a solve is pending.
-- [ ] The interim level is never silence and never the AX16 level in the cases of condition 5 (test on
-      layouts 4/5 and the absorbing-floor cube); the provisional-to-final step stays within D-C1's ruling.
-- [ ] Offline renders, bounces and `render_cli` wait for the final solve and are bit-identical run to run
-      (AX5); an unreliable host offline signal is recorded in the render log.
-- [ ] W_max re-derived under (C) from the background budget (condition 3), pinned, equal on the three OSes;
-      goldens updated once through `update_goldens.py` with the reason; §6 row.
-- [ ] If E_b is saved in state: the state-version AX applied, old state fixtures still load (Phase 07 rule).
-- [ ] E_b bit-identical between modes and ears (AX44); allocation tracker, TSan `[conv],[pipeline]`,
-      pluginval strictness 10 and auval pass.
-- [ ] The Phase 12 (ii) preset check re-run under the new W_max and reported, if Phase 12 has run;
-      otherwise Phase 12 runs it at 07c's W_max.
+Moved verbatim: A1–A5, A7, A8 to [phase-07c-1](phase-07c-1.md); A6, A9 to [phase-07c-2](phase-07c-2.md).
 
 ## 7. Listening checklist (Maisara)
 
-- [ ] Load a project with a large room: the room is heard at once at the interim level, shows "settling",
-      and moves to the final level without a click or an obvious jump.
-- [ ] Drag a source in a large room: the early part follows at once; the tail level updates after the drag.
-- [ ] Bounce the same project twice: the bounces are identical and match playback after settling.
+Moved verbatim: L1 to [phase-07c-2](phase-07c-2.md); L2, L3 to [phase-07c-1](phase-07c-1.md).
 
 ## 8. Contractor review focus
 
-Threading of the moved solve (no real-time wait, no lock on the audio thread, the AX38 gate's classes
-after the move); the atomic swap and crossfade; the interim-level rule; offline determinism; the saved-state
-format if E_b is stored; the W_max re-derivation from the background budget.
+Moved verbatim: F1–F5 to [phase-07c-1](phase-07c-1.md); F6 to [phase-07c-2](phase-07c-2.md).
 
 ## 9. Out of scope
 
@@ -150,3 +86,61 @@ only); n\*_max (Q2b (i) stays unless the C++ W1 measurement moves it, AX41).
 
 Section 6 all checked with CI evidence; §0 row 07c `done` before Phase 13's beta; PR with the listening
 checklist, contractor focus, AX/ledger links and the "Raise with Maisara" item if it applies.
+
+---
+
+## Sub-phases
+
+| id | title | lead seat | size | depends on | ships | owns (automated) |
+|---|---|---|---|---|---|---|
+| [07c-1](phase-07c-1.md) | Diffuse solve off the synchronous paths | Seat 5 (Deadline keeper) | M | 05h, 07 `done` | restore, prepare and `reset()` no longer run the diffuse solve; the real-time path adopts each solved snapshot by atomic swap with an AQ4 crossfade, starting from the interim level; offline waits and stays bit-identical; the restore gate re-scoped; W_max still at (A) | A1, A2, A3, A4, A5, A7, A8 |
+| [07c-2](phase-07c-2.md) | W_max re-derived under (C), one golden round | Seat 2 (Engine architect) | S | 07c-1 `done` (and, through it, 05h, 07) | W_max raised from the (A) restore budget to the (C) background budget, pinned and equal on the three OSes; goldens updated once; Seat 1's "now" 2 (capped-class SE, §0) repaid; Phase 12 (ii) re-run | A6, A9 |
+
+Order 07c-1 → 07c-2 (forced: under (A), W_max is sized to the restore watchdog, so it cannot be raised until the solve
+is off the restore path; convening round, Map 07c).
+
+## Where the original items went
+
+Labels: A1–A9 are the §6 criteria in file order; L1–L3 the §7 items; F1–F6 the §8 focus items split at its
+semicolons; T1–T3 the §3 bullets; R1–R3 the §4 researcher questions.
+
+| original item | goes to |
+|---|---|
+| Header: size line | umbrella (per sub-phase: `07c-1b` / `07c-2b`) |
+| Header: depends on 05h, 07 `done` | umbrella and 07c-1 (07c-2 depends on 07c-1) |
+| Header: must be `done` before Phase 13's beta (or phase-13 scope 13's versioning fallback) | umbrella (both sub-phases) |
+| Header: read-first list | umbrella, cited in both sub-phase headers |
+| Header: creation note | umbrella |
+| §0 Why this phase exists | umbrella (last sentence also 07c-1's goal; "now" 2 sentence also 07c-2's goal) |
+| §1 Settled — do not reopen | umbrella (governs both) |
+| §2.1 Raise with Maisara | umbrella, 07c-1 and 07c-2 (each raises it in its first message) |
+| §3 T1 | umbrella and 07c-2 |
+| §3 T2, T3 | umbrella (the umbrella is brought forward) |
+| §4 D-C1, D-C2, D-C3; R1, R2, R3; the ordering note | 07c-1 |
+| §5 lead sentence | umbrella (cited in 07c-1) |
+| condition 1 | umbrella and 07c-2 |
+| conditions 2, 4, 5, 6, 7 | 07c-1 |
+| conditions 3, 8 | 07c-2 |
+| A1, A2, A3, A4, A5, A7, A8 | 07c-1 (A4's test keeps running in CI through 07c-2) |
+| A6, A9 | 07c-2 |
+| L1 | 07c-2 |
+| L2, L3 | 07c-1 |
+| F1, F2, F3, F4, F5 | 07c-1 |
+| F6 | 07c-2 |
+| §9 Out of scope | umbrella (cited in both) |
+| §10 clause 1 (§6 all checked with CI evidence) | umbrella, and each sub-phase for its own criteria |
+| §10 clause 2 (§0 row 07c `done` before Phase 13's beta) | umbrella |
+| §10 clause 3 (PR with listening checklist, contractor focus, AX/ledger links, Raise item) | umbrella, and each sub-phase PR for its share |
+
+## Notes from the split
+
+- 07c-c1 (convening round, `docs/review/phase-split/1-decider-convening.md`, NOT A DECISION): "(a). The umbrella is
+  the beta prerequisite (G3 default; matches §3 T1)."
+- 07c-c2 (convening round, NOT A DECISION): "(a). The umbrella is brought forward (phase-08 scope 10: "W_max is then
+  re-derived once, under phase-07c, with one golden round")."
+- 07c-c3 (convening round, NOT A DECISION): "(a). D-C1–D-C3 and R1–R3 in 07c-1; A1 as written."
+- Correction (convening round; `5-decider-decision-r2.md` corrections item 1): "§2.1 Raise goes into both sub-phase
+  files (the phase's first message is 07c-1's)."
+
+Status: the umbrella is `done` when every sub-phase is. A dependency on phase 07c means all of its sub-phases unless a
+sub-phase is named.

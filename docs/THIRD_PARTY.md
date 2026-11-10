@@ -65,7 +65,7 @@ marketing copy, pending a lawyer's view on nominative use (Apache §6). Headphon
 (BUILD_PLAN §5 B14), will come from a different KU100 campaign (SADIE II publishes no KU100 HpTFs as far as
 read) and must pass a colouration listening check. Fallback (MIT KEMAR, under conditions) and the excluded
 TH Köln set: `docs/phases/phase-08.md` scope 1. Add the row proper (under "Linked into the product") when
-the data is pinned in Phase 08 session 1.
+the data is pinned in Phase 08 session 1 [= sub-phase 08-1 since the 2026-11-10 split].
 
 Validation datasets for phase 05d (decider report 15, accepted by Maisara, 2026-11-05; facts from
 researcher reports 13/14, external). The 05d session pins them, confirms the licence on the live record
