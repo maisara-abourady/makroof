@@ -359,7 +359,7 @@ def step_openfield(npaths: int = 400_000):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14", "c15", "c16", "c16b", "c16c"])
+    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14", "c15", "c16", "c16b", "c16c", "c17"])
     ap.add_argument("--paths", type=int, default=32_000)
     a = ap.parse_args(argv)
     if njit is None:
@@ -375,7 +375,7 @@ def main(argv=None):
     else:
         {"c3": step_c3, "c4": step_c4, "c5": step_c5, "c6": step_c6, "c7": step_c7, "c9b": step_c9b,
          "c12a": step_c12a, "c12b": step_c12b, "c12d": step_c12d,
-         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14, "c15": step_c15, "c16": step_c16, "c16b": step_c16b, "c16c": step_c16c}[a.step]()
+         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14, "c15": step_c15, "c16": step_c16, "c16b": step_c16b, "c16c": step_c16c, "c17": step_c17}[a.step]()
 
 
 
@@ -1777,6 +1777,21 @@ def step_c16c():
     out["_changed"] = [k for k, v in out.items() if isinstance(v, dict) and v.get("changed")]
     log("changed cases:", out["_changed"])
     d = load(); d["c16c"] = out; save(d)
+
+
+def step_c17():
+    """C17 (decider file 43, for rating R2): the layouts 4/5 at s = 1 cases of C16 under Q2a (B), W_max ≈ 11.4 × (A),
+    joint rule, n*_max 1 024: SE and pilot VOV against Seat 1's floor (SE ≤ 0.33 dB with VOV < 0.1)."""
+    d = load(); out = {"w_scene_B": 2 * 11.4 * W_MAX_1T, "cases": {}}
+    for k, (c0, c1) in _joint_cases().items():
+        if not k.startswith(("layout4_s1/", "layout5_s1/")):
+            continue
+        r = n3w_joint([_Prep(c0), _Prep(c1)], 2 * 11.4 * W_MAX_1T, n_max=1024)
+        row = {"n_star": r["n_star"], "n": r["n"], "cap_hit": r["cap_hit"], "se_db": [e["se_db"] for e in r["emitters"]],
+               "pilot_VOV": [e["pilot_VOV"] for e in r["emitters"]],
+               "seat1_floor_met": [bool(e["se_db"] <= 0.33 and e["pilot_VOV"] < 0.1) for e in r["emitters"]]}
+        out["cases"][k] = row; log(k, row)
+        d = load(); d["c17"] = out; save(d)
 
 if __name__ == "__main__":
     main()
