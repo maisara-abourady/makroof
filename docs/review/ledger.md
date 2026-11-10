@@ -1890,3 +1890,47 @@ Session brief `docs/sessions/2026-11-09-board-agents.md` (O8, O10). Full records
 | C-2 | DECISION | scope 1 "48 kHz, in SOFA format"; scope 3 DF-EQ wording | applied as the R6 wording | plan diff | minor | — | resolved |
 
 Open for Phase 08 session 1 (not blocking): N1 the TH Köln operative licence (re-entry condition only); N4 the onset ITD of the pinned file by the named criterion; the pin-time source-state check (±1 dB, 200 Hz–8 kHz) and the AC 2 truncation term, measured not assumed. Corpus candidates named by the researcher (Møller 1999; Armstrong 2018; Bernschütz 2013; Algazi 2001; BRAS documentation; MIT KEMAR hrtfdoc/FAQ) are Maisara's decision, subject to licence.
+
+
+## Phase 05b session 2 — D-T1 (all parts), D-T2, D-T6: interrogator decision mode (2026-11-10)
+
+Source: `docs/review/phase-05b2/26-interrogator-T1-T2-T6.md` (on decider rounds 21 and 25). Corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-T1T2T6-01 | D-T1/D-T2 convening: 9/9 convened, every seat rated both rounds | faithful | closed |
+| P05B2-T1T2T6-02 | Round-1 and round-2 tension cells (all ids) against seats' words, except rows 14, 15 | faithful | closed |
+| P05B2-T1T2T6-03 | D1-L2, D1-L3, D1-L4 (C3, C7, 19 §2/§6) | CORRECT | closed |
+| P05B2-T1T2T6-04 | D-T1.1 "injection s(1−α) per Eq. 4.24"; "AQ3" for band-independent s | IMPRECISE (§5.2/§2.7; AX17) | open |
+| P05B2-T1T2T6-05 | D-T1.1 "max 1" holds only under Q1 (a) (S4, S6 cells); S3 resolution unmarked †; register "BRAS nightly" repays a published-validation debt | IMPRECISE | open |
+| P05B2-T1T2T6-06 | D-T1.2 S-1 | SURVIVES | closed |
+| P05B2-T1T2T6-07 | D-T1.4 D4-L1 (Table 6.1), D4-L3 (gate B δ 0.25 jnd) | CORRECT | closed |
+| P05B2-T1T2T6-08 | D-T1.4 D4-L2 "τ = 1 dB cannot detect AX16" | IMPRECISE (true only where \|ΔL\| ≤ 0.43 dB) | open |
+| P05B2-T1T2T6-09 | D-T1.4 register stale against W_max (A); shipped 0.083 dB not reached where capped; S7 Tol-2 reason rests on B6-2 | IMPRECISE | open |
+| P05B2-T1T2T6-10 | D-T1.5 CS-1 row S3, S6 should be 1/3 ("+1 later without NW") | TENSION MISREAD (non-winning row; winner unchanged) | open |
+| P05B2-T1T2T6-11 | D-T1.5 case count 50 vs 64 (z_FW, family false-fail) | INCONSISTENT | open |
+| P05B2-T1T2T6-12 | D5-L1, D5-L3 | CORRECT | closed |
+| P05B2-T1T2T6-13 | D16-L1, L2, L3, L5, L6, L7 (C12, C13, 19; blend cap algebra) | CORRECT | closed |
+| P05B2-T1T2T6-14 | D-T1.6 AX row "within λ/2 of a surface … pressure rise (Eq. 2.50)" | CONDITIONS VIOLATED (rigid wall, R = 1) | open |
+| P05B2-T1T2T6-15 | D-T1.6 note qualifier "pilot SE > target/3" read as Seat 6's | defensible but amended condition; needs Seat 6 confirmation; conflicts with S2 C5 and S8 (ii) | open |
+| P05B2-T1T2T6-16 | D-T1.6 both-near threshold 0.70 m equals `dead_booth` default d_L | open risk (knife-edge) | open |
+| P05B2-T1T2T6-17 | D-T1.6 register lacks UI-phase row ("approximate" note); no /fix-plan list in round 2 | debt not registered | open |
+| P05B2-T1T2T6-18 | C13 §2 table/reading mismatch | resolved (C13 corrected; decider cited the table) | closed |
+| P05B2-T1T2T6-19 | D-T1.3 calibration block unbounded; pilot ≤ W_max/2 and N ≥ n\* violated in C13 layout-4 corners; cap not a bound for e_cal > W_max/256 | INCONSISTENT / CONDITIONS VIOLATED | open |
+| P05B2-T1T2T6-20 | D-T1.3 S2 † cell (C1 replaced by pre-sampling rule; C5 unmet) | TENSION MISREAD | open |
+| P05B2-T1T2T6-21 | D-T1.3 N_cap per-emitter vs joint accounting | INCONSISTENT (ambiguous; up to ~2× restore budget) | open |
+| P05B2-T1T2T6-22 | D-T1.3 working: N-3 (round 1, sum 17) set aside as the unspecified parent of N-3W\*\* | accepted (reasoning exposed; not a §5 step) | closed |
+| P05B2-T1T2T6-23 | W_max = 3.05 M arithmetic; D7 | CORRECT | closed |
+| P05B2-T1T2T6-24 | Q2 (A) "six Phase 04 rooms no cap hits" at 3.05 M | NOT CHECKABLE (measured only at 14.6 M) | open (compute) |
+| P05B2-T1T2T6-25 | Q2 (B) restore "≈ 2.6 s" | IMPRECISE (2.7 s at n\*_max ≈ 1 020; ≈ 4.8 s at 8 000; watchdog exceeded either way) | open |
+| P05B2-T1T2T6-26 | Q2 AQ10 quotation; n\*_max not treated as an AQ10 matter | IMPRECISE / INCONSISTENT | open |
+| P05B2-T1T2T6-27 | D-T2 ordering: both in-bounds options carry S5's 3; bias reading out of bounds; NEEDS MAISARA | CORRECT | closed |
+| P05B2-T1T2T6-28 | D-T2 arithmetic 0.541, 0.430 %, 19.75×, 33× | CORRECT | closed |
+| P05B2-T1T2T6-29 | Q1 (a) "today's precision"; hidden ℓ_ref premise in the < 1 % bias test; S4 no cell | IMPRECISE | open |
+| P05B2-T1T2T6-30 | Q1 (b) omits ≈ 25–26× (family 1 %) and L2-F2 33×; "7× W_max" in old units (≈ 32× of W_max (A)); W1 figure is diffuse share only | IMPRECISE | open |
+| P05B2-T1T2T6-31 | Round-1 attribution "Seats 4, 5, 6, 8 rated L2-F1 as keeping Tol-2 cost" (S4, S8 stated no cost premise) | IMPRECISE (superseded by round 2) | closed |
+| P05B2-T1T2T6-32 | D-T6 convening: Seat 7 (public wording, "uniform rooms unchanged") not convened | UNDERCONVENED | open |
+| P05B2-T1T2T6-33 | D-T6 small room is both-near under D-T1.6 (d_L 0.425, d_E 0.5 m) yet gated at τ | INCONSISTENT | open |
+| P05B2-T1T2T6-34 | D-T6 gate N and stage-2 / no-reseed rule unstated (Seat 5 round 1) | IMPRECISE | open |
+| P05B2-T1T2T6-35 | D-T6 cells, sums, D6-L1, D6-L2; W1 "before any number" (B6-1 is a relation) | CORRECT / faithful | closed |
+| P05B2-T1T2T6-36 | Orchestrator computations (a)–(e) above | requested | open |

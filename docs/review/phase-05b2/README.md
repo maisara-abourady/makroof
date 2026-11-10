@@ -31,3 +31,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `23-seat<n>-round2-T1-T2.md` | seats 1–9 | second round on D-T1.6 (NW-4C, NW-3 re-rated), D-T1.3 (N-3W\*), D-T2 (L2-F1R); 2026-11-10 after the rate-limit pause |
 | `24-orchestrator-C13.md` | orchestrator | C13: N-3W\* under the seats' conditions at Seat 5's corrected W_max; both-near replicates; VOV crossing; grid cap hits; outlier rerun; layout-5 ladder |
 | `25-decider-round2-T1-T2.md` | decider | round 2: D-T1.6 = NW-4C+, D-T1.3 = N-3W\*\* (W_max to Maisara, Q2), D-T2 NEEDS MAISARA (Q1) |
+| `26-interrogator-T1-T2-T6.md` | interrogator | decision mode on D-T1 (all), D-T2, D-T6: D-T1.3 FAILS (calibration block unbounded); D-T6 UNDERCONVENED (Seat 7); others survive with corrections |
