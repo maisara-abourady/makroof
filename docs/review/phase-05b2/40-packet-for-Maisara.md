@@ -109,6 +109,16 @@ Both are inaudible, and the "approximate" note behaves the same at both.
 
 **Timing for Q2.** Both limits must be fixed before the first release. Until then a change costs one golden round.
 
+
+## How the answers fit together (steward round 3)
+
+- **"Yes" to Challenge 1 is consistent only with Q1 (a) and Q2a (A).**
+  - Q1 (b) and Q2a (B) would fail that blocking gate at 100 m.
+  - Even under (A) there is no margin: the restore is 2.14 s against about 2.14 s, and realised work can scatter about 1–2 %
+    above the cap.
+- **"No" to Challenge 1 keeps every combination open**, but the restore times stay recorded debt.
+- **"D-T3 not needed" holds under Q2a (A).** It is re-checked against your answers before the AX rows are applied.
+
 ## Part 3: what happens after your answers
 
 1. `/fix-plan` applies the AX rows and plan edits from all rounds:
