@@ -18,6 +18,7 @@
 #include <chrono>
 #include <cstdio>
 #include <fstream>
+#include <random>
 #include <string>
 #include <thread>
 #include <vector>
@@ -244,6 +245,56 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
         std::printf("05h-records restore %-26s 96 kHz contended (another pipeline solving the same room): min %.0f median "
                     "%.0f worst %.0f ms (3 runs)\n",
                     key, cs.min, cs.median, cs.max);
+    }
+}
+
+// AX38 (iv) record brought forward (D-H3 (e), K-e6): the worst quiesce() latency after a cancel issued at a random
+// point during a builder rebuild of the gated 100 m cubes at 96 kHz. From the code, the cancel flag (BuildOptions::cancel)
+// is checked only inside the diffuse solve, between 64-history blocks (DiffuseEstimator.cpp; AX39 D6); the ISM, the
+// unit-decay synthesis (tail::BandNoiseGenerator) and the convolver's IR-set build have no cancel point, so a cancel that
+// lands after the solve waits for the rest of the build. beginRestore() is quiesceBuilder() alone (the wait the host
+// thread sees in reset(), setNonRealtime(true), prepare(), release() and restore()).
+TEST_CASE("records: worst quiesce() latency after a cancel at random points of the 100 m / 96 kHz builder rebuild",
+          "[.][benchmark][diffuse-quiesce]")
+{
+    constexpr int kRuns = 10;
+    std::mt19937_64 rng(0x05E6);
+    for (const char* key : {"cube100_flutter_fallback", "cube100_lowalpha0.05_s0.3"})
+    {
+        const auto sc = cube(key);
+        const auto values = module3d::parameterValuesFromScene(sc);
+        plugin::ScenePipeline pipe;
+        pipe.prepare(96000.0, 512, false);
+        pipe.beginRestore();
+        pipe.restore(sc, values);
+        // The builder rebuild time, uncancelled (the range the cancel points are drawn from).
+        const auto tb = Clock::now();
+        pipe.setParameter(module3d::kListenerX, static_cast<float>(sc.listener.position.x + 0.5));
+        while (!pipe.builderIdle())
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        const double rebuild = ms(tb, Clock::now());
+        std::vector<double> waits, delays;
+        std::uniform_real_distribution<double> u(0.0, rebuild);
+        for (int i = 0; i < kRuns; ++i)
+        {
+            pipe.beginRestore();
+            pipe.restore(sc, values); // builder idle, IR current
+            const double d = u(rng);
+            pipe.setParameter(module3d::kListenerX, static_cast<float>(sc.listener.position.x + 0.5 + 0.01 * (i + 1)));
+            std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(d));
+            const auto t0 = Clock::now();
+            pipe.beginRestore(); // = quiesceBuilder(): abandon flag, gate notify, wait for the in-flight build
+            waits.push_back(ms(t0, Clock::now()));
+            delays.push_back(d);
+            pipe.restore(sc, values);
+        }
+        const auto ws = spread(waits);
+        std::printf("05h-records quiesce %-26s 96 kHz: builder rebuild %.0f ms; cancel at a random point, %d runs: wait min "
+                    "%.0f median %.0f worst %.0f ms\n",
+                    key, rebuild, kRuns, ws.min, ws.median, ws.max);
+        for (int i = 0; i < kRuns; ++i)
+            std::printf("05h-records quiesce %-26s run %2d: cancel at %.0f ms of %.0f -> waited %.0f ms\n", key, i,
+                        delays[static_cast<std::size_t>(i)], rebuild, waits[static_cast<std::size_t>(i)]);
     }
 }
 
