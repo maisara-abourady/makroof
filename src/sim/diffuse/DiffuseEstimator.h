@@ -84,8 +84,15 @@ struct DiffuseLimits
     std::int64_t wScene = 2 * kWMaxPerEmitterProvisional; // W_scene = 2 W_max (AX41)
     std::int64_t nStarMax = kNStarMax; // clamped to [64, 8 000]: the pilot stays below the final range
     double seTargetDb = kSeTargetDb;
-    // Validation only: a fixed number of histories from history 0, no pilot and no cap (fixed-N tests).
+    // Validation only: a fixed number of histories from history `fixedStart` (a multiple of 64), no
+    // pilot and no cap (the AX43 agreement tests: stage 1 on [0, N), stage 2 on the disjoint range
+    // [N, 5 N)).
     std::int64_t fixedHistories = 0;
+    std::int64_t fixedStart = 0;
+    // Validation only (Seat 1's clause (d) replicates, phase-05h §3): shifts every history index of the
+    // shipping rule (pilot and final range alike) by this offset, so replicate r on a disjoint
+    // pre-registered stream is the rule as built on histories [r 2^20, ...). 0 in every product path.
+    std::int64_t historyOffset = 0;
 };
 
 // AX41 joint path-count rule as a pure function of integer counts (D7).

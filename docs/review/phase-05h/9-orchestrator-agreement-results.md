@@ -34,3 +34,22 @@ certified uncertainty enters the pooled test as it enters the per-case test); (b
 rung error does not accumulate across its 10 pairs); (c) keep the rule and record the fail as a finding. AX43 cites her
 acceptance of 2026-11-10, so (a) or (b) is a FOR MAISARA reading with the interrogator's check. Until decided, the test keeps
 the rule as written (the CHECK fails) and prints the per-class table.
+
+## Finding for the decider (AX44 Seat 6 (ii): U at the default placement of two valid fixtures)
+
+The D5 / CI-reports test (`tests/unit/test_diffuse_reports.cpp`, every valid fixture at 48 kHz, provisional W_max 3.05 M,
+n\*_max 1 024) prints, per fixture, the D5 hash, n\*, N, the flags, U and the achieved SE. U is **raised at the default
+placement of two valid fixtures**, both contract-limits scenes, not rooms (n\* / N / flags / SE e0, e1):
+- `edge_values` (absorption alternating 0.01 / 1.0 between bands; the contract-limits fixture): n\* 64, N 0, cap hit, floor
+  truncated, pilot floor, **the pilot estimate ships**, U on both emitters (SE 0.76 / 3.98 dB). The cause is the work cap at a
+  scene whose near-rigid bands give a very long window; no placement change can silence it (AX44 (ii)'s remedy is a placement
+  change, not the predicate).
+- `open_field` (100 × 100 m floor, every other face α = 1): n\* 1 024, N 2 624, cap hit, U on both emitters (SE 2.39 / 2.12 dB
+  of a total E_target that is the floor's single scattering alone; AX37 (5.4): "`open_field` gets whatever the generic model
+  gives").
+Every other fixture is silent (U 0), the pilot never ships, SE ≤ 0.19 dB; `medium_room` (the plugin's default scene, in the AX22
+fallback) and `asymmetric_materials` carry the pilot-floor and floor-truncated flags with U silent. The test asserts Seat 6 (ii)
+as written and therefore fails on these two fixtures until the board reads it: options are (a) the rule applies to rooms and
+presets, and the two contract-limits fixtures are listed as known exceptions in the CI report (U correctly describes them);
+(b) the fixtures' placements or materials change (edge_values is a contract-limits fixture used by the validation tests;
+open_field's outcome is AX37 (5.4)'s); (c) the predicate changes (excluded by AX44 (ii)).
