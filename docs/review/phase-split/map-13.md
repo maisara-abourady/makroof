@@ -178,3 +178,5 @@ Elements the session brief may count as decisions:
 | `src/plugin/CMakeLists.txt:39` | splash screen "(licence check in Phase 13)" | 13-4 (code comment; not edited in this session) |
 | `.claude/skills/review-phase-pr/references/phase-checklists.md:348`–`362` | review checklist "Phase 13" (perf notes, universal binary, robustness, release.yml, THIRD_PARTY, compat skeleton, AX8; traps) | umbrella; per clause: perf/−100 dB null/fast-math trap → 13-1; universal binary, both slices, cross-arch, summation-order trap → 13-2; robustness, pluginval release → 13-3; release.yml, notices, JUCE tier, compat skeleton, AX8, secrets/splash/identity traps → 13-4 |
 | `.claude/skills/review-phase-pr/references/knowledge-inventory.md:44` | JUCE splash-screen note, "Phase 13" | 13-4 |
+
+> **Superseded numbering (2026-11-10):** this map is the four-way draft. The final split is five-way (D-PS4, `5-decider-decision-r2.md`); the authoritative mapping is the phase-13 umbrella's "Where the original items went" table and `references.md`.

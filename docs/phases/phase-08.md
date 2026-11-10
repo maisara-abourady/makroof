@@ -139,7 +139,7 @@ clauses.
 ## Definition of done
 
 All automated criteria green (phase-08 DoD1); the head named only in `LICENSE-generic-v1.txt`,
-`docs/THIRD_PARTY.md` and the public testing record (phase-08 DoD3); status row 08 `done` (or 08b added)
+`docs/THIRD_PARTY.md` and the public testing record (phase-08 DoD3); status row 08 `done` (or 08b added) [after the 2026-11-10 split: a sub-phase remainder is `08-<n>b`]
 (phase-08 DoD4); checklist in the PR with the `hrtfId` and set identity string (phase-08 DoD5).
 
 Status: the umbrella is `done` when every sub-phase is. A dependency on phase 08 means all of its

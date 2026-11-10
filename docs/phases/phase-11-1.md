@@ -19,7 +19,7 @@ the PRD's vision. It is **not** the full 3D editor (deferred, B8).
    - **Output panel:** binaural / stereo speakers toggle with one line of explanatory text each
      ("for headphones" / "for a pair of speakers"), output trim. (phase-11 scope 1e)
      - References for the output-mode text (D-PS3 step 3, Seat 6 condition (ii); a reference, not an item):
-       the phase-08 line 302 hand-off ("Hand-off to Phase 11 (Seat 6)": output-mode tooltip or manual, a
+       the phase-08 line 302 [now docs/phases/phase-08-3.md line ~95, after the 2026-11-10 split] hand-off ("Hand-off to Phase 11 (Seat 6)": output-mode tooltip or manual, a
        default-experience note), the phase-09 line 75 hand-off (binaural height or depth on speakers: "Set
        expectations in UI text in Phase 11"), and the `docs/BUILD_PLAN.md` §6 row D1 (2026-11-09, "Phase 11 tooltip
        note").
