@@ -200,13 +200,21 @@ def test_diagnostics_match_independent_eyring_mixing_time_and_switch(render_cli_
 # an absolute bound below 1e-300 where the integral is zero. Kept: E_b finite and >= 0 (the C++ test
 # checks the energy 50 ms after the direct sound against -60 dB).
 OPEN_FIELD_TAU_DB = 0.25
+OPEN_FIELD_VALIDATION_HISTORIES = 1 << 20  # AX37 (5.4) at a validation N (render_cli --diffuse-histories)
 
 
 @pytest.mark.parametrize("s", [0.4, 0.5])
-def test_open_field_diffuse_target_matches_the_finite_floor_integral(render_cli_path, s):
+@pytest.mark.parametrize("histories", [None, OPEN_FIELD_VALIDATION_HISTORIES])
+def test_open_field_diffuse_target_matches_the_finite_floor_integral(render_cli_path, s, histories):
+    """AX37 (5.4): the diffuse E_target of open_field against the independent finite-floor single-scatter window
+    integral (ground_scatter.window_target). Two forms (review file 32 B3): the shipping rule (histories None: the
+    capped estimate, SE 0.4-2.4 dB, so the tolerance is tau + 3 SE and the check is a smoke test of the form) and a
+    fixed validation N (OPEN_FIELD_VALIDATION_HISTORIES through --diffuse-histories: SE about 0.1 dB, so the check is
+    AX42's tau + 3 SE with tau dominant, the form AX37 (5.4) names)."""
     scene = load("open_field")
     scene["room"]["surfaces"]["floor"]["scattering"] = s
-    d = ensembles.diagnostics(render_cli_path, scene)
+    extra = () if histories is None else ("--diffuse-histories", str(histories))
+    d = ensembles.diagnostics(render_cli_path, scene, extra=extra)
     dims = scene["room"]["geometry"]["dimensions"]
     alpha_floor = np.asarray(scene["room"]["surfaces"]["floor"]["absorption"], float)
     for other in ("xMin", "xMax", "yMin", "yMax", "ceiling"):
@@ -221,6 +229,9 @@ def test_open_field_diffuse_target_matches_the_finite_floor_integral(render_cli_
         ref = ground_scatter.window_target(em["position"], scene["listener"]["position"], rho_s, d["airEnergyPerMetre"],
                                            e["windowStartS"], e["mixS"], d["t60"], half_width=(0.0, dims[0], 0.0, dims[1]))
         se_db = np.asarray(e["diffuse"]["seDb"], float)
+        if histories is not None:
+            assert e["diffuse"]["n"] == histories and not e["diffuse"]["capHit"]
+            assert float(np.nanmax(se_db[np.isfinite(se_db)])) <= 0.5, se_db  # the validation N resolves tau
         for b in range(8):
             if ref[b] < 1e-300:
                 assert got[b] < 1e-300
@@ -638,7 +649,7 @@ def test_diagnostics_carry_the_ax41_fields(render_cli_path):
         assert df["capHit"] == (df["nNeed"] > df["nCap"])
         if not df["pilotShipped"]:
             assert df["n"] <= max(df["nCap"], df["nStar"])
-        assert 0.0 < df["realisedWorkRatio"] <= 1.02  # AX41 (D-H1 (iii))
+        assert 0.0 < df["realisedWorkRatio"]  # AX41's 1.02 is pre-registered at the gated scenes (records test)
         assert df["wPilot"] + df["wFinal"] == pytest.approx(df["realisedWorkRatio"] * df["wScene"], rel=1e-9)
         assert 0.0 <= df["weight"] <= 1.0
         u = (df["bothNear"] and (df["capHit"] or df["vovUnionMax"] >= 0.1)) or (df["capHit"] and df["achievedSeDb"] > 0.33)

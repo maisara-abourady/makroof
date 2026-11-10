@@ -397,10 +397,11 @@ bool calibrateDetector(bool& operandSeenWithoutGuard)
 
 // AX37 (5.1) (i): buildRoomIR sets FTZ/DAZ through a scoped guard, so the IR does not depend on the
 // caller's mode. Built with the caller's FTZ off (the test thread's default) and on.
-TEST_CASE("buildRoomIR: the IR is bit-identical with the caller's FTZ/DAZ off and on (AX37 (5.1) (i)); the "
-          "absorbent "
-          "room produces denormals without FTZ (direct detector, per architecture)",
-          "[pipeline][ftz]")
+TEST_CASE(
+    "buildRoomIR: the IR is bit-identical with the caller's FTZ/DAZ off and on (AX37 (5.1) (i)); the named "
+    "room (near-rigid 63 Hz band, absorbent above) produces denormals without FTZ (direct detector, per "
+    "architecture)",
+    "[pipeline][ftz]")
 {
     if (!sim::conv::ScopedFlushDenormals::isSupported())
         SKIP("no FTZ/DAZ control on this platform");

@@ -438,7 +438,9 @@ void ScenePipeline::process(const float* const in[2], float* const out[2], int n
     if (offline && engine_.isPrepared() && hasWork())
         decide(Source::Offline);
 #ifndef NDEBUG
-    // AX38 (i): the diffuse-solve gate asserts it is never entered from a real-time process().
+    // AX38 (i): the diffuse-solve gate asserts it is never entered from a real-time process(). Debug builds
+    // only: two thread_local stores on the real-time path (no allocation, no lock, no syscall); nothing in
+    // release.
     struct RealtimeMark
     {
         bool on;

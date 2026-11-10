@@ -353,24 +353,70 @@ TEST_CASE(
                 "%+.3f (3/sqrt(M_rooms) %.3f); rooms +/- %d / %d\n",
                 b, rooms.n, rooms.mean(), limitRooms, roomsPositive, roomsNegative);
         }
-    // AX46: mean signed deviation <= 1 % per band and class, evaluated where 3 SE_class <= 1 % - l_ref.
-    for (const auto& [cls, stats] : classDev)
-        for (std::size_t b = 0; b < 8; ++b)
+    // AX46 in its D-H2 (d) form (decider file 19): per band and class on every class with >= 1 certified case
+    // at the pre-registered N (3 SE_class <= 1 % - l_ref); classes without a certified case print 'not
+    // evaluated (reference pending)'; the 100 m class is the tracer comparison, labelled 'not evaluated at 1
+    // % (compute limit)', never a pass; the pooled figure is labelled 'pooled over <n> of 5 classes'.
+    {
+        int evaluatedClasses = 0;
+        Stat pooledClasses[8];
+        for (int cls = 0; cls < 5; ++cls)
         {
-            const Stat& st = stats[b];
-            if (st.n == 0)
+            const auto it = classDev.find(cls);
+            if (it == classDev.end())
+            {
+                std::printf(
+                    "agree-full AX46 class %-10s: %s\n", className(cls),
+                    cls == 4
+                        ? "not evaluated at 1 % (compute limit): the 100 m class is the tracer comparison "
+                          "(AX39: (f) - tracer = -0.009 dB), reported at the tracer's achieved SE, never a "
+                          "pass"
+                        : "not evaluated (reference pending)");
                 continue;
-            const double budget = kBiasLimit - classLRef[cls][b];
-            const bool evaluated = budget > 0.0 && st.n >= 2 && 3.0 * st.se() <= budget;
-            std::printf("agree-full AX46 class %-10s band %zu: mean deviation %+.3f%% (SE %.3f%%, %d cases, "
-                        "l_ref max %.3f%%) %s\n",
-                        className(cls), b, 100.0 * st.mean(), 100.0 * st.se(), st.n,
-                        100.0 * classLRef[cls][b],
-                        evaluated ? "evaluated"
-                                  : "not evaluated (pre-registered N insufficient for 3 SE <= 1 % - l_ref)");
-            if (evaluated)
-                CHECK(std::abs(st.mean()) <= kBiasLimit);
+            }
+            bool anyEvaluated = false;
+            for (std::size_t b = 0; b < 8; ++b)
+            {
+                const Stat& st = it->second[b];
+                if (st.n == 0)
+                    continue;
+                const double budget = kBiasLimit - classLRef[cls][b];
+                const bool evaluated = budget > 0.0 && st.n >= 2 && 3.0 * st.se() <= budget;
+                std::printf(
+                    "agree-full AX46 class %-10s band %zu: mean deviation %+.3f%% (SE %.3f%%, %d cases, "
+                    "l_ref max "
+                    "%.3f%%) %s\n",
+                    className(cls), b, 100.0 * st.mean(), 100.0 * st.se(), st.n, 100.0 * classLRef[cls][b],
+                    evaluated  ? "evaluated"
+                    : st.n < 2 ? "not evaluated (one certified case: no class SE)"
+                               : "not evaluated (pre-registered N insufficient for 3 SE <= 1 % - l_ref)");
+                if (evaluated)
+                {
+                    CHECK(std::abs(st.mean()) <= kBiasLimit);
+                    pooledClasses[b].add(st.mean());
+                    anyEvaluated = true;
+                }
+            }
+            if (anyEvaluated)
+                ++evaluatedClasses;
         }
+        for (std::size_t b = 0; b < 8; ++b)
+            if (pooledClasses[b].n > 0)
+                std::printf("agree-full AX46 band %zu: mean of the evaluated class means %+.3f%% (pooled "
+                            "over %d of 5 classes; "
+                            "never a bare 'bias <= 1 %%')\n",
+                            b, 100.0 * pooledClasses[b].mean(), evaluatedClasses);
+    }
+    // The gated counts, pinned (review file 32 M3): the golden's gated_* columns drive everything, so a
+    // regeneration that un-gates a case-band must fail here; re-pinned through update_goldens.py --extend
+    // with a CHANGELOG reason.
+    constexpr int kGatedAx43 = 330, kGatedAx45 = 72; // 2026-11-10 golden round (402 certified case-bands)
+    std::printf("agree-full gated: %d of 560 AX43 case-bands gated (%d reported, reference pending); %d of "
+                "72 AX45 case-bands "
+                "gated\n",
+                gatedBands - ax45Gated, reportedBands, ax45Gated);
+    REQUIRE(gatedBands - ax45Gated == kGatedAx43);
+    REQUIRE(ax45Gated == kGatedAx45);
     std::printf(
         "agree-full summary: %d gated AX43 case-bands, %d gated AX45 case-bands, %d reported (uncertified), "
         "%d without "

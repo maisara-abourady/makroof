@@ -325,7 +325,10 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
             diffuse::DiffuseRunOptions run;
             run.pool = options.diffusePool;
             run.stop = options.cancel;
-            const diffuse::DiffuseResult result = diffuse::estimateDiffuse(problem, {}, run);
+            diffuse::DiffuseLimits limits;
+            if (options.diffuseFixedHistories > 0)
+                limits.fixedHistories = options.diffuseFixedHistories; // validation only
+            const diffuse::DiffuseResult result = diffuse::estimateDiffuse(problem, limits, run);
             if (result.cancelled)
                 throw BuildCancelled();
             for (std::size_t i = 0; i < channels.size(); ++i)

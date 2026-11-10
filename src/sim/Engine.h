@@ -125,6 +125,11 @@ struct BuildOptions
     // Validation only (the AX37 (5.1) (i) FTZ test and its denormal probe): false builds WITHOUT the
     // scoped FTZ/DAZ guard, in the caller's floating-point mode. true in every product path.
     bool ftzGuard = true;
+    // Validation only (render_cli --diffuse-histories; the AX37 (5.4) finite-floor check at a validation N):
+    // > 0 runs the diffuse solve with this fixed number of histories from history 0 (no pilot, no cap,
+    // DiffuseLimits::fixedHistories), so a comparison can be made at the AX42 tolerance instead of the
+    // shipping rule's SE. 0 (every product path) runs the AX41 joint rule.
+    std::int64_t diffuseFixedHistories = 0;
 };
 
 // AX22: the image-count cap N_cap = nu_r(i0) (Kuttruff Eq. 9.23) of the realised-k fallback, i0 the

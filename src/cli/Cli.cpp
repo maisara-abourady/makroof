@@ -61,6 +61,7 @@ struct Options
     bool noAirAbsorption = false;
     bool tailOnly = false;
     bool tailLevelAx16 = false; // phase 05h, validation only: the Phase 04 (AX16) tail level
+    std::optional<std::uint64_t> diffuseHistories; // phase 05h, validation only: a fixed solve size
     std::optional<double> rate;
     std::optional<sim::BuildOptions::Kind> mode;
     bool help = false;
@@ -152,7 +153,7 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         else if (arg != "--rate" && arg != "--mode" && arg != "--tail-seed" && arg != "--ensemble"
                  && arg != "--ensemble-emitter" && arg != "--image-cap" && arg != "--atmosphere"
                  && arg != "--mix-floor-ms" && arg != "--block" && arg != "--partition"
-                 && arg != "--switch-every" && arg != "--tail-level")
+                 && arg != "--switch-every" && arg != "--tail-level" && arg != "--diffuse-histories")
             return "unknown argument '" + arg + "'";
 
         if (i + 1 >= args.size())
@@ -176,6 +177,15 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             if (value != "diffuse" && value != "ax16")
                 return "--tail-level must be diffuse (the product) or ax16 (validation), got '" + value + "'";
             options.tailLevelAx16 = value == "ax16";
+        }
+        else if (arg == "--diffuse-histories")
+        {
+            options.diffuseHistories = parseSeed(value);
+            if (!options.diffuseHistories || *options.diffuseHistories == 0
+                || *options.diffuseHistories % 64 != 0
+                || *options.diffuseHistories > (std::uint64_t{1} << 24))
+                return "--diffuse-histories must be a positive multiple of 64 up to 16777216, got '" + value
+                       + "'";
         }
         else if (arg == "--tail-seed")
         {
@@ -662,6 +672,9 @@ std::string usage()
            "  --tail-level diffuse|ax16  validation only, --mode omni: ax16 matches the tail level on the\n"
            "               specular + AX16 scattered entries as Phase 04 did (no diffuse solve); the\n"
            "               product and the default use the propagated diffuse energy (AX37, phase 05h)\n"
+           "  --diffuse-histories N   validation only, --mode omni: run the diffuse solve with a fixed N "
+           "histories\n"
+           "                            (a multiple of 64; no pilot, no cap) instead of the AX41 joint rule\n"
            "  --ensemble   validation only, --mode omni --ir: render N realisations with tail seeds\n"
            "               tailSeed, tailSeed + 1, ...; channel 2k = emitter 0 and 2k + 1 = emitter 1 of\n"
            "               seed tailSeed + k (output 0)\n"
@@ -788,6 +801,8 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
     build.airAbsorption = !options.noAirAbsorption;
     build.tailOnly = options.tailOnly;
     build.tailLevelAx16 = options.tailLevelAx16;
+    if (options.diffuseHistories)
+        build.diffuseFixedHistories = static_cast<std::int64_t>(*options.diffuseHistories);
     if (options.imageCap)
         build.imageCountCapOverride = *options.imageCap;
     build.atmosphere = options.atmosphere;

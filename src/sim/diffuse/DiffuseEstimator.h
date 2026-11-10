@@ -44,12 +44,14 @@ inline constexpr std::int64_t kBlockHistories = 64;      // AX39 D4
 inline constexpr std::int64_t kFinalRangeStart = 8000;   // AX41: the final range is [8 000, 8 000 + N)
 inline constexpr std::int64_t kUnionVovHistories = 8000; // AX44: VOV_union over the first 8 000
 inline constexpr std::int64_t kPilotFloor = 1000;        // AX41: pilot-floor flag below this n*
-inline constexpr std::int64_t kNStarMax = 1024; // AX41 n*_max (provisional until the C++ re-derivation)
-inline constexpr std::int64_t kWMaxPerEmitterProvisional = 3'050'000; // AX41 provisional W_max
-inline constexpr double kSeTargetDb = 0.083;                          // AX42 target SE
-inline constexpr double kBothNearM = 0.70;                            // AX44
-inline constexpr double kApproximateSeDb = 0.33;                      // AX44 U, capped branch
-inline constexpr double kVovLimit = 0.1;                              // AX41 / AX44
+inline constexpr std::int64_t kNStarMax =
+    1024; // AX41 n*_max, pinned by D-H1 (iv) (W1 diffuse share <= 14 ms)
+inline constexpr std::int64_t kWMaxPerEmitterProvisional =
+    3'050'000; // AX41 W_max per emitter, pinned by D-H1 (iv) (the name predates the pin)
+inline constexpr double kSeTargetDb = 0.083;     // AX42 target SE
+inline constexpr double kBothNearM = 0.70;       // AX44
+inline constexpr double kApproximateSeDb = 0.33; // AX44 U, capped branch
+inline constexpr double kVovLimit = 0.1;         // AX41 / AX44
 // 10 / ln 10: dB per unit relative energy (the prototype rounded it to 4.343).
 inline constexpr double kDbPerRelative = 4.342944819032518;
 
