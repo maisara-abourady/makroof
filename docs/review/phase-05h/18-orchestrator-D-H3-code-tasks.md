@@ -81,3 +81,42 @@ Not run here (Linux box). The hidden test `[.][probe-denormals-ir]` exists in `t
 
 ## Item (e) (T5T4-61) — no code task was asked; the facts are in file 12 and the ledger row.
 
+
+## K-e6 — the worst `quiesce()` wait after a cancel at a random point of the 100 m / 96 kHz builder rebuild (item (e))
+
+Hidden record `[.][benchmark][diffuse-quiesce]` added to `tests/unit/test_diffuse_records.cpp` (the AX38 (iv) "worst `quiesce()` latency" record brought forward; runs in the CI Release benchmark step on the three OSes from the next manual run). Method: one pipeline, prepared realtime at 96 kHz with the gated cube restored; `setParameter(kListenerX)` starts a builder rebuild; after a delay drawn uniformly over the uncancelled rebuild time the test calls `beginRestore()`, which is `quiesceBuilder()` alone (the abandon flag, the gate notify and the wait for the in-flight build), and times it. Linux Release, this box (4 cores), 10 runs per scene, seed fixed.
+
+**Cancel points on the build path (from the code):** `BuildOptions::cancel` is passed only to the diffuse solve (`Engine.cpp` L324 `run.stop = options.cancel`), which checks it between 64-history blocks of the pilot and the final range (`DiffuseEstimator.cpp` L335, L497, L518, L552; AX39 D6) and throws `BuildCancelled` (`Engine.cpp` L326–327). The image-source planning before the solve, the unit-decay synthesis after it (`tail::BandNoiseGenerator` constructor and `make`, 95 % of the non-diffuse build at 100 m / 96 kHz, file 7) and the convolver's IR-set build check nothing. A cancel that lands before the solve waits until the solve's first block; one that lands after it waits for the whole remainder.
+
+| scene (96 kHz) | builder rebuild, uncancelled | wait after cancel, 10 runs: min / median / worst |
+|---|---|---|
+| cube100_flutter_fallback | 1260 ms | 7 / 188 / **491 ms** |
+| cube100_lowalpha0.05_s0.3 | 3645 ms | 74 / 461 / **2664 ms** |
+
+Per run (cancel instant within the rebuild → wait):
+
+| scene | run | cancel at ms | of ms | waited ms |
+|---|---|---|---|---|
+| cube100_flutter_fallback | 0 | 256 | 1260 | 286 |
+| cube100_flutter_fallback | 1 | 283 | 1260 | 247 |
+| cube100_flutter_fallback | 2 | 1130 | 1260 | 19 |
+| cube100_flutter_fallback | 3 | 496 | 1260 | 96 |
+| cube100_flutter_fallback | 4 | 361 | 1260 | 119 |
+| cube100_flutter_fallback | 5 | 223 | 1260 | 280 |
+| cube100_flutter_fallback | 6 | 347 | 1260 | 129 |
+| cube100_flutter_fallback | 7 | 716 | 1260 | 491 |
+| cube100_flutter_fallback | 8 | 511 | 1260 | 7 |
+| cube100_flutter_fallback | 9 | 805 | 1260 | 346 |
+| cube100_lowalpha0.05_s0.3 | 0 | 2825 | 3645 | 1070 |
+| cube100_lowalpha0.05_s0.3 | 1 | 3597 | 3645 | 97 |
+| cube100_lowalpha0.05_s0.3 | 2 | 3209 | 3645 | 832 |
+| cube100_lowalpha0.05_s0.3 | 3 | 2316 | 3645 | 1277 |
+| cube100_lowalpha0.05_s0.3 | 4 | 3503 | 3645 | 180 |
+| cube100_lowalpha0.05_s0.3 | 5 | 1113 | 3645 | 82 |
+| cube100_lowalpha0.05_s0.3 | 6 | 1010 | 3645 | 74 |
+| cube100_lowalpha0.05_s0.3 | 7 | 416 | 3645 | 743 |
+| cube100_lowalpha0.05_s0.3 | 8 | 3625 | 3645 | 110 |
+| cube100_lowalpha0.05_s0.3 | 9 | 1340 | 3645 | 2664 |
+
+Reading: the three regimes are visible. A cancel during the solve is observed within one block (74–97 ms, runs 5, 6 and 1 of the low-α cube; 7–19 ms at the flutter scene whose solve is longer and whose synthesis is shorter). A cancel before the solve waits for the image-source planning to reach it (run 7: 416 → 743 ms). A cancel after the solve waits for the remainder of the synthesis and the IR-set build with no cancel point: up to **2 664 ms** at the low-α cube (run 9) and 491 ms at the flutter scene. So (e-c)'s wait is bounded by the build's remainder, not by the solve's block granularity: seconds, not tens of milliseconds, unless cancel points are added to the synthesis (a phase-07c change). The `reset()` path adds the synchronous `ResetStep3` build on top of this wait when the IR set is stale.
+
