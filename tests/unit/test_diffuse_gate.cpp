@@ -303,6 +303,58 @@ TEST_CASE("buildRoomIR: the IR is bit-identical with the caller's FTZ/DAZ off an
     }
 }
 
+// AX37 (5.1) (i), second half: the absorbent room is asserted to produce denormals without FTZ. The build runs
+// WITHOUT the guard (BuildOptions::ftzGuard = false, validation only) in the caller's mode, FTZ off and on; the
+// IRs differing proves a denormal was flushed somewhere on the IR path. Where no probed scene differs, that is a
+// finding for the decider (docs/review/phase-05h/11-orchestrator-D-H3-question.md), never a silent drop.
+TEST_CASE("probe: denormals on the IR path (buildRoomIR without the guard, FTZ off vs on)", "[.][probe-denormals-ir]")
+{
+    if (!sim::conv::ScopedFlushDenormals::isSupported())
+        SKIP("no FTZ/DAZ control on this platform");
+    struct Probe
+    {
+        const char* label;
+        contract::SceneDescription scene;
+    };
+    std::vector<Probe> probes;
+    probes.push_back({"absorbentScene (dead_booth, alpha 0.98, s 1)", absorbentScene()});
+    for (const char* name : {"dead_booth.json", "edge_values.json", "open_field.json", "medium_room.json"})
+        probes.push_back({name, pipeline_test::loadScene(name)});
+    {
+        auto sc = pipeline_test::loadScene("dead_booth.json");
+        for (auto& s : sc.room.surfaces)
+        {
+            s.bandsAbsorption.fill(0.999);
+            s.scattering = 0.5;
+        }
+        probes.push_back({"dead_booth alpha 0.999 s 0.5", sc});
+        sc.room.geometry.dimensions = {100.0, 100.0, 100.0};
+        sc.listener.position = {50.0, 30.0, 1.7};
+        sc.emitters[0].position = {45.0, 70.0, 2.0};
+        sc.emitters[1].position = {55.0, 70.0, 2.0};
+        probes.push_back({"100 m cube alpha 0.999 s 0.5", sc});
+        for (auto& s : sc.room.surfaces)
+            s.bandsAbsorption = {0.01, 0.01, 0.5, 0.999, 0.999, 0.999, 0.999, 0.999};
+        probes.push_back({"100 m cube alpha 0.01 at 63/125 Hz, 0.999 above", sc});
+    }
+    for (const double fs : {48000.0, 96000.0})
+        for (const auto& pr : probes)
+        {
+            sim::BuildOptions o;
+            o.sampleRate = fs;
+            o.kind = sim::BuildOptions::Kind::Omni;
+            o.ftzGuard = false;
+            const sim::RoomIR off = sim::buildRoomIR(pr.scene, o);
+            sim::RoomIR on;
+            {
+                const sim::conv::ScopedFlushDenormals ftz;
+                on = sim::buildRoomIR(pr.scene, o);
+            }
+            std::printf("probe-ir fs %.0f %-45s: IR without the guard, FTZ off vs on -> %s\n", fs, pr.label,
+                        bitIdentical(off, on) ? "identical (no denormal reached the IR)" : "DIFFERENT (denormals matter)");
+        }
+}
+
 // Probe (hidden): does any diffuse solve produce denormals without FTZ? Compares the unguarded
 // estimator (estimateDiffuse directly, no buildRoomIR guard) between the caller's FTZ off and on: a
 // different D5 hash or estimate means a denormal was flushed somewhere on a path.

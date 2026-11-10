@@ -299,3 +299,77 @@ TEST_CASE("records: AX38 (iv) multi-instance load and staleness (1, 4, 8 instanc
                             label.c_str(), fs, instances, load, ss.min, ss.median, ss.max);
             }
 }
+
+// AX43 "reported, not gated" set (phase-05h scope 4, before the goldens): the layout 4/5 near-wall cases (listener at
+// a wall, an edge and a corner at 0.1 m; emitter at a wall), W1, club and living_room both-near at 0.1, 0.3 and 0.5 m
+// (listener dd from its nearest wall, emitter 0 dd from the opposite wall along y), each with the shipping rule as
+// built: n*, N, flags, achieved SE, VOV_union, U per emitter; W1 both_corner asserts the cap flag (Seat 5, AX44).
+TEST_CASE("records: the AX43 reported set (near-wall and both-near placements) and W1 both_corner's cap flag",
+          "[.][benchmark][diffuse-reported-set]")
+{
+    struct Row
+    {
+        std::string name;
+        contract::SceneDescription scene;
+        bool assertCapHit = false;
+    };
+    std::vector<Row> rows;
+    const auto layout = [](int which) {
+        std::array<contract::BandArray, 6> alpha{};
+        for (auto& a : alpha)
+            a.fill(0.01); // Table 5.2's rigid faces at the contract minimum (the (A) references use 0)
+        alpha[which == 4 ? 4 : 0].fill(1.0); // layout 4: absorbing floor; layout 5: absorbing xMin wall
+        return alpha;
+    };
+    std::array<double, 6> s1{};
+    s1.fill(1.0);
+    const contract::Vec3 D{20.0, 30.0, 10.0};
+    const contract::Vec3 S0{7.0, 20.0, 2.0}, S1{13.0, 20.0, 2.0}, R0{10.0, 8.0, 1.7};
+    for (const int L : {4, 5})
+    {
+        const std::string pre = "layout" + std::to_string(L) + "_s1/";
+        rows.push_back({pre + "listener_wall", diffuse_test::scene(D, layout(L), s1, {10.0, 0.1, 1.7}, {S0, S1})});
+        rows.push_back({pre + "listener_edge", diffuse_test::scene(D, layout(L), s1, {0.1, 0.1, 1.7}, {S0, S1})});
+        rows.push_back({pre + "listener_corner", diffuse_test::scene(D, layout(L), s1, {0.1, 0.1, 9.9}, {S0, S1})});
+        rows.push_back({pre + "emitter_wall", diffuse_test::scene(D, layout(L), s1, R0, {{7.0, 29.9, 2.0}, S1})});
+        rows.push_back({pre + "both_wall", diffuse_test::scene(D, layout(L), s1, {10.0, 0.1, 1.7}, {{7.0, 29.9, 2.0}, S1})});
+        rows.push_back({pre + "both_corner", diffuse_test::scene(D, layout(L), s1, {0.1, 0.1, 0.1}, {{19.9, 29.9, 9.9}, S1})});
+    }
+    std::array<contract::BandArray, 6> aq{};
+    aq.fill({0.15, 0.18, 0.2, 0.22, 0.24, 0.26, 0.28, 0.3});
+    std::array<double, 6> s03{};
+    s03.fill(0.3);
+    rows.push_back({"W1/both_corner", diffuse_test::scene(D, aq, s03, {0.1, 0.1, 0.1}, {{19.9, 29.9, 9.9}, S1}), true});
+    for (const double dd : {0.1, 0.3, 0.5})
+        rows.push_back({"W1/both_wall_" + std::to_string(dd).substr(0, 3),
+                        diffuse_test::scene(D, aq, s03, {10.0, dd, 1.7}, {{7.0, 30.0 - dd, 2.0}, S1})});
+    for (const char* room : {"club.json", "living_room.json"})
+        for (const double dd : {0.1, 0.3, 0.5})
+        {
+            auto sc = pipeline_test::loadScene(room);
+            const double dy = sc.room.geometry.dimensions.y, dx = sc.room.geometry.dimensions.x;
+            auto wall = sc;
+            wall.listener.position.y = dd;
+            wall.emitters[0].position.y = dy - dd;
+            rows.push_back({std::string(room).substr(0, std::string(room).find('.')) + "/both_wall_" + std::to_string(dd).substr(0, 3), wall});
+            auto edge = wall;
+            edge.listener.position.x = dd;
+            edge.emitters[0].position.x = dx - dd;
+            rows.push_back({std::string(room).substr(0, std::string(room).find('.')) + "/both_edge_" + std::to_string(dd).substr(0, 3), edge});
+        }
+    for (const auto& row : rows)
+    {
+        const auto planned = diffuse_test::plan(row.scene);
+        const auto r = estimateDiffuse(planned.problem);
+        std::printf("05h-reported %-28s n* %lld N %lld N_cap %lld cap hit %d floor truncated %d pilot floor %d pilot shipped %d",
+                    row.name.c_str(), static_cast<long long>(r.nStar), static_cast<long long>(r.count.n),
+                    static_cast<long long>(r.count.nCap), r.count.capHit ? 1 : 0, r.count.floorTruncated ? 1 : 0,
+                    r.count.pilotFloor ? 1 : 0, r.count.pilotShipped ? 1 : 0);
+        for (std::size_t e = 0; e < r.emitters.size(); ++e)
+            std::printf(" | e%zu SE %.3f dB VOV_union %.3f both-near %d U %d", e, r.emitters[e].achievedSeDb,
+                        r.emitters[e].vovUnion, r.emitters[e].bothNear ? 1 : 0, r.emitters[e].approximate ? 1 : 0);
+        std::printf("\n");
+        if (row.assertCapHit)
+            REQUIRE(r.count.capHit); // Seat 5 (AX44): W1 both_corner asserts the cap flag
+    }
+}

@@ -445,7 +445,9 @@ RoomIR buildOmni(const contract::SceneDescription& scene, const BuildOptions& op
 std::vector<RoomIR> buildRoomIREnsemble(const contract::SceneDescription& scene, const BuildOptions& options,
                                         std::span<const std::uint32_t> tailSeeds)
 {
-    const conv::ScopedFlushDenormals flushDenormals; // AX37 (5.1) (i), as buildRoomIR
+    std::optional<conv::ScopedFlushDenormals> flushDenormals; // AX37 (5.1) (i), as buildRoomIR
+    if (options.ftzGuard)
+        flushDenormals.emplace();
     if (!isSupportedSampleRate(options.sampleRate))
         throw std::invalid_argument("unsupported sample rate " + std::to_string(options.sampleRate)
                                     + " Hz (supported: 44100, 48000, 88200, 96000)");
@@ -508,7 +510,9 @@ RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& 
 {
     // AX37 (5.1) (i): FTZ/DAZ on for the whole build, through a scoped guard that restores the
     // caller's mode on every exit, including a throw, so the IR never depends on the host's mode.
-    const conv::ScopedFlushDenormals flushDenormals;
+    std::optional<conv::ScopedFlushDenormals> flushDenormals;
+    if (options.ftzGuard)
+        flushDenormals.emplace();
     if (!isSupportedSampleRate(options.sampleRate))
         throw std::invalid_argument("unsupported sample rate " + std::to_string(options.sampleRate)
                                     + " Hz (supported: 44100, 48000, 88200, 96000)");

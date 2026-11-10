@@ -122,6 +122,9 @@ struct BuildOptions
     // the tail level on the specular + AX16 scattered entries as Phase 04 did and skip the diffuse
     // solve. Never set in a product path (AX37 switched AX16 off).
     bool tailLevelAx16 = false;
+    // Validation only (the AX37 (5.1) (i) FTZ test and its denormal probe): false builds WITHOUT the
+    // scoped FTZ/DAZ guard, in the caller's floating-point mode. true in every product path.
+    bool ftzGuard = true;
 };
 
 // AX22: the image-count cap N_cap = nu_r(i0) (Kuttruff Eq. 9.23) of the realised-k fallback, i0 the
