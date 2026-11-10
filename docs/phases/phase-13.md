@@ -109,10 +109,10 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
     forward as a standalone tooling change before Phase 13.
 13. **Diffuse-estimator work limits and the restore (AX41, AQ10 amended 2026-11-10, phase 05b):**
     re-check W_max (provisional 3.05 M image evaluations per emitter, sized to pluginval's restore
-    watchdog) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines; any change is
+    watchdog; this basis pending the board's answer (decider file 43; ratings R1–R3 running)) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines; any change is
     an output change (golden round, §6 row) and must be fixed before the first release. Move the diffuse
     solve off the synchronous restore and prepare (Maisara's Q2a (C), about one phase of Phase 07 rework;
-    if it does not fit, split into 13b).
+    if it does not fit, split into 13b; pending the board's answer (decider file 43; ratings R1–R3 running)).
 
 ## Out of scope
 

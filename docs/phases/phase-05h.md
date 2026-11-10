@@ -51,14 +51,14 @@ verbatim: "I accept the board's answer by definition."; ledger P05B2-M-01…07):
   (`reset()` in the synchronous class); ≤ 128 MB additional resident; gate wait in the staleness metric and
   "settling"; W1/W2 include the whole diffuse computation (AQ10's 50 ms target unchanged); the 100 m
   memory gate, the records and their escalation; the synchronous restore gate at the two gated 100 m,
-  96 kHz builds is **blocking** (Challenge 1 = yes, AQ10 amended).
+  96 kHz builds is **blocking** (Challenge 1 = yes, AQ10 amended; pending the board's answer (decider file 43; ratings R1–R3 running)).
 - **AX39 (D-T1.1):** the seeded Monte Carlo estimator, the ℓ → 0 form of `ref_hybrid`, with the
   determinism package D1–D7 (64-history blocks) and Seat 7's wording.
 - **AX40 (D-T1.2):** fixed key; E_target does not depend on `tailSeed`.
 - **AX41 (D-T1.3):** the joint path-count rule (pilot sized in work, fresh final range, integer stop test
   and N_cap, cap hit := N_need > N_cap, "floor truncated" reported separately, realised-work assertion);
-  W_max provisional 3.05 M image evaluations per emitter (W_scene 6.10 M, Q2a (A)); n\*_max 1 024
-  (Q2b (i)); both re-derived once from the C++ cost.
+  W_max provisional 3.05 M image evaluations per emitter (W_scene 6.10 M, Q2a (A); pending the board's answer (decider file 43; ratings R1–R3 running));
+  n\*_max 1 024 (Q2b (i), the board's answer, decider file 43); both re-derived once from the C++ cost.
 - **AX42 (D-T1.4):** τ = 0.25 dB; target SE 0.083 dB.
 - **AX43 (D-T1.5):** 70 cases / 560 case-bands, z_FW 4.290, stage 2, no reseed; the reported set; CI reports.
 - **AX44 (D-T1.6):** the NW-4C+ blend; both-near at 0.70 m; the note U with the union VOV; Seat 6 (i)–(iii);
@@ -70,7 +70,8 @@ verbatim: "I accept the board's answer by definition."; ledger P05B2-M-01…07):
 - **D-T3 not needed** (the estimator covers the whole AX6 range; holds under Q2a (A), ledger P05B2-M-07).
 - **AX16 switched** (on implementation here); AX21 stands; AX5 note (cross-architecture agreement of the
   estimator rests on D1–D7).
-- Q2a (C), moving the diffuse solve off the synchronous restore and prepare, is phase-13 scope 13, not here.
+- Q2a (C), moving the diffuse solve off the synchronous restore and prepare, is phase-13 scope 13, not here
+  (pending the board's answer (decider file 43; ratings R1–R3 running)).
 - Phase 08 may precede this phase on Seat 4's conditions (i)–(iv) of AX37 (5.3); if it does, this phase
   re-renders the binaural goldens, re-measures binaural W1/W2 and re-runs phase-08 item 8 (scope 10).
 
