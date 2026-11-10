@@ -62,3 +62,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `54-interrogator-J1-triggers-round2.md` | interrogator | J1 edits faithful; Trigger 2 SURVIVES; Trigger 1 SURVIVES WITH CORRECTIONS (gated cube s unpinned; Seat 1 to confirm clause (d) at the cubes; rise tolerance; placement set) |
 | `55-seat1-confirm-clause-d.md` | seat 1 | accepts clause (d) at the gated s = 0.3 cubes (replicates as built, pre-registered, repeated on C++) |
 | `56-interrogator-branch-review-fixes.md` | interrogator | branch-review fixes faithful; J1 freeze point unqualified for the 08-first order (Seat 4 to confirm) |
+| `57-seat4-confirm-08first-freeze.md` | seat 4 | confirms the 08-first freeze rule keeps its 0/1 |
