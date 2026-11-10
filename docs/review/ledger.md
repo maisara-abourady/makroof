@@ -2140,3 +2140,21 @@ Decider files 43 and 47; ratings 45-seat*-R1-R3; confirmations 48-*; interrogato
 | P05B2-C1Q2-12 | Seat 5's margin arithmetic (≈ 22 % + 5 %) already above Seat 3's 20 % trigger; not registered | debt not registered: fix before the record goes forward | open |
 | P05B2-C1Q2-13 | §5 plan list gaps (Seat 6 (a) escalation; (C) forward on any gate failure; research questions of Seats 5 and 7; Seat 1's step-size ruling; phase-10 cross-reference) | correction (/fix-plan) | open |
 | P05B2-C1Q2-14 | 47 final verdict: J1 (Challenge 1 yes, Q2a (A) now, (C) scheduled before the first public release) | SURVIVES WITH CORRECTIONS (winner unchanged under every reading) | open until applied |
+
+
+J1 plan-edit diff check (`docs/review/phase-05b2/52-interrogator-J1-plan-diff-check.md`, 2026-11-10):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-J1FX-01 | AQ10 / AX38 4c J1 conditions (47 §4 (i), 51 §4 item 1, correction 8 (a)/(b)) | CORRECT | closed |
+| P05B2-J1FX-02 | AX41 W_max basis and n\*_max as board answers; G1 closed | CORRECT | closed |
+| P05B2-J1FX-03 | phase-05h §1, §3 D-H1 (margin rule, 20 % trigger, ≈ 27 %, +17 % SE), §4 seam, §5, §9 | CORRECT | closed |
+| P05B2-J1FX-04 | phase-08 scope 10 / AC; phase-11 note to editor; phase-12 re-run under 07c's W_max | CORRECT | closed |
+| P05B2-J1FX-05 | phase-07c faithful to 47 §4 (iii) 1–8 and 51 §4 items 4, 9; size M; labels D-C1–D-C3 | CORRECT | closed |
+| P05B2-J1FX-06 | "W_max below Seat 1's floor at a gated scene → Maisara" already true at (A) (gated cubes VOV 0.47–0.59, C16) | INCONSISTENT: decider defines the trigger before the gate is implemented | open |
+| P05B2-J1FX-07 | phase-12 "hall preset in the capped class reopens J1" against 51 §2 (100 m rooms capped at SE ≤ 0.15 dB) | INCONSISTENT: decider confirms the restatement | open |
+| P05B2-J1FX-08 | phase-05h §2 item 1 lists one trigger, §3 another | IMPRECISE (/fix-plan) | open |
+| P05B2-J1FX-09 | phase-13 hard dependency on 07c against its versioning fallback | INCONSISTENT (/fix-plan) | open |
+| P05B2-J1FX-10 | phase-07c §6 unconditional Phase 12 re-run | CONDITIONS VIOLATED (/fix-plan) | open |
+| P05B2-J1FX-11 | phase-07c §4 "researcher questions before D-C1–D-C3" (plan-editor ordering) | IMPRECISE (/fix-plan) | open |
+| P05B2-J1FX-12 | phase-10 lacks the pointer to 07c; AQ10 stray punctuation | IMPRECISE (/fix-plan) | open |
