@@ -25,9 +25,13 @@ public:
 
     // Runs fn(i) for i in [0, count) on the pool and the calling thread; returns when all have run.
     // A false return from fn stops the remaining indices from being started.
+    // fn must not throw (the estimator's blocks do not allocate or throw): an exception would leave
+    // the workers holding a pointer to fn.
     void parallelFor(std::int64_t count, const std::function<bool(std::int64_t)>& fn);
 
-    // The process-wide pool (std::thread::hardware_concurrency() threads, at least 1).
+    // The process-wide pool (std::thread::hardware_concurrency() threads, at least 1). Ownership,
+    // sizing and shutdown inside the plugin (AX39: owned with the AX38 gate; no join in a static
+    // destructor at library unload) are phase-05h session 2's.
     static ThreadPool& process();
 
 private:

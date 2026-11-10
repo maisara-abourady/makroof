@@ -82,7 +82,7 @@ struct DiffuseProblem
 struct DiffuseLimits
 {
     std::int64_t wScene = 2 * kWMaxPerEmitterProvisional; // W_scene = 2 W_max (AX41)
-    std::int64_t nStarMax = kNStarMax;
+    std::int64_t nStarMax = kNStarMax; // clamped to [64, 8 000]: the pilot stays below the final range
     double seTargetDb = kSeTargetDb;
     // Validation only: a fixed number of histories from history 0, no pilot and no cap (fixed-N tests).
     std::int64_t fixedHistories = 0;
@@ -134,6 +134,8 @@ bool approximateNote(bool bothNear, bool capHit, double vovUnion, double achieve
 struct DiffuseEmitterResult
 {
     contract::BandArray bandsDiffuse{}; // the estimate (window-referred, per 10 ms)
+    contract::BandArray bandsForward{}; // its emitter-started part alone (w = 1), same histories
+    contract::BandArray bandsReverse{}; // its listener-started part alone (w = 0), same histories
     contract::BandArray bandsSe{};      // its standard error (same units)
     contract::BandArray bandsSeDb{};    // SE in dB of the total (specular + diffuse)
     contract::BandArray bandsPilotSeDb{};

@@ -248,10 +248,10 @@ build/debug/render_cli --scene tests/scenes/valid/living_room.json --switch-scen
 # the release build; the Linux runner's W2 sweep sets N_cap, AX22)
 build/release/tests/unit/spatial_tests "[benchmark]" --benchmark-samples 10
 
-# TSan on the real-time convolver and the Phase 07 scene pipeline (CI job `tsan`, Linux; the JUCE
-# plugin isn't needed: the pipeline is the JUCE-free spatial_plugin_core in src/plugin/core/)
+# TSan on the real-time convolver, the Phase 07 scene pipeline and the phase 05h diffuse pool (CI job `tsan`,
+# Linux; the JUCE plugin isn't needed: the pipeline is the JUCE-free spatial_plugin_core in src/plugin/core/)
 cmake --preset tsan -DSPATIAL_BUILD_PLUGIN=OFF && cmake --build --preset tsan --target spatial_tests
-build/tsan/tests/unit/spatial_tests "[conv],[pipeline]"
+build/tsan/tests/unit/spatial_tests "[conv],[pipeline],[diffuse]"
 
 # Phase 07: state fixtures tests/state/v<N>_*.bin (regenerate only when pluginStateVersion is bumped,
 # adding the new version's files; old fixtures must keep loading)

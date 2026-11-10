@@ -3,6 +3,8 @@
 #include "sim/diffuse/FaceLists.h"
 #include "sim/diffuse/Sampling.h"
 #include "sim/diffuse/ThreadPool.h"
+#include "sim/ism/ImageSources.h"
+#include "sim/tail/NoiseTail.h"
 
 #include <algorithm>
 #include <cmath>
@@ -14,9 +16,9 @@ namespace sim::diffuse {
 namespace {
 
 constexpr std::size_t kBands = contract::kNumOctaveBands;
-constexpr double kSpeedOfSound = 343.0;                   // src/sim/ism kSpeedOfSoundMps (AX4)
-constexpr double kEnergyDecayPerT60 = 13.815510557964274; // tail::kEnergyDecayPerT60
-constexpr double kMatchNormalisationS = 0.010;            // tail::kMatchNormalisationS
+constexpr double kSpeedOfSound = ism::kSpeedOfSoundMps; // AX4
+constexpr double kEnergyDecayPerT60 = tail::kEnergyDecayPerT60;
+constexpr double kMatchNormalisationS = tail::kMatchNormalisationS;
 constexpr double kAxisEpsilon = 1e-15;
 
 using Bands = std::array<double, kBands>;
@@ -271,7 +273,9 @@ struct RangeScores
 {
     std::int64_t first = 0;
     std::int64_t blocks = 0;
-    std::vector<double> x;
+    std::vector<double> x;  // blended scores
+    std::vector<double> fx; // emitter-started part alone (diagnostics, tests)
+    std::vector<double> rx; // listener-started part alone
     std::vector<std::int64_t> blockWork;
     std::vector<std::uint64_t> blockHash;
     std::vector<char> blockDone;
@@ -292,9 +296,13 @@ void runBlock(const Prepared& p, RangeScores& rs, std::int64_t blk)
         {
             const double we = p.weight[e];
             const double norm = p.forward[e].norm;
-            double* xo = &rs.x[(static_cast<std::size_t>(local) * numE + e) * kBands];
+            const std::size_t at = (static_cast<std::size_t>(local) * numE + e) * kBands;
             for (std::size_t k = 0; k < kBands; ++k)
-                xo[k] = (we * sc.fwd[e][k] + (1.0 - we) * sc.rev[e][k]) * norm;
+            {
+                rs.fx[at + k] = sc.fwd[e][k] * norm;
+                rs.rx[at + k] = sc.rev[e][k] * norm;
+                rs.x[at + k] = we * rs.fx[at + k] + (1.0 - we) * rs.rx[at + k];
+            }
         }
     }
     rs.blockWork[static_cast<std::size_t>(blk)] = work;
@@ -307,6 +315,8 @@ void allocate(RangeScores& rs, std::int64_t first, std::int64_t blocks, std::siz
     rs.first = first;
     rs.blocks = blocks;
     rs.x.assign(static_cast<std::size_t>(blocks * kBlockHistories) * numE * kBands, 0.0);
+    rs.fx.assign(rs.x.size(), 0.0);
+    rs.rx.assign(rs.x.size(), 0.0);
     rs.blockWork.assign(static_cast<std::size_t>(blocks), 0);
     rs.blockHash.assign(static_cast<std::size_t>(blocks), 0);
     rs.blockDone.assign(static_cast<std::size_t>(blocks), 0);
@@ -358,7 +368,13 @@ PathCount pathCount(const PathCountInput& in) noexcept
     else if (in.wScene <= in.wPilot)
         c.nCap = 0;
     else
-        c.nCap = (in.wScene - in.wPilot) * in.nStar / in.wPilot / blk * blk;
+    {
+        // (W_scene - W_pilot) n* in 64 bits; saturate instead of overflowing for extreme limits.
+        const std::int64_t room = in.wScene - in.wPilot;
+        const std::int64_t big = std::numeric_limits<std::int64_t>::max() / 2;
+        c.nCap = (in.nStar > 0 && room > big / in.nStar) ? big / blk * blk
+                                                         : room * in.nStar / in.wPilot / blk * blk;
+    }
     const std::int64_t want = std::max(in.nNeed, in.nStar);
     const std::int64_t wantBlocks = (want + blk - 1) / blk * blk;
     c.n = std::min(wantBlocks, c.nCap);
@@ -463,6 +479,9 @@ DiffuseResult estimateDiffuse(const DiffuseProblem& problem, const DiffuseLimits
     if (numE == 0)
         return res;
     ThreadPool& pool = options.pool != nullptr ? *options.pool : ThreadPool::process();
+    // The pilot must stay below the final range (AX41: pilot [0, n*), final [8 000, ...)).
+    const std::int64_t nStarMax = std::clamp<std::int64_t>(limits.nStarMax, kBlockHistories,
+                                                           kFinalRangeStart);
 
     RangeScores pilot;
     RangeScores fin;
@@ -483,7 +502,7 @@ DiffuseResult estimateDiffuse(const DiffuseProblem& problem, const DiffuseLimits
     {
         // Pilot (AX41): blocks from history 0, run a pool's worth at a time, scanned in order; the stop
         // test is applied at each block boundary, so blocks past the stop are discarded (D4).
-        const std::int64_t maxBlocks = (limits.nStarMax + kBlockHistories - 1) / kBlockHistories;
+        const std::int64_t maxBlocks = (nStarMax + kBlockHistories - 1) / kBlockHistories;
         allocate(pilot, 0, maxBlocks, numE);
         std::int64_t used = 0;
         std::int64_t wPilot = 0;
@@ -501,7 +520,7 @@ DiffuseResult estimateDiffuse(const DiffuseProblem& problem, const DiffuseLimits
             {
                 wPilot += pilot.blockWork[static_cast<std::size_t>(b)];
                 used = b + 1;
-                stopped = pilotStops(used * kBlockHistories, wPilot, limits.wScene, limits.nStarMax);
+                stopped = pilotStops(used * kBlockHistories, wPilot, limits.wScene, nStarMax);
             }
         }
         res.nStar = used * kBlockHistories;
@@ -575,6 +594,14 @@ DiffuseResult estimateDiffuse(const DiffuseProblem& problem, const DiffuseLimits
         for (std::size_t k = 0; k < kBands; ++k)
         {
             er.bandsDiffuse[k] = m[k];
+            double f = 0.0, r = 0.0; // history order, as the blended mean
+            for (std::size_t i = 0; i < nShip; ++i)
+            {
+                f += ship.fx[(i * numE + e) * kBands + k];
+                r += ship.rx[(i * numE + e) * kBands + k];
+            }
+            er.bandsForward[k] = nShip > 0 ? f / static_cast<double>(nShip) : 0.0;
+            er.bandsReverse[k] = nShip > 0 ? r / static_cast<double>(nShip) : 0.0;
             er.bandsSe[k] = st[k].se;
             const double tot = problem.emitters[e].bandsSpecularTarget[k] + m[k];
             er.bandsSeDb[k] = tot > 0.0 ? kDbPerRelative * st[k].se / tot : 0.0;

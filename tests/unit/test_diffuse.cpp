@@ -277,6 +277,76 @@ TEST_CASE("diffuse estimate is independent of the pool size, repeatable and fini
     REQUIRE_FALSE(a.count.capHit);
 }
 
+TEST_CASE("diffuse two-emitter problem: each emitter gathers at its own images (AX44)", "[diffuse]")
+{
+    // The listener-started set is keyed by the shared emitter field and its trace does not depend on
+    // the gather targets, so in a fixed-N run each emitter's reverse part in the two-emitter problem
+    // is bit-identical to a one-emitter run of that emitter; emitter 0's forward part is too (same
+    // key). Emitter 1's forward set has its own key: checked statistically against a one-emitter run.
+    const auto planned = diffuse_test::plan(smallScene());
+    REQUIRE(planned.problem.emitters.size() == 2);
+    ThreadPool pool(3);
+    DiffuseRunOptions o;
+    o.pool = &pool;
+    DiffuseLimits fixed;
+    fixed.fixedHistories = 4096;
+    const auto both = estimateDiffuse(planned.problem, fixed, o);
+    for (std::size_t e = 0; e < 2; ++e)
+    {
+        auto single = planned.problem;
+        single.emitters = {planned.problem.emitters[e]};
+        const auto one = estimateDiffuse(single, fixed, o);
+        const auto& b = both.emitters[e];
+        const auto& s1 = one.emitters[0];
+        for (std::size_t k = 0; k < 8; ++k)
+        {
+            REQUIRE(b.bandsReverse[k] > 0.0);
+            REQUIRE(sameBits(b.bandsReverse[k], s1.bandsReverse[k]));
+            if (e == 0)
+                REQUIRE(sameBits(b.bandsForward[k], s1.bandsForward[k]));
+            // Blend identity: the estimate is w fwd + (1 - w) rev of the same histories.
+            REQUIRE_THAT(
+                b.bandsDiffuse[k],
+                WithinRel(b.weight * b.bandsForward[k] + (1.0 - b.weight) * b.bandsReverse[k], 1e-12));
+        }
+        if (e == 1)
+            for (std::size_t k = 0; k < 8; ++k)
+            {
+                // Independent streams of the same estimator: |difference| within 5 combined SE,
+                // the SE taken conservatively from the blended estimate's SE scaled up by 4.
+                const double se = 4.0
+                                  * std::sqrt(b.bandsSe[k] * b.bandsSe[k] + s1.bandsSe[k] * s1.bandsSe[k]);
+                CHECK(std::abs(b.bandsForward[k] - s1.bandsForward[k]) <= 5.0 * se);
+            }
+    }
+    // The two emitters really differ (a bug gathering both at one emitter's images would make them equal).
+    CHECK_FALSE(sameBits(both.emitters[0].bandsReverse[4], both.emitters[1].bandsReverse[4]));
+}
+
+TEST_CASE("diffuse pilot stopped by work mid-batch is independent of the pool size (AX41, D4)", "[diffuse]")
+{
+    const auto planned = diffuse_test::plan(smallScene());
+    ThreadPool p1(1), p3(3), p4(4);
+    DiffuseRunOptions o1, o3, o4;
+    o1.pool = &p1;
+    o3.pool = &p3;
+    o4.pool = &p4;
+    const auto free = estimateDiffuse(planned.problem, {}, o1);
+    REQUIRE(free.nStar == kNStarMax);
+    // W_scene so that 2 W_pilot >= W_scene after about 5.5 of the 16 pilot blocks: the stop falls
+    // inside a batch of 3 or 4 blocks.
+    DiffuseLimits tight;
+    tight.wScene = 2 * free.wPilot * 11 / 32;
+    const auto a = estimateDiffuse(planned.problem, tight, o1);
+    const auto b = estimateDiffuse(planned.problem, tight, o3);
+    const auto c = estimateDiffuse(planned.problem, tight, o4);
+    REQUIRE(a.nStar < kNStarMax);
+    REQUIRE(a.nStar % kBlockHistories == 0);
+    REQUIRE(2 * a.wPilot >= tight.wScene);
+    requireIdentical(a, b);
+    requireIdentical(a, c);
+}
+
 TEST_CASE("diffuse estimate does not depend on tailSeed (AX40)", "[diffuse]")
 {
     auto s1 = smallScene();
@@ -345,7 +415,11 @@ TEST_CASE("diffuse estimator agrees with ref_hybrid on the 15 (A) cases (smoke, 
     {
         const auto& row = ref.rows[i];
         REQUIRE(row.size() == ref.columns.size());
-        const auto c = [&](const char* name) { return row[ref.col(name)]; };
+        const auto c = [&](const char* name) {
+            const std::size_t idx = ref.col(name);
+            REQUIRE(idx < row.size());
+            return row[idx];
+        };
         std::array<contract::BandArray, 6> alpha{};
         const char* faces[] = {"alpha_xMin", "alpha_xMax",  "alpha_yMin",
                                "alpha_yMax", "alpha_floor", "alpha_ceiling"};

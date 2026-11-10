@@ -42,11 +42,21 @@ The smoke agreement (O5) prints the same summary on all three: max \|C++ − ref
 | W1 | 0, 0 | 0 | 0 | 0 | 0 | 0.1216 | 0.082 / 0.063 | 0.025 / 0.019 | 0 / 0 |
 
 - Realised work / W_scene ≤ 0.991 at every gated scene (prototype C16: ≤ 1.009). The pilot's speculative blocks past
-  the stop (one pool's worth) are computed and discarded; they cost time, not work in this count.
-- At s = 1 the achieved SE (0.36 dB) is above Seat 1's 0.33 dB floor, so the floor is **not met** at
-  `cube100_lowalpha0.05_s1` under the provisional W_max unless clause (d)'s replicates pass; with s = 0.3 it is met
-  (SE ≤ 0.092 dB). This matches the expectation in phase-05h §3 ("at s = 1 … the starting-state clause would fire
-  once"); prototype C14/C16: 0.44–0.50 dB, the C++ joint rule gives 0.36 dB.
+  the stop (up to one pool's worth) are computed and discarded; they cost time, not work in this count. At the flutter
+  scene (pilot stops at 5 of 16 blocks) about 1.89 M extra evaluations were computed with 4 threads, 33 % over the
+  counted work, so that scene's "ns per evaluation" below is inflated; the W_max re-derivation should take its
+  per-evaluation cost from the one-thread figures or from scenes whose pilot runs to n\*_max.
+- **Seat 1's floor** (phase-05h §3: met when the achieved SE ≤ 0.33 dB per emitter and band **and** at least one of
+  (a) pilot SE ≤ 0.028 dB, (b) pilot VOV < 0.1, (c) final VOV < 0.1, (d) 30 replicates give p95 |error| ≤ 1 dB),
+  single run each, provisional W_max:
+  - `cube100_flutter_fallback`: SE 0.002 / 0.001 dB and pilot SE 0.002 dB ≤ 0.028 dB → (a) holds: **met**.
+  - `cube100_lowalpha0.05_s0.3`: SE 0.092 / 0.075 dB ≤ 0.33 dB, but (a) fails (pilot SE 0.155 / 0.147 dB), (b) fails
+    (pilot VOV 0.225 / 0.441), (c) fails (final VOV 0.131 / 0.155) → **met only if clause (d)'s replicates pass**
+    (session 2, on the C++ shipping rule, disjoint pre-registered streams).
+  - `cube100_lowalpha0.05_s1`: SE 0.360 / 0.359 dB > 0.33 dB → **not met**; no clause can rescue it (the SE condition
+    is required in every case). This matches phase-05h §3 ("at s = 1 … the starting-state clause would fire once");
+    prototype C14/C16: 0.44–0.50 dB, the C++ joint rule 0.36 dB (single runs of a heavy-tailed estimator; the starting
+    state needs the replicates).
 - AX16 − switched E_target at 1 kHz: +0.03 / +0.03 dB (flutter), +0.07 / +0.17 dB (s 0.3), +0.03 / +0.26 dB (s 1),
   +0.15 / +0.26 dB (W1).
 
@@ -102,5 +112,8 @@ The Phase 07 full-rebuild record in the same runs (default materials, maximum ro
   range or a formulation seam; a margin above about 20 % returns to the seats, whose options are a smaller W_max or
   (C) forward. Seat 1's floor at `cube100_lowalpha0.05_s1` is not met at the provisional W_max (SE 0.36 dB), so a
   smaller W_max there goes to Maisara (phase-05h §2 item 1) before any range change.
+- Determinism caveat (review of PR #27, m-3): N depends on N_need, computed from scores that contain `exp` and `sin`,
+  and t_mix comes from `MixingTime.cpp` (not under the D2 flags); equal N across OSes is therefore highly probable,
+  not guaranteed by construction. The four scenes above are equal on all three OSes.
 - Open for the board (session 2): pin the gated cube's α and s; define "any further rise"; decide D-H1 on these
   numbers; pre-register the realised-work ratio (measured here ≤ 0.991 at the gated scenes).
