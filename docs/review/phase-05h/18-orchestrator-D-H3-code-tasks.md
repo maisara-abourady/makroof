@@ -256,3 +256,40 @@ Per case-band at 500 Hz–2 kHz for the three contributors and the two s = 1 lay
 | bras_cr4_ls2_mp5 | 3 | +0.0168 | +0.0004 | yes | +47.45 |
 | bras_cr4_ls2_mp5 | 4 | +0.0148 | +0.0000 | yes | +296.49 |
 | bras_cr4_ls2_mp5 | 5 | +0.0154 | +0.0006 | yes | +26.76 |
+
+## K-a4 (iii) — the 0.625 m rung at the small rooms (Seat 9's and Seat 2's decisive test)
+
+`hybrid_fast` references at 0.625 m for dead_booth, living_room and the D-T6 small room (classroom and club queued), computed with the same script as the committed references (`compute_refs.py`, lean solver; patches and seconds per case below). The signed ladder per band at 500 Hz–2 kHz, with the C++ deviation against the 1.25 m reference (the committed golden) and against the new 0.625 m one. ratio = (1.25 → 0.625 step) / (2.5 → 1.25 step): below 1 the ladder is converging, above 1 it is still accelerating and the last-halving change under-states the residual.
+
+| case | band | ref 2.5 → 1.25 dB | ref 1.25 → 0.625 dB | ratio | C++ − ref_1.25 dB | C++ − ref_0.625 dB | SE dB |
+|---|---|---|---|---|---|---|---|
+| dead_booth_e0 | 3 | +0.0073 | +0.0116 | +1.58 | +0.0173 | +0.0057 | 0.0021 |
+| dead_booth_e0 | 4 | +0.0075 | +0.0122 | +1.62 | +0.0178 | +0.0056 | 0.0021 |
+| dead_booth_e0 | 5 | +0.0084 | +0.0126 | +1.50 | +0.0183 | +0.0057 | 0.0021 |
+| dead_booth_e1 | 3 | +0.0073 | +0.0116 | +1.58 | +0.0156 | +0.0040 | 0.0021 |
+| dead_booth_e1 | 4 | +0.0075 | +0.0122 | +1.62 | +0.0159 | +0.0037 | 0.0021 |
+| dead_booth_e1 | 5 | +0.0084 | +0.0126 | +1.50 | +0.0160 | +0.0034 | 0.0021 |
+| living_room_e0 | 3 | -0.0239 | -0.0039 | +0.16 | -0.0056 | -0.0017 | 0.0028 |
+| living_room_e0 | 4 | -0.0232 | -0.0036 | +0.16 | -0.0048 | -0.0012 | 0.0027 |
+| living_room_e0 | 5 | -0.0226 | -0.0034 | +0.15 | -0.0042 | -0.0008 | 0.0027 |
+| living_room_e1 | 3 | -0.0239 | -0.0039 | +0.16 | -0.0025 | +0.0014 | 0.0027 |
+| living_room_e1 | 4 | -0.0232 | -0.0036 | +0.16 | -0.0017 | +0.0019 | 0.0027 |
+| living_room_e1 | 5 | -0.0226 | -0.0034 | +0.15 | -0.0011 | +0.0023 | 0.0027 |
+| dt6_small_room_e0 | 3 | -0.0039 | -0.0005 | +0.14 | not gated (no C++ run) | — | — |
+| dt6_small_room_e0 | 4 | -0.0039 | -0.0005 | +0.14 | not gated (no C++ run) | — | — |
+| dt6_small_room_e0 | 5 | -0.0039 | -0.0005 | +0.14 | not gated (no C++ run) | — | — |
+| dt6_small_room_e1 | 3 | -0.0039 | -0.0005 | +0.14 | not gated (no C++ run) | — | — |
+| dt6_small_room_e1 | 4 | -0.0039 | -0.0005 | +0.14 | not gated (no C++ run) | — | — |
+| dt6_small_room_e1 | 5 | -0.0039 | -0.0005 | +0.14 | not gated (no C++ run) | — | — |
+
+| case | patches at 0.625 m | seconds |
+|---|---|---|
+| dead_booth_e0 | 96 | 26 |
+| dead_booth_e1 | 96 | 26 |
+| living_room_e0 | 262 | 59 |
+| living_room_e1 | 262 | 45 |
+| dt6_small_room_e0 | 112 | 41 |
+| dt6_small_room_e1 | 112 | 20 |
+
+Reading: **dead_booth's reference moves toward the C++ at the next halving, and by more than at the previous one** (ratio ≈ 1.5–1.6: +0.012 dB after +0.007 dB). Against the 0.625 m reference the C++ sits at +0.004 to +0.006 dB (+0.1 %), inside the 1.25 → 0.625 step, so the z ≈ 8 of K-a3 is the reference's discretisation residual, not an estimator bias: the residual explanation holds for dead_booth, in the direction Seats 2 and 9 named. A second finding for AX36: the 1.25 m rung is "certified" at dead_booth by the < 1 % per-halving rule (0.17 %), yet the ladder there is not in its asymptotic regime (the steps grow), so the per-halving criterion can pass a reference whose true residual is larger than its last change; at a 2.5 × 2.0 × 2.2 m room the 2.5 m rung is coarser than two of the three dimensions (Seat 9). living_room converges (ratio 0.16) and the C++ is within ±0.002 dB of the 0.625 m reference on both emitters. The D-T6 small room converges (ratio 0.14) and is not gated this session. classroom and club follow in the same file when their run completes.
+
