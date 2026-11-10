@@ -294,7 +294,8 @@ TEST_CASE("diffuse two-emitter problem: each emitter gathers at its own images (
     for (std::size_t e = 0; e < 2; ++e)
     {
         auto single = planned.problem;
-        single.emitters = {planned.problem.emitters[e]};
+        single.emitters.clear();
+        single.emitters.push_back(planned.problem.emitters[e]);
         const auto one = estimateDiffuse(single, fixed, o);
         const auto& b = both.emitters[e];
         const auto& s1 = one.emitters[0];
