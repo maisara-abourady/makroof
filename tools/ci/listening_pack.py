@@ -286,7 +286,9 @@ def _synthetic_scene(name: str, dims, alpha_faces, s: float) -> dict:
     scale = [d / a for d, a in zip(dims, AQ10_DIMS)]
     scene["room"]["geometry"]["dimensions"] = list(dims)
     for face, a in zip(("xMin", "xMax", "yMin", "yMax", "floor", "ceiling"), alpha_faces):
-        scene["room"]["surfaces"][face] = {"absorption": [float(a)] * 8, "scattering": float(s)}
+        # The contract's minimum absorption is 0.01 (E_ABSORPTION_RANGE); Table 5.2's rigid faces (alpha = 0) are
+        # rendered at that minimum. Listening content, not a gate (the (A)-case references use alpha = 0 exactly).
+        scene["room"]["surfaces"][face] = {"absorption": [max(float(a), 0.01)] * 8, "scattering": float(s)}
     scene["listener"]["position"] = [p * k for p, k in zip(AQ10_RCV, scale)]
     scene["emitters"][0]["position"] = [p * k for p, k in zip(AQ10_SRC, scale)]
     scene["emitters"][1]["position"] = [p * k for p, k in zip((13.0, 20.0, 2.0), scale)]
@@ -400,7 +402,8 @@ def _phase_05h(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
             "mixed-material rooms (club, concert_hall_box, ...) any change sounds like a correction, not an artefact; "
             "(4) no new seam where the early echoes hand over to the tail; (5) club_both_near_0.3 has the listener "
             "and one source within 0.7 m of a wall (AX44). open_field has only the floor's scattering: nearly dry. "
-            "bras_cr3_ls1_mp2 is the measured BRAS room with the largest real level change. The reference status "
+            "bras_cr3_ls1_mp2 is the measured BRAS room with the largest real level change. The t52_* rooms render Kuttruff "
+            "Table 5.2's rigid faces at the contract's minimum absorption 0.01 (the references use 0). The reference status "
             "below says, per room, whether its tail level is gated against a certified reference, reported against "
             "an uncertified one, or without a reference yet (decision D-H2): the listening judgement is listening "
             "content, not an accuracy result.", 78),
