@@ -12,6 +12,8 @@
 > smallest buildable sub phases that ship value while keeping the session's attention focused on one subject matter
 > that deserves it"
 
+> 2026-11-10 (asked whether to open a PR): "Go" — then: "With no ci and with directly merging to main there is bo code in this pr"
+
 ## Reading of her words
 - "remaining phases 7 onwards": every phase numbered 07 or higher that is not `done` in BUILD_PLAN §0: **07c, 08, 09,
   10, 11, 12, 13**. Phase 07 is `done` (PR #23) and is not split. 05-series phases (05h in progress, 05d not started)
