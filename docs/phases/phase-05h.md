@@ -331,12 +331,14 @@ after seeing the gate's result.
       platform (AX37 (5.1)) — the absorbent room is the named scene: dead_booth geometry, α 0.01 at 63 Hz /
       0.999 above, s 0.5 (the near-rigid 63 Hz band's long tail against the 8.6 ms fast bands, not
       absorbency; a uniformly absorbent room reads clear); the denormal flag asserted per architecture
-      (x86-64 DE | UE; AArch64 per the K-c4 CI run, never red by design; MSVC ARM64 SKIP, phase-13 scope 8)
-      with the calibration step and `ThreadPool(1)`; the `[probe-denormals-detector]` probe standing in
-      `ci.yml` on three OSes, re-run on each path change; every pool share under the FTZ/DAZ guard
-      (`ThreadPool::runShare`, D-H3 (c) (g)), re-probed in the same CI run before the PR (D5 hashes
-      identical, cross-OS E_target within 1e-7), else the caller-only form (f) with the scene named
-      (D-H3 (c), H3-F3; decider files 25, 27).
+      (x86-64 DE | UE in the FZ-off arm and DE clear in the FZ-on arm; AArch64 UFC in the FZ-off arm and IDC |
+      UFC in the FZ-on arm, the D-H3 (c) form, decided by the K-c4 runs 42909003931 and 42921348351 (file 31);
+      never red by design: SKIP when the calibration of file 20 L183 (3) fails; MSVC ARM64 SKIP, phase-13
+      scope 8) with the calibration step and `ThreadPool(1)`; the `[probe-denormals-detector]` probe standing
+      in `ci.yml` on three OSes, re-run on each path change; every pool share under the FTZ/DAZ guard
+      (`ThreadPool::runShare`, D-H3 (c) (g)), re-probed in the same CI run before the PR (D5 hashes identical,
+      cross-OS E_target within 1e-7), else the caller-only form (f) with the scene named (D-H3 (c), H3-F3;
+      decider files 25, 27).
 - [ ] Gate (AX38): the debug assert and the real-time-beside-gate test (zero allocations, gate never
       touched), covering `reset()`; the two-order output test, one pipeline offline; TSan `[pipeline]` with
       two pipelines, one switching to offline mid-solve. **AX38 (i) register entry (D-H3 (e), H3-F5):**
@@ -364,16 +366,18 @@ after seeing the gate's result.
       solve) ≤ 30 s is asserted strictly (Windows cube 29.04 s; the flutter cube on every OS, 7.6–10.6 s).
       (b) Every OS/scene recorded > 29.1 s is listed in AX38 4c's defect register (recorded value, median,
       remedy, closing phase) and asserted through the growth bound, median-of-10 restore ≤ 1.10 × the
-      recorded median: the cube on Linux (30.27 s, median 2 032.5 ms; closes at phase-07c) and on macOS
-      (33.40 s, median 1 882.0 ms; closes at phase-07c condition 9 / 07d, or at Phase 13's release-machine
-      re-check if the runner is the cause); medians re-baselined from this phase's three-OS run. No OS/scene
-      is unasserted. (c) A listed entry that passes 30 s is a job-summary warning and leaves the register
-      through `/fix-plan` before the next phase is `done`. (d) A new failure at an unlisted OS/scene, or a
-      listed entry breaking its growth bound, is a defect: no re-run, no W_max cut after pinning, no
-      room-range narrowing, no formulation seam; it enters the register with its remedy, phase-07c forward
-      and then phase-07c §5 condition 9 (the unit-decay synthesis off the synchronous restore). This phase may
-      be set `done` with the register entries recorded in §0 row 05h; the macOS and Windows records go to
-      Maisara in the PR (section 2 item 2).
+      recorded median: the cube on Linux (recorded 30.27 s; CI run 42909003931 29.62 s, median 2 043 ms
+      pinned; passes 30 s: the (c) warning, its removal carried to phase-05i scope 3; closes at phase-07c) and
+      on macOS (recorded 33.40 s; CI run 42909003931 37.37 s, median 2 106 ms pinned; closes at phase-07c
+      condition 9 / 07d, or at Phase 13's release-machine re-check if the runner is the cause); medians
+      re-baselined from CI run 42909003931 (CHANGELOG entry of the baselines). No OS/scene is unasserted. (c)
+      A listed entry that passes 30 s is a job-summary warning and leaves the register through `/fix-plan`
+      before the next phase is `done`. (d) A new failure at an unlisted OS/scene, or a listed entry breaking
+      its growth bound, is a defect: no re-run, no W_max cut after pinning, no room-range narrowing, no
+      formulation seam; it enters the register with its remedy, phase-07c forward and then phase-07c §5
+      condition 9 (the unit-decay synthesis off the synchronous restore). This phase may be set `done` with
+      the register entries recorded in §0 row 05h; the macOS and Windows records go to Maisara in the PR
+      (section 2 item 2).
 - [ ] The solve seam: restore, prepare and `reset()` call the diffuse solve through one function (scope 2).
 - [ ] Only if Phase 08 went first (scope 10): binaural goldens re-rendered, binaural W1/W2 per mode with
       the diffuse share and the binaural AX38 (iv) records recorded, phase-08 item 8 re-run, and the
