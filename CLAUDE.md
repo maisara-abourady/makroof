@@ -11,7 +11,10 @@ instructions: `docs/phases/phase-XX.md`.
 1. Read, in order: this file → `docs/BUILD_PLAN.md` (§0 status, §2 assumptions, §3 flags) → the
    phase file you were asked to execute → the PRD sections the phase file cites.
 2. If the phase file has a **"Raise with Maisara"** section, raise every item in it in your first
-   message and again in the PR description. Maisara does not track these herself.
+   message and again in the PR description. Maisara does not track these herself. In the first message,
+   note that the decider answers each question among them from the PRD unless one of the three cases in
+   `docs/board/README.md` ("Who answers Maisara's questions") applies. The PR gives the answers under
+   "Decided for Maisara".
 3. Check that every phase this one depends on is `done` in the status table. If one isn't, stop and
    report it. Don't build on unfinished phases.
 4. Set the phase to `in progress` in `docs/BUILD_PLAN.md` §0 and commit that first.
@@ -64,9 +67,13 @@ template in its README).
 2. After each substantial step, and always before reporting to Maisara, report to the steward with
    the brief's path and the evidence (files, diffs, CI runs, agent reports). Append its round note to
    the brief's steward log. On CONTINUE, close the gaps it lists by delegating as you judge best.
-3. Speak to Maisara only on **READY TO REPORT** (send its draft, edited for accuracy) or **NEEDS
-   MAISARA** (ask its questions). Append each new instruction from her to the brief verbatim. The
-   "Raise with Maisara" items (step 2 of "The one rule for every session") still go in your first message to her.
+3. Speak to Maisara only on **READY TO REPORT** (send its draft, edited for accuracy, with its
+   "Decided for Maisara" list) or **NEEDS MAISARA** (ask its questions). NEEDS MAISARA covers only the
+   three cases in `docs/board/README.md`, "Who answers Maisara's questions", things only a person can
+   do, and a gap that is not a decision and still fails after 3 steward rounds. Every other question goes
+   to the decider. Append each new instruction from her to the brief
+   verbatim. The "Raise with Maisara" items (step 2 of "The one rule for every session") still go in your
+   first message to her.
 
 ## Assumptions and decisions
 
@@ -104,13 +111,28 @@ nine subject-matter seats (`docs/board/README.md`; personas in `docs/board/`, ag
   dataset and licence documentation, statistics and base rates). Each seat is its own advocate: it
   ranks the options and rates its own tension **now** and **later** (0–3; 3 is veto-grade).
 - The decider decides at the **point of minimum tension among all nine, now and in the future**: inside
-  the PRD's hard constraints and Maisara's settled decisions, drop any option a seat rated veto-grade
+  the PRD's hard constraints, her recorded decisions (amended only by a separate answer for her, below)
+  and the plan's AQ/AX defaults (changed by a board DECISION), drop any option a seat rated veto-grade
   (only Maisara overrides a veto), then minimise the worst-off seat over both columns, then the sum, then
   prefer the cheaper-to-undo option; every decision carries a future-debt register. No decision borrows
   from later phases silently.
 - The **interrogator** pushes back: convening (UNDERCONVENED), the tension map against the seats' words
-  (TENSION MISREAD), the debt register, the ordering, and every load-bearing fact against `docs/corpus/`.
-  A decision stands only if it SURVIVES. There is no advocate agent.
+  (TENSION MISREAD), the debt register, the ordering, every load-bearing fact against `docs/corpus/`,
+  and the PRD reading of every answer given for Maisara (PRD MISREAD). A decision stands only if it
+  SURVIVES. There is no advocate agent.
+- **The decider answers for Maisara** (Maisara, 2026-11-10: "my north star is the prd that drives my
+  decision making"; "Do it").
+  - It answers every question the loop would otherwise stop to ask her: accept or veto, open options,
+    items still contested after 3 rounds, trade-offs, ambiguities the PRD settles. That includes
+    reading or amending one of her recorded decisions when the PRD calls for it. It reasons from
+    `docs/PRD.md` and her recorded decisions, and cites their ids.
+  - Answers that survive are applied, then listed for her under "Decided for Maisara" in the report and
+    the PR. She may veto any of them afterwards.
+  - Only three cases go to her as NEEDS MAISARA: the PRD is silent or contradicts itself (and none of
+    her recorded decisions settles it); the answer
+    would change the PRD itself; a seat's veto-grade rating would have to be overridden. Plan text that
+    sends a question to her is read under this rule.
+  - The rule is set out in full in `docs/board/README.md`, "Who answers Maisara's questions".
 - `/fix-plan` runs the loop (step 3); outputs of every round are saved under `docs/review/<target>/`.
 - Agent files for the seats are **generated**: `python3 .claude/board/build_agents.py` (`--check` to
   verify) from the persona's sections 0–18 plus `docs/board/seat-protocol.md`. Never edit a persona or a
@@ -312,6 +334,7 @@ Windows: run the CMake commands from an "x64 Native Tools Command Prompt for VS 
   PR link, session brief) may follow without a run.
 - Commit messages: `phase-XX: <imperative summary>`.
 - The PR description contains: what was done, acceptance-criteria checklist with CI evidence,
-  listening checklist for Maisara, contractor review focus, follow-ups, assumption/golden changes.
+  listening checklist for Maisara, contractor review focus, follow-ups, assumption/golden changes, and
+  "Decided for Maisara" (every answer the decider gave for her, with PRD ids, open to her veto).
 - Never commit downloaded datasets (BRAS, SOFA originals). Download by checksum in scripts. The
   converted embedded HRTF is the one exception, once its licence is confirmed.

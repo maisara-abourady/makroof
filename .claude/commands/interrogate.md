@@ -15,5 +15,6 @@ Re-run the interrogator on your answers only for open blockers, at most 3 rounds
 row's status (open / resolved / disputed) after every round.
 
 List what remains unresolved, and report it to the **steward** with the session brief before you report
-to the user (CLAUDE.md, "Reporting: the steward"). Do not edit the target document; changes to the PRD or plans are
-Maisara's decision.
+to the user (CLAUDE.md, "Reporting: the steward"). Do not edit the target document. Changes to the plans go through `/fix-plan`, where the decider
+answers for Maisara from the PRD. Changes to the PRD itself are hers (`docs/board/README.md`, "Who answers
+Maisara's questions").

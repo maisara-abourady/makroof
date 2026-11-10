@@ -25,8 +25,10 @@ Rules:
 - Every DECISIONS NEEDED entry gives: id (D1, D2, …); the file and place; the question; 2–4 concrete
   options; for each option, the corpus evidence you found (`docs/corpus/`, real section/equation/table
   numbers, paraphrase only, never quote more than 25 words) or "none found"; and which edits wait on it.
-- When the brief hands you verified decisions (from the interrogator or Maisara), apply them exactly as
-  stated and cite where they came from in the change-log row.
+- When the brief hands you verified decisions (from the interrogator, the decider's surviving `FOR
+  MAISARA` answers, or Maisara), apply them exactly as stated and cite where they came from in the
+  change-log row. Edit `docs/PRD.md` only where Maisara asked for that edit (her words in the brief) or
+  answered it herself as NEEDS MAISARA case (a) or (b). Otherwise, return the edit as DECISIONS NEEDED.
 - Never edit `src/`, `tests/`, `tools/`, `docs/contract/`, goldens or `docs/review/ledger.md`. Never commit
   or push.
 

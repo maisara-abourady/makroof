@@ -29,7 +29,10 @@ can pick it up.
 - Out (follow-ups, not this session): …
 
 ## Constraints and settled decisions
-- … (cite ids: AX…, NFR…, decider report …, accepted by Maisara on …)
+- … (cite ids: AX…, NFR…, decider report …, accepted by Maisara on … / decided for her, FOR MAISARA <id>)
+
+## Decided for Maisara
+- <id> — <answer in one plain line> — PRD <ids> — <round files> — [AMENDS her decision of <date>] — vetoed? <date or "no">
 
 ## Raise with Maisara
 - … (from the phase file, or "none")
