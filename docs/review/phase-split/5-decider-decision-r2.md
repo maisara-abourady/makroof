@@ -117,10 +117,10 @@ canvas region and a layout provisional until 11-2.
 
 | option | S1 | S2 | S3 | S5 | S7 |
 |---|---|---|---|---|---|
-| (a+5) | 1/0 | 0/0 (rc: i₀ and S13 output changes precede the cross-architecture residual) | 1/1 (rc) | 1/1 (rc) | 0/1 (rc, a′) |
+| (a+5) | 1/0 | 0/1 (Seat 2's own, `5b-seat2-r2.md`; see Addendum) | 1/1 (rc) | 1/1 (rc) | 0/1 (rc, a′) |
 
 Working: (a+) four-way and (b) out at bounds (their 13-1 fails Q5); (c) out at the veto step (Seat 5 later 3). (a+5)
-the only survivor; max 1, sum 6.
+the only survivor; max 1, sum 7 (corrected per Addendum and `6-interrogator-decision-r2.md`).
 
 **Plan-editor instructions:**
 1. The five sub-phases and order as in Q1.
@@ -138,8 +138,9 @@ the only survivor; max 1, sum 6.
 | S7 | K1–K3 lead times [Hyp] | beta slips or `signing pending secrets` | 13-1 | enrolment started |
 | S1 | S10 answered in 13-1 | none later | 13-1 | Q1/Q2 answered with method |
 
-Strongest objection: Seat 2's (rc) cell. Confidence medium. Reversal: Seat 2's (rc) rejected (re-convene Seat 2), or
-an S9 miss recurs after `13-1b`.
+Strongest objection: Seat 3's preference to measure and fix in one session, met by (a+5) only through `13-1b`.
+Confidence medium. Reversal: an S9 miss recurs after `13-1b`, or 13-2's limits go stale and are not re-run before
+13-3's records.
 
 **Decided for Maisara:** Phase 13 runs in five parts — performance, engine limits, platforms, hosts, release;
 real-hardware timing first in platforms; signing logistics visible from the first session. Acceptance check: NFR-2,
@@ -177,7 +178,7 @@ shell laid out before the canvas risks the core experience. Amends none of her r
 1. 07c: §2.1 Raise in 07c-1 and 07c-2.
 2. 12: drop 12-1's AC2 share; 12-1 owns AC5 alone; AC2 whole in 12-2.
 3. 13-c4: all four Raise items in 13-1 and 13-5 (beta sub-phase is now 13-5).
-4. Ids in the debt registers (08-4, 11-2, 13-1b, 13-3) land with exactly those names.
+4. Ids in the debt registers (08-4, 11-2, 13-1b, 13-2, 13-3) land with exactly those names.
 
 ## Summary
 | id | decision | state | worst cell | sum | confidence | reversal |
@@ -185,7 +186,7 @@ shell laid out before the canvas risks the core experience. Amends none of her r
 | D-PS1 | (b′) | stands, corrected | 1 | 4 | high | 05h diff touches the t_mix,e path |
 | D-PS2 | (b+) | stands | 1 | 10 | medium | 08-4 benchmark |
 | D-PS3 | (a) + (i), (ii) | stands, corrected | 1 | 4 | medium | FM-1 vetoed |
-| D-PS4 | (a+5), five sub-phases | revised | 1 | 6 | medium | Seat 2 (rc) rejected; S9 miss after 13-1b |
+| D-PS4 | (a+5), five sub-phases | revised | 1 | 7 | medium | S9 miss recurs after 13-1b, or 13-2's limits stale and not re-run before 13-3's records |
 | FM-1 | split, Yes | for Maisara | — | — | medium | her veto |
 
 NEEDS MAISARA: none.
