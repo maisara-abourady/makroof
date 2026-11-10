@@ -148,3 +148,111 @@ Hidden probe `[.][probe-denormals-detector]` added to `tests/unit/test_diffuse_g
 
 Reading: **Seat 3's scene produces denormals without FTZ at 48 and 96 kHz** (the flag is set after the unguarded build and clear with FTZ on), and its IRs are bit-identical with FTZ off and on, as the build path's double sums and the final `toFloatNoDenormal` conversion predict (file 17-seat3). So AX37 (5.1) (i)'s clause "an absorbent room asserted to produce denormals without FTZ" is satisfiable literally: the `[pipeline]` FTZ test can build this scene, assert the flag set without the guard (where the platform exposes it) and assert bit-identity with the caller's FTZ off and on. None of the eight earlier probe scenes sets the flag at either rate. macOS (AArch64 FPSR IDC) and Windows (MSVC `_mm_getcsr`) are covered by the same probe in the next manual CI run (K-c4).
 
+
+## K-a4 (ii) — the ladder's direction: sign(C++ − ref_1.25) against sign(ref_1.25 − ref_2.5) per case-band (Seat 2's and Seat 9's request)
+
+From the committed golden (`ref_fine`, `ref_coarse` per case-band) and the agreement run of K-a3. step = 10 log10(ref_1.25 / ref_2.5) (the signed last halving change); dev = C++ − ref_1.25. If the reference is still converging monotonically, the next halving would move ref by about +step·(convergence ratio) and "same sign" means the C++ sits where the ladder is heading (residual explanation); "opposite" means the C++ sits behind the ladder (an estimator-bias candidate, or an oscillating ladder). ratio = dev / step.
+
+| room (cluster) | class | case-bands | same sign | opposite | mean dev dB | mean step dB | mean ratio dev/step |
+|---|---|---|---|---|---|---|---|
+| s_case_s0.1 | reference | 8 | 0 | 8 | +0.0014 | -0.0008 | -1.72 |
+| s_case_s0.25 | reference | 8 | 8 | 0 | -0.0009 | -0.0023 | +0.39 |
+| s_case_s0.4 | reference | 8 | 8 | 0 | -0.0040 | -0.0041 | +0.97 |
+| t52_layout4_s0.1 | absorbing | 8 | 0 | 8 | +0.0049 | -0.0001 | -63.99 |
+| t52_layout4_s0.25 | absorbing | 8 | 0 | 8 | +0.0130 | -0.0004 | -32.00 |
+| t52_layout4_s0.4 | absorbing | 8 | 0 | 8 | +0.0084 | -0.0009 | -8.91 |
+| t52_layout4_s1.0 | absorbing | 8 | 8 | 0 | -0.0208 | -0.0038 | +5.48 |
+| t52_layout5_s0.1 | absorbing | 8 | 0 | 8 | -0.0024 | +0.0004 | -5.71 |
+| t52_layout5_s0.25 | absorbing | 8 | 8 | 0 | -0.0090 | -0.0017 | +5.28 |
+| t52_layout5_s0.4 | absorbing | 8 | 8 | 0 | -0.0142 | -0.0026 | +5.47 |
+| t52_layout5_s1.0 | absorbing | 8 | 0 | 8 | -0.0460 | +0.0141 | -3.26 |
+| t52_layout6_s0.1 | absorbing | 8 | 0 | 8 | +0.0018 | -0.0003 | -6.34 |
+| t52_layout6_s0.25 | absorbing | 8 | 8 | 0 | -0.0033 | -0.0013 | +2.60 |
+| t52_layout6_s0.4 | absorbing | 8 | 8 | 0 | -0.0074 | -0.0028 | +2.62 |
+| t52_layout6_s1.0 | absorbing | 8 | 0 | 8 | -0.0436 | +0.0080 | -5.45 |
+| dead_booth | reference | 16 | 16 | 0 | +0.0163 | +0.0086 | +1.94 |
+| living_room | reference | 16 | 16 | 0 | -0.0037 | -0.0232 | +0.16 |
+| classroom | reference | 16 | 10 | 6 | -0.0037 | -0.0061 | +0.60 |
+| club | reference | 16 | 8 | 8 | +0.0010 | +0.0063 | +0.17 |
+| cr2 | bras | 30 | 24 | 6 | -0.0001 | -0.0046 | -0.12 |
+| cr3 | bras | 30 | 18 | 12 | +0.0044 | +0.0035 | -9.05 |
+| cr4 | bras | 30 | 27 | 3 | +0.0103 | +0.0029 | +15.27 |
+
+All gated case-bands: 274; same sign 175; opposite 99.
+
+Per case-band at 500 Hz–2 kHz for the three contributors and the two s = 1 layouts:
+
+| case | band | dev dB | step dB | same | ratio |
+|---|---|---|---|---|---|
+| t52_layout5_s1.0 | 3 | -0.0460 | +0.0141 | no | -3.26 |
+| t52_layout5_s1.0 | 4 | -0.0460 | +0.0141 | no | -3.26 |
+| t52_layout5_s1.0 | 5 | -0.0460 | +0.0141 | no | -3.26 |
+| t52_layout6_s1.0 | 3 | -0.0436 | +0.0080 | no | -5.44 |
+| t52_layout6_s1.0 | 4 | -0.0436 | +0.0080 | no | -5.44 |
+| t52_layout6_s1.0 | 5 | -0.0436 | +0.0080 | no | -5.44 |
+| dead_booth_e0 | 3 | +0.0173 | +0.0073 | yes | +2.35 |
+| dead_booth_e0 | 4 | +0.0178 | +0.0075 | yes | +2.37 |
+| dead_booth_e0 | 5 | +0.0183 | +0.0084 | yes | +2.17 |
+| dead_booth_e1 | 3 | +0.0156 | +0.0073 | yes | +2.12 |
+| dead_booth_e1 | 4 | +0.0159 | +0.0075 | yes | +2.12 |
+| dead_booth_e1 | 5 | +0.0160 | +0.0084 | yes | +1.90 |
+| bras_cr3_ls1_mp1 | 3 | -0.0083 | +0.0022 | no | -3.84 |
+| bras_cr3_ls1_mp1 | 4 | -0.0079 | +0.0023 | no | -3.37 |
+| bras_cr3_ls1_mp1 | 5 | -0.0075 | +0.0024 | no | -3.15 |
+| bras_cr3_ls1_mp2 | 3 | +0.0138 | +0.0159 | yes | +0.87 |
+| bras_cr3_ls1_mp2 | 4 | +0.0136 | +0.0156 | yes | +0.87 |
+| bras_cr3_ls1_mp2 | 5 | +0.0130 | +0.0150 | yes | +0.87 |
+| bras_cr3_ls1_mp3 | 3 | +0.0146 | +0.0051 | yes | +2.89 |
+| bras_cr3_ls1_mp3 | 4 | +0.0145 | +0.0054 | yes | +2.66 |
+| bras_cr3_ls1_mp3 | 5 | +0.0143 | +0.0058 | yes | +2.47 |
+| bras_cr3_ls1_mp4 | 3 | +0.0011 | +0.0018 | yes | +0.61 |
+| bras_cr3_ls1_mp4 | 4 | +0.0010 | +0.0019 | yes | +0.53 |
+| bras_cr3_ls1_mp4 | 5 | +0.0006 | +0.0018 | yes | +0.33 |
+| bras_cr3_ls1_mp5 | 3 | -0.0014 | -0.0029 | yes | +0.49 |
+| bras_cr3_ls1_mp5 | 4 | -0.0010 | -0.0022 | yes | +0.46 |
+| bras_cr3_ls1_mp5 | 5 | -0.0006 | -0.0015 | yes | +0.41 |
+| bras_cr3_ls2_mp1 | 3 | +0.0099 | -0.0003 | no | -29.00 |
+| bras_cr3_ls2_mp1 | 4 | +0.0095 | -0.0001 | no | -71.00 |
+| bras_cr3_ls2_mp1 | 5 | +0.0088 | -0.0000 | no | -180.17 |
+| bras_cr3_ls2_mp2 | 3 | +0.0070 | +0.0073 | yes | +0.96 |
+| bras_cr3_ls2_mp2 | 4 | +0.0070 | +0.0071 | yes | +0.99 |
+| bras_cr3_ls2_mp2 | 5 | +0.0068 | +0.0067 | yes | +1.01 |
+| bras_cr3_ls2_mp3 | 3 | +0.0041 | -0.0027 | no | -1.53 |
+| bras_cr3_ls2_mp3 | 4 | +0.0041 | -0.0022 | no | -1.90 |
+| bras_cr3_ls2_mp3 | 5 | +0.0039 | -0.0017 | no | -2.36 |
+| bras_cr3_ls2_mp4 | 3 | -0.0026 | +0.0053 | no | -0.49 |
+| bras_cr3_ls2_mp4 | 4 | -0.0026 | +0.0054 | no | -0.48 |
+| bras_cr3_ls2_mp4 | 5 | -0.0028 | +0.0053 | no | -0.53 |
+| bras_cr3_ls2_mp5 | 3 | +0.0064 | +0.0016 | yes | +4.06 |
+| bras_cr3_ls2_mp5 | 4 | +0.0065 | +0.0020 | yes | +3.23 |
+| bras_cr3_ls2_mp5 | 5 | +0.0063 | +0.0024 | yes | +2.60 |
+| bras_cr4_ls1_mp1 | 3 | +0.0157 | +0.0051 | yes | +3.09 |
+| bras_cr4_ls1_mp1 | 4 | +0.0149 | +0.0048 | yes | +3.10 |
+| bras_cr4_ls1_mp1 | 5 | +0.0138 | +0.0045 | yes | +3.10 |
+| bras_cr4_ls1_mp2 | 3 | +0.0048 | +0.0025 | yes | +1.90 |
+| bras_cr4_ls1_mp2 | 4 | +0.0048 | +0.0023 | yes | +2.09 |
+| bras_cr4_ls1_mp2 | 5 | +0.0052 | +0.0024 | yes | +2.13 |
+| bras_cr4_ls1_mp3 | 3 | +0.0099 | +0.0020 | yes | +4.86 |
+| bras_cr4_ls1_mp3 | 4 | +0.0092 | +0.0018 | yes | +5.20 |
+| bras_cr4_ls1_mp3 | 5 | +0.0089 | +0.0018 | yes | +4.97 |
+| bras_cr4_ls1_mp4 | 3 | +0.0151 | +0.0055 | yes | +2.77 |
+| bras_cr4_ls1_mp4 | 4 | +0.0132 | +0.0049 | yes | +2.71 |
+| bras_cr4_ls1_mp4 | 5 | +0.0138 | +0.0049 | yes | +2.81 |
+| bras_cr4_ls1_mp5 | 3 | +0.0109 | +0.0023 | yes | +4.70 |
+| bras_cr4_ls1_mp5 | 4 | +0.0086 | +0.0018 | yes | +4.77 |
+| bras_cr4_ls1_mp5 | 5 | +0.0107 | +0.0022 | yes | +4.93 |
+| bras_cr4_ls2_mp1 | 3 | +0.0166 | +0.0028 | yes | +5.95 |
+| bras_cr4_ls2_mp1 | 4 | +0.0157 | +0.0026 | yes | +6.07 |
+| bras_cr4_ls2_mp1 | 5 | +0.0154 | +0.0026 | yes | +5.85 |
+| bras_cr4_ls2_mp2 | 3 | +0.0052 | +0.0061 | yes | +0.85 |
+| bras_cr4_ls2_mp2 | 4 | +0.0055 | +0.0051 | yes | +1.08 |
+| bras_cr4_ls2_mp2 | 5 | +0.0049 | +0.0053 | yes | +0.92 |
+| bras_cr4_ls2_mp3 | 3 | -0.0001 | +0.0014 | no | -0.07 |
+| bras_cr4_ls2_mp3 | 4 | -0.0004 | +0.0009 | no | -0.42 |
+| bras_cr4_ls2_mp3 | 5 | -0.0001 | +0.0015 | no | -0.07 |
+| bras_cr4_ls2_mp4 | 3 | +0.0137 | +0.0029 | yes | +4.78 |
+| bras_cr4_ls2_mp4 | 4 | +0.0130 | +0.0027 | yes | +4.82 |
+| bras_cr4_ls2_mp4 | 5 | +0.0126 | +0.0028 | yes | +4.52 |
+| bras_cr4_ls2_mp5 | 3 | +0.0168 | +0.0004 | yes | +47.45 |
+| bras_cr4_ls2_mp5 | 4 | +0.0148 | +0.0000 | yes | +296.49 |
+| bras_cr4_ls2_mp5 | 5 | +0.0154 | +0.0006 | yes | +26.76 |
