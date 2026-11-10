@@ -137,3 +137,9 @@ Reason: phase 05h, review file 32 M4 (a): the H3-F6 re-export (the export script
 Reason: phase 05h, D-H1 (v)(b): the AX38 4c restore gate's growth-bound baselines (constants in tests/unit/test_diffuse_records.cpp, not a golden file) pinned from the first three-OS CI run of the records test (run 42909003931): median-of-10 restore with the diffuse solve at the gated low-alpha cube, 96 kHz: Linux 2043 ms (14 x worst 29.62 s), macOS 2106 ms (14 x worst 37.37 s); Windows and the flutter scene stay strict. Re-pinned here whenever W_max or n*_max is re-derived.
 
 - `(records-test constants)`: restore-gate baselines pinned (no golden file changed)
+
+## 2026-11-10
+
+Reason: phase 05h session 2 (D-H2 (a)/(c), decider file 19): the last references of this session's hybrid_fast runs at 1.25 m landed (W2 both emitters; the CS-NW+ listener wall / edge / corner at 0.1 m and the wall at 0.3 m for both emitters; the emitter-wall case, emitter 0; the W1 listener-wall 0.1 m emitter 1), promoting 80 case-bands from reported to gated: AX43 410 of 560, AX45 72 of 72 (482 certified case-bands); no existing reference value changed; the gated counts pinned in tests/unit/test_diffuse_agreement.cpp re-pinned to 410 / 72. Provenance: tools/validation/data/phase05h_hybrid_references.provenance.json (28 rows at 1.25 m, 28 at 2.5 m, 10 at 0.625 m).
+
+- `phase05h_agreement_reference`: extended (80 case-bands promoted to gated: W2_e0, W2_e1, W1_listener_wall_0.1_e1, W1_listener_edge_0.1_e0/e1, W1_listener_corner_0.1_e0/e1, W1_listener_wall_0.3_e0/e1, W1_emitter_wall_0.1_e0, 8 bands each)

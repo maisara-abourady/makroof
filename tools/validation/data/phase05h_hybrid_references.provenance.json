@@ -8,5 +8,10 @@
  "numpy": "2.5.4",
  "scipy": "1.18.1",
  "requirements": "tools/acoustics/requirements.txt (hash-pinned)",
- "rows": 55
+ "rows": 66,
+ "rows_by_rung": {
+  "2.5": 28,
+  "1.25": 28,
+  "0.625": 10
+ }
 }
