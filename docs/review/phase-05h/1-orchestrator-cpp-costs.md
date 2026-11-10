@@ -5,10 +5,11 @@ pre-registration are board decisions (phase-05h §3, AX41), taken in session 2 f
 
 - **Source:** hidden Catch2 test `benchmark: phase 05h C++ costs for D-H1 …` (`tests/unit/test_diffuse_bench.cpp`,
   tags `[.][benchmark][diffuse-cost]`), run by the Release "Benchmark (release)" step of `ci.yml`.
-- **Runs:** Linux and macOS from run [42846229834](https://github.com/maisara-abourady/makroof/actions/runs/42846229834)
-  (head f3e3603); Windows from run [42841138286](https://github.com/maisara-abourady/makroof/actions/runs/42841138286)
-  (head c309589; Linux/macOS failed to compile the unit tests there (`-Wfloat-equal`), Windows passed; the
-  estimator and the benchmark are identical between the two heads, only test assertions changed).
+- **Run:** all three OSes from run [42846229834](https://github.com/maisara-abourady/makroof/actions/runs/42846229834)
+  (head f3e3603). Spread check: the earlier run [42841138286](https://github.com/maisara-abourady/makroof/actions/runs/42841138286)
+  (head c309589; same `src/` and benchmark, only test assertions differ) gave on Windows restore worst 525.2 /
+  1 954.9 / 2 023.7 ms and solve medians 115.4 / 71.1 / 70.8 ms (flutter / s 0.3 / s 1), against 574.3 / 2 003.5 /
+  1 999.1 ms and 114.7 / 71.0 / 71.1 ms below: run-to-run spread of the worst restore up to 49 ms (9 %) on Windows.
 - **Basis (provisional, AX41):** joint rule, block 64, n\*_max 1 024, W_scene = 6.10 M image evaluations
   (W_max 3.05 M per emitter), SE target 0.083 dB; estimator commit c309589.
 - **Scenes:** prototype keys of `tools/validation/phase05b2_dt1.py` `_joint_cases()`: 100 × 100 × 100 m,
@@ -59,12 +60,12 @@ The smoke agreement (O5) prints the same summary on all three: max \|C++ − ref
 | macOS (3) | flutter | 78.5 / 95.9 / 116.0 | 16.8 | 163.9; 28.7 |
 | macOS (3) | low-α s 0.3 | 51.5 / 57.7 / 67.4 | 9.6 | 134.5; 22.3 |
 | macOS (3) | low-α s 1 | 75.9 / 82.6 / 88.3 | 13.7 | 155.6; 25.9 |
-| Windows (4) | flutter | 114.7 / 115.4 / 116.4 | 20.2 | 221.2; 38.8 |
-| Windows (4) | low-α s 0.3 | 70.8 / 71.1 / 71.7 | 11.8 | 183.6; 30.4 |
-| Windows (4) | low-α s 1 | 70.6 / 70.8 / 72.4 | 11.8 | 186.8; 31.1 |
+| Windows (4) | flutter | 113.9 / 114.7 / 116.1 | 20.1 | 218.7; 38.4 |
+| Windows (4) | low-α s 0.3 | 70.7 / 71.0 / 71.5 | 11.7 | 185.3; 30.7 |
+| Windows (4) | low-α s 1 | 70.8 / 71.1 / 72.2 | 11.8 | 189.2; 31.5 |
 
 **W1 diffuse share** (two emitters, n\*_max 1 024, median of 10): Linux 7.65 ms, macOS 9.03 ms (max 13.98),
-Windows 6.41 ms, against AX41's ≤ 25 ms. On this evidence n\*_max is not pushed below 1 000 by the W1 share
+Windows 6.35 ms, against AX41's ≤ 25 ms. On this evidence n\*_max is not pushed below 1 000 by the W1 share
 (re-derivation is session 2's, AX41).
 
 ## 4. Synchronous restore today (no diffuse solve yet), 96 kHz, 10 runs
@@ -80,9 +81,9 @@ restore of the default scene so every timed restore builds. After the switch, t_
 | macOS | flutter | 351.7 / 401.3 / **446.5** | 542.4 | 7.59 |
 | macOS | low-α s 0.3 | 1 500.7 / 1 882.0 / **2 327.7** | 2 385.4 | **33.40** |
 | macOS | low-α s 1 | 1 717.4 / 2 078.9 / **2 591.2** | 2 673.8 | **37.43** |
-| Windows | flutter | 512.7 / 516.8 / **525.2** | 640.6 | 8.97 |
-| Windows | low-α s 0.3 | 1 879.3 / 1 907.3 / **1 954.9** | 2 026.0 | 28.36 |
-| Windows | low-α s 1 | 1 877.9 / 1 950.5 / **2 023.7** | 2 094.5 | 29.32 |
+| Windows | flutter | 532.1 / 542.2 / **574.3** | 689.0 | 9.65 |
+| Windows | low-α s 0.3 | 1 889.9 / 1 935.8 / **2 003.5** | 2 074.5 | 29.04 |
+| Windows | low-α s 1 | 1 860.2 / 1 953.4 / **1 999.1** | 2 070.3 | 28.98 |
 
 The Phase 07 full-rebuild record in the same runs (default materials, maximum room, best of 3, 96 kHz): Linux
 2 028.2 ms, macOS 2 172.8 ms (BUILD_PLAN §0 row 07: 1.884 s best of 3).
