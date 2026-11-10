@@ -2174,3 +2174,5 @@ Round 2 of the J1 diff check and decision mode on file 53 (`docs/review/phase-05
 | P05B2-J1FX-18 | Gated closed low-α cube's s not pinned; at s = 1 SE 0.44–0.50 dB fails the floor on day one | IMPRECISE (premise): pin in AX38 4c | open |
 | P05B2-J1FX-19 | Clause (d) applied to the gated cubes beyond Seat 1's stated scope (layout 5 under (B)); Seat 1's D-T1.3 2/2 counts the cubes' VOV as a failure | needs Seat 1 confirmation | open |
 | P05B2-J1FX-20 | "Any further rise" without tolerance; "every reasonable placement" undefined | IMPRECISE | open |
+
+J1FX-19 closed: Seat 1 accepts clause (d) at the gated closed 100 m cubes at s = 0.3 (`docs/review/phase-05b2/55-seat1-confirm-clause-d.md`). Its two conditions are that the replicates run the shipping rule as built, on disjoint, pre-registered streams, and that the check is repeated on the C++ build. "The VOV part in the closed cubes" comes off its D-T1.3 failing list. Its 2/2 under (A) stands on layouts 4/5 at s = 1 and the low-α s = 1 cube.

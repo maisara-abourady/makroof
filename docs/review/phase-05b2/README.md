@@ -60,3 +60,4 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `52-interrogator-J1-plan-diff-check.md` | interrogator | J1 plan edits faithful; two triggers need the decider (Seat 1 floor escalation fires today; phase-12 capped-class reopening); five /fix-plan items |
 | `53-decider-J1-trigger-definitions.md` | decider | J1 trigger definitions: Seat 1 floor counted with (a)–(d), starting state recorded; phase-12 reopening only after the placement fix fails, SE ≤ 0.33 dB reported only |
 | `54-interrogator-J1-triggers-round2.md` | interrogator | J1 edits faithful; Trigger 2 SURVIVES; Trigger 1 SURVIVES WITH CORRECTIONS (gated cube s unpinned; Seat 1 to confirm clause (d) at the cubes; rise tolerance; placement set) |
+| `55-seat1-confirm-clause-d.md` | seat 1 | accepts clause (d) at the gated s = 0.3 cubes (replicates as built, pre-registered, repeated on C++) |
