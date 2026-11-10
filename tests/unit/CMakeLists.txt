@@ -32,14 +32,17 @@ add_executable(spatial_tests
                test_parameter_map.cpp
                PipelineTestUtil.h
                test_ir_builder_thread.cpp
-               test_scene_pipeline.cpp)
+               test_scene_pipeline.cpp
+               test_diffuse.cpp
+               test_diffuse_bench.cpp)
 
 # tests/support: the AllocationTracker replaces the global operator new / delete of this binary
 # (Phase 06, zero-allocation checks of the real-time convolver).
 target_include_directories(spatial_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/support")
 
 # The contract tests read the fixtures in tests/scenes/ (valid/ and invalid/).
-target_compile_definitions(spatial_tests PRIVATE SPATIAL_SCENES_DIR="${PROJECT_SOURCE_DIR}/tests/scenes")
+target_compile_definitions(spatial_tests PRIVATE SPATIAL_SCENES_DIR="${PROJECT_SOURCE_DIR}/tests/scenes"
+                                                 SPATIAL_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/tests/golden")
 
 target_link_libraries(spatial_tests
                       PRIVATE Catch2::Catch2WithMain

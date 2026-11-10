@@ -468,10 +468,10 @@ jobs:
         run: cmake --preset tsan -DSPATIAL_BUILD_PLUGIN=OFF
       - name: Build
         run: cmake --build --preset tsan --target spatial_tests
-      - name: Test (real-time convolution and the Phase 07 scene pipeline, TSan)
+      - name: Test (real-time convolution, the Phase 07 scene pipeline and the phase 05h diffuse pool, TSan)
         env:
           TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
-        run: build/tsan/tests/unit/spatial_tests "[conv],[pipeline]"
+        run: build/tsan/tests/unit/spatial_tests "[conv],[pipeline],[diffuse]"
 
   # One check that sums the run up (a good candidate for the only required status check). Green when
   # every job passed, or when the gate skipped them all; red otherwise. Only a fully green run records
