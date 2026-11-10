@@ -1959,3 +1959,22 @@ Round 2 (on decider round 3, `docs/review/phase-05b2/32-interrogator-round2-T1-T
 | P05B2-T1T2T6-53 | /fix-plan list missing Seat 6 (i)/(ii), Seat 4's CI list, D4 block size, renamed re-run | correction | open |
 | P05B2-T1T2T6-54 | D-T1.1, D-T1.2, D-T1.5, D-T6 round-3 verdicts | SURVIVES | closed |
 | P05B2-T1T2T6-55 | D-T1.3, D-T1.4, D-T1.6, D-T2 (Q1), Q2 round-3 verdicts | SURVIVES WITH CORRECTIONS | open until applied |
+
+
+Round 3, final (on decider round 4 and its addendum, `docs/review/phase-05b2/39-interrogator-round3-final-T1-T2-T6.md`, 2026-11-10):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-T1T2T6-56 | Round-2 corrections 1–14 applied (map S2 0/1, S4 1/1 or 2/2; block 64; C16 as the joint re-run; AX16 resolved; D-T1.4 wording; S6 (i)–(iii); AX α text; ℓ_ref 0.65 %; precision range; /fix-plan) | faithful | closed |
+| P05B2-T1T2T6-57 | S5-b: block 64 1/1, conditions (1)–(3) folded | faithful | closed |
+| P05B2-T1T2T6-58 | S6-b: U 1/1 at 8 000; 1/1 at 1 024 with union VOV (C16b test met; C16c no change) | faithful | closed |
+| P05B2-T1T2T6-59 | Block-64 overrun 0.153 W_scene; realised work ≤ 1.009 W_scene (joint, C16) | CORRECT | closed |
+| P05B2-T1T2T6-60 | C16 (g) AX16 − long run (+0.02; +0.06/+0.10; +2.38/+2.39 dB) and the "adds random error" cost line | CORRECT | closed |
+| P05B2-T1T2T6-61 | Q1 (a) "target met at 8 000" (uncapped both-near to 0.110 dB); "no seat above 1" (S4 no cell) | IMPRECISE: fix before Maisara | open |
+| P05B2-T1T2T6-62 | Q2a (A) layout 4/5 SE "0.29–1.33" (is 0.17–1.33); low-α cube at both n\*_max | IMPRECISE: fix before Maisara | open |
+| P05B2-T1T2T6-63 | Cap-hit definition: text "min binds → cap hit" vs C16 "N_need > N_cap" plus `floor_truncated` (68/134 runs); decides U at `dead_booth` listener-wall | INCONSISTENT: exact AX wording via /fix-plan | open |
+| P05B2-T1T2T6-64 | D-T1.4 target statement qualifier | IMPRECISE (/fix-plan) | open |
+| P05B2-T1T2T6-65 | Final "Where U fires" = addendum (C16b/C16c); main-text list superseded; W1 both_wall_0.3 silenced at 1 024 recorded in S1 debt | correction (/fix-plan) | open |
+| P05B2-T1T2T6-66 | Seat 2's C15 check ran on the per-emitter rule; joint-rule cube replicates come with the C++ reported set | note (/fix-plan, §4) | open |
+| P05B2-T1T2T6-67 | BRAS report prints MC SE (Seat 9) missing from /fix-plan | correction (/fix-plan) | open |
+| P05B2-T1T2T6-68 | Final verdicts: D-T1.1, D-T1.2, D-T1.5, D-T6 SURVIVES; D-T1.3, D-T1.4, D-T1.6 SURVIVES WITH CORRECTIONS (/fix-plan); D-T2/Q1 and Q2 SURVIVES WITH CORRECTIONS (items 1–2 before Maisara) | – | open until applied |
