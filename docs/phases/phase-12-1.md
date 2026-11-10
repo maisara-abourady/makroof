@@ -68,5 +68,3 @@ Material data quality dominates realism (phase-12 R1).
 
 - Final corrections list, item 2 (`5-decider-decision-r2.md`, survived in `6-interrogator-decision-r2.md`): "12: drop
   12-1's AC2 share; 12-1 owns AC5 alone; AC2 whole in 12-2."
-- Phase 11's material dropdown ("list from `resources/materials.json` if Phase 12 is done, otherwise a placeholder
-  list of 6 materials", phase-11.md scope, Surfaces panel) switches to this sub-phase's library: "Phase 12 is done" there reads as 12-1 `done`.

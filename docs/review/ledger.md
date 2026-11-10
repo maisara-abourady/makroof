@@ -2196,3 +2196,32 @@ Branch-review fixes diff check (`docs/review/phase-05b2/56-interrogator-branch-r
 | P05B2-BR-06 | phase-05b2 §9 note (minor 4); §6 CLAUDE.md determinism row (minor 1) | CORRECT | closed |
 
 P05B2-BR-05 closed: freeze rule qualified for both orders in AQ10, AX38 4c and phase-05h scope 10 (Seat 4 confirmed, file 57).
+
+## Phases 07c, 08, 10, 11, 12, 13 split into sub-phases (2026-11-10; /fix-plan with the board loop; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Maisara, 2026-11-10: "split each of the remaining phases 7 onwards into the smallest buildable sub phases that ship
+value while keeping the session's attention focused on one subject matter that deserves it". Session brief
+`docs/sessions/2026-11-10-phase-split.md`; round files `docs/review/phase-split/` (maps, 1 convening, 2 seats 1–7,
+3 decision, 4 interrogator r1, 5 decision r2 + addendum, 5b Seat 2 r2, 6 interrogator r2, 7 apply brief, 8 coverage,
+9 diff check).
+
+Convening tables: one combined nine-row table (`1-decider-convening.md` §2): Seats 1–7 convened, 8 and 9 not required
+(interrogator: faithful).
+
+| id | item | verdict | status |
+|---|---|---|---|
+| PSPLIT-01 | Size ruling: two-session limit applies per sub-phase (08-c5, 11-c2, 13-c3 NOT A DECISION) | SURVIVES | closed |
+| PSPLIT-02 | Convening-round NOT A DECISION classifications (07c-c1..c3, 08-c2, 08-c4, 09-c1, 10-c1..c3, 11-c3, 13-c2, 13-c4) | SURVIVES | closed |
+| PSPLIT-03 | D-PS1 (08-c1): AX37 (5.3) conditions attached per sub-phase; 08-2 reads t_mix,e via `planEmitter`/`TailMatch` (code-checked) | r1 PRD MISREAD (acceptance check) → r2 SURVIVES | closed |
+| PSPLIT-04 | D-PS2 (08-c3): grouping rule in 08-4 after the benchmark; L1/L3/L4/L5 provisional in 08-3, conditional re-listen | r1 PRD MISREAD (acceptance check) → r2 SURVIVES | closed |
+| PSPLIT-05 | D-PS3 (11-c1): shell first, Seat 6 conditions (i), (ii) | r1 PRD MISREAD → r2 SURVIVES | closed |
+| PSPLIT-06 | D-PS4 (13-c1): r1 four-way, step 4 FALLS (C2 clause split) → r2 five-way (13-1..13-5), Seat 2 rated in its own words | r2 SURVIVES WITH CORRECTIONS (applied) | closed |
+| PSPLIT-07 | FM-1: Phase 11 must be split (her 2026-11-10 instruction; PRD neutral) | r1 PRD MISREAD → r2 SURVIVES | closed |
+| PSPLIT-08 | Corrections: 07c Raise in both; 12-1 drops AC2 share; 13 Raise in 13-1 and 13-5; debt ids land | SURVIVES (WITH CORRECTIONS on ids, applied) | closed |
+| PSPLIT-09 | Finished diff: coverage, values, G2 clause splits, decisions applied | CORRECT with fixes 4b, 4c (applied) | closed |
+
+Follow-ups (not in this change): phase-05h scope 10 and line 286 wording aligned to D-PS1 step 6; record 05h as a
+dependency of 11-3 (11-c3); Apple-silicon hardware for 13-2/13-3 and starting K1–K3 enrolment (Maisara's actions);
+review-skill drift (DF-EQ "switchable" vs phase-08 scope 3 "always applied"; map-10 note); "13b" in phase-06b now
+means `13-1b`; map-13's references table uses the superseded four-way numbering (the phase-13 umbrella's coverage
+table is authoritative).
