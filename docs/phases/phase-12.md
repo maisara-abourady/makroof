@@ -56,6 +56,8 @@ data only. The engine must have no idea presets exist (PRD core principle, NFR-8
      re-size W_max), and no preset is relabelled or re-materialed to hide it.
    - Capped presets with achieved SE ≤ 0.33 dB, where U is silent (for example rooms near 100 m at
      SE ≤ 0.15 dB, C16 (f)), are **reported only**, with their SE.
+   - **OPEN** (interrogator file 54; not decided here): the placement set for "every reasonable
+     placement" (e.g. the preset's listener region) is stated before presets are frozen.
 8. **Room range (AX38 (vi)):** D-T3 was not needed (2026-11-10). If a D-T3 pass is ever triggered by the
    AX38 ceiling, its cost per scene class (closed reverberant box against open-face outdoor box) reaches
    Maisara before the presets are built.

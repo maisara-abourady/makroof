@@ -141,6 +141,16 @@ after seeing the gate's result.
     the provisional (A) state. If the floor already fails there, that is recorded as a finding and
     escalated once. After that, the trigger fires on any further rise of the achieved SE or the replicate
     p95 at that scene.
+  - **Clause (d) at the gated cubes** (Seat 1, `docs/review/phase-05b2/55-seat1-confirm-clause-d.md`):
+    Seat 1 accepts clause (d) at the gated closed 100 m cubes at s = 0.3, on two conditions: the
+    replicates run the shipping rule as built, on disjoint pre-registered streams; and the check is
+    repeated on the C++ build.
+  - **OPEN, settle before the gate is implemented** (interrogator file 54; not decided here):
+    - the gated closed low-α 100 m cube's α and s are pinned in AX38 4c (C14/C16 computed it at s = 0.3
+      and s = 1; at s = 1 the achieved SE 0.44–0.50 dB fails Seat 1's floor, so the starting-state clause
+      would fire once); decided by the board loop with the C++ data;
+    - the rise that counts as "any further rise" in Trigger 1's starting-state clause is defined (e.g.
+      relative to the scene's replicate spread) before the gate is implemented.
 
 ## 4. Scope
 
@@ -246,6 +256,8 @@ after seeing the gate's result.
       Release build, with D-H1's margin taken from W_max. A failure is a defect: no re-run, no W_max cut
       after pinning, no room-range narrowing, no formulation seam; the remedy is bringing phase-07c forward.
 - [ ] The solve seam: restore, prepare and `reset()` call the diffuse solve through one function (scope 2).
+- [ ] Trigger 1's clause (d) replicates at the gated cubes run on the C++ shipping rule, disjoint
+      pre-registered streams (section 3, D-H1; Seat 1, file 55).
 - [ ] Goldens updated only through `update_goldens.py` with the reason; nightly BRAS green; report
       regenerated.
 - [ ] pluginval strictness 10 and auval still pass (rebuild cost changes the builder's timing).
