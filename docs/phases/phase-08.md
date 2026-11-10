@@ -1,6 +1,6 @@
 # Phase 08 — Binaural output with a generic HRTF
 
-Size: **L** (plan for two sessions; split into 08 and 08b if needed) · Depends on: 04, 05b, 07 (05b `done` in either outcome; with "not promoted", this phase builds on the specular-only early part, AX21; if 05b splits into 05h, this phase may go before 05h on Seat 4's conditions (i)–(iv) in AX37 (5.3)) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ6, AX3, AX5, AX35) and §3 (F7, F8), PRD FR-SIM-3, FR-SIM-4, FR-3D-9, A1; the D1 decision (`docs/review/board-smoke/hrtf-head/`, accepted by Maisara 2026-11-09) behind scope 1–3
+Size: **L** (plan for two sessions; split into 08 and 08b if needed) · Depends on: 04, 05b, 05h, 07 (05b `done` in either outcome; with "not promoted", this phase builds on the specular-only early part, AX21). It depends on 05h, except that it may precede 05h on Seat 4's conditions per AX37 (5.3) (D-T5.3): (i) E_b and t_mix,e are read only via `TailMatch`; (ii) parity is checked within the same build; (iii) 05h re-renders the binaural goldens, re-measures binaural W1/W2 and re-runs item 8; (iv) this phase's listening items on concentrated absorption are marked provisional · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ6, AX3, AX5, AX35) and §3 (F7, F8), PRD FR-SIM-3, FR-SIM-4, FR-3D-9, A1; the D1 decision (`docs/review/board-smoke/hrtf-head/`, accepted by Maisara 2026-11-09) behind scope 1–3
 
 ## Goal
 

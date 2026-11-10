@@ -49,7 +49,7 @@ PRD's vision. It is **not** the full 3D editor (deferred, B8).
 8. **"Approximate" note** (AX44, phase 05b): shown from `TailMatch.approximate` on the **settled** scene
    only, in the info view, never mid-drag; wording by Seats 6 and 7 (within AX39's wording rules). Text
    (Seat 6 (i)): both-near branch: no ±x from the achieved SE; either the measured replicate p95 of its
-   case class from the phase-05b C++ reported set, or qualitative text ("level unreliable with source and
+   case class from the phase-05h C++ reported set, or qualitative text ("level unreliable with source and
    listener this close to surfaces; move either about 0.7 m away"); capped branch: ±x from the achieved SE
    only for classes whose reported set shows SE ≥ the replicate SD, otherwise the class p95 or
    qualitative text. When U is raised on an emitter the user did not edit, the note names the scene, not

@@ -13,6 +13,10 @@ Created on Maisara's decision of 2026-11-09 (answer to session 1's question 2, o
 open into session 2 to build the switch"; her words: "Answer to q2: b. Make the dedicated phase's prompt
 extremely aware with the utmost level of detailed analysis of what and why.").
 
+**Split 2026-11-10 (§8 split rule):** section 3's decisions are settled and recorded (AX37–AX46) and R1
+is resolved (AX36 (c)); the implementation (§4–§10) moved to [`phase-05h.md`](phase-05h.md), which is
+self-contained. Sections 4–10 below are kept as the record and are not executed from this file.
+
 ---
 
 ## 0. Why this session exists (read this before anything else)
@@ -260,7 +264,8 @@ last, and only if needed. The D-T numbers are identifiers, not the order.
 ## 4. Scope (after section 3 is settled and committed)
 
 1. **R1 for CR4** (D-T2) and any further rung D-T2 requires; committed before code. Resolved in the
-   decision loop: R1 certified at 2.5 m in CR2, CR3 and CR4; D-T2 → AX46 (AX36 (c)).
+   decision loop: R1 certified at 2.5 m in CR2, CR3 and CR4 at 500 Hz–2 kHz at the AX28 / Phase 05
+   positions (conditions in AX36 (c)); D-T2 → AX46.
 2. **`src/sim` implementation** of the D-T1 formulation (AX39–AX44: the seeded Monte Carlo estimator,
    the D1–D7 determinism package with 64-history blocks, the joint path-count rule with the integer
    stop test and N_cap, the near-listener blend and `TailMatch.approximate`), generic (NFR-8), in
