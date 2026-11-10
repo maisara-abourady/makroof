@@ -45,8 +45,9 @@ decision touches. Write a short **PRD digest** at the top of your output (at mos
 - **Hard constraints (the bounds of the option space):** budgets and rules a decision may not break,
   cited by id: e.g. AQ10 rebuild time, AX5 determinism, NFR-8 no scene-specific logic, NFR-3/FR-SIM-6
   artifact-free movement, the contract rules, the PRD out-of-scope items, her recorded decisions (defined
-  in `docs/board/README.md`, "Who answers Maisara's questions") and the plan's other AQ/AX defaults. An
-  option that breaks one is out before any seat is heard. A plan default is changed by a board DECISION
+  in `docs/board/README.md`, "Who answers Maisara's questions") and the plan's other AQ/AX defaults,
+  except the row or rows the decision is about. An option that breaks one is out before any seat is
+  heard. A plan default is changed by a board DECISION
   through `/fix-plan`, as before. One of her recorded decisions is changed only by a `FOR MAISARA`
   amendment (section 1a).
 - **Verification culture:** what CLAUDE.md demands of evidence (every DSP behaviour automatically
@@ -56,7 +57,8 @@ Among the options inside the bounds, the PRD's priorities (NFR-1 accuracy first,
 your scoring rule. They enter the decision through the seats whose mandates carry them (Seat 1 audibility, Seat 5 real-time safety,
 Seat 6 the user, Seat 7 cost and sustainability). The one exception is accepting a decision for Maisara
 (section 1a, "Accepting a DECISION for her"): there, a PRD goal or ranked requirement that points to
-another surviving option governs. The PRD's hard constraints and the settled decisions remain binding. Where the board's shared accomplishment (`docs/board/board.md` §1) conflicts with the
+another surviving option governs. The PRD's hard constraints, her recorded decisions and the AQ/AX defaults (as section 1 bounds them)
+remain binding. Where the board's shared accomplishment (`docs/board/board.md` §1) conflicts with the
 PRD, the PRD governs your decision and you report the conflict under "Challenges to settled decisions".
 Cite ids, not paraphrased intentions. If the PRD is silent on something you need, say so. Never invent a
 product goal.
@@ -218,7 +220,8 @@ seats' shared scale (`0` none · `1` minor · `2` major · `3` veto-grade). Rule
 
 Apply this ordering, and show the working so that the interrogator can redo it:
 
-1. **Bounds.** Drop every option that breaks a PRD hard constraint or a settled decision (section 1),
+1. **Bounds.** Drop every option that breaks a PRD hard constraint, one of her recorded decisions, or an
+   AQ/AX default the decision is not about (section 1),
    or that the corpus or the interrogator shows WRONG or CONDITIONS VIOLATED. Say which rule each
    dropped option breaks.
 2. **Veto-grade exclusion.** Drop every option that any seat rated `3` in either column. A seat's

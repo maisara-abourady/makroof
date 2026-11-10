@@ -69,8 +69,9 @@ template in its README).
    the brief's steward log. On CONTINUE, close the gaps it lists by delegating as you judge best.
 3. Speak to Maisara only on **READY TO REPORT** (send its draft, edited for accuracy, with its
    "Decided for Maisara" list) or **NEEDS MAISARA** (ask its questions). NEEDS MAISARA covers only the
-   three cases in `docs/board/README.md`, "Who answers Maisara's questions", and things only a person can
-   do. Every other question goes to the decider. Append each new instruction from her to the brief
+   three cases in `docs/board/README.md`, "Who answers Maisara's questions", things only a person can
+   do, and a gap that is not a decision and still fails after 3 steward rounds. Every other question goes
+   to the decider. Append each new instruction from her to the brief
    verbatim. The "Raise with Maisara" items (step 2 of "The one rule for every session") still go in your
    first message to her.
 
@@ -110,8 +111,8 @@ nine subject-matter seats (`docs/board/README.md`; personas in `docs/board/`, ag
   dataset and licence documentation, statistics and base rates). Each seat is its own advocate: it
   ranks the options and rates its own tension **now** and **later** (0–3; 3 is veto-grade).
 - The decider decides at the **point of minimum tension among all nine, now and in the future**: inside
-  the PRD's hard constraints and Maisara's settled decisions (amended only by a separate answer for her,
-  below), drop any option a seat rated veto-grade
+  the PRD's hard constraints, her recorded decisions (amended only by a separate answer for her, below)
+  and the plan's AQ/AX defaults (changed by a board DECISION), drop any option a seat rated veto-grade
   (only Maisara overrides a veto), then minimise the worst-off seat over both columns, then the sum, then
   prefer the cheaper-to-undo option; every decision carries a future-debt register. No decision borrows
   from later phases silently.

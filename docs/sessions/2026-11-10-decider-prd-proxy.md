@@ -75,8 +75,12 @@ The orchestrator's next message (14:08:57): "I'll make the governance change. On
   recorded here; the drafts were rechecked against the corrected O2 before the next commit.
 - The final report and the PR say plainly that overriding a seat's veto stays with her and that she can
   reverse that (steward G6).
-- "Raise with Maisara" items are still raised in the first message and the PR (CLAUDE.md rule 2), as information
-  where the decider has answered them.
+- "Raise with Maisara" items are still raised in the first message (noting that the decider answers each from the
+  PRD unless one of the three cases applies) and in the PR, whose "Decided for Maisara" gives the answers (CLAUDE.md rule 2).
+- Disclosed in the PR as going slightly beyond the approved 14:08 text (review of the diff): case (a)'s qualifier
+  "and none of her recorded decisions settles it" (narrows what reaches her; supported by the approved
+  "reinterpreting one of your settled decisions"), and a 3-round ruling that fails the interrogator's check goes to
+  her as case (a) (widens what reaches her).
 
 ## Decided for Maisara
 - none (this session decides no product, acoustic or numeric question)

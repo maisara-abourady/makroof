@@ -158,9 +158,13 @@ can end the decision on its own.
       - the answer overrides a seat's `3` (it is then case (c)).
 
       Give the passage, and the reading the PRD supports.
+    - A DECISION's acceptance check is **PRD MISREAD** in either of two cases:
+      - a cited PRD id does not say what is claimed;
+      - a PRD goal or ranked requirement points to another surviving option, and no `FOR MAISARA` names it.
     - A NEEDS MAISARA is **PRD MISREAD** if it fits none of the three cases. For example, the PRD is not
       silent, and you name the passage that settles the question. The decider then answers it as
-      `FOR MAISARA`.
+      `FOR MAISARA`. The exception is a NEEDS MAISARA sent because a ruling after 3 contested rounds failed
+      your check. That is case (a) by rule (README item 3); do not rate it PRD MISREAD.
 
     This is a check of reading, not of taste. Where the PRD truly supports two readings, the PRD
     contradicts itself and the question goes to her as case (a).
