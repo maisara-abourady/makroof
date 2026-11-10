@@ -42,3 +42,5 @@ Corpus revision c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 | `34-decider-round4-final-T1-T2-T6.md` | decider | final round 4: corrections 1–14 applied; block 64; Seat 6 (i)–(iii) folded in; Q1 and Q2 final text; /fix-plan list rounds 1–4; S5-b and S6-b pending |
 | `35-seat<n>-confirm-S<n>b.md` | seats 5, 6 | final-text confirmations: S5-b block 64 prefer 1/1 (32 can live with 1/1; conditions: integer cap arithmetic, n\* and N in D5, CI realised-work assertion); S6-b U prefer 1/1 at n\*_max 8 000, 2/1 at 1 024 → 1/1 with the VOV leg over pilot ∪ final |
 | `36-orchestrator-C16b.md` | orchestrator | C16b: Seat 6's condition at n\*_max 1 024 (VOV over pilot ∪ final range): its three named false notes go silent; every SE > 0.33 dB case still fires |
+| `37-decider-round4-addendum.md` | decider | addendum: S5-b and S6-b at 1/1 with their conditions folded in (integer cap arithmetic, n\* and N in D5, realised-work assertion; union VOV; unmoved-emitter wording); Q2b cost line restated |
+| `38-orchestrator-C16c.md` | orchestrator | C16c: union VOV at n\*_max 8 000 changes U in no case |

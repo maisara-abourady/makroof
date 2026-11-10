@@ -359,7 +359,7 @@ def step_openfield(npaths: int = 400_000):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14", "c15", "c16", "c16b"])
+    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14", "c15", "c16", "c16b", "c16c"])
     ap.add_argument("--paths", type=int, default=32_000)
     a = ap.parse_args(argv)
     if njit is None:
@@ -375,7 +375,7 @@ def main(argv=None):
     else:
         {"c3": step_c3, "c4": step_c4, "c5": step_c5, "c6": step_c6, "c7": step_c7, "c9b": step_c9b,
          "c12a": step_c12a, "c12b": step_c12b, "c12d": step_c12d,
-         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14, "c15": step_c15, "c16": step_c16, "c16b": step_c16b}[a.step]()
+         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14, "c15": step_c15, "c16": step_c16, "c16b": step_c16b, "c16c": step_c16c}[a.step]()
 
 
 
@@ -1751,6 +1751,32 @@ def step_c16b():
                   "U_at_8000": row["nmax8000"]["U"]}
         log(k, out[k])
     d = load(); d["c16b"] = out; save(d)
+
+
+def step_c16c():
+    """C16c (decider addendum, 37-decider-round4-addendum.md): U at n*_max 8 000 with the union VOV (pilot ∪ final range,
+    first 8 000 histories) for every C16 case; reports any change against C16 (f)."""
+    d = load(); c16 = d["c16"]["cases"]; out = {}
+    for k, (c0, c1) in _joint_cases().items():
+        row = c16[k]; r = row["nmax8000"]; ns, nf = r["n_star"], r["n"]
+        if r["pilot_shipped"]:
+            continue
+        prs = [_Prep(c0), _Prep(c1)]; u_new = []; vovs = []
+        for i, pr in enumerate(prs):
+            if ns >= 8000:
+                x = pr.nw4c(ns, p0=0)["x"] * ns
+            else:
+                pl = pr.nw4c(ns, p0=0)["x"] * ns
+                fi = pr.nw4c(nf, p0=8000)["x"] * nf if nf > 0 else np.zeros((0, 8))
+                x = np.concatenate([pl, fi])[:8000]
+            v = max(_vov(x[:, b]) for b in range(8)); vovs.append(v); e = r["emitters"][i]
+            u_new.append(bool((row["both_near"][i] and (r["cap_hit"] or v >= 0.1)) or (r["cap_hit"] and e["se_db"] > 0.33)))
+        out[k] = {"vov_union": vovs, "U_pilot_vov": r["U"], "U_union_vov": u_new, "changed": u_new != r["U"]}
+        if u_new != r["U"]:
+            log("changed", k, out[k])
+    out["_changed"] = [k for k, v in out.items() if isinstance(v, dict) and v.get("changed")]
+    log("changed cases:", out["_changed"])
+    d = load(); d["c16c"] = out; save(d)
 
 if __name__ == "__main__":
     main()
