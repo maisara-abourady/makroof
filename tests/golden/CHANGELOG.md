@@ -67,3 +67,15 @@ Reason: CR4 added, pre-committed room (phase-05f: CR4 geometry accepted by the b
 Reason: phase 05h session 1: smoke-agreement reference of the C++ diffuse estimator (AX39, AX42 τ): ref_hybrid.target_hybrid at ℓ = 1.25 m, 8 bands, the 15 (A) cases, copied from tools/validation/data/phase05b.json by tools/validation/export_phase05h_smoke.py
 
 - `phase05h_dt1_smoke_reference`: created
+
+## 2026-11-10
+
+Reason: phase 05h session 2: AX43 agreement and AX45 regression references of the C++ diffuse estimator (ref_hybrid.target_hybrid at the finest rung with l_ref per case-band, AX36; joined from tools/validation/data/phase05b.json, phase05_scope6.json and phase05h_hybrid_references.jsonl by tools/validation/export_phase05h_references.py; the gated set follows D-H2)
+
+- `phase05h_agreement_reference`: created
+
+## 2026-11-10
+
+Reason: phase 05h session 2: tracer window reference of the 15 (A) cases (500 Hz-2 kHz) and the outer-band check (layouts 4/5 at s = 1; 125 Hz, 4 kHz, 8 kHz), E_tr = E_AX16,py / 10^(dL_tr/10) from the committed phase05b.json gate and outer_bands entries, by tools/validation/export_phase05h_references.py
+
+- `phase05h_tracer_reference`: created

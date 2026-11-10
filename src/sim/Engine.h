@@ -15,14 +15,28 @@
 #include "sim/tail/NoiseTail.h"
 
 #include <array>
-
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <vector>
 
 namespace sim {
+
+namespace diffuse {
+class ThreadPool;
+}
+
+// Thrown by buildRoomIR when BuildOptions::cancel was set while the diffuse solve ran (AX39 D6): the
+// caller asked for the build to stop; nothing was produced.
+struct BuildCancelled : std::runtime_error
+{
+    BuildCancelled()
+        : std::runtime_error("room IR build cancelled")
+    {}
+};
 
 // Supported sample rates (AX6). buildRoomIR() rejects anything else.
 inline constexpr double kSupportedSampleRatesHz[] = {44100.0, 48000.0, 88200.0, 96000.0};
@@ -96,6 +110,18 @@ struct BuildOptions
     // length, the build uses them instead of generating noise, i.e. it times a position-only rebuild
     // as AQ10 defines it. nullptr in every product path.
     const std::vector<tail::UnitDecay>* cachedUnitDecays = nullptr;
+    // Phase 05h (AX38, AX39): the worker pool of the diffuse solve. nullptr = the process-wide pool
+    // (sim::diffuse::ThreadPool::process(); render_cli and tests); the plugin passes the pool its
+    // diffuse-solve gate owns (src/plugin/core/DiffuseSolveGate.h), so no pool thread outlives the
+    // last plugin instance.
+    diffuse::ThreadPool* diffusePool = nullptr;
+    // Phase 05h (AX39 D6): checked between blocks of the diffuse solve; when it becomes true the build
+    // stops and buildRoomIR throws BuildCancelled (the builder was quiesced; its result is discarded).
+    const std::atomic<bool>* cancel = nullptr;
+    // Kind::Omni, validation only (render_cli --tail-level ax16; the phase-05h listening pack): match
+    // the tail level on the specular + AX16 scattered entries as Phase 04 did and skip the diffuse
+    // solve. Never set in a product path (AX37 switched AX16 off).
+    bool tailLevelAx16 = false;
 };
 
 // AX22: the image-count cap N_cap = nu_r(i0) (Kuttruff Eq. 9.23) of the realised-k fallback, i0 the

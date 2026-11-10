@@ -27,6 +27,7 @@ import numpy as np
 import pytest
 from scipy import integrate
 
+from tools.acoustics import ground_scatter
 from tools.acoustics import air, bands, ensembles, golden, metrics, render_cli, wav
 
 from conftest import REPO
@@ -191,16 +192,41 @@ def test_diagnostics_match_independent_eyring_mixing_time_and_switch(render_cli_
               f"realised/target at the handover {[None if x is None else round(x, 1) for x in e['realisedOverTargetDb']]} dB")
 
 
-def test_open_field_has_no_tail(render_cli_path):
-    """E_b = 0 in every band for the fixture (floor s = 0.4) and for floor s = 0.5 (the C++ test
-    test_hybrid_ir.cpp also checks the energy 50 ms after the direct sound)."""
-    for s in (0.4, 0.5):
-        scene = load("open_field")
-        scene["room"]["surfaces"]["floor"]["scattering"] = s
-        d = ensembles.diagnostics(render_cli_path, scene)
-        for e in d["emitters"]:
-            assert e["amplitude"] == [0.0] * 8
-            assert e["nonZeroEntries"] == [0] * 8
+# Phase 05h, AX37 (5.4): open_field gets the generic outcome. Its diffuse E_target (the floor's Lambert
+# scattering inside the matching window, every other face absorbing everything) is checked against an
+# independent single-scatter window integral over the finite 100 x 100 m floor (tools/acoustics/
+# ground_scatter.window_target: Hann weight, Eyring referral, per 10 ms; it does not import ref_hybrid),
+# in the log domain on double values, to D-T1's tolerance tau (AX42) plus the estimator's own SE; or as
+# an absolute bound below 1e-300 where the integral is zero. Kept: E_b finite and >= 0 (the C++ test
+# checks the energy 50 ms after the direct sound against -60 dB).
+OPEN_FIELD_TAU_DB = 0.25
+
+
+@pytest.mark.parametrize("s", [0.4, 0.5])
+def test_open_field_diffuse_target_matches_the_finite_floor_integral(render_cli_path, s):
+    scene = load("open_field")
+    scene["room"]["surfaces"]["floor"]["scattering"] = s
+    d = ensembles.diagnostics(render_cli_path, scene)
+    dims = scene["room"]["geometry"]["dimensions"]
+    alpha_floor = np.asarray(scene["room"]["surfaces"]["floor"]["absorption"], float)
+    for other in ("xMin", "xMax", "yMin", "yMax", "ceiling"):
+        assert scene["room"]["surfaces"][other]["absorption"] == [1.0] * 8, "open_field: every other face absorbs"
+    rho_s = s * (1.0 - alpha_floor)
+    for e in d["emitters"]:
+        em = next(x for x in scene["emitters"] if x["id"] == e["id"])
+        got = np.asarray(e["diffuse"]["targetEnergyDiffuseReferenceUnits"], float)
+        assert e["diffuse"]["computed"] is True
+        assert np.all(np.isfinite(got)) and np.all(got >= 0.0)
+        assert np.all(np.isfinite(e["amplitude"])) and np.all(np.asarray(e["amplitude"]) >= 0.0)
+        ref = ground_scatter.window_target(em["position"], scene["listener"]["position"], rho_s, d["airEnergyPerMetre"],
+                                           e["windowStartS"], e["mixS"], d["t60"], half_width=(0.0, dims[0], 0.0, dims[1]))
+        se_db = np.asarray(e["diffuse"]["seDb"], float)
+        for b in range(8):
+            if ref[b] < 1e-300:
+                assert got[b] < 1e-300
+            else:
+                assert got[b] > 0.0
+                assert abs(10 * np.log10(got[b] / ref[b])) <= OPEN_FIELD_TAU_DB + 3.0 * se_db[b], (b, got[b], ref[b], se_db[b])
 
 
 # ---------------------------------------------------------------------------------------------

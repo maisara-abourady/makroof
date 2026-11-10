@@ -93,9 +93,16 @@ def test_python_phase04_plan_matches_render_cli(name, tmp_path, render_cli_path)
     assert plan["mix"]["mixS"] == pytest.approx(e["mixS"], abs=1e-12)
     assert plan["fallback"] == e["ismFallback"]
     np.testing.assert_allclose(plan["t60"], dg["t60"], rtol=1e-9)
-    ratio = np.array(e["targetEnergy"]) / plan["target_ax16"]
+    # Phase 05h (AX37 (5.2)): the AX16 E_target is kept in the diagnostics beside the switched one.
+    ratio = np.array(e["diffuse"]["targetEnergyAx16"]) / plan["target_ax16"]
     # the simulator's band impulse energies at 44.1 kHz (the same in every scene)
     np.testing.assert_allclose(ratio, BAND_ENERGY_44K, rtol=1e-4)
+    spec = np.array(e["diffuse"]["targetEnergySpecular"]) / plan["target_specular"]
+    np.testing.assert_allclose(spec, BAND_ENERGY_44K, rtol=1e-4)
+    # AX37 (5.1): E_target = specular + diffuse, in the matching's units
+    np.testing.assert_allclose(np.array(e["targetEnergy"]),
+                               np.array(e["diffuse"]["targetEnergySpecular"]) + np.array(e["diffuse"]["targetEnergyDiffuse"]), rtol=1e-12)
+    assert e["diffuse"]["computed"] is True
 
 
 BAND_ENERGY_44K = np.array([0.0039404, 0.00380438, 0.00760878, 0.01521785, 0.03043599, 0.06087664, 0.12175825, 0.73911278])

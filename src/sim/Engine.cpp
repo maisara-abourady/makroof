@@ -2,6 +2,8 @@
 
 #include "contract/Validate.h"
 #include "sim/AirAbsorption.h"
+#include "sim/conv/Denormals.h"
+#include "sim/diffuse/DiffuseEstimator.h"
 #include "sim/ism/BandRenderer.h"
 
 #include <algorithm>
@@ -105,7 +107,9 @@ struct EmitterPlan
 {
     tail::MixingTime mixing; // mixS = the handover actually used
     ism::ImageSourceSet set;
-    tail::TailMatch match;
+    tail::TailMatch match;          // on the specular + AX16 scattered entries (Phase 04; AX37 (5.2))
+    tail::TailMatch specularMatch;  // on the specular entries alone (AX37 (5.1), (5.3))
+    double gainSquared = 1.0;
     contract::BandArray bandsRealisedKeffAtMix{};
     bool ismFallback = false;
     double expectedMixS = 0.0;
@@ -124,6 +128,7 @@ EmitterPlan planEmitter(const contract::SceneDescription& scene, const contract:
     iso.maxArrivalTimeS = plan.mixing.mixS + tail::kCrossfadeHalfS;
     plan.set = ism::computeImageSources(scene.room, emitter.position, scene.listener.position, iso);
     plan.match = tail::matchTail(tail::energyEntries(plan.set, bandEnergy), plan.mixing, decay, lengthS);
+    plan.gainSquared = iso.gain * iso.gain;
     plan.bandsRealisedKeffAtMix = plan.match.bandsRealisedKeff;
     plan.expectedMixS = plan.mixing.mixS;
 
@@ -147,7 +152,63 @@ EmitterPlan planEmitter(const contract::SceneDescription& scene, const contract:
                                          lengthS);
         }
     }
+    // AX37 (5.1), (5.3): the specular entries alone (same window, referral and t_mix,e).
+    ism::ImageSourceSet specularOnly;
+    specularOnly.images = plan.set.images;
+    plan.specularMatch =
+        tail::matchTail(tail::energyEntries(specularOnly, bandEnergy), plan.mixing, decay, lengthS);
     return plan;
+}
+
+// Phase 05h (AX37 (5.1)): E_target,b = the specular entries + the propagated diffuse energy (AX39,
+// estimated once per scene build for both emitters, AX44), in the matching's units. `match` keeps the
+// Phase 04 (AX16) statistics the AX22 decision and the diagnostics use (5.2); only the level, the
+// axis shares (5.3) and the new diffuse fields change.
+void switchTailLevel(tail::TailMatch& match, const EmitterPlan& plan, const diffuse::DiffuseEmitterResult& er,
+                     const diffuse::DiffuseResult& result, const contract::BandArray& bandEnergy)
+{
+    auto& d = match.diffuse;
+    d.computed = true;
+    d.bandsAx16Energy = plan.match.bandsTargetEnergy;
+    d.bandsSpecularEnergy = plan.specularMatch.bandsTargetEnergy;
+    for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+    {
+        d.bandsDiffuseEnergy[b] = er.bandsDiffuse[b] * bandEnergy[b];
+        d.bandsDiffuseReference[b] = er.bandsDiffuse[b];
+        match.bandsTargetEnergy[b] = d.bandsSpecularEnergy[b] + d.bandsDiffuseEnergy[b];
+        match.bandsAmplitude[b] = match.bandsTargetEnergy[b] > 0.0 && match.bandsExpectedUnitEnergy[b] > 0.0
+                                      ? std::sqrt(match.bandsTargetEnergy[b] / match.bandsExpectedUnitEnergy[b])
+                                      : 0.0;
+        d.bandsSeDb[b] = er.bandsSeDb[b];
+        d.bandsPilotSeDb[b] = er.bandsPilotSeDb[b];
+        d.bandsR[b] = er.bandsR[b];
+        d.bandsVov[b] = er.bandsVov[b];
+        d.bandsPilotVov[b] = er.bandsPilotVov[b];
+        d.bandsVovUnion[b] = er.bandsVovUnion[b];
+        d.bandsSlope[b] = er.bandsSlope[b];
+    }
+    match.bandsAxisShares = plan.specularMatch.bandsAxisShares; // (5.3): specular entries only
+    d.nStar = result.nStar;
+    d.nNeed = result.nNeed;
+    d.n = result.count.n;
+    d.nCap = result.count.nCap;
+    d.capHit = result.count.capHit;
+    d.floorTruncated = result.count.floorTruncated;
+    d.pilotFloor = result.count.pilotFloor;
+    d.pilotShipped = result.count.pilotShipped;
+    d.achievedSeDb = er.achievedSeDb;
+    d.vovUnion = er.vovUnion;
+    d.weight = er.weight;
+    d.listenerDistanceM = er.listenerDistanceM;
+    d.emitterDistanceM = er.emitterDistanceM;
+    d.bothNear = er.bothNear;
+    d.realisedWorkRatio = result.realisedWorkRatio();
+    d.wPilot = result.wPilot;
+    d.wFinal = result.wFinal;
+    d.wScene = result.wScene;
+    d.faceHash = result.faceHash;
+    d.latticeImages = result.latticeImages;
+    match.approximate = er.approximate;
 }
 
 // The hybrid omni IR for each tail seed in `seeds` (one RoomIR per seed). Everything that doesn't
@@ -188,6 +249,7 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
         HybridEmitterDiagnostics diag;
     };
     std::vector<PerEmitter> perChannel(static_cast<std::size_t>(numEmitters));
+    std::vector<EmitterPlan> plans(static_cast<std::size_t>(numEmitters));
     std::size_t length = 1;
     for (const auto& emitter : scene.emitters)
     {
@@ -213,8 +275,61 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
         pe.diag.channel = emitter.channel;
         pe.diag.imageCount = set.images.size();
         pe.diag.scatteredCount = set.scattered.size();
-        pe.diag.match = pe.match;
+        plans[static_cast<std::size_t>(emitter.channel)] = std::move(plan);
     }
+
+    // Phase 05h (AX37 (5.1)): the tail level from the propagated diffuse energy. One diffuse solve per
+    // scene build, for the present emitters together (AX39: shared across output modes; AX44: one
+    // listener-started set serves both emitters). Validation only: --tail-level ax16 keeps Phase 04's.
+    if (!options.tailLevelAx16)
+    {
+        diffuse::DiffuseProblem problem;
+        problem.room.dimensions = scene.room.geometry.dimensions;
+        for (std::size_t f = 0; f < contract::kNumSurfaces; ++f)
+        {
+            problem.room.bandsAbsorption[f] = scene.room.surfaces[f].bandsAbsorption;
+            problem.room.scattering[f] = scene.room.surfaces[f].scattering;
+        }
+        problem.room.bandsAirEnergyPerMetre = decay.bandsAirEnergyPerMetre; // AX4 (or the validation override)
+        problem.listener = scene.listener.position;
+        std::vector<std::size_t> channels;
+        for (std::size_t e = 0; e < perChannel.size(); ++e)
+        {
+            if (!perChannel[e].present)
+                continue;
+            const EmitterPlan& plan = plans[e];
+            const auto it = std::find_if(scene.emitters.begin(), scene.emitters.end(), [&](const auto& em) {
+                return static_cast<std::size_t>(em.channel) == e;
+            });
+            diffuse::DiffuseEmitter d;
+            d.position = it->position;
+            d.windowStartS = plan.mixing.windowStartS;
+            d.mixS = plan.mixing.mixS; // after the AX22 fallback (5.2)
+            d.bandsT60S = decay.bandsT60S;
+            d.gainSquared = plan.gainSquared;
+            // The specular window target in the reference's units: the matching's value per g_b.
+            for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+                d.bandsSpecularTarget[b] =
+                    bandEnergy[b] > 0.0 ? plan.specularMatch.bandsTargetEnergy[b] / bandEnergy[b] : 0.0;
+            problem.emitters.push_back(d);
+            channels.push_back(e);
+        }
+        if (!channels.empty())
+        {
+            diffuse::DiffuseRunOptions run;
+            run.pool = options.diffusePool;
+            run.stop = options.cancel;
+            const diffuse::DiffuseResult result = diffuse::estimateDiffuse(problem, {}, run);
+            if (result.cancelled)
+                throw BuildCancelled();
+            for (std::size_t i = 0; i < channels.size(); ++i)
+                switchTailLevel(perChannel[channels[i]].match, plans[channels[i]], result.emitters[i], result,
+                                bandEnergy);
+        }
+    }
+    for (auto& pe : perChannel)
+        if (pe.present)
+            pe.diag.match = pe.match;
 
     std::vector<RoomIR> irs;
     irs.reserve(seeds.size());
@@ -330,6 +445,7 @@ RoomIR buildOmni(const contract::SceneDescription& scene, const BuildOptions& op
 std::vector<RoomIR> buildRoomIREnsemble(const contract::SceneDescription& scene, const BuildOptions& options,
                                         std::span<const std::uint32_t> tailSeeds)
 {
+    const conv::ScopedFlushDenormals flushDenormals; // AX37 (5.1) (i), as buildRoomIR
     if (!isSupportedSampleRate(options.sampleRate))
         throw std::invalid_argument("unsupported sample rate " + std::to_string(options.sampleRate)
                                     + " Hz (supported: 44100, 48000, 88200, 96000)");
@@ -390,6 +506,9 @@ std::vector<ism::ImageSourceSet> imageSourcesByChannel(const contract::SceneDesc
 RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& options,
                    HybridDiagnostics* diagnostics)
 {
+    // AX37 (5.1) (i): FTZ/DAZ on for the whole build, through a scoped guard that restores the
+    // caller's mode on every exit, including a throw, so the IR never depends on the host's mode.
+    const conv::ScopedFlushDenormals flushDenormals;
     if (!isSupportedSampleRate(options.sampleRate))
         throw std::invalid_argument("unsupported sample rate " + std::to_string(options.sampleRate)
                                     + " Hz (supported: 44100, 48000, 88200, 96000)");

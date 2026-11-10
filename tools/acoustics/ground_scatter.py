@@ -53,3 +53,45 @@ def late_ratio_db(src, rcv, rho_s, m_air, after_s: float = 0.050, half_width: fl
     e = np.array([rho_s[b] * np.sum(ww * np.exp(-m[b] * path)) for b in range(len(rho_s))])
     direct = np.exp(-m * rd) / rd**2
     return 10 * np.log10(e / direct)
+
+
+def window_target(src, rcv, rho_s, m_air, window_start_s: float, mix_s: float, t60_s, half_width=None,
+                  n_r: int = 4000, n_phi: int = 720) -> np.ndarray:
+    """Phase 05h, AX37 (5.4): the single-scatter diffuse energy of the floor inside the Phase 04 matching
+    window, as E_target's diffuse part (reference units, squared pressure re 1 m per 10 ms): each floor
+    element's contribution dE at its arrival time t = (r1 + r2) / c, weighted by the Hann window
+    sin²(π (t − a) / (b − a)) over [a, b] = [window_start_s, mix_s], referred to t_mix along the Eyring
+    decay exp(13.82 (t − b) / T60_b) and normalised to 10 ms (10 ms / ((b − a) / 2), as
+    src/sim/tail/NoiseTail.cpp matchTail and ref_hybrid.window_target). Independent of ref_hybrid and
+    of the simulator: it is the finite-floor check of the open-field diffuse E_target. The floor is the
+    finite rectangle ``half_width`` = (x0, x1, y0, y1) when given, else the infinite plane. rho_s = s (1 − α_b),
+    m_air, t60_s: (8,)."""
+    src, rcv = np.asarray(src, float), np.asarray(rcv, float)
+    rho_s, m, t60 = np.asarray(rho_s, float), np.asarray(m_air, float), np.asarray(t60_s, float)
+    a, b = float(window_start_s), float(mix_s)
+    if not b > a:
+        return np.zeros(len(rho_s))
+    edges = np.concatenate([[0.0], np.geomspace(1e-3, 1e4, n_r)])
+    r = 0.5 * (edges[1:] + edges[:-1])
+    dr = np.diff(edges)
+    phi = (np.arange(n_phi) + 0.5) * 2 * np.pi / n_phi
+    dphi = 2 * np.pi / n_phi
+    R, P = np.meshgrid(r, phi, indexing="ij")
+    x = src[0] + R * np.cos(P)
+    y = src[1] + R * np.sin(P)
+    r1 = np.sqrt(R**2 + src[2] ** 2)
+    r2 = np.sqrt((x - rcv[0]) ** 2 + (y - rcv[1]) ** 2 + rcv[2] ** 2)
+    cos1, cos2 = src[2] / r1, rcv[2] / r2
+    w = (R * dr[:, None] * dphi) * cos1 * cos2 / (np.pi * r1**2 * r2**2)
+    t = (r1 + r2) / C_SOUND
+    inside = (t > a) & (t < b)
+    if half_width is not None:
+        x0, x1, y0, y1 = half_width
+        inside &= (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
+    path = (r1 + r2)[inside]
+    tt = t[inside]
+    hann = np.sin(np.pi * (tt - a) / (b - a)) ** 2
+    ww = w[inside] * hann
+    norm = 0.010 / (0.5 * (b - a))
+    rate = np.log(1e6) / t60
+    return np.array([norm * rho_s[k] * np.sum(ww * np.exp(-m[k] * path) * np.exp(rate[k] * (tt - b))) for k in range(len(rho_s))])
