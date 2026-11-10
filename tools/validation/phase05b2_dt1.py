@@ -359,7 +359,7 @@ def step_openfield(npaths: int = 400_000):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14"])
+    ap.add_argument("step", choices=["agree", "bench", "dense", "openfield", "c3", "c4", "c5", "c6", "c7", "c9b", "c12a", "c12b", "c12d", "c13", "c13x", "c13g", "c14", "c15"])
     ap.add_argument("--paths", type=int, default=32_000)
     a = ap.parse_args(argv)
     if njit is None:
@@ -375,7 +375,7 @@ def main(argv=None):
     else:
         {"c3": step_c3, "c4": step_c4, "c5": step_c5, "c6": step_c6, "c7": step_c7, "c9b": step_c9b,
          "c12a": step_c12a, "c12b": step_c12b, "c12d": step_c12d,
-         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14}[a.step]()
+         "c13": step_c13, "c13x": step_c13x, "c13g": step_c13g, "c14": step_c14, "c15": step_c15}[a.step]()
 
 
 
@@ -1553,6 +1553,40 @@ def step_c14(reps: int = 30):
     out["e_case_count"] = cnt
     log(cnt)
     d = load(); d["c14"] = out; save(d)
+
+
+def step_c15(reps: int = 30, n_long: int = 1_000_000):
+    """C15 (Seat 2, S2-a condition): 30 replicates of the shipping rule (W_max (A), n*_max 8 000 and 1 020) in the closed
+    100 m cubes against a 1 M-history NW-4C long run on a disjoint range; pre-registered pass: |median| ≤ 0.25 dB and
+    p95 |error| ≤ 1 dB (1 kHz)."""
+    big = [0.1, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2, 0.22]
+    scenes = {"cube100_alpha0.10-0.22_s0.3": {"alpha": [big] * 6, "s": [0.3] * 6},
+              "cube100_lowalpha0.05_s0.3": {"alpha": [[0.05] * 8] * 6, "s": [0.3] * 6},
+              "cube100_lowalpha0.05_s1": {"alpha": [[0.05] * 8] * 6, "s": [1.0] * 6},
+              "cube100_absorbing_floor_s1": {"alpha": [[0.05] * 8] * 4 + [[0.95] * 8, [0.05] * 8], "s": [1.0] * 6}}
+    out = {"pass_rule": "|median| <= 0.25 dB and p95 |error| <= 1 dB vs the long run, 1 kHz", "cases": {}}
+    for name, g in scenes.items():
+        for e, src in enumerate(((45.0, 70.0, 2.0), (55.0, 70.0, 2.0))):
+            c = {"dims": (100.0, 100.0, 100.0), "alpha": g["alpha"], "s": g["s"], "src": src, "rcv": (50.0, 30.0, 1.7)}
+            pr = _Prep(c)
+            acc = np.zeros(8); acc2 = np.zeros(8); blk = 125_000
+            for j in range(0, n_long, blk):
+                r = pr.nw4c(blk, p0=50_000_000 + j)
+                x = r["x"] * blk / n_long
+                acc += x.sum(axis=0); acc2 += ((x * n_long) ** 2).sum(axis=0)
+            se = np.sqrt(np.maximum(acc2 / n_long - acc ** 2, 0) / n_long)
+            lt = pr.plan["target_specular"] + acc
+            row = {"long_total_1k": float(lt[4]), "long_se_db": float(4.343 * se[4] / lt[4])}
+            for nm in (8000, 1020):
+                tots = np.asarray([n3w_c(pr, W_MAX_1T, n_max=nm, rep=1 + i)["total"][4] for i in range(reps)])
+                err = 10 * np.log10(tots / lt[4])
+                p95 = float(np.percentile(np.abs(err), 95)); med = float(np.median(err))
+                row[f"nmax{nm}"] = {"p5": float(np.percentile(err, 5)), "median": med, "p95": float(np.percentile(err, 95)),
+                                    "p95_abs": p95, "max_abs": float(np.max(np.abs(err))), "sd": float(np.std(err)),
+                                    "pass": bool(abs(med) <= 0.25 and p95 <= 1.0)}
+            out["cases"][f"{name}_e{e}"] = row
+            log(name, e, row)
+            d = load(); d["c15"] = out; save(d)
 
 if __name__ == "__main__":
     main()
