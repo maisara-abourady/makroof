@@ -62,11 +62,16 @@ checks every "not required" row against this table. Each row is a compression of
 | 8 Storyteller | what a producer or sound designer does with the product: whose ears the audience hears through; point of view; anchor; depth; density; contrast; transitions; translation to the listener's chain; workflow requirements; which features serve storytellers and which will never be used | thresholds and parameter values (1); rendering (3); delivery (4); pricing (7); engine (2); hosts (5) |
 | 9 Room acoustician | real rooms as references: which geometry and material choices are audible at a position and by how much; early structure vs decay; occupancy; bass and seat-dip; material-library provenance and uncertainty bounds; preset validation against measured rooms; diagnosing complaints; which room and material controls are worth exposing | hearing, measuring, scale models, panels (a human); audibility ownership (1); engine (2); canvas (6) |
 
-Seats and the roles around them, in one line each: the **decider** decides (minimum tension, now and
-later, inside the PRD's hard constraints); the **interrogator** pushes back (convening, tension map,
-future debt, facts against `docs/corpus/`); the **researcher** finds and verifies external evidence;
-the **plan-editor** applies verified decisions to the plan; the **steward** keeps the session's
-objectives. Maisara has the final say: she may veto any decision after it is applied.
+Seats and the roles around them, in one line each:
+- the **decider** decides (minimum tension, now and later, inside the PRD's hard constraints) and answers
+  for Maisara from the PRD;
+- the **interrogator** pushes back (convening, tension map, future debt, facts against `docs/corpus/`, and
+  the PRD reading of answers given for her);
+- the **researcher** finds and verifies external evidence;
+- the **plan-editor** applies verified decisions to the plan;
+- the **steward** keeps the session's objectives.
+
+Maisara has the final say: she may veto any decision after it is applied.
 
 ## Who answers Maisara's questions
 
@@ -85,9 +90,14 @@ reasoning, my north star is the prd that drives my decision making"; and, on thi
    - an ambiguity in her words that the PRD settles;
    - a question in a phase file's "Raise with Maisara" section.
 
-   Each answer cites the PRD ids it rests on (goals, FR/NFR, out-of-scope items) and her recorded
-   decisions. Q-ids from the PRD may be cited; their defaults are AQ rows. Answering a PRD open question
-   Q1–Q10 stays with the Expert the PRD names.
+   Each answer meets these conditions:
+   - It cites the PRD ids it rests on (goals, FR/NFR, out-of-scope items) and her recorded decisions.
+   - It shows how each option considered serves or strains those requirements, one line per option (her
+     approved wording: "name the PRD requirements it relies on … and show how each option serves them").
+   - It does not lean on the board's minimum-tension ordering alone.
+   - The interrogator checks its reasoning (PRD MISREAD).
+   - If it amends one of her recorded decisions, its line says so:
+     `AMENDS her decision of <date>: "<her words>"`.
 
    **Her recorded decisions** are:
    - her words, verbatim, in the session briefs;
@@ -95,12 +105,22 @@ reasoning, my north star is the prd that drives my decision making"; and, on thi
 
    The other AQ/AX rows are plan defaults. A board DECISION may change them through `/fix-plan`, as before.
 
-   Accepting a surviving DECISION for her is a PRD check: it breaks no hard constraint, and no PRD goal or
-   ranked requirement points to another surviving option. It must not lean on the board's minimum-tension ordering
-   alone. The interrogator checks that reasoning (PRD MISREAD).
+   **Accepting a surviving DECISION for her** is a PRD check:
+   - it breaks no hard constraint;
+   - no PRD goal or ranked requirement points to another surviving option.
 
-   An answer that amends one of her recorded decisions says so in its line:
-   `AMENDS her decision of <date>: "<her words>"`.
+   Each surviving option is shown against the check's PRD ids.
+
+   **PRD open questions.** Q-ids from the PRD may be cited; their defaults are AQ rows. Answering a PRD
+   open question itself stays with its owner:
+   - Q1–Q10: the Spatial Audio Expert;
+   - the Engineering questions: the board, as today;
+   - the Product questions (Q11, Q14, Q15): case (a), because the PRD leaves them open.
+
+   **Where questions come from.** A question that arises outside `/fix-plan` goes straight to the decider,
+   run by the main session with the question and its context. Such a question might be a Raise item, a
+   steward gap or a brief ambiguity. The decider's output and the interrogator's check are saved under
+   `docs/review/<target>/`, as in `/fix-plan`.
 2. **Applied, then reported.** An answer that survives the interrogator is applied without waiting for her.
    The session report and the PR list it under "Decided for Maisara": one plain line per answer, with its
    PRD ids, so she can veto any of them afterwards. A veto is recorded in the ledger and undone through
@@ -112,6 +132,9 @@ reasoning, my north star is the prd that drives my decision making"; and, on thi
      contested rounds that fails the interrogator's check.
    - **(b) The answer would change the PRD itself:** a requirement, a hard constraint or an out-of-scope
      item. The north star does not edit itself.
+
+   Her answer to (a) or (b) that calls for a PRD edit counts as her asking for that edit. It is applied
+   through `/fix-plan` (step 4's PRD guard).
    - **(c) Overriding a seat's veto-grade rating.** A `3` is a seat's judgement that an option is
      unacceptable. Overruling it stays hers; she may hand it to the decider later.
 

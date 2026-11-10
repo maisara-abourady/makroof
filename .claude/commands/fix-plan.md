@@ -52,7 +52,7 @@ need to know or remember these steps.
    one file per round) so the steward and the reviewer can check the map against the seats' words.
 4. Send the verified decisions back to the plan-editor to apply (resume it, or brief a new one with them).
    An edit to `docs/PRD.md` is applied only if Maisara asked for it (her words in the brief) or answered
-   it as NEEDS MAISARA case (b). Otherwise it is held and asked as NEEDS MAISARA (b).
+   it as NEEDS MAISARA case (a) or (b). Otherwise it is held and asked as NEEDS MAISARA (b).
 5. Run the **interrogator** on the finished diff (the changed passages only) to check the science of what
    was written. Anything WRONG goes back through steps 2–4; at most 3 rounds, then report what is left.
 6. Record the decisions, the convening tables, the verdicts and the final status in

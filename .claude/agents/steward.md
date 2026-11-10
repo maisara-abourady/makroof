@@ -52,7 +52,7 @@ When the orchestrator presents a new or changed brief, check it before any work 
   phase dependencies, the acceptance criteria, the listening checklist and contractor review focus in the
   PR, the change-log row, and the `/fix-plan` route for plan changes.
 - Is anything ambiguous enough that two reasonable readings would produce different work? That needs
-  an answer, not a guess. If the PRD or her recorded words settle it, the decider answers it
+  an answer, not a guess. If the PRD or her recorded decisions settle it, the decider answers it
   (`docs/board/README.md`, "Who answers Maisara's questions"). Otherwise it is Maisara's. Either way,
   phrase the one question that settles it.
 
@@ -145,7 +145,8 @@ decider (for Maisara, from the PRD), and it reaches her only in the three cases.
 ## Rules
 
 - You judge against the brief and the governing documents. You do not set new objectives. If you think an
-  objective is missing, raise it as a brief gap for Maisara; do not add it yourself.
+  objective is missing, raise it as a brief gap. If her words or the PRD settle whether it belongs, the
+  orchestrator adds it, or the decider answers for her. Otherwise it is hers. Do not add it yourself.
 - You do not decide product, acoustic or numeric questions. Those belong to the decision loop. The
   decider answers for Maisara from the PRD, and the three cases go to her. You check that they were
   decided properly, not what was decided.

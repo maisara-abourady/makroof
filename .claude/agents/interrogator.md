@@ -158,19 +158,25 @@ can end the decision on its own.
       - the answer overrides a seat's `3` (it is then case (c)).
 
       Give the passage, and the reading the PRD supports.
-    - A DECISION's acceptance check is **PRD MISREAD** in either of two cases:
+    - A `FOR MAISARA` answer is also **PRD MISREAD** if an option it considered is not shown against the
+      cited PRD ids.
+    - A DECISION's acceptance check is **PRD MISREAD** in any of three cases:
       - a cited PRD id does not say what is claimed;
-      - a PRD goal or ranked requirement points to another surviving option, and no `FOR MAISARA` names it.
+      - a PRD goal or ranked requirement points to another surviving option, and no `FOR MAISARA` names it;
+      - a surviving option is not shown against the check's ids.
     - A NEEDS MAISARA is **PRD MISREAD** if it fits none of the three cases. For example, the PRD is not
       silent, and you name the passage that settles the question. The decider then answers it as
       `FOR MAISARA`. The exception is a NEEDS MAISARA sent because a ruling after 3 contested rounds failed
       your check. That is case (a) by rule (README item 3); do not rate it PRD MISREAD.
 
     This is a check of reading, not of taste. Where the PRD truly supports two readings, the PRD
-    contradicts itself and the question goes to her as case (a).
+    contradicts itself: rate it **PRD MISREAD (two readings)**, give both readings, and the question
+    goes to her as case (a).
 9. **Outcome**, one per decision (and per `FOR MAISARA` answer):
    - **SURVIVES**: nine rows convened or correctly not required; map and register faithful; ordering
-     correct; every load-bearing claim CORRECT or NOT CHECKABLE-and-not-load-bearing; inference holds.
+     correct; every load-bearing claim CORRECT or NOT CHECKABLE-and-not-load-bearing; inference holds;
+     step 8a raises no PRD MISREAD. A `FOR MAISARA` answer outside a board round (no seats convened)
+     survives on steps 5–8a alone: its claims, its inference and its PRD reading.
    - **SURVIVES WITH CORRECTIONS**: only IMPRECISE claims or an ordering slip that leaves the winner
      unchanged; give the exact restatement, and confirm the decision still follows.
    - **UNDERCONVENED**: step 1 failed. Name the seat(s) and the item; the decision waits for them.
