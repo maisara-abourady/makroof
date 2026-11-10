@@ -17,14 +17,25 @@ SURVIVES WITH CORRECTIONS, applied).
 
 ## 0. Why this phase exists
 
-Under Q2a (A) the diffuse estimator's work limit W_max is sized to pluginval's restore watchdog (30 s / 14
-restores minus the worst OS build, less D-H1's margin; AX41), because the diffuse solve runs inside the
-synchronous state restore, prepare and `reset()`. That keeps random level error in the capped class until
-this phase: SE 0.13–1.33 dB in Kuttruff Table 5.2 layouts 4/5 at s = 1 and 0.44–0.50 dB in the low-α
-s = 1 100 m cube (C16 (f), at n\*_max 1 024); rooms near 100 m are capped at SE ≤ 0.15 dB in the s = 0.3
-and absorbing-floor cubes (decider file 51 §2, L3/L5). This is Seat 1's "now" 2, repaid when this phase
-lands with W_max re-derived from the background budget. This phase moves the diffuse solve off the
-synchronous paths so W_max no longer has to fit the restore watchdog.
+Under Q2a (A) the diffuse estimator's work limit W_max is sized to the project's restore convention,
+14 × t_restore ≤ 30 s (not pluginval's requirement, whose watchdog resets per restore: H1-F1, decider file
+19; W_max pinned at 3.05 M per emitter by D-H1 (iv), the (A) formula giving no W_max ≥ 0 on macOS; AX41),
+because the diffuse solve runs inside the synchronous state restore, prepare and `reset()`. That keeps
+random level error in the capped class until this phase: SE 0.13–1.33 dB in Kuttruff Table 5.2 layouts 4/5
+at s = 1 and 0.44–0.50 dB in the low-α s = 1 100 m cube (C16 (f), at n\*_max 1 024); rooms near 100 m are
+capped at SE ≤ 0.15 dB in the s = 0.3 and absorbing-floor cubes (decider file 51 §2, L3/L5). This is
+Seat 1's "now" 2, repaid when this phase lands with W_max re-derived from the background budget. This phase
+moves the diffuse solve off the synchronous paths so W_max no longer has to fit the restore convention.
+
+**Scope extended by D-H1 (v) / H1-F2 (2026-11-10; decider
+`docs/review/phase-05h/19-decider-decision-D-H1-D-H2-r2.md`, interrogator `21-interrogator-D-H1-D-H2-r2.md`
+SURVIVES; `AMENDS her decision of 2026-11-10: "I accept the board's answer by definition."`, this phase's
+scope being a board answer she accepted):** condition 9 below. The C++ measurements show that the non-diffuse
+100 m / 96 kHz build alone is 3.29 s, 95.5 % of it the unit-decay synthesis in `tail::BandNoiseGenerator` at
+the 12 s tail cap (`7-orchestrator-split-timer-K23.md`), so moving only the diffuse solve does not bring the
+macOS restore under the convention (14 × 2.33–2.59 s = 32.6–36.3 s); the AX38 4c register's macOS entry
+closes only when the synthesis leaves the synchronous restore (condition 9, or `phase-07d.md` if 07c cannot
+carry it).
 
 ## 1. Settled — do not reopen
 
@@ -51,6 +62,10 @@ synchronous paths so W_max no longer has to fit the restore watchdog.
   run in phase-05h scope 10.
 - **Brought forward on any restore-gate failure** (AX38 4c: a gate failure is a defect, remedied only by
   moving work off the restore path).
+- **Next phase after 05h** (D-H1 (v)): 05h closes with the AX38 4c register entries recorded (Linux and
+  macOS cube); this phase follows 05h directly, before Phase 08's goldens, with "Depends on: 05h `done`"
+  unchanged; if 05h's gate and records are split into phase-05i, this phase follows 05i. Its (C) W_max is
+  pinned only after the AX38 4c 3-minute 100 m bounce record is in this phase's packet (Seat 8; AX41).
 
 ## 4. Decisions before implementation (decision loop, `/fix-plan` step 3)
 
@@ -69,7 +84,7 @@ ordering, not the decider's):
 - which hosts do not signal offline rendering reliably (Seat 5);
 - host hang dialogs and their timeouts in Logic, Live, Cubase and Bitwig (Seat 7).
 
-## 5. Scope — conditions 1–8 (decider file 47 §4 (iii))
+## 5. Scope — conditions 1–9 (conditions 1–8: decider file 47 §4 (iii); condition 9: D-H1 (v) / H1-F2, decider file 19)
 
 The diffuse solve moves off the synchronous restore, prepare and `reset()`.
 1. **Timing** (section 3): before the first public release, with its W_max raise in one golden round;
@@ -99,20 +114,35 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()`.
 6. **Offline.** Offline renders, bounces and `render_cli` always wait for the final solve and stay
    bit-identical. Where the host's offline signal is unreliable, the render log records it (Seats 1 (ii),
    2, 4, 5, 6 (e), 8 (i), 9).
-7. **Gates re-scoped after the move.** The restore gate (AX38 4c) measures restore without the solve; the
-   solve time moves to the staleness records (AX38 (iv)) (Seat 5 (5)). E_b stays shared across modes and
-   ears (Seat 4; AX39, AX44).
+7. **Gates re-scoped after the move.** The restore gate (AX38 4c) measures restore without the solve and
+   the synthesis (condition 9); the solve time moves to the staleness records (AX38 (iv)) (Seat 5 (5)). E_b
+   stays shared across modes and ears (Seat 4; AX39, AX44).
 8. **Follow-on checks.** The Phase 12 (ii) preset check (no preset default raises U) is re-run under this
    phase's W_max (Seat 6 (e)). Phase 08 goldens in capped rooms carry a tolerance derived from the
    achieved SE, unless this phase lands before they are frozen (Seat 4).
+9. **The unit-decay synthesis moves off the synchronous restore** (D-H1 (v) / H1-F2, decider file 19,
+   interrogator file 21; the register's macOS remedy): the unit-decay synthesis (`tail::BandNoiseGenerator`,
+   constructor spectra 0.96 s + `make` × 2 emitters 2.18 s = 3.14 of 3.29 s at 100 m / 96 kHz, flat in room
+   size for T60_max ≥ 8 s, ≈ 2.5× from 48 to 96 kHz) moves off the synchronous restore, prepare and `reset()`
+   with the same interim / settling rules as the diffuse solve (the interim tail while the synthesis is
+   pending is decided in this phase's loop beside D-C2; never silence where a tail existed in the saved
+   state); after both moves the restore gate measures ISM + matching + mix (≈ 0.15 s at 96 kHz) and passes a
+   worst-of-10 rule with 10–20× headroom. Closes the AX38 4c register entries: Linux cube (also closed by
+   the diffuse move, 28.9 s) and macOS cube (33.40 s; closes here, or at 07d, or at Phase 13's
+   release-machine re-check if the runner is shown to be the cause). If this phase's loop finds condition 9
+   does not fit here, a `phase-07d.md` of size S–M is created (CLAUDE.md split rule) and the register's
+   macOS 'closes at' names 07d. Alternatives recorded, not chosen: a cheaper generator (output-changing; a
+   golden round; AQ10's "not optimised before Phase 13" to be read by the board); caching the constructor
+   spectra per (fs, length) (bit-identical, ≈ 4 of 14 FFTs, [Hyp] 20–25 %, not enough alone).
 
 ## 6. Acceptance criteria — automated
 
 - [ ] D-C1–D-C3 recorded as AX rows (ledger rows linked) before the first code commit; the researcher's
       answers recorded.
 - [ ] Restore, prepare and `reset()` never run the diffuse solve synchronously; the restore gate (AX38 4c)
-      passes measuring restore without the solve, on the Release build; the solve time is in the
-      staleness records.
+      passes measuring restore without the solve and, under condition 9, without the unit-decay synthesis,
+      on the Release build, in AX38 4c's register form (the entries it closes removed through `/fix-plan`);
+      the solve time is in the staleness records.
 - [ ] The real-time path adopts each solved snapshot by atomic swap with an AQ4 crossfade, one step per
       solve, never mid-drag; the ISM update is never held behind the solve (tests); "settling" is shown
       while a solve is pending.
@@ -144,7 +174,12 @@ format if E_b is stored; the W_max re-derivation from the background budget.
 ## 9. Out of scope
 
 Changing the estimator (AX39–AX44); a both-near fallback (§5 B15); a kernel cache (AX38 (ii), phase-10 AX
-only); n\*_max (Q2b (i) stays unless the C++ W1 measurement moves it, AX41).
+only); n\*_max (Q2b (i) stays at the pinned 1 024 and is not re-derived here unless the W1 measurement per
+output mode moves it, AX41; D-H1 (iv)). Moving the unit-decay synthesis **is** in scope (condition 9);
+caching its constructor spectra per (fs, length) is not the AX38 (ii) kernel cache but an alternative
+recorded, not chosen. **W_max re-derivation (condition 3) has a prerequisite:** the (C) W_max is pinned
+only after the AX38 4c record "offline-bounce time of a 3-minute room-size automation at 100 m, with its
+ratio to real time" is in this phase's packet (Seat 8; D-H1 (iv), AX41).
 
 ## 10. Definition of done
 

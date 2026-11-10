@@ -204,9 +204,16 @@ the Phase 06 convolver.
     the heaviest output mode, and W_max stays one constant for all modes. If the heaviest-mode build makes
     the pinned W_max fail the gate, phase-07c (which depends on 05h) is brought forward, once 05h is
     `done`, to land before this phase's goldens are frozen (W_max is then re-derived once, under
-    phase-07c, with one golden round); W_max is never cut to pass. Goldens in
+    phase-07c, with one golden round); W_max is never cut to pass. The gate runs under the AX38 4c
+    register rule (D-H1 (v) / H1-F2, decider `docs/review/phase-05h/19-decider-decision-D-H1-D-H2-r2.md`,
+    interrogator file 21): strict where the recorded value at the pinned W_max is ≤ 29.1 s; a registered
+    defect with the growth bound (median-of-10 restore ≤ 1.10 × the recorded median) elsewhere; a failure
+    is a defect that enters the register with its remedy, phase-07c forward and then phase-07c §5
+    condition 9 (the unit-decay synthesis off the synchronous restore); the register is enforced strictly
+    on all three OSes at Phase 13. Goldens in
     capped rooms carry a tolerance derived from the achieved SE, unless phase-07c has landed before they
-    are frozen.
+    are frozen. Goldens in rooms with ungated AX43 case-bands carry 'tail-level reference pending (D-H2)'
+    in `tests/golden/CHANGELOG.md` (D-H2 (a)).
 
 ## Out of scope
 
@@ -268,8 +275,9 @@ near-field HRTF correction (sources < 1 m; note it as a follow-up).
       (scope 9); otherwise phase-05h scope 10 records them.
 - [ ] **Restore gate, heaviest mode (scope 10; if 05h is `done`, otherwise carried by phase-05h scope
       10):** 14 × t_restore ≤ 30 s at the AX38 4c scenes in the
-      heaviest output mode, with the one W_max constant; capped-room goldens with the SE-derived
-      tolerance unless phase-07c has landed.
+      heaviest output mode, with the one W_max constant, under the AX38 4c register rule (D-H1 (v): strict
+      where ≤ 29.1 s, a registered defect with the growth bound elsewhere); capped-room goldens with the
+      SE-derived tolerance unless phase-07c has landed.
 
 ## Listening / manual checklist (Maisara, headphones)
 
