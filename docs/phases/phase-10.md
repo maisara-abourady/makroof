@@ -46,13 +46,20 @@ output mode, while staying deterministic in offline bounces (PRD FR-SIM-6, NFR-3
    (against ē_b, which depends only on T60_b, t_mix,e on the cached decay's emission-referenced time
    axis and the IR length) and the crossfade from the new image list. Prove the
    result equals a full rebuild (test), including a move that changes t_mix,e and the time-bounded
-   image list.
+   image list. Since phase 05b, E_b includes the diffuse solve (AX37, AX39), recomputed every rebuild with
+   no cache credit (AX38 4b). A cache of the diffuse computation (a room kernel) comes only through a new
+   AX, which reopens AX38 (ii) (128 MB additional resident) and AX38 4b together.
 3. **Rebuild scheduling:** the builder always works on the newest scene (coalescing). If a build takes
    longer than 20 ms, the next build starts immediately with the latest scene. The audio thread keeps
    using the last IR and never blocks. Track and expose "IR staleness" (time between the parameter
-   change and the IR going live) as a debug metric.
+   change and the IR going live) as a debug metric. Time spent waiting at the diffuse-solve gate counts in
+   it (AX38 (iii)); the same wait drives Phase 11's "settling" state. The split update (AX38 (v): a
+   Phase 10 AX that updates the specular and directional part without waiting for the diffuse solve) is
+   designed together with [`phase-07c.md`](phase-07c.md) condition 4 (atomic swap with an AQ4 crossfade;
+   the ISM update never held behind the diffuse solve), so it is not designed twice.
 4. **Parameter smoothing:** the 20 ms output-trim smoothing stays. Positions aren't smoothed per sample
-   (they only drive IR rebuilds). Room-size changes go through the same path.
+   (they only drive IR rebuilds). Room-size changes go through the same path. Document that room-size
+   automation at large rooms is stepwise (each step a full rebuild, AQ10; AX38 4c hand-off).
 5. **Negative control:** a build flag `MAKROOF_TEST_HARD_SWITCH` (test builds only) replaces the crossfade
    with an instantaneous IR switch. The click detector **must** flag that build. This proves the detector
    catches the problem this phase solves.

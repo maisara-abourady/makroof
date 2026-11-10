@@ -91,6 +91,7 @@ SIGNALS = {
 PHASE_MODES = {
     "phase-03": "omni-early",
     "phase-04": "omni",
+    "phase-05b": "omni",
 }
 
 PHASE_NOTES = {
@@ -123,6 +124,15 @@ PHASE_NOTES = {
         "surfaces) sounds brighter in the tail than concert_hall_box (audience floor). open_field "
         "has no tail (a dry click and its ground reflection). edge_values is a contract-limits "
         "test scene (absorption alternating 0.01 / 1.0 between bands): expect an odd, uneven tail."
+    ),
+    "phase-05b": (
+        "Phase 05b: early scattered energy (B11) was NOT PROMOTED: its BRAS safety check (gate B) failed, so the "
+        "early part is still specular-only, as in Phase 04, and there is no Phase 04 vs 05b A/B pair. This pack is the "
+        "current full room (mono omni preview, both ears the same) through every test scene, for the checklist items "
+        "that apply under that outcome: (1) the six rooms dead_booth, living_room, classroom, club, concert_hall_box "
+        "and stone_box: no new graininess or colouration in the first ~100 ms and no audible jump into the tail; "
+        "(2) open_field still sounds nearly dry, a click with its ground reflection right after it. See the PR for "
+        "what the phase measured (tracer gate, window check)."
     ),
 }
 

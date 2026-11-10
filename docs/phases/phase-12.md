@@ -39,6 +39,28 @@ data only. The engine must have no idea presets exist (PRD core principle, NFR-8
 4. Preset browser in the editor (dropdown grouped by category). Loading a preset replaces the scene
    (undoable) and sets parameters accordingly. The user can edit everything afterwards.
 5. Document each preset's expected character and expected T30 range in `resources/presets/README.md`.
+6. **Outdoor presets (AX37 (5.4), phase 05b):** each outdoor preset (`open_field`, `courtyard`) is checked
+   with branch (a), the single-scatter floor integral, when all non-ground faces have α = 1, or branch
+   (b), the seeded tracer within ±1 dB, otherwise; reported, not tuned. The ghost-tail criterion (the
+   reference puts the energy after t_mix,e more than 60 dB below the direct sound while the rendered tail
+   after t_mix,e is within 60 dB of it) firing on any outdoor preset reverses AX37 (5.4).
+7. **Preset placements (AX44, Seat 6 (ii)):** no preset's default placement may raise the "approximate"
+   note U; if one does, the preset's placement is changed, not the predicate. This check is re-run under
+   phase-07c's W_max once that phase has landed (decider files 47 §4 (iii) 8, 51 §4 item 7).
+   **Hall presets and J1** (decider file 53 §2, exact text). Before Phase 12 presets are frozen, every
+   preset's default placement is computed at the final W_max, reporting SE, cap hit and U (Seat 9).
+   - A preset whose default placement raises U is first fixed by changing its placement, never the
+     predicate (Seat 6 (ii)).
+   - If U stays raised through the capped branch (cap hit AND achieved SE > 0.33 dB) at every reasonable
+     placement, because the whole window is long, the preset **reopens J1** (bring (C) forward, or
+     re-size W_max), and no preset is relabelled or re-materialed to hide it.
+   - Capped presets with achieved SE ≤ 0.33 dB, where U is silent (for example rooms near 100 m at
+     SE ≤ 0.15 dB, C16 (f)), are **reported only**, with their SE.
+   - **OPEN** (interrogator file 54; not decided here): the placement set for "every reasonable
+     placement" (e.g. the preset's listener region) is stated before presets are frozen.
+8. **Room range (AX38 (vi)):** D-T3 was not needed (2026-11-10). If a D-T3 pass is ever triggered by the
+   AX38 ceiling, its cost per scene class (closed reverberant box against open-face outdoor box) reaches
+   Maisara before the presets are built.
 
 ## Out of scope
 
@@ -56,6 +78,8 @@ non-shoebox presets (B2).
 - [ ] Each preset's T30 (500 Hz–1 kHz average) falls inside its documented range (e.g. living room
       0.3–0.6 s, concert hall box 1.6–2.4 s, open field < 0.1 s).
 - [ ] Materials file: every entry has a citation, 8 α values in [0.01, 1], s in [0, 1].
+- [ ] U is silent at every preset's default placement (scope 7, AX44); the outdoor two-branch check
+      (scope 6) is reported.
 - [ ] Loading a preset is undoable and the state round trip remains bit-identical.
 
 ## Listening / manual checklist (Maisara)

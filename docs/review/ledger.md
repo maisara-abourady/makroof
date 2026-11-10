@@ -1790,6 +1790,68 @@ Maisara 2026-11-08: "Have we recorded those follow ups in a phase? Otherwise the
 
 Context noted by the interrogator (not a defect): the default-room full rebuild (133–184 ms at 48 kHz) includes tail-noise generation and is not the AQ10 W1/W2 position-only workload; phase-10's acceptance already allows phase-13 optimisation or `blocked (AQ10 miss)`. Status: applied, verified, committed.
 
+## Phase 05b: patch size at a compute limit (D1 → AX35, 2026-11-08; decision loop + /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Decider D1 (rounds 1–2), interrogator (decision mode, three rounds), advocate GO (round 1 REDIRECT on D1c settled by D1c′). Applied as AX35 (BUILD_PLAN §2), phase-05b scope 0 / scope 4 notes, AX16 count fix; vetoable by Maisara. Departures from accepted text listed for her: scope 0's joint certification of one ℓ, the Definition of done "all automated criteria evaluated", scope 4 (i)/AX16 "switches".
+
+| id | claim | verdict | status |
+|---|---|---|---|
+| P05B-01 | E_target meets scope 0 at 1.25 m | IMPRECISE → restated: certified at 2.5 m, evaluated at 1.25 m | applied |
+| P05B-02 | a* ≤ 0.42 % | CORRECT value; scope = the four (A) geometries only, BRAS rooms are R1 | applied |
+| P05B-03 | gated-bin changes 3.230→3.181 % (layouts 5/6 s = 1), 14.6→5.36 % (layout 4 s = 1) | CORRECT | — |
+| P05B-04 | non-convergence attributed to ℓ | open → resolved by P05B-27 | resolved |
+| P05B-05 | 0.625 m rung 15–49 GB: compute limit, not the c·Δt floor | CORRECT (computed) | — |
+| P05B-06 | air-factored rungs comparable with the full run | CORRECT (≤ 1.02e-4) | — |
+| P05B-07 | ΔL_b,tr independent of ℓ | CORRECT | — |
+| P05B-08 | (B) fails → not promoted regardless of (A) | CORRECT (plan logic) | — |
+| P05B-09 | corpus gives no patch-size criterion (Kuttruff §4.5 Eqs. 4.32/4.33; Vorländer Eqs. 10.26/10.27) | CORRECT | — |
+| P05B-10 | labelling vs skipping (A), per-quantity reading | NOT CHECKABLE (product) | listed for Maisara |
+| P05B-11 | ℓ-sensitive flag as a bound | IMPRECISE (minor) → "heuristic flag, not an error bound" | applied |
+| P05B-12 | no src/sim ℓ in every branch | FALLS under branch (i) → replaced by D1c′ (switch waits for R1, R2, Maisara) | applied |
+| P05B-13 | bias trigger evaluable at 1.25 m | UNDERINFORMED → moot: not evaluated (AX35 (b)) | applied |
+| P05B-14 | joint vs per-quantity certification | holds on plan text, survives on science | listed for Maisara |
+| P05B-15 | AX16 "26 of 255" vs three-room "26 of 345" | INCONSISTENT (minor) → AX16 aligned | applied |
+| P05B-16 | E_target certified at 2.5 m by the halving rule | CORRECT | — |
+| P05B-17 | margin rule | IMPRECISE (minor) → heuristic, per case-band | applied |
+| P05B-18 | one reading must govern D1a and D1b | INCONSISTENT → per-quantity reading for both | applied |
+| P05B-19 | per-bin (A) uncertifiable on available compute | CORRECT | — |
+| P05B-20 | "(A) not evaluated" vs brief/DoD text | plan point → listed for Maisara (vetoable) | listed |
+| P05B-21 | not promoted on (B); bias "not evaluated" | CORRECT | — |
+| P05B-22 | tracer self-checks ℓ-independent | CORRECT (s = 1 diagnosis still rests on DB-1, open) | — |
+| P05B-23 | "≈ 3 TB" framing | NOT CHECKABLE as stated → 9 600²·1 035·4 B·8 bands of this implementation; R2 per formulation | applied |
+| P05B-24 | D1c′ inference, research named | CORRECT (UNDERINFORMED, gap named: R1, R2) | — |
+| P05B-25 | D1e conditional on the Δt diagnostic | resolved by P05B-27 | resolved |
+| P05B-26 | count aside | resolved (= P05B-15) | resolved |
+| P05B-27 | Δt halving at 2.5 m ≤ 0.126 % vs ℓ halving 3.18–5.36 % (`ell.dt_check`, commit 98baa04) | CORRECT: the cause is ℓ | — |
+| P05B-28 | D1e "certified ℓ" | IMPRECISE → re-worded: < 1 % rule at 1.25 m, else scope 0's floor branch at 0.625 m | applied |
+| P05B-29 | compute limit 15–49 GB, floor 0.343 m | CORRECT | — |
+| P05B-30 | per-quantity rule | NOT CHECKABLE (product), survives | listed for Maisara |
+| P05B-31 | D1a text | CORRECT | — |
+| P05B-32 | D1b ground | CORRECT | — |
+| P05B-33 | record wording ("not evaluated (compute limit, AX35)") | CORRECT | — |
+| P05B-34 | scope 4 (i)/AX16 "switches" departure | IMPRECISE (minor) → added to Maisara's list | applied |
+| P05B-35 | 3 052 GB arithmetic | CORRECT | — |
+| P05B-36 | "≥ 49 GB" for the dense route | IMPRECISE (minor) → "≈ 147 GB with the current dense solver" | applied |
+| P05B-37 | re-run rule | CORRECT | — |
+
+Diff check of the /fix-plan text (interrogator, rows P05B-38…56): every changed passage CORRECT (AX16 26 of 345 recounted from report-phase05.md §6a, sub-values, AX35 numbers 0.324 % / 0.417 % / 5.36 % / 3.23→3.18 %, 15–49 / ≈ 147 GB recomputed, 3 TB order of magnitude, phase-05b notes, §6 row); three minor wording corrections applied: P05B-44 (Δt check covers the three s = 1 layouts), P05B-48 (2.5 m memory figures stated with patches, bins and decimal GB), P05B-50 (Δt/ℓ separation credited to `ell.dt_check`, not to Eq. 4.32 alone). P05B-52/53 note the consequences: the per-bin early envelope stays unverified while (B) keeps B11 unpromoted, and the tail level keeps AX16's measured bias (up to +3.83 dB, BRAS −1.47 dB) until the switch lands. Status: applied, verified; vetoable by Maisara.
+
+## Phase 05b session 2 phase file `docs/phases/phase-05b2.md` (2026-11-09; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Created on Maisara's decision of 2026-11-09 (Q2 option (b): "Answer to q2: b. Make the dedicated phase's prompt extremely aware with the utmost level of detailed analysis of what and why."); AX35 accepted the same day ("W1: accept"). Plan-editor applied the orchestrator's draft, holding two test-number choices as open decisions (D-T1 case set, new D-T6 regression bound). Interrogator document audit round 1 (P05B2-01…34): SOUND WITH CORRECTIONS (majors P05B2-12 fallback memory rows, P05B2-23 D-T3 yardstick wrong, P05B2-28 wrong example room); advocate round 1: no NO, REDIRECTs on §0.1 framing (extreme cases, empty venues, jnd by extension), D-T3, D-T6 (uniform vs mixed α), decision order (D-T5 → D-T4 → D-T1 → D-T2 → D-T6 → D-T3), listening pack (real BRAS scene, open_field), split rule (atomicity, named split point). All applied (cbc8d36). Round 2: interrogator P05B2-35…56 SOUND (minor P05B2-37 "bounding" → "extreme cases", P05B2-38 fallback label: applied c89b0d4); advocate GO, one narrow REDIRECT (split branch: Phase 08 waits for 05h; nightly before the PR): applied c89b0d4. No acoustic or numeric value decided: D-T1…D-T6 are open decisions for session 2's decision loop.
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-01…04, 06, 07, 09, 11, 13, 15, 17, 18, 25, 26, 32 | §0 numbers (ΔL_b,tr table, hybrid vs tracer, t_mix,e, patch counts, kernel sizes, convergence, BRAS ΔL_b, 26/345, +122.6 MB), model description, AX16 mechanism and sign, D-T5 code claims | CORRECT | — |
+| P05B2-05, 10, 14, 16, 19, 20, 21, 22, 24, 27, 29, 30, 31 | AX16 exactness per order, jnd of G, time ∝ N²TG, Δt scope, Gilbert/Fujiwara attribution, D-T1 (b)–(e) feasibility notes, per-patch directions, validation scope, Table 15.1 | IMPRECISE → restated | applied (cbc8d36) |
+| P05B2-12 | memory table without the AX22 fallback | CONDITIONS VIOLATED → fallback rows added | applied |
+| P05B2-23 | D-T3 used Phase 10's mid-fade gate as yardstick | WRONG → listener level step vs 1 dB jnd per room class | applied |
+| P05B2-28 | D-T6 example room | INCONSISTENT → six Phase 04 rooms named | applied |
+| P05B2-33, 34 | consequences (AX21 step stays; listening scenes) | noted | — |
+| P05B2-35…56 | round-2 changed passages | CORRECT (37, 38 IMPRECISE minor → applied) | applied (c89b0d4) |
+
+Renumbering (2026-11-09, merge of main, commit 7e7f506): the AX35 of this block and of the block 'Phase 05b: patch size at a compute limit' is BUILD_PLAN **AX36**; main's AX35 is the hrtfId rule.
+
 ## docs/phases/phase-05g.md L17, L68; docs/phases/phase-06b.md L60 — board loop wording replaces the advocate (2026-11-09; /fix-plan; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
 
 Session brief `docs/sessions/2026-11-09-board-agents.md` (O6). Plan-editor: three SPECIFIED wording fixes, no DECISIONS NEEDED (commits c8f7c2d, 871959f). Interrogator document mode on the changed passages: **no FACT or NUMBER changed**; no blocker, no major.
@@ -1828,3 +1890,309 @@ Session brief `docs/sessions/2026-11-09-board-agents.md` (O8, O10). Full records
 | C-2 | DECISION | scope 1 "48 kHz, in SOFA format"; scope 3 DF-EQ wording | applied as the R6 wording | plan diff | minor | — | resolved |
 
 Open for Phase 08 session 1 (not blocking): N1 the TH Köln operative licence (re-entry condition only); N4 the onset ITD of the pinned file by the named criterion; the pin-time source-state check (±1 dB, 200 Hz–8 kHz) and the AC 2 truncation term, measured not assumed. Corpus candidates named by the researcher (Møller 1999; Armstrong 2018; Bernschütz 2013; Algazi 2001; BRAS documentation; MIT KEMAR hrtfdoc/FAQ) are Maisara's decision, subject to licence.
+
+
+## Phase 05b session 2 — D-T1 (all parts), D-T2, D-T6: interrogator decision mode (2026-11-10)
+
+Source: `docs/review/phase-05b2/26-interrogator-T1-T2-T6.md` (on decider rounds 21 and 25). Corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-T1T2T6-01 | D-T1/D-T2 convening: 9/9 convened, every seat rated both rounds | faithful | closed |
+| P05B2-T1T2T6-02 | Round-1 and round-2 tension cells (all ids) against seats' words, except rows 14, 15 | faithful | closed |
+| P05B2-T1T2T6-03 | D1-L2, D1-L3, D1-L4 (C3, C7, 19 §2/§6) | CORRECT | closed |
+| P05B2-T1T2T6-04 | D-T1.1 "injection s(1−α) per Eq. 4.24"; "AQ3" for band-independent s | IMPRECISE (§5.2/§2.7; AX17) | open |
+| P05B2-T1T2T6-05 | D-T1.1 "max 1" holds only under Q1 (a) (S4, S6 cells); S3 resolution unmarked †; register "BRAS nightly" repays a published-validation debt | IMPRECISE | open |
+| P05B2-T1T2T6-06 | D-T1.2 S-1 | SURVIVES | closed |
+| P05B2-T1T2T6-07 | D-T1.4 D4-L1 (Table 6.1), D4-L3 (gate B δ 0.25 jnd) | CORRECT | closed |
+| P05B2-T1T2T6-08 | D-T1.4 D4-L2 "τ = 1 dB cannot detect AX16" | IMPRECISE (true only where \|ΔL\| ≤ 0.43 dB) | open |
+| P05B2-T1T2T6-09 | D-T1.4 register stale against W_max (A); shipped 0.083 dB not reached where capped; S7 Tol-2 reason rests on B6-2 | IMPRECISE | open |
+| P05B2-T1T2T6-10 | D-T1.5 CS-1 row S3, S6 should be 1/3 ("+1 later without NW") | TENSION MISREAD (non-winning row; winner unchanged) | open |
+| P05B2-T1T2T6-11 | D-T1.5 case count 50 vs 64 (z_FW, family false-fail) | INCONSISTENT | open |
+| P05B2-T1T2T6-12 | D5-L1, D5-L3 | CORRECT | closed |
+| P05B2-T1T2T6-13 | D16-L1, L2, L3, L5, L6, L7 (C12, C13, 19; blend cap algebra) | CORRECT | closed |
+| P05B2-T1T2T6-14 | D-T1.6 AX row "within λ/2 of a surface … pressure rise (Eq. 2.50)" | CONDITIONS VIOLATED (rigid wall, R = 1) | open |
+| P05B2-T1T2T6-15 | D-T1.6 note qualifier "pilot SE > target/3" read as Seat 6's | defensible but amended condition; needs Seat 6 confirmation; conflicts with S2 C5 and S8 (ii) | open |
+| P05B2-T1T2T6-16 | D-T1.6 both-near threshold 0.70 m equals `dead_booth` default d_L | open risk (knife-edge) | open |
+| P05B2-T1T2T6-17 | D-T1.6 register lacks UI-phase row ("approximate" note); no /fix-plan list in round 2 | debt not registered | open |
+| P05B2-T1T2T6-18 | C13 §2 table/reading mismatch | resolved (C13 corrected; decider cited the table) | closed |
+| P05B2-T1T2T6-19 | D-T1.3 calibration block unbounded; pilot ≤ W_max/2 and N ≥ n\* violated in C13 layout-4 corners; cap not a bound for e_cal > W_max/256 | INCONSISTENT / CONDITIONS VIOLATED | open |
+| P05B2-T1T2T6-20 | D-T1.3 S2 † cell (C1 replaced by pre-sampling rule; C5 unmet) | TENSION MISREAD | open |
+| P05B2-T1T2T6-21 | D-T1.3 N_cap per-emitter vs joint accounting | INCONSISTENT (ambiguous; up to ~2× restore budget) | open |
+| P05B2-T1T2T6-22 | D-T1.3 working: N-3 (round 1, sum 17) set aside as the unspecified parent of N-3W\*\* | accepted (reasoning exposed; not a §5 step) | closed |
+| P05B2-T1T2T6-23 | W_max = 3.05 M arithmetic; D7 | CORRECT | closed |
+| P05B2-T1T2T6-24 | Q2 (A) "six Phase 04 rooms no cap hits" at 3.05 M | NOT CHECKABLE (measured only at 14.6 M) | open (compute) |
+| P05B2-T1T2T6-25 | Q2 (B) restore "≈ 2.6 s" | IMPRECISE (2.7 s at n\*_max ≈ 1 020; ≈ 4.8 s at 8 000; watchdog exceeded either way) | open |
+| P05B2-T1T2T6-26 | Q2 AQ10 quotation; n\*_max not treated as an AQ10 matter | IMPRECISE / INCONSISTENT | open |
+| P05B2-T1T2T6-27 | D-T2 ordering: both in-bounds options carry S5's 3; bias reading out of bounds; NEEDS MAISARA | CORRECT | closed |
+| P05B2-T1T2T6-28 | D-T2 arithmetic 0.541, 0.430 %, 19.75×, 33× | CORRECT | closed |
+| P05B2-T1T2T6-29 | Q1 (a) "today's precision"; hidden ℓ_ref premise in the < 1 % bias test; S4 no cell | IMPRECISE | open |
+| P05B2-T1T2T6-30 | Q1 (b) omits ≈ 25–26× (family 1 %) and L2-F2 33×; "7× W_max" in old units (≈ 32× of W_max (A)); W1 figure is diffuse share only | IMPRECISE | open |
+| P05B2-T1T2T6-31 | Round-1 attribution "Seats 4, 5, 6, 8 rated L2-F1 as keeping Tol-2 cost" (S4, S8 stated no cost premise) | IMPRECISE (superseded by round 2) | closed |
+| P05B2-T1T2T6-32 | D-T6 convening: Seat 7 (public wording, "uniform rooms unchanged") not convened | UNDERCONVENED | open |
+| P05B2-T1T2T6-33 | D-T6 small room is both-near under D-T1.6 (d_L 0.425, d_E 0.5 m) yet gated at τ | INCONSISTENT | open |
+| P05B2-T1T2T6-34 | D-T6 gate N and stage-2 / no-reseed rule unstated (Seat 5 round 1) | IMPRECISE | open |
+| P05B2-T1T2T6-35 | D-T6 cells, sums, D6-L1, D6-L2; W1 "before any number" (B6-1 is a relation) | CORRECT / faithful | closed |
+| P05B2-T1T2T6-36 | Orchestrator computations (a)–(e) above | requested | open |
+
+
+Round 2 (on decider round 3, `docs/review/phase-05b2/32-interrogator-round2-T1-T2-T6.md`, 2026-11-10):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-T1T2T6-37 | Corrections 1, 3, 6, 9–14, 17, 18 applied | faithful | closed |
+| P05B2-T1T2T6-38 | 70 cases / 560 case-bands, z_FW 4.290; D-T6 72 case-bands, z_FW 3.81; Q1 (b) table; Q2 (A)/(B) against C14 | CORRECT | closed |
+| P05B2-T1T2T6-39 | Seat 7 D-T6 cells and conditions (i)–(iii) | faithful | closed |
+| P05B2-T1T2T6-40 | C15: 16/16 rows pass Seat 2's pre-registered bounds | CORRECT | closed |
+| P05B2-T1T2T6-41 | D-T1.3 map: S2 "?" should be 0/1 (condition met by C15); S4 1/1 (2/2 if n\*_max 8 000) | correction (not folded) | open |
+| P05B2-T1T2T6-42 | Seat 4's CI list of pilot-estimate ships not in text or /fix-plan | correction | open |
+| P05B2-T1T2T6-43 | D4 block size unpinned; Seat 5's confirmation not sought; overrun bound and 8 000-start disjointness depend on it | open premise (Seat 5 cell unconfirmed) | open |
+| P05B2-T1T2T6-44 | "C15 re-run under joint rule" collides with file 31; per-emitter figures as an upper bound on cost are [Inferred] | correction | open |
+| P05B2-T1T2T6-45 | "Old error +0.09 / −0.06 dB" at 100 m cubes (builder §3, within estimator SE 0.10–0.11 dB); "the one place the switch adds error"; low-α s = 1 cube omitted | NOT CHECKABLE (unresolved) | open (compute (g)) |
+| P05B2-T1T2T6-46 | D-T1.4 "achieved SE lower than the target allows" (inverted); "target met wherever cap does not bind" false at n\*_max ≈ 1 020 (0.124 dB) | IMPRECISE | open |
+| P05B2-T1T2T6-47 | D-T1.6 S6 shown 1/1, but Seat 6 rates U as written 2/1; its condition (i) not in the text | TENSION MISREAD (fold-in pending; winner unchanged) | open |
+| P05B2-T1T2T6-48 | Seat 6 (ii) (presets: fix placement, not predicate) against the decider's reversal and phase-12 "reported"; (iii) unrecorded | correction | open |
+| P05B2-T1T2T6-49 | "Where U fires" omits both-near placements in `club`, `living_room` and W1 at 0.1–0.5 m with good estimates; Seat 6's U′ example also fires under U | INCONSISTENT (with C13 §3) | open (compute (f)) |
+| P05B2-T1T2T6-50 | AX text "no such rise next to an absorbing face" | IMPRECISE (R = 1 derivation; reduced for α < 1) | open |
+| P05B2-T1T2T6-51 | Q1 (a) "ℓ_ref up to 0.37 % in the gated set" (W1 corner 0.63–0.65 %, CS-NW+) | WRONG | open |
+| P05B2-T1T2T6-52 | Q1 (b) precision range omits L2-F2's 0.0145 dB | IMPRECISE | open |
+| P05B2-T1T2T6-53 | /fix-plan list missing Seat 6 (i)/(ii), Seat 4's CI list, D4 block size, renamed re-run | correction | open |
+| P05B2-T1T2T6-54 | D-T1.1, D-T1.2, D-T1.5, D-T6 round-3 verdicts | SURVIVES | closed |
+| P05B2-T1T2T6-55 | D-T1.3, D-T1.4, D-T1.6, D-T2 (Q1), Q2 round-3 verdicts | SURVIVES WITH CORRECTIONS | open until applied |
+
+
+Round 3, final (on decider round 4 and its addendum, `docs/review/phase-05b2/39-interrogator-round3-final-T1-T2-T6.md`, 2026-11-10):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-T1T2T6-56 | Round-2 corrections 1–14 applied (map S2 0/1, S4 1/1 or 2/2; block 64; C16 as the joint re-run; AX16 resolved; D-T1.4 wording; S6 (i)–(iii); AX α text; ℓ_ref 0.65 %; precision range; /fix-plan) | faithful | closed |
+| P05B2-T1T2T6-57 | S5-b: block 64 1/1, conditions (1)–(3) folded | faithful | closed |
+| P05B2-T1T2T6-58 | S6-b: U 1/1 at 8 000; 1/1 at 1 024 with union VOV (C16b test met; C16c no change) | faithful | closed |
+| P05B2-T1T2T6-59 | Block-64 overrun 0.153 W_scene; realised work ≤ 1.009 W_scene (joint, C16) | CORRECT | closed |
+| P05B2-T1T2T6-60 | C16 (g) AX16 − long run (+0.02; +0.06/+0.10; +2.38/+2.39 dB) and the "adds random error" cost line | CORRECT | closed |
+| P05B2-T1T2T6-61 | Q1 (a) "target met at 8 000" (uncapped both-near to 0.110 dB); "no seat above 1" (S4 no cell) | IMPRECISE: fix before Maisara | open |
+| P05B2-T1T2T6-62 | Q2a (A) layout 4/5 SE "0.29–1.33" (is 0.17–1.33); low-α cube at both n\*_max | IMPRECISE: fix before Maisara | open |
+| P05B2-T1T2T6-63 | Cap-hit definition: text "min binds → cap hit" vs C16 "N_need > N_cap" plus `floor_truncated` (68/134 runs); decides U at `dead_booth` listener-wall | INCONSISTENT: exact AX wording via /fix-plan | open |
+| P05B2-T1T2T6-64 | D-T1.4 target statement qualifier | IMPRECISE (/fix-plan) | open |
+| P05B2-T1T2T6-65 | Final "Where U fires" = addendum (C16b/C16c); main-text list superseded; W1 both_wall_0.3 silenced at 1 024 recorded in S1 debt | correction (/fix-plan) | open |
+| P05B2-T1T2T6-66 | Seat 2's C15 check ran on the per-emitter rule; joint-rule cube replicates come with the C++ reported set | note (/fix-plan, §4) | open |
+| P05B2-T1T2T6-67 | BRAS report prints MC SE (Seat 9) missing from /fix-plan | correction (/fix-plan) | open |
+| P05B2-T1T2T6-68 | Final verdicts: D-T1.1, D-T1.2, D-T1.5, D-T6 SURVIVES; D-T1.3, D-T1.4, D-T1.6 SURVIVES WITH CORRECTIONS (/fix-plan); D-T2/Q1 and Q2 SURVIVES WITH CORRECTIONS (items 1–2 before Maisara) | – | open until applied |
+
+
+## Phase 05b session 2 — D-T5 and D-T4: interrogator decision mode (2026-11-09)
+
+Corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d. Rows copied from the interrogator's files (steward round 3 gap).
+
+Round 1 (`docs/review/phase-05b2/8-interrogator-T5-T4-round1.md`):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-T5T4-01 | D-T5.1 D5-L1 target_hybrid composition, 0.08 dB at 500 Hz–2 kHz | CORRECT | closed |
+| P05B2-T5T4-02 | D-T5.1 D5-L2 AX16 vs hybrid 3.83 dB in all bands (C2) | CORRECT | closed |
+| P05B2-T5T4-03 | D-T5.1 D5-L3 FP-mode split between paths (code) | CORRECT | closed |
+| P05B2-T5T4-04 | D-T5.1 citation: Eq. 4.24 (Lambert) + §5.2 for the s(1−α) split | IMPRECISE | open |
+| P05B2-T5T4-05 | D-T5.1 condition (i) "bit-identical on three OSes" → per platform; add Seat 5's RAII and denormal-producing test room | IMPRECISE | open |
+| P05B2-T5T4-06 | D-T5.1 condition (ii) on band-independent-α layouts tests only air at 4–8 kHz; register "repaid when (ii) passes" overclaims (S1 63 Hz) | IMPRECISE | open |
+| P05B2-T5T4-07 | D-T5.2 E10 k inflation ≤ 2× | CORRECT | closed |
+| P05B2-T5T4-08 | D-T5.2 D5-L5 t_mix,e fixed before the solve | CORRECT | closed |
+| P05B2-T5T4-09 | D-T5.2 debt evidence "Phase 13 i₀ re-derivation" cannot show a k_real over-trigger; per-seat rows (S6) | INCONSISTENT | open |
+| P05B2-T5T4-10 | D-T5.3 ordering and map | CORRECT | closed |
+| P05B2-T5T4-11 | D-T5.3 D5-L6 shares have no consumer | CORRECT | closed |
+| P05B2-T5T4-12 | D-T5.3 D5-L7 F25 (external) | NOT CHECKABLE (not load-bearing) | closed |
+| P05B2-T5T4-13 | D-T5.4 D5-L8 C1 levels, MC vs integral within SE, open boxes ≥ 90 dB | CORRECT | closed |
+| P05B2-T5T4-14 | D-T5.4 inaudibility at C1 levels (Vorländer §1.5, Fig. 6.2; stated level conditions) | CORRECT with conditions | closed |
+| P05B2-T5T4-15 | D-T5.4 D5-L9 Eyring premises | CORRECT | closed |
+| P05B2-T5T4-16 | D-T5.4 Phase 12 single-scatter ground check applied to `courtyard` | CONDITIONS VIOLATED | open |
+| P05B2-T5T4-17 | D-T5.4 reversal condition fires on courtyard's real reverberation | INCONSISTENT | open |
+| P05B2-T5T4-18 | D-T5.4 log-domain check below the float32 normal range under FTZ (precision unstated) | NOT CHECKABLE (software), flagged | open |
+| P05B2-T5T4-19 | C1 prose "−152 dB at 1 kHz" (table: −166 dB; −152 is 500 Hz) | INCONSISTENT (source typo; decider unaffected) | open |
+| P05B2-T5T4-20 | D-T4a 4a-2G S6 (and S3 unmarked) cells carried without rating; invented register reasons | TENSION MISREAD | open |
+| P05B2-T5T4-21 | D-T4a D4-L1/L2 kernel and history sizes, t_cap ≈ 2.1 s (Kuttruff Eq. 4.6) | CORRECT | closed |
+| P05B2-T5T4-22 | D-T4a (ii) resident cap must read "additional" (baseline +122.6 MB) | IMPRECISE | open |
+| P05B2-T5T4-23 | D-T4a "D-T4c measurements close K8–K10" | INCONSISTENT | open |
+| P05B2-T5T4-24 | D-T4a register "Phase 13 multi-instance RSS" (does not exist; scope 3 records the CPU sum) | INCONSISTENT | open |
+| P05B2-T5T4-25 | D-T4a working ceiling with K8–K10 declared unknown | legitimate (phase-05b2 §3, phase-13 L45–47); debt 128 MB × K10 + Bitwig to record | open |
+| P05B2-T5T4-26 | D-T4b ordering | CORRECT | closed |
+| P05B2-T5T4-27 | D-T4b "§9 puts a cache out of scope" (§9: beyond what D-T1 needs) | IMPRECISE | open |
+| P05B2-T5T4-28 | D-T4c S2 re-run condition (gated build in the AX22 fallback) not carried | correction (winner unchanged) | open |
+| P05B2-T5T4-29 | D-T4c contended-restore and bounce/real-time records (Seats 5 and 8) | to add | open |
+| P05B2-T5T4-30 | D-T4c D4-L6 / Challenge 1 arithmetic (2.14 s; 1.51–1.88 s); AQ10 ruling | CORRECT | closed |
+| P05B2-T5T4-31 | D-T4c Table 15.1 3 s row used for full rebuilds: state its conditions | IMPRECISE | open |
+| P05B2-T5T4-32 | One composed variant per decision id; coupling 4a-2G ↔ 4b-2 ↔ 4c-1C to be recorded | accepted reading | closed |
+
+Round 2 (`docs/review/phase-05b2/12-interrogator-T5-T4-round2.md`):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-T5T4-33 | Corrections 04, 05, 06 (D-T5.1) applied | faithful | closed |
+| P05B2-T5T4-34 | D-T5.1 corrected register: S1 63 Hz not repaid; band-varying α has no independent evidence | faithful | closed |
+| P05B2-T5T4-35 | Correction 09 (D-T5.2): one row per seat in their words, "no scheduled evidence" | faithful | closed |
+| P05B2-T5T4-36 | Corrections 16, 17, 18 (D-T5.4): two-branch Phase 12 check, ghost-tail reversal, double precision (1.19e−41 is a normal double) | CORRECT / faithful | closed |
+| P05B2-T5T4-37 | D-T5.4 S6 1/1 on the restated check (re-run 3) | faithful | closed |
+| P05B2-T5T4-38 | Correction 19: C1 typo fixed (L32) | fixed | closed |
+| P05B2-T5T4-39 | D-T4a 4a-2G++ cells S1 0/1, S7 1/1, S9 1/1 (rated); S3, S4, S6 read from conditions; max 1, sum 17 | faithful | closed |
+| P05B2-T5T4-40 | D-T4a S5 cell carried from 4a-2G; FIFO and coalescing terms and Seat 3's hand-off on non-realtime `processBlock` waiting at the gate never rated by Seat 5 | TENSION MISREAD (narrow) | open |
+| P05B2-T5T4-41 | D-T4a: the late conditions of Seats 1, 7 and 9 must be written into the text (Seat 9's later is 2 without its conditions) | correction | open |
+| P05B2-T5T4-42 | D-T4a (iv): "(position and room size)" dropped in round 3 (Seat 6's condition) | correction | open |
+| P05B2-T5T4-43 | D-T4a register: S7 and S9 rows in their re-run words | correction | open |
+| P05B2-T5T4-44 | D-T4a /fix-plan list: add the Phase 08 commitments (iv) binaural and (v) item 8 | correction | open |
+| P05B2-T5T4-45 | D-T4a Seat 4 arithmetic (24.3 ms, 13.7 ms; Table 15.1 35 ms, "20 ms as printed") and Seat 7 (1.02 GB + 0.98 GB) | CORRECT | closed |
+| P05B2-T5T4-46 | Corrections 22–25 (D-T4a): additional resident; K8–K10 closure claim struck; phase-13 multi-instance RSS proposed; 128 MB × K10 + Bitwig debt | faithful | closed |
+| P05B2-T5T4-47 | Correction 27 and coupling note (D-T4b) | faithful | closed |
+| P05B2-T5T4-48 | Corrections 28, 29, 31 (D-T4c): both 100 m builds, contended restore, bounce ratio, Table 15.1 conditions | faithful | closed |
+| P05B2-T5T4-49 | D-T4c: record whether the closed low-α 100 m cube actually avoids the AX22 fallback | minor correction | open |
+| P05B2-T5T4-50 | Challenge 1 (AQ10, 100 m restore gate) | NEEDS MAISARA | open |
+
+Round 3 (final) (`docs/review/phase-05b2/15-interrogator-T5-T4-round3.md`):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-T5T4-51 | Row 40 (S5 cell on 4a-2G++ and Seat 3's offline hand-off) answered by Seat 5 re-runs 2 and 3 | faithful | closed |
+| P05B2-T5T4-52 | Row 41 (Seats 1, 7, 9 conditions) written into (i), (iii), (iv), (vi) | faithful | closed |
+| P05B2-T5T4-53 | Row 42 "(position and room size)" restored | faithful | closed |
+| P05B2-T5T4-54 | Row 43 S7 and S9 register rows in the seats' words | faithful | closed |
+| P05B2-T5T4-55 | Row 44 Phase 08 (iv) and (v) on the /fix-plan list | faithful | closed |
+| P05B2-T5T4-56 | Row 49 `ismFallback` recorded for both 100 m builds; uncovered horizon reported | faithful | closed |
+| P05B2-T5T4-57 | D-T4a final map: S3 and S6 read from conditions, S4 and S5 rated; S1, S7, S9 rated on 4a-2G++; S2 and S8 carries accepted; max 1, sum 17 | faithful | closed |
+| P05B2-T5T4-58 | Two-class and 4a-2G++ intermediate rows (S5 1/2; S3 and S6 1/2) | faithful | closed |
+| P05B2-T5T4-59 | D-T4a synchronous class omits `reset()` (ResetStep3 can build: `ScenePipeline.cpp` L146, L159–164, L209–229) | correction (wording; no cell change) | open (plan-editor) |
+| P05B2-T5T4-60 | D-T4a S4 cell now rated by Seat 4 re-run 2 (1/1); update the mark and the strongest objection | correction (wording) | open (plan-editor) |
+| P05B2-T5T4-61 | Host threading of freeze/offline and of `reset()` [Hyp] (Seat 5 open check) | NOT CHECKABLE; not load-bearing; route to the researcher before implementing the gate's offline path | open |
+| P05B2-T5T4-62 | S8 carry: alternation can roughly double a live-session freeze; full-project bounce unaffected (builders quiesced); recorded in (iv) | observation | closed |
+| P05B2-T5T4-63 | D-T4c additions (correction 49, UI-anchor label) | faithful | closed |
+| P05B2-T5T4-64 | D-T4a final verdict | SURVIVES WITH CORRECTIONS (59, 60) | open until applied |
+| P05B2-T5T4-65 | D-T4c final verdict | SURVIVES | closed |
+
+
+## Phase 05b session 2 — Maisara's answers (2026-11-10)
+
+Her words, verbatim: "I accept the board's answer by definition." This was in reply to the board's answers as stated to her:
+accept all decisions; Challenge 1 yes; Q1 (a), the bias reading; Q2a (A) now and (C) in a later phase; Q2b (i), n\*_max 1 024.
+Packet: `docs/review/phase-05b2/40-packet-for-Maisara.md`.
+
+| id | item | outcome | status |
+|---|---|---|---|
+| P05B2-M-01 | D-T5.1–5.4, D-T4a–c (files 13, 15) | accepted | closed |
+| P05B2-M-02 | D-T1.1–1.6, D-T6, D-T3 not needed (files 34, 37, 39) | accepted | closed |
+| P05B2-M-03 | Challenge 1: 100 m, 96 kHz restore gate blocking (AQ10 amended) | yes | closed (apply via /fix-plan) |
+| P05B2-M-04 | Q1 / D-T2: AX36 applies to the estimator's bias, checked in CI | (a) | closed (apply via /fix-plan) |
+| P05B2-M-05 | Q2a: W_max sized to the restore watchdog (provisional 3.05 M per emitter); async restore (C) in a later phase | (A) + (C) later | closed (apply via /fix-plan) |
+| P05B2-M-06 | Q2b: n\*_max = 1 024 (re-derived from C++, ≥ 1 000) | (i) | closed (apply via /fix-plan) |
+| P05B2-M-07 | D-T3 "not needed" re-checked against the answers (steward round 3, second gap): holds under Q2a (A) | holds | closed |
+
+
+## Phase 05b session 2 — /fix-plan diff check (2026-11-10)
+
+Source: `docs/review/phase-05b2/41-interrogator-plan-diff-check.md` on `git diff 3973a5c 19cabdb`. Corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-FX-01 | Item 3, cap-hit definition (AX41, AX44), word for word | CORRECT | closed |
+| P05B2-FX-02 | Item 4, D-T1.4 qualifier and the 1 024 figures (AX42) | CORRECT | closed |
+| P05B2-FX-03 | Item 5, final "Where U fires" list from C16b/C16c, main-text list superseded, W1 both_wall_0.3 debt (AX44) | CORRECT | closed |
+| P05B2-FX-04 | Item 6, BRAS report MC SE (AX40, phase-05b2 §4) | CORRECT | closed |
+| P05B2-FX-05 | Corrections 59 (`reset()`) and 60 (S4 rated) in AX38 | CORRECT | closed |
+| P05B2-FX-06 | AX46 bias reading (ℓ_ref 0.65 %, SE ≈ 0.12 % ≈ 0.005 dB) | CORRECT | closed |
+| P05B2-FX-07 | W_max 3.05 M / W_scene 6.10 M and n\*_max 1 024 with their re-derivation rules (AX41, AQ10, phase-05b2 §4, phase-13) | CORRECT | closed |
+| P05B2-FX-08 | Blocking restore gate (14 × t_restore ≤ 30 s) against W_max sized to the same budget with zero margin and a realised-work ratio up to ≈ 1.05 (prototype 29.98 s; 30.2 s at 1.05) | INCONSISTENT: resolve before the gate is implemented (decider) | open |
+| P05B2-FX-09 | AX41 cost line mixes n\*_max 8 000 and 1 024 figures | IMPRECISE | open |
+| P05B2-FX-10 | Restore gate's scene(s) not named (AX38 4c, AQ10) | IMPRECISE | open |
+| P05B2-FX-11 | B15 "flagged by note U" without U's conditions | IMPRECISE | open |
+| P05B2-FX-12 | AX37 "within 0.08 dB" without its conditions | IMPRECISE | open |
+| P05B2-FX-13 | AX36 (c) "R1 certified at 2.5 m" without band and position conditions | IMPRECISE | open |
+| P05B2-FX-14 | AX16 C16 (g) values not marked 1 kHz | IMPRECISE | open |
+| P05B2-FX-15 | AX38 (4b) "AQ10 is unchanged" against the AQ10 amendment | IMPRECISE | open |
+| P05B2-FX-16 | Corpus claims in the changed passages (Kuttruff Eqs. 2.49–2.50, 4.24, 4.29, 4.35, §2.7, §5.2, §8.7; Vorländer Table 6.1) | CORRECT ("absent at α = 1" derived from Eq. 2.49's R = 1 premise) | closed |
+| P05B2-FX-17 | No contradiction of a settled decision (AX22, phase-05b scope 0, NFR-8, Maisara's answers M-01…07) | CORRECT | closed |
+
+
+Round 2 of the diff check (`docs/review/phase-05b2/42-interrogator-plan-diff-check-round2.md`, 2026-11-10). P05B2-FX-22 closed by the orchestrator: row 05b set back to `in progress` until the phase-05b PR's CI is green; duplicated sentence removed.
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-FX-18 | File-41 corrections 2–8 applied as worded (AX41, AQ10/AX38 4c scenes, B15, AX37, AX36 (c)/B11/phase-05b, AX16, AX38 4b, AX44 derived note) | CORRECT | closed |
+| P05B2-FX-19 | D-H1 (phase-05h §3) and its pointers in AQ10, AX38 4c, AX41 faithful to correction 1 | CORRECT | closed (P05B2-FX-08 stays open until D-H1 is decided) |
+| P05B2-FX-20 | phase-05h faithful to phase-05b2 §4–§10 and AX37–AX46; atomicity and nightly-green-before-PR kept | CORRECT | closed |
+| P05B2-FX-21 | Split bookkeeping: row 05h, §4 entry, phase-08/-13 dependencies with the AX37 (5.3) exception, phase-05b2 header note | CORRECT | closed |
+| P05B2-FX-22 | §0 row 05b `done` set without PR link, CI evidence or done date (CLAUDE.md step 6); duplicated session-2 sentence | CONDITIONS VIOLATED (bookkeeping) | open (orchestrator) |
+| P05B2-FX-23 | phase-05h §2 item 2 "conditional" escalation, against AX38 4c's unconditional escalation | IMPRECISE | open (/fix-plan) |
+| P05B2-FX-24 | phase-05h §4 item 10 re-listening clause not in AX37 (5.3) | IMPRECISE (addition) | open (/fix-plan) |
+
+
+## Phase 05b session 2 — board answers to Challenge 1, Q2a, Q2b (2026-11-10)
+
+Decider files 43 and 47; ratings 45-seat*-R1-R3; confirmations 48-*; interrogator `docs/review/phase-05b2/49-interrogator-board-answers-C1-Q2.md`. Corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-C1Q2-01 | 43 Q2b = (i) n\*_max 1 024: cells, sums 19/21, preference handling | SURVIVES | closed |
+| P05B2-C1Q2-02 | 43: Challenge 1 / Q2a not decidable on recorded cells; 4c-2 cells not reused | correct process | closed |
+| P05B2-C1Q2-03 | R1–R3 convening (9/9) and per-question cells in 47 §2 | faithful | closed |
+| P05B2-C1Q2-04 | J5 dropped (bounds, S5 later 3); offline-only (B) not composed | CORRECT | closed |
+| P05B2-C1Q2-05 | S3-c (A) 1/1 and S4-c 0/1 folded: J1 19, J2 20 | correction | open |
+| P05B2-C1Q2-06 | S1 J1 cell: own composite 1/1 vs (A)-with-(C) 2/1; worse taken against the stated rule | IMPRECISE (state, or ask Seat 1) | open |
+| P05B2-C1Q2-07 | S8 J1 cell rests on "U reaches the producer in capped halls"; U silent in capped 100 m cubes (SE ≤ 0.15 dB) | TENSION MISREAD (unmarked †; winner unchanged) | open |
+| P05B2-C1Q2-08 | J2 S7 cell read from conditions not in J2 (should be 1/2; J2 21) | TENSION MISREAD (winner unchanged; prevents a tie) | open |
+| P05B2-C1Q2-09 | L1, L2, L4, L6 | CORRECT | closed |
+| P05B2-C1Q2-10 | L3 stale figures (0.29–1.33 → 0.13–1.33; low-α 0.44–0.50 at 1 024) | IMPRECISE | open |
+| P05B2-C1Q2-11 | L5 / For Maisara: "capped class = synthetic s = 1 layouts"; "realistic halls not affected" (100 m cubes capped, SE 0.09–0.15 dB; C18 is four 20 × 30 × 10 m rooms) | INCONSISTENT: fix before the record goes forward | open |
+| P05B2-C1Q2-12 | Seat 5's margin arithmetic (≈ 22 % + 5 %) already above Seat 3's 20 % trigger; not registered | debt not registered: fix before the record goes forward | open |
+| P05B2-C1Q2-13 | §5 plan list gaps (Seat 6 (a) escalation; (C) forward on any gate failure; research questions of Seats 5 and 7; Seat 1's step-size ruling; phase-10 cross-reference) | correction (/fix-plan) | open |
+| P05B2-C1Q2-14 | 47 final verdict: J1 (Challenge 1 yes, Q2a (A) now, (C) scheduled before the first public release) | SURVIVES WITH CORRECTIONS (winner unchanged under every reading) | open until applied |
+
+
+J1 plan-edit diff check (`docs/review/phase-05b2/52-interrogator-J1-plan-diff-check.md`, 2026-11-10):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-J1FX-01 | AQ10 / AX38 4c J1 conditions (47 §4 (i), 51 §4 item 1, correction 8 (a)/(b)) | CORRECT | closed |
+| P05B2-J1FX-02 | AX41 W_max basis and n\*_max as board answers; G1 closed | CORRECT | closed |
+| P05B2-J1FX-03 | phase-05h §1, §3 D-H1 (margin rule, 20 % trigger, ≈ 27 %, +17 % SE), §4 seam, §5, §9 | CORRECT | closed |
+| P05B2-J1FX-04 | phase-08 scope 10 / AC; phase-11 note to editor; phase-12 re-run under 07c's W_max | CORRECT | closed |
+| P05B2-J1FX-05 | phase-07c faithful to 47 §4 (iii) 1–8 and 51 §4 items 4, 9; size M; labels D-C1–D-C3 | CORRECT | closed |
+| P05B2-J1FX-06 | "W_max below Seat 1's floor at a gated scene → Maisara" already true at (A) (gated cubes VOV 0.47–0.59, C16) | INCONSISTENT: decider defines the trigger before the gate is implemented | open |
+| P05B2-J1FX-07 | phase-12 "hall preset in the capped class reopens J1" against 51 §2 (100 m rooms capped at SE ≤ 0.15 dB) | INCONSISTENT: decider confirms the restatement | open |
+| P05B2-J1FX-08 | phase-05h §2 item 1 lists one trigger, §3 another | IMPRECISE (/fix-plan) | open |
+| P05B2-J1FX-09 | phase-13 hard dependency on 07c against its versioning fallback | INCONSISTENT (/fix-plan) | open |
+| P05B2-J1FX-10 | phase-07c §6 unconditional Phase 12 re-run | CONDITIONS VIOLATED (/fix-plan) | open |
+| P05B2-J1FX-11 | phase-07c §4 "researcher questions before D-C1–D-C3" (plan-editor ordering) | IMPRECISE (/fix-plan) | open |
+| P05B2-J1FX-12 | phase-10 lacks the pointer to 07c; AQ10 stray punctuation | IMPRECISE (/fix-plan) | open |
+
+J1FX-06 and J1FX-07 closed on decider file 53 (`docs/review/phase-05b2/53-decider-J1-trigger-definitions.md`). The first trigger is Seat 1's floor counted with clauses (a)–(d), with the starting state recorded and escalated once. The second is the phase-12 reopening, which applies only after the placement fix fails; capped presets at SE ≤ 0.33 dB are reported only. Items J1FX-08 to -12 are applied by the plan-editor (2026-11-10).
+
+
+Round 2 of the J1 diff check and decision mode on file 53 (`docs/review/phase-05b2/54-interrogator-J1-triggers-round2.md`, 2026-11-10):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-J1FX-13 | Trigger 1 copied word for word into AQ10, AX38 4c, phase-05h §3; phase-05h §2 lists both triggers | CORRECT | closed |
+| P05B2-J1FX-14 | Trigger 2 copied word for word into phase-12; AX41 cross-reference | CORRECT | closed |
+| P05B2-J1FX-15 | 52 items 4–7 applied (phase-13 / 07c dependency with versioning fallback; 07c §6 conditional; 07c §4 ordering note; phase-10 pointer; AQ10 punctuation) | CORRECT | closed (closes J1FX-08…12) |
+| P05B2-J1FX-16 | File 53 Trigger 2 against Seats 9, 6 and 8 | SURVIVES | closed (closes J1FX-07) |
+| P05B2-J1FX-17 | File 53 Trigger 1: quotes faithful; flutter cube met via (a); closed s = 0.3 cubes met via (d) (C15 p95 ≤ 0.28 dB, per-emitter rule) | SURVIVES WITH CORRECTIONS | open |
+| P05B2-J1FX-18 | Gated closed low-α cube's s not pinned; at s = 1 SE 0.44–0.50 dB fails the floor on day one | IMPRECISE (premise): pin in AX38 4c | open |
+| P05B2-J1FX-19 | Clause (d) applied to the gated cubes beyond Seat 1's stated scope (layout 5 under (B)); Seat 1's D-T1.3 2/2 counts the cubes' VOV as a failure | needs Seat 1 confirmation | open |
+| P05B2-J1FX-20 | "Any further rise" without tolerance; "every reasonable placement" undefined | IMPRECISE | open |
+
+J1FX-19 closed: Seat 1 accepts clause (d) at the gated closed 100 m cubes at s = 0.3 (`docs/review/phase-05b2/55-seat1-confirm-clause-d.md`). Its two conditions are that the replicates run the shipping rule as built, on disjoint, pre-registered streams, and that the check is repeated on the C++ build. "The VOV part in the closed cubes" comes off its D-T1.3 failing list. Its 2/2 under (A) stands on layouts 4/5 at s = 1 and the low-α s = 1 cube.
+
+Closure notes from steward round 5 (2026-11-10):
+- P05B2-C1Q2-05…08 and 10…13 are closed. Each is applied in decider file 51 (`51-decider-addendum-J1.md`) and in the plan, commits bf3f5bd and 346ae07.
+- P05B2-C1Q2-14 is closed. J1 survives with its corrections applied (files 51, 53, 54).
+- P05B2-J1FX-17 is closed, with Trigger 1's clause (d) accepted by Seat 1 (file 55).
+- P05B2-J1FX-18 and P05B2-J1FX-20 are carried to phase-05h §3 D-H1 (OPEN premises), AX38 4c and phase-12 ("Hall presets and J1", OPEN), commit 1aa4c4e.
+
+
+Branch-review fixes diff check (`docs/review/phase-05b2/56-interrogator-branch-review-fixes.md`, 2026-11-10):
+
+| id | item | verdict | status |
+|---|---|---|---|
+| P05B2-BR-01 | AX16 decided / implemented in 05h / shipped level still AX16 until 05h `done`; breaks column gains 05h (major 1) | CORRECT | closed |
+| P05B2-BR-02 | report-phase05b session-2 outcome line and generator `SESSION2`; session-1 line marked (major 2) | CORRECT | closed |
+| P05B2-BR-03 | phase-08 scopes 9/10 and criteria conditional on 05h; carried by phase-05h scope 10 and its new §5 criterion (major 4) | CORRECT | closed |
+| P05B2-BR-04 | phase-07c §3: comes forward only after 05h; heaviest-mode gate in phase-05h scope 10 if 08 went first | CORRECT | closed |
+| P05B2-BR-05 | J1 freeze-point rule (AQ10, AX38 4c) unqualified for the 08-first order; 05h scope 10 states only the SE-tolerance branch | IMPRECISE: /fix-plan, Seat 4 / decider to confirm | open |
+| P05B2-BR-06 | phase-05b2 §9 note (minor 4); §6 CLAUDE.md determinism row (minor 1) | CORRECT | closed |
+
+P05B2-BR-05 closed: freeze rule qualified for both orders in AQ10, AX38 4c and phase-05h scope 10 (Seat 4 confirmed, file 57).

@@ -227,7 +227,12 @@ TEST_CASE("hybrid IR length: L_IR = 1.5 T60_max from emission (12 s cap), or the
     CHECK(d.irLength == ir.length());
 }
 
-TEST_CASE("open_field gives no tail: E_b = 0, nothing 50 ms after the direct sound (floor s 0.4 and 0.5)",
+// AX16 consistency check, not physics (ledger OF; phase-05b scope 7). The shipped IR renders no scattered
+// energy before t_mix,e (AX21; B11 not promoted in phase 05b) and E_b = 0 in a room whose other faces absorb
+// everything, so nothing arrives 50 ms after the direct sound. A Lambert-scattering floor would return
+// -23 ... -46 dB per band in that interval (exact integral with heights and AX4 air,
+// tools/acoustics/ground_scatter.py and its test; ledger OF's -23 to -43 dB omits both).
+TEST_CASE("open_field AX16 consistency: E_b = 0, nothing 50 ms after the direct sound (floor s 0.4 and 0.5)",
           "[sim][hybrid]")
 {
     for (const double floorScattering : {0.4, 0.5})
