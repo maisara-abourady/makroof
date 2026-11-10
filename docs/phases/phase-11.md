@@ -1,6 +1,6 @@
 # Phase 11 — Minimal placement UI
 
-Size: **M** · Depends on: 07, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ3, AX2, AX3, AX6, AX7, AX34), PRD "Overview & vision", FR-3D-1 (deferred in full), FR-3D-4, FR-3D-5, FR-3D-8
+Size: **split into 11-1…11-3** · Depends on: 07, 09 · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ3, AX2, AX3, AX6, AX7, AX34), PRD "Overview & vision", FR-3D-1 (deferred in full), FR-3D-4, FR-3D-5, FR-3D-8
 
 ## Goal
 
@@ -17,88 +17,112 @@ PRD's vision. It is **not** the full 3D editor (deferred, B8).
   **AX38**: the diffuse-solve gate and the "settling" state; **AX39**: Seat 7's allowed and forbidden
   wording for accuracy claims.
 
-## Scope
+## Sub-phases
 
-1. `src/plugin/ui/` (JUCE components, message thread only):
-   - **Top view** (x/y plane) and **side view** (y/z plane) of the room, drawn to scale with a metre grid.
-     The listener is a head icon with a facing arrow; L and R emitters are labelled speaker icons.
-   - **Dragging** an icon writes host parameters with proper `beginChangeGesture`/`endChangeGesture`,
-     so DAW automation recording works (FR-3D-8). Positions are clamped to valid space with the same rules
-     as `module3d::SceneModel`. Show the minimum-distance ring around the listener while dragging.
-   - **Room panel:** W/D/H numeric fields with sliders (metres).
-   - **Surfaces panel:** for each of the 6 surfaces, a material dropdown (list from `resources/materials.json`
-     if Phase 12 is done, otherwise a placeholder list of 6 materials defined in `module3d`) and an
-     "Advanced" disclosure with a per-band α table plus scattering, validated live (AQ3 ranges).
-     Material edits aren't host parameters (too many). They're stored in the scene state and count as
-     undoable edits (JUCE `UndoManager`).
-   - **Output panel:** binaural / stereo speakers toggle with one line of explanatory text each
-     ("for headphones" / "for a pair of speakers"), output trim.
-   - **Status strip:** reported latency (ms), CPU estimate, the room's derived T60 at 500 Hz and 1 kHz
-     (from `sim` via the contract: expose `sim::describeScene(const SceneDescription&)` returning summary
-     numbers, so the UI never reaches into sim internals), and a warning badge if state failed to load (Phase 07).
-     The nominal Eyring T60 is not shown as an open field's reverb time (AX38 4c hand-off, Seat 6).
-2. **Model/view separation:** the UI talks only to `module3d::SceneModel` + APVTS through a small
-   `EditorController` that's testable without rendering. The controller is the only place that converts
-   between pixels and metres.
-3. Resizable editor with a fixed aspect ratio, minimum 800×500, HiDPI-correct. Remember the size in state.
-4. Remove the generic editor.
-5. **Room-resize gesture** that keeps absolute listener and emitter positions by rewriting the position
-   parameters (automation of `room_*` still scales them; Phase 07 D2).
-6. **"Output above 0 dB" indicator:** display only, no auto-gain (AX2; Phase 07 D4).
-7. Show the **AX34 unsupported-rate warning flag** with the supported rates listed (Phase 07 D8).
-8. **"Approximate" note** (AX44, phase 05b): shown from `TailMatch.approximate` on the **settled** scene
-   only, in the info view, never mid-drag; wording by Seats 6 and 7 (within AX39's wording rules). Text
-   (Seat 6 (i)): both-near branch: no ±x from the achieved SE; either the measured replicate p95 of its
-   case class from the phase-05h C++ reported set, or qualitative text ("level unreliable with source and
-   listener this close to surfaces; move either about 0.7 m away"); capped branch: ±x from the achieved SE
-   only for classes whose reported set shows SE ≥ the replicate SD, otherwise the class p95 or
-   qualitative text. When U is raised on an emitter the user did not edit, the note names the scene, not
-   that emitter, as the cause. **U′** (cap hit OR both-near, Seat 6 (iii)) appears only as a labelled
-   diagnostic tier in an advanced view. **U's note reaches the producer's editor, not only the
-   diagnostics** (Seat 8's later 1 depends on it; decider file 51 §1, §4 item 6).
-9. **"Settling" state** (AX38 (iii)): shown on every instance waiting at the diffuse-solve gate, project
-   load included.
+Status: the umbrella is `done` when every sub-phase is. A dependency on phase 11 means all of its sub-phases unless a
+sub-phase is named.
+
+| id | title | lead seat | size | depends on | ships | owns |
+|---|---|---|---|---|---|---|
+| [11-1](phase-11-1.md) | Editor shell, output panel and status readouts | Seat 5 (Deadline keeper) | M | 07, 09 | the custom editor replaces the generic one (resizable, fixed aspect, ≥ 800×500, HiDPI, size in state); output panel; status strip; "output above 0 dB" indicator; AX34 rate warning; message-thread discipline asserted | A4, A5, A6, A7 |
+| [11-2](phase-11-2.md) | Placement canvas: views, drags, room size | Seat 6 (Canvas designer) | M | 11-1 | `EditorController`; top and side views; drags with gestures, clamping and the minimum-distance ring; room panel; room-resize gesture | A1 |
+| [11-3](phase-11-3.md) | Surfaces panel and engine-state notes | Seat 6 (Canvas designer) | M | 11-2 | surfaces panel with live-validated Advanced α/scattering and undoable material edits; the "approximate" note U (and U′); the "settling" state | A2, A3 |
+
+Order 11-1 → 11-2 → 11-3 (D-PS3, `docs/review/phase-split/3-decider-decision.md`; stands in
+`5-decider-decision-r2.md`).
+
+## Scope shared by every sub-phase
+
+1. `src/plugin/ui/` (JUCE components, message thread only): (phase-11 scope 1, lead-in; also in 11-1; its bullets are
+   in 11-1, 11-2 and 11-3, see below)
+
+Shared rule (map-11 §1): every sub-phase keeps A4–A7 green once 11-1 has made them pass (main stays green; a later
+sub-phase that adds components renders inside the A4 snapshot and the A6 pluginval run), and every sub-phase's UI code
+stays on the message thread (scope 1 lead-in, C1b).
 
 ## Out of scope
 
 3D viewport, scene import, objects inside the room, dispersion settings, presets browser (Phase 12 adds it).
 
-## Acceptance criteria — automated
-
-- [ ] `EditorController` tests (headless): a simulated drag from pixel A to B sets the expected parameter
-      values (±1e-4 normalized) in top and side views; clamping matches `SceneModel`; gestures begin and
-      end exactly once per drag.
-- [ ] Editing α to an out-of-range value is rejected with the validator's error message, and the scene
-      stays valid.
-- [ ] Undo/redo of material edits restores identical scene JSON.
-- [ ] **Snapshot test:** the editor renders to an offscreen `juce::Image` at 800×500, 1200×750 and
-      1600×1000 without assertions, and the image isn't blank. (Pixel-exact comparison isn't required
-      because fonts differ across OSes.)
-- [ ] A thread-assertion test: any scene mutation off the message thread trips a debug assertion (test
-      it with a deliberate violation in a death-test-style subprocess or a mocked assert handler).
-- [ ] pluginval strictness 10 with editor tests enabled passes on 3 OSes (Linux under `xvfb-run`).
-- [ ] State round trip still bit-identical; editor size is restored.
-
 ## Listening / use checklist (Maisara)
 
-In Logic, Ableton/Reaper (macOS) and a Windows DAW:
-- [ ] Open the editor: the room, listener and two speakers are visible and make sense without explanation.
-- [ ] Drag the speakers while the track plays: the sound follows smoothly.
-- [ ] Arm automation write, drag the listener around, and play back: the same movement plays.
-- [ ] Change the floor to carpet and the walls to concrete: audible change; undo returns the previous sound.
-- [ ] Resize the window; check it on a HiDPI/Retina screen and at Windows 150% scaling.
-- [ ] Save, reopen the project: same layout, same sound, same window size.
-- [ ] Write down anything confusing. This is the first time the product's *user* side is exercised.
+In Logic, Ableton/Reaper (macOS) and a Windows DAW: (phase-11 L-intro; applies to every sub-phase's items)
+- [ ] Write down anything confusing. This is the first time the product's *user* side is exercised. (phase-11 L7;
+      also in 11-3)
 
 ## Contractor review focus
 
-Gesture handling with each host's automation modes, message-thread discipline, pixel↔metre mapping
-accuracy, and that no UI code includes `src/sim` headers except via `sim::describeScene`.
+Message-thread discipline (phase-11 C1b; also in 11-1). The other clauses are in 11-1 (C1d) and 11-2 (C1a, C1c).
 
 ## Risks
 
-Scope creep toward a 3D editor; host-specific DPI and resizing quirks on Windows.
+Scope creep toward a 3D editor (phase-11 R1; also in 11-2). Host-specific DPI and resizing quirks on Windows are in
+11-1 (R2).
 
 ## Definition of done
 
-All automated criteria green; status row 11 `done`; use checklist in the PR.
+All automated criteria green; status row 11 `done`; use checklist in the PR. (phase-11 D1–D3: each sub-phase for its
+own criteria, its own status row and its own checklist items; row 11 is `done` when 11-1…11-3 are.)
+
+## Where the original items went
+
+Labels as in `docs/review/phase-split/map-11.md`. "Scope n" is the original scope numbering (scope 1's bullets are 1a
+top/side views, 1b dragging, 1c room panel, 1d surfaces panel, 1e output panel, 1f status strip); A1–A7 are the
+automated criteria, L1–L7 the use checklist items, C1a–C1d the contractor-focus clauses and R1–R2 the risks, in file
+order.
+
+| original item | goes to |
+|---|---|
+| Header (size, depends on 07, 09, read-first list) | umbrella; each sub-phase's header carries its share (shared) |
+| Goal | umbrella; each sub-phase states its share (shared) |
+| Assumptions: AX7, AX3 | umbrella + 11-2 (shared) |
+| Assumptions: AQ3 | umbrella + 11-3 (shared) |
+| Assumptions: AX44, AX38, AX39 | umbrella + 11-3 (shared; AX38's 4c hand-off inside scope 1f is applied in 11-1) |
+| scope 1 lead-in (`src/plugin/ui/`, message thread only) | umbrella + 11-1 (shared) |
+| scope 1a top and side views | 11-2 |
+| scope 1b dragging | 11-2 |
+| scope 1c room panel | 11-2 |
+| scope 1d surfaces panel | 11-3 |
+| scope 1e output panel | 11-1 |
+| scope 1f status strip | 11-1 |
+| scope 2 model/view separation, `EditorController` | 11-2 |
+| scope 3 resizable editor | 11-1 |
+| scope 4 remove the generic editor | 11-1 |
+| scope 5 room-resize gesture | 11-2 |
+| scope 6 "output above 0 dB" indicator | 11-1 |
+| scope 7 AX34 unsupported-rate warning | 11-1 |
+| scope 8 "approximate" note | 11-3 |
+| scope 9 "settling" state | 11-3 |
+| Out of scope | umbrella (governs all three) |
+| A1 `EditorController` tests | 11-2 |
+| A2 out-of-range α rejected | 11-3 |
+| A3 undo/redo of material edits | 11-3 |
+| A4 snapshot test | 11-1 (kept green by 11-2, 11-3) |
+| A5 thread-assertion test | 11-1 (kept green by 11-2, 11-3) |
+| A6 pluginval strictness 10 with editor tests | 11-1 (kept green by 11-2, 11-3) |
+| A7 state round trip, editor size restored | 11-1 (kept green by 11-2, 11-3) |
+| L-intro (hosts) | umbrella (applies to every sub-phase's items) |
+| L1 open the editor | 11-2 |
+| L2 drag the speakers while playing | 11-2 |
+| L3 automation write of a listener drag | 11-2 |
+| L4 carpet / concrete, undo | 11-3 |
+| L5 resize, HiDPI, Windows 150 % | 11-1 |
+| L6 save, reopen | 11-3 |
+| L7 write down anything confusing | umbrella + 11-3 (shared) |
+| C1a gesture handling with automation modes | 11-2 |
+| C1b message-thread discipline | umbrella + 11-1 (shared) |
+| C1c pixel↔metre mapping accuracy | 11-2 |
+| C1d no `src/sim` headers except `sim::describeScene` | 11-1 |
+| R1 scope creep toward a 3D editor | umbrella + 11-2 (shared) |
+| R2 Windows DPI and resizing quirks | 11-1 |
+| D1 all automated criteria green | each sub-phase for its own; umbrella when all are (shared) |
+| D2 status row 11 `done` | each sub-phase row; row 11 when 11-1…11-3 are (shared) |
+| D3 use checklist in the PR | each sub-phase PR carries its items (shared) |
+
+## Notes from the split
+
+- FM-1 (`docs/review/phase-split/5-decider-decision-r2.md`, Decided for Maisara, open to her veto): Phase 11 owns
+  criteria under two seats' rows that each deserve a session (Seat 5: A4–A7; Seat 6: A1–A3). Split shell-first under
+  D-PS3, canvas region reserved, layout provisional until 11-2.
+- D-PS3 (Seat 6 conditions (i) and (ii)): applied in 11-1 (provisional layout, canvas region reserved as the largest
+  region; references beside scope 1e) and recorded in 11-2 (layout confirmed there).
