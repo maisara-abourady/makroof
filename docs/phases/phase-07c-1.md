@@ -51,7 +51,7 @@ ordering, not the decider's) (phase-07c §4 note):
 - which hosts do not signal offline rendering reliably (Seat 5); (phase-07c §4 R2)
 - host hang dialogs and their timeouts in Logic, Live, Cubase and Bitwig (Seat 7). (phase-07c §4 R3)
 
-### Conditions (decider file 47 §4 (iii))
+### Conditions (conditions 2, 4–7: decider file 47 §4 (iii); condition 9: D-H1 (v) / H1-F2, decider file 19; conditions 10 and 11: D-H3 (e) / H3-F5, decider files 20, 25, 27)
 
 The diffuse solve moves off the synchronous restore, prepare and `reset()` (phase-07c §5 lead sentence, umbrella).
 

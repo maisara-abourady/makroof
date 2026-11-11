@@ -57,7 +57,7 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
   not chosen. **W_max re-derivation (condition 3) has a prerequisite:** the (C) W_max is pinned only after the AX38 4c
   record "offline-bounce time of a 3-minute room-size automation at 100 m, with its ratio to real time" is in this
   phase's packet (Seat 8; D-H1 (iv), AX41).
-- Conditions 2, 4–7 and the decisions D-C1–D-C3: [phase-07c-1](phase-07c-1.md).
+- Conditions 2, 4–7 and 9–11 and the decisions D-C1–D-C3: [phase-07c-1](phase-07c-1.md).
 
 ## Acceptance criteria — automated
 

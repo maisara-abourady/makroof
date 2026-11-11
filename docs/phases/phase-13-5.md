@@ -108,7 +108,7 @@ The umbrella's risks (phase-13 K1–K3) apply; they are read by 13-1 (D-PS4 inst
 ## Notes from the split
 
 - Remainder (G3): `13-5b` (notarization). (D-PS4 Q1)
-- Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (D-PS4 instruction
+- Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (Five since R5, 2026-11-11.) (D-PS4 instruction
   5; final corrections list item 3)
 - The installer packages both macOS slices (13-3); the beta decision lists every recorded deficit, including AQ10
   misses from 13-1 and 13-2 and the robustness results from 13-4; the compatibility notes on Bitwig use 13-4's

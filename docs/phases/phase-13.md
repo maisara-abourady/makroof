@@ -96,7 +96,7 @@ definition-of-done clauses. "phase-13 scope n" = Sn.
 3. If `13-1b` changes rebuild time or diffuse-solve time, 13-2's i₀ sentence, its N_cap rule and S13's W_max / n*_max
    re-check re-run before 13-3's records are taken. (instruction 3, final)
 4. K1, K2, K3 "umbrella (shared)", read by 13-1; risk text verbatim. (instruction 4)
-5. Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (instruction 5)
+5. Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (Five since R5, 2026-11-11.) (instruction 5)
 6. S13's 'release machines', in 13-2, and S9, in 13-3, need Apple-silicon hardware; Maisara provides it (follow-up).
    (instruction 6, final)
 7. Remainders (G3): `13-1b` (optimisation, non-uniform partitioning, S9 remedy); `13-5b` (notarization). (Q1)

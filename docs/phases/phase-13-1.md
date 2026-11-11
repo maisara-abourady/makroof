@@ -104,7 +104,7 @@ Apple developer account and notarization logistics; JUCE licence tier cost at la
 - K1, K2, K3 "umbrella (shared)", read by 13-1; risk text verbatim. (D-PS4 instruction 4) The lead time decides when
   Maisara starts enrolment (a person's action), a follow-up for 13-1's session. (`3-decider-decision.md`, K1–K3
   paragraph)
-- Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (D-PS4 instruction
+- Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (Five since R5, 2026-11-11.) (D-PS4 instruction
   5; final corrections list item 3)
 - S10 in 13-1 (13-c2, NOT A DECISION, resolution (a): convening round).
 
