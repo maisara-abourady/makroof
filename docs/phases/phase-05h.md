@@ -378,8 +378,9 @@ after seeing the gate's result.
       on macOS (recorded 33.40 s; CI run 42909003931 37.37 s, median 2 106 ms pinned; closes at phase-07c
       condition 9 / 07d, or at Phase 13's release-machine re-check if the runner is the cause); and on Windows
       (recorded 36.73 s on CI run 42942694523, median 2 589 ms pinned; strict 29.04 / 29.50 / 28.57 s on the
-      three earlier runs; listed under (d); closes with the macOS entry); medians re-baselined from CI run
-      42909003931 (CHANGELOG entry of the baselines). No OS/scene is unasserted. (c) A listed entry that
+      three earlier runs; listed under (d); closes with the macOS entry); the Linux and macOS medians re-baselined
+      from CI run 42909003931, the Windows median from run 42942694523 (CHANGELOG entries of the baselines). No
+      OS/scene is unasserted. (c) A listed entry that
       passes 30 s is a job-log warning (printed by the records test; nothing writes `$GITHUB_STEP_SUMMARY`)
       and leaves the register through `/fix-plan` before the next phase is `done`. (d) A new failure at an
       unlisted OS/scene, or a listed entry breaking its growth bound, is a defect: no re-run, no W_max cut
