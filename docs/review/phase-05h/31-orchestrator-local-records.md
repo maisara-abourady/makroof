@@ -561,3 +561,20 @@ run 9 ci ok wall clock: 49.2 min
    8.9 min  python tools (windows)
    7.2 min  python tools (macos)
 ```
+
+## The RG-1 gate form, local run (Release, this 4-core Linux box while other work ran; 2026-11-11; `records_rg1.log`)
+
+```
+05h-records work pin cube100_flutter_fallback   unit decay 377517 samples (pinned 377517); synthesis FFT size 524288 (pinned 524288)
+05h-records solve cube100_flutter_fallback   shipping rule, median of 5: 102.8 ms; 9.01 ns per image evaluation over W_pilot + W_final 11403548 (print, RG-1)
+05h-records restore gate cube100_flutter_fallback   Linux: strict (recorded 10.59 s <= 29.1 s): 14 x worst 14.98 s <= 30 s
+05h-records work pin cube100_lowalpha0.05_s0.3  unit decay 1152000 samples (pinned 1152000); synthesis FFT size 2097152 (pinned 2097152)
+05h-records solve cube100_lowalpha0.05_s0.3  shipping rule, median of 5: 63.7 ms; 5.27 ns per image evaluation over W_pilot + W_final 12089950 (print, RG-1)
+05h-records restore gate cube100_lowalpha0.05_s0.3  Linux: LISTED defect (recorded 14 x worst 30.27 s); 14 x worst now 49.36 s; WARNING OVER30S (printed, not asserted on hosted runners); growth bound asserted in-window after the scene loop (RG-1)
+05h-records restore gate cube100_lowalpha0.05_s1    Linux: reported set, not gated
+05h-records GATE os=Linux scene=cube100_flutter_fallback x14worst=14.98 median=997 fullRebuildMedian=1045 solveMedianMs=102.8 nsPerEval=9.01 status=asserted(30s) flutterRef=701 flutterDev=+42.2%
+05h-records GATE os=Linux scene=cube100_lowalpha0.05_s0.3 ratio=3.206 ratioWarnAt=3.660 solveMedianMs=63.7 nsPerEval=5.27 x14worst=49.36 median=3196 growthBound=2275 fullRebuildMedian=3067 status=not-evaluated(runner) warnings=GROWTH OVER30S 
+All tests passed (33 assertions in 2 test cases)
+```
+
+On a machine 42 % slower than the flutter reference the form behaves as decided: the work pins and the flutter strict 30 s line are asserted (14.98 s), the low-α entry's growth bound is `not-evaluated(runner)` with its GROWTH and OVER30S warnings printed, the ratio 3.21 is under the 3.66 warning line, the solve medians (63.7 / 102.8 ms; 5.27 / 9.01 ns per evaluation over W_pilot + W_final of both emitters) are printed; 33 assertions passed. (The probe `[probe-restore-split]` now prints the filterbank half-length 15 697 and the synthesis FFT sizes 2 097 152 / 524 288 that the work pins hold.)
