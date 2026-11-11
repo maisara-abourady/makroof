@@ -141,7 +141,9 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()`.
    does not fit here, a `phase-07d.md` of size S–M is created (CLAUDE.md split rule) and the register's
    macOS 'closes at' names 07d. Alternatives recorded, not chosen: a cheaper generator (output-changing; a
    golden round; AQ10's "not optimised before Phase 13" to be read by the board); caching the constructor
-   spectra per (fs, length) (bit-identical, ≈ 4 of 14 FFTs, [Hyp] 20–25 %, not enough alone).
+   spectra per (fs, length) (bit-identical, ≈ 4 of 14 FFTs, [Hyp] 20–25 %, not enough alone). Its packet
+   repeats the file 7 split timer (`[probe-restore-split]`, both gated scenes) on one named local box before
+   sizing the interim rules (RG-1, Seat 5 (vi)).
 10. **The `reset()` half** (D-H3 (e) / H3-F5; decider files 20 and 25 "DECISION D-H3 (e)", file 27;
     interrogator files 22, 26, 28; AX38 (i)'s register entry and remedy): **the first step of this phase,
     with its own TSan `[pipeline]` round.** Design = Seat 3's (e-k) + Seat 2's (e-e): `reset()` and

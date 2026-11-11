@@ -363,31 +363,46 @@ after seeing the gate's result.
       this phase's AX38 (iv) records if it fits, else phase-05i (scope 2) with the PR saying which. The
       AX38 (iv) records not produced here go to phase-05i (scope 2) the same way.
 - [ ] **Blocking, in the register form** (AQ10 amended, AX38 4c; D-H1 (v) W-x′ and H1-F2, decider file 19,
-      interrogator file 21): the synchronous state restore at the two gated 100 m, 96 kHz builds (the
-      AX22-fallback (flutter) scene and `cube100_lowalpha0.05_s0.3`), on the Release build on Linux, macOS
-      and Windows, at the pinned W_max 3.05 M (no margin taken from W_max), printing per OS and scene the
-      min / median / worst of 10 restores, the worst-of-10 solve and 14 × (worst restore + worst solve).
-      (a) Where the recorded value at the pinned W_max is ≤ 29.1 s, 14 × (worst-of-10 restore + worst-of-10
-      solve) ≤ 30 s is asserted strictly (the flutter cube on every OS, 7.6–10.6 s; the Windows cube was strict at
-      29.04 s until CI run 42942694523 listed it, (b)).
-      (b) Every OS/scene recorded > 29.1 s is listed in AX38 4c's defect register (recorded value, median,
-      remedy, closing phase) and asserted through the growth bound, median-of-10 restore ≤ 1.10 × the
-      recorded median: the cube on Linux (recorded 30.27 s; CI run 42909003931 29.62 s, median 2 043 ms
-      pinned; passed 30 s on that run, the (c) warning printed; 30.18 s, growth bound met, on the final run
-      42924781618, so it stays listed and (c)'s removal is phase-05i scope 3's call; closes at phase-07c) and
-      on macOS (recorded 33.40 s; CI run 42909003931 37.37 s, median 2 106 ms pinned; closes at phase-07c
-      condition 9 / 07d, or at Phase 13's release-machine re-check if the runner is the cause); and on Windows
-      (recorded 36.73 s on CI run 42942694523, median 2 589 ms pinned; strict 29.04 / 29.50 / 28.57 s on the
-      three earlier runs; listed under (d); closes with the macOS entry); the Linux and macOS medians re-baselined
-      from CI run 42909003931, the Windows median from run 42942694523 (CHANGELOG entries of the baselines). No
-      OS/scene is unasserted. (c) A listed entry that
-      passes 30 s is a job-log warning (printed by the records test; nothing writes `$GITHUB_STEP_SUMMARY`)
-      and leaves the register through `/fix-plan` before the next phase is `done`. (d) A new failure at an
-      unlisted OS/scene, or a listed entry breaking its growth bound, is a defect: no re-run, no W_max cut
-      after pinning, no room-range narrowing, no formulation seam; it enters the register with its remedy,
-      phase-07c forward and then phase-07c §5 condition 9 (the unit-decay synthesis off the synchronous
-      restore). This phase may be set `done` with the register entries recorded in §0 row 05h; the macOS and
-      Windows records go to Maisara in the PR (section 2 item 2).
+      interrogator file 21; RG-1, decider files 64/66/68/70, interrogator files 65/67/69/71): the synchronous
+      state restore at the two gated 100 m, 96 kHz builds (the AX22-fallback (flutter) scene and
+      `cube100_lowalpha0.05_s0.3`), on the Release build on Linux, macOS and Windows, at the pinned W_max 3.05
+      M (no margin taken from W_max), printing per OS and scene the min / median / worst of 10 restores, the
+      worst-of-10 solve and 14 × (worst restore + worst solve). (a)–(b) (RG-1, 2026-11-11): On GitHub-hosted
+      runners the restore gate asserts what is runner-independent and prints what is not. **Asserted every
+      run:** the exact W_pilot / W_final pins and realised work ≤ 1.02 (AX41); per gated scene the unit-decay
+      length and the FFT size n (`Fft::nextPowerOfTwo(length + 2·maxHalfLength)`), exact; 14 × worst-of-10
+      restore ≤ 30 s at the flutter scene on every OS; and, on Linux and Windows only, median-of-10 low-α
+      restore ≤ 1.10 × the pinned baseline median when the run's flutter median is within ±5 % of its pinned
+      reference, else `NOT EVALUATED (runner)`. **Printed with WARNING, never asserted on hosted runners:**
+      the low-α/flutter restore ratio above 1.20 × its pinned ratio; the per-scene solve median and its ns per
+      evaluation (a bound proposed through `/fix-plan` once ≥ 3 runs give its spread); 14 × worst above 30 s;
+      the absolute median above 1.10 × baseline where not asserted (macOS until Phase 13); the §5 (c) 'passes
+      30 s' line. On macOS two consecutive runs with the low-α median above 2 172 ms (1.15 × the mean of the
+      four measured macOS medians, rounded down; re-derived at the 07c re-pin) are a defect under (d), remedy
+      named, through `/fix-plan`; the 30 s warning on a listed entry is its recorded state until phase-07c,
+      not a trigger; the printed growth line uses the in-window baseline 1 817 ms. The register entries (Linux
+      30.27 s, macOS 33.40 s, Windows 36.73 s; remedy phase-07c conditions 9–10; closing phases unchanged)
+      stand. One machine-readable line per OS/scene per run; §0 row 05h carries the latest figures and the
+      counts; a WARNING run is named in the PR. Baselines: flutter reference and ratio the mean of the
+      measured runs per OS (Linux 701 ms / 3.05, Windows 737 / 2.83: runs 42909003931, 42924781618,
+      42935789745, 42949252041, Windows also 42942694523; macOS 484 / 3.75: runs 42924781618, 42935789745,
+      42949252041); baseline median the mean of in-window runs (Linux 2 068, Windows 2 028; macOS 1 817, print
+      only); never a red or out-of-window run; re-pinned only when the restore path changes, one run
+      PROVISIONAL, ≥ 3 runs with a CHANGELOG reason; the ±5 % window and the solve bound re-derived from ≥ 3
+      in-window runs at the 07c re-pin. A broken assertion is a defect under (d): no re-run, no W_max cut, no
+      range change, no seam. `ci.yml` runs pluginval and auval `if: always()`. Phase 13 re-enforces the strict
+      30 s and the 1.10 growth bound on all three OSes on the release machines (AX41); phase-07c condition 9's
+      packet repeats the file 7 split timer on one named local box before sizing its interim rules. (c) A
+      listed entry whose printed 14 × worst passes 30 s is a job-log warning (the PASSES30S warning printed by
+      the records test; nothing writes `$GITHUB_STEP_SUMMARY`) and leaves the register through `/fix-plan`
+      before the next phase is `done`; its register text closes; the low-α scene's hosted-runner assertion
+      stays in this form (in-window on Linux and Windows, printed on macOS) until Phase 13; the strict 30 s
+      branch applies to the flutter scene, and to the low-α scene only on the release machines. (d) A broken
+      assertion, or the macOS trigger, is a defect: no re-run, no W_max cut, no range change, no seam; it
+      enters the register with its remedy through `/fix-plan` — a timing entry: phase-07c conditions 9–10; a
+      work-pin entry: the code change named, re-pinned only with a CHANGELOG reason. This phase may be set
+      `done` with the register entries recorded in §0 row 05h; the macOS and Windows records go to Maisara in
+      the PR (section 2 item 2).
 - [ ] The solve seam: restore, prepare and `reset()` call the diffuse solve through one function (scope 2).
 - [ ] Only if Phase 08 went first (scope 10): binaural goldens re-rendered, binaural W1/W2 per mode with
       the diffuse share and the binaural AX38 (iv) records recorded, phase-08 item 8 re-run, and the

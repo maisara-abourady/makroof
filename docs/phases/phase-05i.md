@@ -74,17 +74,24 @@ case-band is gated through `update_goldens.py --extend` with its reason, never b
    of 10, three OSes, printed once as a record, never a CHECK; H1-F1's convention stands on the condition
    the gate measures (builder idle) and is not read as met for this case; a record above 2.143 s is a
    finding under the register's form, remedied by phase-07c conditions 9 and 10.
-3. **Restore-gate register (AX38 4c, D-H1 (v)):** the growth-bound baselines were pinned in phase 05h from CI
-   run 42909003931 (Linux 2 043 ms, macOS 2 106 ms; CHANGELOG reason) and the register's medians re-baselined.
-   What 05i carries: the Linux listed entry read 29.62 s (passes 30 s: the §5 (c) warning) on run
-   42909003931 and 30.18 s (growth bound met) on the final 05h run 42924781618; if 05i's first run passes 30 s
-   again, the entry leaves the register through `/fix-plan` before 05i is `done` (AX38 4c's register text and
-   `kGateRegister`'s Linux row to the strict form), else it stays listed and the run is recorded; the macOS
-   entry (37.37 s, median 2 106 ms) stays listed with its remedy. The Windows entry, listed from CI run
-   42942694523 (36.73 s, median 2 589 ms; strict 28.6–29.5 s on the three earlier runs), is read the same way:
-   if 05i's runs read it under 30 s again, its removal under (c) is 05i's call; the runner's speed is the
-   recorded likely cause, to be shown at Phase 13 (file 53). The 29.1 s strict / listed rule unchanged; no
-   W_max cut, no range change, no seam.
+3. **Restore-gate register (AX38 4c, D-H1 (v), RG-F1):** the gate runs in the RG-F1 form (phase-05h §5
+   'Blocking'): work pins and the flutter 30 s asserted; the low-α absolute median ≤ 1.10 × baseline asserted
+   on Linux and Windows only, inside a ±5 % flutter window; everything else printed with WARNING. Baselines
+   are means, not one-run values: flutter reference 701 / 737 / 484 ms, ratio 3.05 / 2.83 / 3.75, in-window
+   median 2 068 / 2 028 / 1 817 ms (Linux / Windows / macOS; runs named in AX38 4c and the CHANGELOG). What
+   05i carries: (i) the §0 counts per OS (asserted / not evaluated / WARNING runs) and the GATE lines of every
+   run; (ii) a listed entry whose printed 14 × worst passes 30 s on 05i's runs leaves the register through
+   `/fix-plan` before 05i is `done` (§5 (c)); its register text closes; the low-α scene's hosted-runner
+   assertion stays in this form (in-window on Linux and Windows, printed on macOS) until Phase 13; the strict
+   30 s branch applies to the flutter scene, and to the low-α scene only on the release machines; otherwise it
+   stays listed and the run is recorded; the Linux (30.27 s), macOS (33.40 s) and Windows (36.73 s) entries
+   stay listed with the remedy phase-07c conditions 9–10; (iii) two consecutive macOS runs with the low-α
+   median above 2 172 ms are a (d) defect, remedy named, through `/fix-plan` (the trigger re-derived at the
+   07c re-pin); (iv) the per-scene solve median accrues per run; after ≥ 3 runs the orchestrator proposes its
+   bound k from the spread through `/fix-plan`; (v) the baselines, the ±5 % window and k are re-derived from ≥
+   3 in-window runs at the 07c re-pin (one run PROVISIONAL, printed not asserted); never a red or
+   out-of-window run as a baseline. The runner's speed remains the recorded likely cause of the listed
+   entries, to be shown at Phase 13 (AX41).
 4. **Phase-05h §2 items 2 and 3 on the CI records**: answered for Maisara in phase 05h on CI run
    42909003931 (decider files 33/36, interrogator files 34/37, Seat 7 file 35): findings F-a (the contended
    restore of the reported-set 100 m cube on Linux, worst 4.079 s of 3) and F-b (multi-instance load and

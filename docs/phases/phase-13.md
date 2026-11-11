@@ -18,6 +18,10 @@ The session raises each item in its **first message** and again before the beta 
 4. **Phase 07c not landed (conditional).** If the asynchronous diffuse solve (phase-07c) would land after
    the first release without the estimator parameters versioned in saved state, Seat 7's condition fails
    and the item returns to Maisara (decider file 47 §4, strongest objection).
+5. **Release machines for the AX38 4c strict re-check (RG-1).** One macOS and one Windows machine bought
+   once (no standing runner; Seat 7 file 60: larger hosted runners ≈ €100–130/month and still shared VMs);
+   on them the strict 30 s and the 1.10 growth bound are asserted on all three OSes (Linux on the dev box)
+   and the register entries close or the absolute CHECK returns on named hardware.
 
 ## Goal
 
@@ -120,7 +124,7 @@ subscriptions are deliberately not in v1; see BUILD_PLAN F9 and B1.)
     forward as a standalone tooling change before Phase 13.
 13. **Diffuse-estimator work limits and the restore (AX41, AQ10 amended 2026-11-10, phase 05b):**
     re-check W_max (provisional 3.05 M image evaluations per emitter, sized to pluginval's restore
-    watchdog less D-H1's margin; re-derived once under phase-07c; board answer, decider files 43, 47, 51) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines; any change is
+    watchdog less D-H1's margin; re-derived once under phase-07c; board answer, decider files 43, 47, 51) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines, together with the AX38 4c strict 30 s and growth bound on all three OSes (the figures printed by every 05h+ CI run; RG-1); any change to W_max or n\*_max is
     an output change (golden round, §6 row) and must be fixed before the first release. Q2a (C), moving the
     diffuse solve off the synchronous restore, prepare and `reset()`, is its own phase,
     [`phase-07c.md`](phase-07c.md) (board answer, decider files 47 §4 (iii), 51 §4 items 4 and 8): **it is a
