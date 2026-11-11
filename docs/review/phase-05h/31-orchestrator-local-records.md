@@ -514,3 +514,28 @@ All tests passed (14141 assertions in 1 test case)
 ```
 
 Six classes: the BRAS pairs evaluated at 500 Hz–2 kHz (mean +0.110…+0.117 %, SE_prop 0.028–0.029 %, 30 cases); the near-wall class evaluated in all eight bands (SE_prop 0.072–0.078 %, mean ℓ_ref 0.16–0.24 %; means −0.14…−0.22 %; no heterogeneity label: |mean| + 3·SE_emp ≤ 0.70 %); reference and absorbing as before; small "reference pending"; the 100 m class the tracer line; "pooled over 4 of 6 classes". 14141 assertions passed, 410 / 560 and 72 / 72 unchanged.
+
+## CI run 42935789745 (2026-11-11, on b8b3c6d: the review-39 test forms; `ci ok` green on Linux, macOS, Windows) and nightly 42935793376 (green)
+
+Jobs `build (linux)` 130245491714, `build (macos)` 130245491902, `build (windows)` 130245491738; `python tools` 130245491769 / 130245491771 / 130245491821. The head after it (e71bb88 and the prose commits) has the same CI fingerprint. Debug ctest 223 / 223 on each OS. Release benchmark step on each OS: `agree-full gated: 410 of 560 … 72 of 72`, 0 failures; the AX46 six-class lines identical on the three OSes (near-wall evaluated in all eight bands, SE_prop 0.072–0.078 %; BRAS +0.110…+0.117 % at 500 Hz–2 kHz; "pooled over 4 of 6 classes"; no heterogeneity label). The open_field check at the validation N 2^23 passes on the three OSes with identical numbers (4–8 kHz: −0.019 / −0.020 dB and +0.005 dB, SE 0.073 / 0.076 dB, z −0.27 / +0.06; s 0.4 = s 0.5). pluginval strictness 10 on three OSes and auval green; artifacts as in run 7 (listening-pack 236 MB).
+
+**QA's 10 min trigger fired on Linux:** the two 2^23 renders took 386 + 386 s = 12.9 min on the Linux runner (macOS 227 + 246 s = 7.9 min; Windows 265 + 265 s = 8.8 min; from the job logs' timestamps); the python jobs went from 10.5 / 10.7 / 10.1 min (run 7) to 22.1 / 16.6 / 16.6 min. Returned to the board with Seat 5 convened (file 47).
+
+Restore gate (`kGateRegister`) and the (iv) 8-instance line, run 8:
+
+```
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1586 median 1666 worst 1736 ms; 14 x worst 24.31 s (30 s)
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz contended (another pipeline solving the same room): min 1706 median 1715 worst 1757 ms (3 runs)
+05h-records (iv) cube100_lowalpha0.05_s0.3   96000 Hz, 8 instances: load until the last is audible 16535 ms; staleness when rebuilding together min 1653 median 7687 max 14
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1768 median 1887 worst 2265 ms; 14 x worst 31.71 s (30 s)
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz contended (another pipeline solving the same room): min 1890 median 1934 worst 2051 ms (3 runs)
+05h-records (iv) cube100_lowalpha0.05_s0.3   96000 Hz, 8 instances: load until the last is audible 19139 ms; staleness when rebuilding together min 1928 median 8114 max 14
+05h-records (iv) cube100_lowalpha0.05_s0.3   96000 Hz, 8 instances: load until the last is audible 20187 ms; staleness when rebuilding together min 2029 median 8853 max 15
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1898 median 1926 worst 2041 ms; 14 x worst 28.57 s (30 s)
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz contended (another pipeline solving the same room): min 1798 median 1850 worst 1870 ms (3 runs)
+05h-records restore gate cube100_lowalpha0.05_s0.3  Linux: LISTED defect (recorded 14 x worst 30.27 s); 14 x worst now 24.31 s; growth bound median 1666 <= 2247 ms; WARNING: this entry now passes 30 s, remove it through /fix-plan
+05h-records restore gate cube100_lowalpha0.05_s0.3  macOS: LISTED defect (recorded 14 x worst 33.40 s); 14 x worst now 31.71 s; growth bound median 1887 <= 2317 ms
+05h-records restore gate cube100_lowalpha0.05_s0.3  Windows: strict (recorded 29.04 s <= 29.1 s): 14 x worst 28.57 s <= 30 s
+```
+
+The Linux listed entry passed 30 s again on this run (24.31 s; 29.62 / 30.18 / 24.31 s over the three runs): the (c) warning printed; its removal stays phase-05i scope 3's call. The contended restore shows no outlier above 3 s on this run.
