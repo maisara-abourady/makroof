@@ -1018,6 +1018,20 @@ GateSplit measureGateWait(plugin::DiffuseSolveGate& gate, Call&& call)
     std::vector<Sample> samples;
     samples.reserve(1 << 16);
     std::atomic<bool> running{true}, started{false};
+    // Premise (printed with the record): queue(class) counts that class's waiters process-wide, so it is this
+    // call's wait only while no other pipeline makes Synchronous or Offline entries (true in record (d),
+    // where only pipes[0] does; phase-07c-1 condition 12 (b) re-runs it under the same premise).
+    struct JoinGuard
+    {
+        std::atomic<bool>& run;
+        std::thread& t;
+        ~JoinGuard()
+        {
+            run.store(false, std::memory_order_release);
+            if (t.joinable())
+                t.join();
+        }
+    };
     std::thread poller([&] {
         while (running.load(std::memory_order_acquire))
         {
@@ -1026,15 +1040,18 @@ GateSplit measureGateWait(plugin::DiffuseSolveGate& gate, Call&& call)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     });
-    while (!started.load(std::memory_order_acquire))
-        std::this_thread::yield();
-    const std::uint64_t turns0 = gate.solvesCompleted();
-    const auto t0 = Clock::now();
-    call();
-    const auto t1 = Clock::now();
-    const std::uint64_t turns1 = gate.solvesCompleted();
-    running.store(false, std::memory_order_release);
-    poller.join();
+    Clock::time_point t0, t1;
+    std::uint64_t turns0 = 0, turns1 = 0;
+    {
+        JoinGuard guard{running, poller}; // stops and joins the poller even if call() throws
+        while (!started.load(std::memory_order_acquire))
+            std::this_thread::yield();
+        turns0 = gate.solvesCompleted();
+        t0 = Clock::now();
+        call();
+        t1 = Clock::now();
+        turns1 = gate.solvesCompleted();
+    }
     GateSplit g;
     g.hostMs = ms(t0, t1);
     g.turns = turns1 - turns0;
@@ -1081,7 +1098,9 @@ void printGateSplit(const std::string& room, double fs, int instances, const cha
         "05i-records (iv) gate-wait %-26s %6.0f Hz, %d inst, %s: host call %.0f ms = queue(Synchronous) "
         "%.0f ms + queue(Offline) %.0f ms + remainder %.0f ms; max queue over %zu runs %.0f ms; gate turns "
         "completed during the call %llu; polls %d, max poll gap %.1f ms (resolution); remainder includes "
-        "this pipeline's own quiesce and its own build; poller locks the gate mutex about once per ms\n",
+        "this pipeline's own quiesce and its own build; queues count waiters process-wide (only this "
+        "pipeline makes "
+        "Synchronous/Offline entries here); poller locks the gate mutex about once per ms\n",
         room.c_str(), fs, instances, call, g.hostMs, g.queueSyncMs, g.queueOfflineMs, g.remainderMs(),
         runs.size(), maxQueue, static_cast<unsigned long long>(g.turns), g.polls, g.maxGapMs);
 }
@@ -1402,9 +1421,10 @@ TEST_CASE("records: K-e12 restore with a room edit in flight at the gated 100 m 
             edit(static_cast<float>(1 + (i % 2)));
             std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(dl));
             const auto v = freshValues();
-            // Whether the edit's build was still in flight when the restore landed (phase-05i §3.2: H1-F1's
-            // builder-idle condition is not read as met here; a run with no build in flight is printed as
-            // such).
+            // Whether the builder still had work when the restore landed: the edit queued or building (from
+            // the code, builderIdle() is false while a change is pending or being built). Phase-05i §3.2:
+            // H1-F1's builder-idle condition is not read as met here; a run where the builder was already
+            // idle is printed as such and left out of the busy-run worst.
             inFlight.push_back(pipe.builderIdle() ? 0 : 1);
             const auto t0 = Clock::now();
             pipe.beginRestore();
@@ -1414,17 +1434,25 @@ TEST_CASE("records: K-e12 restore with a room edit in flight at the gated 100 m 
         }
         const auto ws = spread(waits);
         const auto is = spread(idle);
+        std::vector<double> busyWaits;
+        for (int i = 0; i < kRuns; ++i)
+            if (inFlight[static_cast<std::size_t>(i)])
+                busyWaits.push_back(waits[static_cast<std::size_t>(i)]);
+        const double busyWorst = busyWaits.empty() ? 0.0 : spread(busyWaits).max;
         std::printf(
             "05i-records K-e12 os=%s %-26s 96 kHz: restore with a room edit in flight (room size -1/-2 m in "
             "w/d/h, restore of a new room size at a random point of the %.0f ms rebuild), %d runs: min %.0f "
             "median %.0f worst "
-            "%.0f ms (idle restore of a new state median %.0f ms, 3 runs); per-restore budget %.0f ms: %s\n",
-            kOsName, key, rebuild, kRuns, ws.min, ws.median, ws.max, is.median, kPerRestoreBudgetMs,
+            "%.0f ms; builder busy at the restore in %zu of %d runs, worst over those %.0f ms (idle restore "
+            "of a "
+            "new state median %.0f ms, 3 runs); per-restore budget %.0f ms: %s\n",
+            kOsName, key, rebuild, kRuns, ws.min, ws.median, ws.max, busyWaits.size(), kRuns, busyWorst,
+            is.median, kPerRestoreBudgetMs,
             ws.max > kPerRestoreBudgetMs
                 ? "FINDING (worst above the budget; register form, remedy phase-07c conditions 9-10)"
                 : "within");
         for (int i = 0; i < kRuns; ++i)
-            std::printf("05i-records K-e12 os=%s %-26s run %2d: restore at %.0f ms of %.0f (build in flight: "
+            std::printf("05i-records K-e12 os=%s %-26s run %2d: restore at %.0f ms of %.0f (builder busy: "
                         "%s) -> host thread %.0f ms\n",
                         kOsName, key, i, delays[static_cast<std::size_t>(i)], rebuild,
                         inFlight[static_cast<std::size_t>(i)] ? "yes" : "no",

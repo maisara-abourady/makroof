@@ -126,14 +126,17 @@ def write_provenance(keep_commit: bool = False):
     git = lambda *a: subprocess.run(["git", "-C", str(REPO), *a], capture_output=True, text=True).stdout.strip()  # noqa: E731
     old = json.loads(PROVENANCE.read_text()) if PROVENANCE.exists() else {}
     commit = git("rev-parse", old["tool_commit"]) if keep_commit and old.get("tool_commit") else git("rev-parse", "HEAD")
-    dirty = bool(git("status", "--porcelain", "--", str(pathlib.Path(__file__).relative_to(REPO))))
+    tools = [pathlib.Path(__file__), HERE / "hybrid_fast.py", HERE / "phase05b.py", REPO / "tools" / "acoustics" / "ref_hybrid.py"]
+    dirty = bool(git("status", "--porcelain", "--", *(str(t.relative_to(REPO)) for t in tools)))
     rows = [json.loads(line) for line in OUT.read_text().splitlines() if line.strip()] if OUT.exists() else []
     PROVENANCE.write_text(json.dumps({**old,
         "file": OUT.name,
         "produced_by": "tools/validation/compute_phase05i_bras_references.py (phase05b.step_r1's recipe per band column; "
                        "see its docstring)",
         "tool_commit": commit,
-        "tool_dirty_at_write": dirty,
+        "tool_files_dirty_at_write": dirty,
+        "tool_files_dirty_note": "the generator, hybrid_fast.py, phase05b.py and ref_hybrid.py, as the tree stood when this file was "
+                                 "written (with --provenance: at the rewrite, not at the run; the run's state is in orchestrator_notes)",
         "python": platform.python_version(), "numba": numba.__version__, "numpy": np.__version__, "scipy": scipy.__version__,
         "requirements": "tools/acoustics/requirements.txt and tools/validation/requirements-offline.txt (hash-pinned)",
         "rungs_m": list(RUNGS), "order_hz": [BANDS_HZ[b] for b in ORDER],
@@ -178,7 +181,8 @@ def main(argv=None) -> int:
     ap.add_argument("--rooms", nargs="*", default=list(ROOMS))
     a = ap.parse_args(argv)
     if a.check or a.check_chunked:
-        return check(chunked=a.check_chunked)
+        rc = check(chunked=False) if a.check else 0
+        return rc or (check(chunked=True) if a.check_chunked else 0)
     if a.provenance:
         write_provenance(keep_commit=True)
         return 0
