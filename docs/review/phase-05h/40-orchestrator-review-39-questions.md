@@ -109,3 +109,28 @@ is evaluable and the class means (−0.14…−0.22 %) are inside 1 % by 4.6×. 
 cases (SE 0.027–0.032 %, ℓ_ref max ≤ 0.29 %, evaluated, means −0.03 %), absorbing 12 cases (SE 0.125 %, ℓ_ref
 max 0.325 %, evaluated, mean −0.227 %), small 'reference pending' (AX45's two small-room cases are in the AX45
 suite), 100 m the tracer line.
+
+## 2^23 result (open_field, `render_cli --diffuse-histories 8388608`, Release, Linux; the independent floor integral as in the pytest; 213 s per s value on this box, against ≈ 27 s at 2^20)
+
+```
+s 0.4 emitter L n 8388608 capHit False (213 s)
+  band 0: dev -0.002 dB  SE 0.007 dB  3SE 0.022  |dev|<=tau True  |dev|<=tau+3SE True
+  band 1: dev -0.002 dB  SE 0.007 dB  3SE 0.022  |dev|<=tau True  |dev|<=tau+3SE True
+  band 2: dev -0.002 dB  SE 0.008 dB  3SE 0.025  |dev|<=tau True  |dev|<=tau+3SE True
+  band 3: dev -0.000 dB  SE 0.012 dB  3SE 0.037  |dev|<=tau True  |dev|<=tau+3SE True
+  band 4: dev +0.000 dB  SE 0.015 dB  3SE 0.044  |dev|<=tau True  |dev|<=tau+3SE True
+  band 5: dev +0.001 dB  SE 0.033 dB  3SE 0.099  |dev|<=tau True  |dev|<=tau+3SE True
+  band 6: dev -0.019 dB  SE 0.073 dB  3SE 0.220  |dev|<=tau True  |dev|<=tau+3SE True
+  band 7: dev -0.020 dB  SE 0.073 dB  3SE 0.220  |dev|<=tau True  |dev|<=tau+3SE True
+s 0.4 emitter R n 8388608 capHit False (213 s)
+  band 0: dev +0.001 dB  SE 0.007 dB  3SE 0.022  |dev|<=tau True  |dev|<=tau+3SE True
+  band 1: dev +0.001 dB  SE 0.007 dB  3SE 0.022  |dev|<=tau True  |dev|<=tau+3SE True
+  band 2: dev +0.000 dB  SE 0.008 dB  3SE 0.025  |dev|<=tau True  |dev|<=tau+3SE True
+  band 3: dev -0.000 dB  SE 0.012 dB  3SE 0.037  |dev|<=tau True  |dev|<=tau+3SE True
+  band 4: dev -0.000 dB  SE 0.015 dB  3SE 0.044  |dev|<=tau True  |dev|<=tau+3SE True
+  band 5: dev -0.000 dB  SE 0.033 dB  3SE 0.100  |dev|<=tau True  |dev|<=tau+3SE True
+  band 6: dev +0.005 dB  SE 0.076 dB  3SE 0.229  |dev|<=tau True  |dev|<=tau+3SE True
+  band 7: dev +0.005 dB  SE 0.076 dB  3SE 0.229  |dev|<=tau True  |dev|<=tau+3SE True
+```
+
+At 2^23 histories the 4–8 kHz deviation is −0.020 / +0.005 dB (SE 0.073–0.076 dB, 3·SE 0.22–0.23 dB ≤ τ 0.25 dB in every band): the +0.29 / +0.37 dB of the 2^20 run was noise (z ≤ 1.7), not an offset; every band is inside τ on its own at this N. (s 0.5 appended below when it lands.)
