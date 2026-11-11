@@ -9,6 +9,7 @@
 
 #include "contract/Json.h"
 #include "module3d/ParameterMap.h"
+#include "plugin/core/DiffuseSolveGate.h"
 #include "plugin/core/ScenePipeline.h"
 #include "sim/Fft.h"
 #include "sim/diffuse/DiffuseEstimator.h"
@@ -990,6 +991,101 @@ std::string joinMs(const std::vector<double>& v)
 // AX38 4c's per-restore budget: 30 s / 14 restores (D-H1; the register's form).
 constexpr double kPerRestoreBudgetMs = 30000.0 / 14.0;
 
+// D-G1 (docs/review/phase-05i/13-decider-DG1.md): the gate-wait split of one host call, the before-remedy
+// baseline of AX38 (i) register entry G-1 (re-run unchanged by phase-07c-1 condition 12). A test thread polls
+// the process-wide gate's inspection calls about every 1 ms while the call runs; queue(class) = the sum of
+// the poll intervals whose starting sample had that class's waiter count >= 1; remainder = host call - queues
+// (it includes the pipeline's own quiesce and its own build); the maximum poll gap is the resolution
+// (sleep_for(1 ms) can last a timer quantum on Windows). Printed, never asserted; test threads only; the
+// poller locks the gate mutex about once per ms.
+struct GateSplit
+{
+    double hostMs = 0.0, queueSyncMs = 0.0, queueOfflineMs = 0.0, maxGapMs = 0.0;
+    int polls = 0;
+    std::uint64_t turns = 0;
+    double remainderMs() const { return hostMs - queueSyncMs - queueOfflineMs; }
+};
+
+template <typename Call>
+GateSplit measureGateWait(plugin::DiffuseSolveGate& gate, Call&& call)
+{
+    using Cls = plugin::DiffuseSolveGate::Class;
+    struct Sample
+    {
+        Clock::time_point t;
+        std::size_t sync, offline;
+    };
+    std::vector<Sample> samples;
+    samples.reserve(1 << 16);
+    std::atomic<bool> running{true}, started{false};
+    std::thread poller([&] {
+        while (running.load(std::memory_order_acquire))
+        {
+            samples.push_back({Clock::now(), gate.waiting(Cls::Synchronous), gate.waiting(Cls::Offline)});
+            started.store(true, std::memory_order_release);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+    while (!started.load(std::memory_order_acquire))
+        std::this_thread::yield();
+    const std::uint64_t turns0 = gate.solvesCompleted();
+    const auto t0 = Clock::now();
+    call();
+    const auto t1 = Clock::now();
+    const std::uint64_t turns1 = gate.solvesCompleted();
+    running.store(false, std::memory_order_release);
+    poller.join();
+    GateSplit g;
+    g.hostMs = ms(t0, t1);
+    g.turns = turns1 - turns0;
+    Clock::time_point prev = t0;
+    for (std::size_t i = 0; i < samples.size(); ++i)
+    {
+        const auto& sm = samples[i];
+        if (sm.t < t0 || sm.t > t1)
+            continue;
+        ++g.polls;
+        g.maxGapMs = std::max(g.maxGapMs, ms(prev, sm.t));
+        prev = sm.t;
+        const auto end = (i + 1 < samples.size() && samples[i + 1].t < t1) ? samples[i + 1].t : t1;
+        const double dt = ms(sm.t, end);
+        if (sm.sync >= 1)
+            g.queueSyncMs += dt;
+        if (sm.offline >= 1)
+            g.queueOfflineMs += dt;
+    }
+    g.maxGapMs = std::max(g.maxGapMs, ms(prev, t1));
+    return g;
+}
+
+void printGateSplit(const std::string& room, double fs, int instances, const char* call,
+                    const std::vector<GateSplit>& runs)
+{
+    std::size_t worst = 0;
+    double maxQueue = 0.0;
+    for (std::size_t i = 0; i < runs.size(); ++i)
+    {
+        if (runs[i].hostMs > runs[worst].hostMs)
+            worst = i;
+        maxQueue = std::max(maxQueue, runs[i].queueSyncMs + runs[i].queueOfflineMs);
+    }
+    const GateSplit& g = runs[worst];
+    if (g.polls == 0)
+    {
+        std::printf("05i-records (iv) gate-wait %-26s %6.0f Hz, %d inst, %s: host call %.0f ms; NOT MEASURED "
+                    "(no poll)\n",
+                    room.c_str(), fs, instances, call, g.hostMs);
+        return;
+    }
+    std::printf(
+        "05i-records (iv) gate-wait %-26s %6.0f Hz, %d inst, %s: host call %.0f ms = queue(Synchronous) "
+        "%.0f ms + queue(Offline) %.0f ms + remainder %.0f ms; max queue over %zu runs %.0f ms; gate turns "
+        "completed during the call %llu; polls %d, max poll gap %.1f ms (resolution); remainder includes "
+        "this pipeline's own quiesce and its own build; poller locks the gate mutex about once per ms\n",
+        room.c_str(), fs, instances, call, g.hostMs, g.queueSyncMs, g.queueOfflineMs, g.remainderMs(),
+        runs.size(), maxQueue, static_cast<unsigned long long>(g.turns), g.polls, g.maxGapMs);
+}
+
 } // namespace
 
 // AX38 (iv), phase-05i scope 2 and scope 4: 1, 4 and 8 instances at the AQ10 room and at the gated 100 m
@@ -1131,28 +1227,34 @@ TEST_CASE("records: AX38 (iv) per-instance restore, room-size and joint stalenes
                         }
                     });
                     auto& p = *pipes[0];
+                    // D-G1: the gate-wait split of each host call (printed below, never asserted).
+                    const auto gate = plugin::DiffuseSolveGate::shared();
                     std::vector<double> prep, rest, offl;
+                    std::vector<GateSplit> prepSplit, restSplit, offlSplit;
                     for (int r = 0; r < 3; ++r)
                     {
-                        const auto q0 = Clock::now();
-                        p.prepare(fs, 512, false);
-                        const auto q1 = Clock::now();
-                        p.beginRestore();
-                        p.restore(sc, values);
-                        const auto q2 = Clock::now();
-                        p.setNonRealtime(true);
-                        p.setParameter(module3d::kRoomW, w - static_cast<float>(4 + r));
-                        p.setParameter(module3d::kRoomD, d - static_cast<float>(4 + r));
-                        p.setParameter(module3d::kRoomH, h - static_cast<float>(4 + r));
-                        p.process(in, out, 512); // the offline branch builds before this block
-                        const auto q3 = Clock::now();
+                        prepSplit.push_back(measureGateWait(*gate, [&] { p.prepare(fs, 512, false); }));
+                        restSplit.push_back(measureGateWait(*gate, [&] {
+                            p.beginRestore();
+                            p.restore(sc, values);
+                        }));
+                        offlSplit.push_back(measureGateWait(*gate, [&] {
+                            p.setNonRealtime(true);
+                            p.setParameter(module3d::kRoomW, w - static_cast<float>(4 + r));
+                            p.setParameter(module3d::kRoomD, d - static_cast<float>(4 + r));
+                            p.setParameter(module3d::kRoomH, h - static_cast<float>(4 + r));
+                            p.process(in, out, 512); // the offline branch builds before this block
+                        }));
                         p.setNonRealtime(false);
-                        prep.push_back(ms(q0, q1));
-                        rest.push_back(ms(q1, q2));
-                        offl.push_back(ms(q2, q3));
+                        prep.push_back(prepSplit.back().hostMs);
+                        rest.push_back(restSplit.back().hostMs);
+                        offl.push_back(offlSplit.back().hostMs);
                     }
                     stop.store(true);
                     churn.join();
+                    printGateSplit(label, fs, instances, "prepare", prepSplit);
+                    printGateSplit(label, fs, instances, "restore", restSplit);
+                    printGateSplit(label, fs, instances, "offline switch + first block", offlSplit);
                     std::printf("05i-records (iv) %-26s %6.0f Hz, %d inst: worst host-thread wait of one "
                                 "instance while %d other%s rebuild without pause (0: uncontended baseline; "
                                 "room size stepping 1 m "
