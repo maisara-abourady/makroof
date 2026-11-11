@@ -152,3 +152,22 @@ s 0.5 emitter R n 8388608 capHit False (213 s)
 ```
 
 At 2^23 histories the 4–8 kHz deviation is −0.020 / +0.005 dB (SE 0.073–0.076 dB, 3·SE 0.22–0.23 dB ≤ τ 0.25 dB in every band): the +0.29 / +0.37 dB of the 2^20 run was noise (z ≤ 1.7), not an offset; every band is inside τ on its own at this N. s 0.5 (both emitters) reads the same: every band inside τ, 3·SE ≤ τ at 4–8 kHz.
+
+## The floor integral's quadrature ladder (the integral's ℓ_ref; decider file 44 Q3, the record the decider asked for; 2026-11-11)
+
+`ground_scatter.window_target` is a continuous quadrature (r log-spaced over n_r shells to the floor's edge, n_phi azimuths; each element at its exact arrival time; "per 10 ms" is the normalisation only), so its discretisation residual is the (n_r, n_phi) grid, not a time bin. Halving the grid twice on `open_field` (s 0.4, both emitters identical):
+
+```
+emitter L (11 s): per band  (4000x720 -> 8000x1440) %  |  (8000x1440 -> 16000x2880) %  | dB(4000->16000)
+  band 0: -0.00533 %   +0.00341 %   -0.000083 dB
+  band 1: -0.00575 %   +0.00375 %   -0.000087 dB
+  band 2: -0.00703 %   +0.00489 %   -0.000093 dB
+  band 3: -0.01172 %   +0.01069 %   -0.000045 dB
+  band 4: -0.01341 %   +0.01413 %   +0.000031 dB
+  band 5: -0.00827 %   +0.04273 %   +0.001496 dB
+  band 6: +0.08975 %   +0.11217 %   +0.008764 dB
+  band 7: +0.08978 %   +0.11218 %   +0.008767 dB
+emitter R (12 s): per band  (4000x720 -> 8000x1440) %  |  (8000x1440 -> 16000x2880) %  | dB(4000->16000)
+```
+
+The integral's ℓ_ref (the finer halving, 8000×1440 → 16000×2880) is ≤ 0.0004 % at 63 Hz–2 kHz and 0.11 % (0.0049 dB) at 4–8 kHz; the whole ladder moves the integral by ≤ 0.009 dB: 1/28 of τ and below the 2^23 run's |dev| ≤ 0.020 dB, which therefore bounds Monte Carlo noise plus a quadrature residual of at most 0.009 dB. A record, not a gate (AX42's reversal form, a change > τ/2, is nowhere near).
