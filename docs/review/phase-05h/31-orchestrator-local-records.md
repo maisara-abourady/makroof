@@ -539,3 +539,25 @@ Restore gate (`kGateRegister`) and the (iv) 8-instance line, run 8:
 ```
 
 The Linux listed entry passed 30 s again on this run (24.31 s; 29.62 / 30.18 / 24.31 s over the three runs): the (c) warning printed; its removal stays phase-05i scope 3's call. The contended restore shows no outlier above 3 s on this run.
+
+## CI run 42942694523 (2026-11-11, on cb7effb: the `open-field-validation` job) and nightly 42942697249 (green)
+
+32 of 33 jobs green; `build (windows)` (job 130268111168) failed the strict restore gate at the gated low-α cube on a slow runner: `14 x worst 36.73 s` (min 2476 median 2589 worst 2624 ms) against 29.04 / 29.50 / 28.57 s on the three earlier green runs; every Windows record of that run 25–30 % slower (the flutter restore 13.15 s against 9.65–10.6 s; the low-α full rebuild 2 555 ms against 1 948–2 026 ms). Applied under D-H1 (v)(d) (no re-run): the Windows entry listed with that run's median as its baseline (file 53; `kGateRegister`; CHANGELOG). The new job: `open-field validation` 11.8 / 10.2 / 14.3 min on Linux / macOS / Windows (the 2^23 cases identical to run 42935789745: 4–8 kHz −0.020 / +0.005 dB, 3·SE ≤ 0.229 dB); the python jobs back to 7.2–8.9 min; `ci ok` wall clock 49.2 min, set by `build (windows)` (49.0 min on the slow runner; `build (macos)` 33.4, `build (linux)` 32.8).
+
+```
+run 9 ci ok wall clock: 49.2 min
+  49.0 min  build (windows)
+  33.4 min  build (macos)
+  32.8 min  build (linux)
+  14.3 min  open-field validation (windows)
+  12.3 min  tail gates (windows, living_room)
+  12.2 min  tail gates (macos, stone_box)
+  11.8 min  open-field validation (linux)
+  11.4 min  tail gates (macos, concert_hall_box)
+  11.0 min  tail gates (macos, classroom)
+  14.3 min  open-field validation (windows)
+  11.8 min  open-field validation (linux)
+  10.2 min  open-field validation (macos)
+   8.9 min  python tools (windows)
+   7.2 min  python tools (macos)
+```
