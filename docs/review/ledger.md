@@ -2263,3 +2263,32 @@ Question `56-orchestrator-restore-gate-runner-variance.md` (the AX38 4c blocking
 | id | decision | convening | seats | researcher | decider | interrogator | outcome | status |
 |---|---|---|---|---|---|---|---|---|
 | P05H-RG-1 | RG-F1 (for Maisara; D-H1 (v)(a)–(b) / AX38 4c / AQ10 (1) amended): on GitHub-hosted runners the restore gate asserts what is runner-independent and prints what is not. Asserted every run: the exact W_pilot / W_final pins and the AX41 ratio; per gated scene the unit-decay length and the synthesis FFT size n (exact); the flutter scene's 14 × worst ≤ 30 s on every OS; on Linux and Windows the low-α median ≤ 1.10 × the mean in-window baseline (2 068 / 2 028 ms) when the run's flutter median is within ±5 % of its reference (701 / 737 ms), else `not-evaluated(runner)`. Printed with WARNING, never asserted: the low-α/flutter ratio above 1.20 × its mean (3.05 / 2.83 / 3.75), the per-scene solve median and ns per evaluation (a bound after ≥ 3 runs), 14 × worst vs 30 s, macOS's growth (baseline 1 817 ms, print only until Phase 13); on macOS two consecutive runs with the low-α median above 2 172 ms (1.15 × the mean of the four measured macOS medians) are a (d) defect, remedy named; an entry that passes 30 s leaves the register without re-arming the strict branch on shared runners (the strict 30 s is the flutter scene's, and the low-α scene's only on the release machines). (d) a broken assertion or the macOS trigger is a defect: a timing entry → phase-07c conditions 9–10; a work-pin entry → the code change named, re-pinned only with a CHANGELOG reason (file 71). One GATE line per OS/scene; the §0 counts; `if: always()` on pluginval/auval; the strict 30 s and 1.10 growth re-enforced on all three OSes on Phase 13's release machines (bought once); phase-07c condition 9's packet repeats the split timer on a named box. Baselines = means of the measured runs on file (Windows also 42942694523; macOS three runs), re-pinned only when the restore path changes (one run PROVISIONAL, ≥ 3 runs with a CHANGELOG reason). (a) kept as it was: veto-grade (Seat 5: 3 now; each red masked pluginval/auval). PRD L101 / NFR-2, NFR-4, NFR-1, NFR-6, L20. `AMENDS her decision of 2026-11-10` (AQ10 (1), AX38 4c, D-H1 (v)(a)–(b)) | Seats 2, 3, 5, 6, 7 convened (file 59); 1, 4, 8, 9 not required (no option moves the restore, the audio, the delivery or a room) | 57 (x′ 0/1; B5; round 3: 0/1 with the trigger at 2 172 ms), 58 (1/1 through round 5), 60 (1/1, window ±5 %), 61 (round 2: later 1 on the 1 999 form, read as 0/1 at 2 172: same 'buys nothing' reason, lower exposure), 62 (1/1 with the work pin) | 63 (RQ-RG-1–3: no documentary statement on hosted-runner timing; Laaber's single-instance figures; EPA/NIST bounds) | 64 → 66 → 68 → 70 (the ns/eval CHECK struck; the macOS trigger GROWTH-only, then armed at 2 172 ms; macOS baselines from three runs; max 1, sum 9) | 65 FALLS (one component) → 67 TENSION MISREAD (one clause) → 69 (two items) → 71 SURVIVES WITH CORRECTIONS (applied) | SURVIVES; decided for Maisara, open to her veto | applied (67f13f3: `test_diffuse_records.cpp` `kGateRegister` and the GATE lines, `ci.yml`, CHANGELOG; the plan texts by the plan-editor, e87a47f; diff check file 72 SURVIVES WITH CORRECTIONS: C1 the AX38 register paragraph's pre-RG-1 baselines, C2 phase-13 Raise item 5, applied 814264c; re-check file 73 SURVIVES) |
+
+## Phases 07c, 08, 10, 11, 12, 13 split into sub-phases (2026-11-10; /fix-plan with the board loop; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Maisara, 2026-11-10: "split each of the remaining phases 7 onwards into the smallest buildable sub phases that ship
+value while keeping the session's attention focused on one subject matter that deserves it". Session brief
+`docs/sessions/2026-11-10-phase-split.md`; round files `docs/review/phase-split/` (maps, 1 convening, 2 seats 1–7,
+3 decision, 4 interrogator r1, 5 decision r2 + addendum, 5b Seat 2 r2, 6 interrogator r2, 7 apply brief, 8 coverage,
+9 diff check).
+
+Convening tables: one combined nine-row table (`1-decider-convening.md` §2): Seats 1–7 convened, 8 and 9 not required
+(interrogator: faithful).
+
+| id | item | verdict | status |
+|---|---|---|---|
+| PSPLIT-01 | Size ruling: two-session limit applies per sub-phase (08-c5, 11-c2, 13-c3 NOT A DECISION) | SURVIVES | closed |
+| PSPLIT-02 | Convening-round NOT A DECISION classifications (07c-c1..c3, 08-c2, 08-c4, 09-c1, 10-c1..c3, 11-c3, 13-c2, 13-c4) | SURVIVES | closed |
+| PSPLIT-03 | D-PS1 (08-c1): AX37 (5.3) conditions attached per sub-phase; 08-2 reads t_mix,e via `planEmitter`/`TailMatch` (code-checked) | r1 PRD MISREAD (acceptance check) → r2 SURVIVES | closed |
+| PSPLIT-04 | D-PS2 (08-c3): grouping rule in 08-4 after the benchmark; L1/L3/L4/L5 provisional in 08-3, conditional re-listen | r1 PRD MISREAD (acceptance check) → r2 SURVIVES | closed |
+| PSPLIT-05 | D-PS3 (11-c1): shell first, Seat 6 conditions (i), (ii) | r1 PRD MISREAD → r2 SURVIVES | closed |
+| PSPLIT-06 | D-PS4 (13-c1): r1 four-way, step 4 FALLS (C2 clause split) → r2 five-way (13-1..13-5), Seat 2 rated in its own words | r2 SURVIVES WITH CORRECTIONS (applied) | closed |
+| PSPLIT-07 | FM-1: Phase 11 must be split (her 2026-11-10 instruction; PRD neutral) | r1 PRD MISREAD → r2 SURVIVES | closed |
+| PSPLIT-08 | Corrections: 07c Raise in both; 12-1 drops AC2 share; 13 Raise in 13-1 and 13-5; debt ids land | SURVIVES (WITH CORRECTIONS on ids, applied) | closed |
+| PSPLIT-09 | Finished diff: coverage, values, G2 clause splits, decisions applied | CORRECT with fixes 4b, 4c (applied) | closed |
+
+Follow-ups (not in this change): phase-05h scope 10 and line 286 wording aligned to D-PS1 step 6; record 05h as a
+dependency of 11-3 (11-c3); Apple-silicon hardware for 13-2/13-3 and starting K1–K3 enrolment (Maisara's actions);
+review-skill drift (DF-EQ "switchable" vs phase-08 scope 3 "always applied"; map-10 note); "13b" in phase-06b now
+means `13-1b`; map-13's references table uses the superseded four-way numbering (the phase-13 umbrella's coverage
+table is authoritative).
