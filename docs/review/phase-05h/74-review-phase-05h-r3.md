@@ -243,7 +243,24 @@ None.
   open_field reference is an independent integral; τ unchanged).
 
 ### Local run results
-(filled in below once ctest and pytest finish)
+- `xvfb-run -a ctest --preset debug` (Debug, working tree 5823b89 = HEAD + docs): **100% tests passed,
+  0 tests failed out of 223**, 486.8 s (`CTEST_EXIT=0`). Includes the `[pipeline]` gate tests (#57
+  real-time-beside-gate, #58 shared gate order, #67 offline switch mid-solve) and the FTZ test.
+- `pytest tools -m "not ensemble and not nightly and not slow and not open_field_validation"` with
+  `RENDER_CLI=build/debug/render_cli`: **586 passed, 3 failed, 30 deselected** in 17:55. The three
+  failures are `tools/validation/tests/test_skp_reader.py::test_extraction_reproduces_the_committed_geometry
+  [CR2/CR3/CR4]`, each `ModuleNotFoundError: No module named 'h5py'` raised at
+  `tools/validation/extract_bras_geometry.py:185`: this box has a BRAS cache (so the cases do not skip,
+  unlike the CI python job, where they are SKIPPED "BRAS cache not present") but its `.venv` lacks
+  `h5py`, which is pinned only in `tools/validation/requirements-extract.txt` (the extraction / nightly
+  set, not the python job's two requirement files). Neither file is touched by the branch
+  (`git diff --stat 8583ba1...HEAD -- tools/validation` lists only the phase-05h data / export / report
+  files), and nightly 42964826298 on 67f13f3 is green. An environment gap of my box, not a finding
+  against the branch; the 586 passes cover `test_tail.py` (the 2^23 marker deselected, the shipping-N
+  smoke cases run), `test_ci_workflow.py`, `tools/ci` and the rest.
+- Not run locally: the hidden `[diffuse-records]` / `[benchmark]` tests (Question 3) and the
+  `open_field_validation` cases (two 2^23 renders of 4–9 min each on CI; the CI logs above are the
+  evidence).
 
 ## For Maisara
 
