@@ -598,3 +598,73 @@ The runners were at normal speed this time: every listed entry inside its bound.
 05h-records restore gate cube100_lowalpha0.05_s0.3  Windows: LISTED defect (recorded 14 x worst 36.73 s); 14 x worst now 19.99 s; growth bound median 1341 <= 2848 ms; WARNING: this entry now passes 30 
 run 11 ci ok wall clock 45.0 min; longest: build (linux) 33.0, build (macos) 32.8, build (windows) 32.6, tail gates (macos, stone_box) 12.0, ASan + UBSan (linux) 11.7
 ```
+
+## CI run 42964823518 (2026-11-11, on 67f13f3: the RG-1 gate form; `ci ok` green on Linux, macOS, Windows) and nightly 42964826298 (green)
+
+The final run. Every job green; the head (7e4937b at the time of writing) has the same CI fingerprint (prose only after
+67f13f3). The gate in DECISION RG-1's form (files 56–73): the work pins, the unit-decay length and FFT size per gated
+scene and the flutter scene's 30 s asserted on every OS; the low-α growth asserted only in the ±5 % flutter window on
+x64; the rest printed. One GATE line per OS and scene:
+
+```
+05h-records GATE os=Linux scene=cube100_flutter_fallback x14worst=8.31 median=583 fullRebuildMedian=595 solveMedianMs=130.9 nsPerEval=11.48 status=asserted(30s) flutterRef=701 flutterDev=-16.8%
+05h-records GATE os=Linux scene=cube100_lowalpha0.05_s0.3 ratio=3.014 ratioWarnAt=3.660 solveMedianMs=81.1 nsPerEval=6.70 x14worst=25.29 median=1759 growthBound=2275 fullRebuildMedian=1707 status=not-evaluated(runner,flutter-16.8%) trigger=0 warnings=PASSES30S
+05h-records GATE os=macOS scene=cube100_flutter_fallback x14worst=10.15 median=533 fullRebuildMedian=579 solveMedianMs=105.1 nsPerEval=9.22 status=asserted(30s) flutterRef=484 flutterDev=+10.1%
+05h-records GATE os=macOS scene=cube100_lowalpha0.05_s0.3 ratio=3.882 ratioWarnAt=4.500 solveMedianMs=81.6 nsPerEval=6.75 x14worst=31.82 median=2069 growthBound=1999 fullRebuildMedian=1878 status=reported-only trigger=2172 warnings=GROWTH OVER30S
+05h-records GATE os=Windows scene=cube100_flutter_fallback x14worst=10.53 median=744 fullRebuildMedian=737 solveMedianMs=143.8 nsPerEval=12.61 status=asserted(30s) flutterRef=737 flutterDev=+0.9%
+05h-records GATE os=Windows scene=cube100_lowalpha0.05_s0.3 ratio=2.695 ratioWarnAt=3.396 solveMedianMs=90.2 nsPerEval=7.46 x14worst=29.51 median=2005 growthBound=2231 fullRebuildMedian=2020 status=asserted trigger=0 warnings=PASSES30S
+```
+
+Reading, per the form (AX38 4c, phase-05h §5 (a)–(d)):
+- **Linux**: flutter 583 ms median, −16.8 % off the 701 ms reference (a fast runner this time): the low-α absolute
+  median (1 759 ms) is `not-evaluated(runner)`; printed growth 1 759 ≤ 2 275. 14 × worst 25.29 s passes 30 s:
+  the PASSES30S warning (§5 (c); the entry's removal is phase-05i scope 3's call). Ratio 3.014 (warn at 3.660).
+- **macOS**: flutter 533 ms, +10.1 % off 484 (slow): `reported-only` as the form says for macOS until Phase 13;
+  median 2 069 ms above the printed growth bound 1 999 (GROWTH warning) and 14 × worst 31.82 s (OVER30S warning:
+  the listed entry's recorded state until phase-07c, not a trigger); the (d) trigger 2 172 ms not reached
+  (2 069 < 2 172: zero consecutive runs over it). Ratio 3.882 (warn at 4.500).
+- **Windows**: flutter 744 ms, +0.9 % off 737 (in window): the low-α median 2 005 ≤ 2 231 **asserted**;
+  14 × worst 29.51 s passes 30 s (PASSES30S warning on the entry listed from run 42942694523). Ratio 2.695
+  (warn at 3.396).
+- Counts for §0 row 05h: asserted 4 of 6 OS/scene gates (the three flutter gates and Windows low-α), not
+  evaluated (runner) 1 (Linux low-α), reported-only 1 (macOS low-α); warnings PASSES30S ×2 (Linux, Windows),
+  GROWTH + OVER30S ×1 (macOS); macOS trigger count 0. The work pins (W_pilot 3 154 338 / W_final 2 547 436
+  flutter, 1 696 086 / 4 348 889 low-α), realised work 0.9347 / 0.9910, the unit-decay lengths and FFT sizes
+  (2 097 152 low-α, 524 288 flutter at 96 kHz) identical on the three OSes (the REQUIREs green).
+- Solve medians (the print that accrues toward a bound after ≥ 3 runs, phase-05i scope 3 (iv)): flutter
+  130.9 / 105.1 / 143.8 ms (11.48 / 9.22 / 12.61 ns per evaluation), low-α 81.1 / 81.6 / 90.2 ms
+  (6.70 / 6.75 / 7.46 ns per evaluation), Linux / macOS / Windows.
+
+The restore and gate lines behind them:
+
+```
+05h-records restore cube100_flutter_fallback   96 kHz with the solve, 10 runs: min 580 median 583 worst 593 ms; 14 x worst 8.31 s (30 s)
+05h-records restore gate cube100_flutter_fallback   Linux: strict (recorded 10.59 s <= 29.1 s): 14 x worst 8.31 s <= 30 s
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1698 median 1759 worst 1806 ms; 14 x worst 25.29 s (30 s)
+05h-records restore gate cube100_lowalpha0.05_s0.3  Linux: LISTED defect (recorded 14 x worst 30.27 s); 14 x worst now 25.29 s; WARNING PASSES30S: this entry now passes 30 s, remove it through /fix-plan; growth bound asserted in-window after the scene loop (RG-1)
+05h-records restore cube100_flutter_fallback   96 kHz with the solve, 10 runs: min 511 median 533 worst 725 ms; 14 x worst 10.15 s (30 s)
+05h-records restore gate cube100_flutter_fallback   macOS: strict (recorded 7.59 s <= 29.1 s): 14 x worst 10.15 s <= 30 s
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1926 median 2069 worst 2273 ms; 14 x worst 31.82 s (30 s)
+05h-records restore gate cube100_lowalpha0.05_s0.3  macOS: LISTED defect (recorded 14 x worst 33.40 s); 14 x worst now 31.82 s; WARNING OVER30S (printed, not asserted on hosted runners); growth bound reported only after the scene loop (RG-1)
+05h-records restore cube100_flutter_fallback   96 kHz with the solve, 10 runs: min 739 median 744 worst 752 ms; 14 x worst 10.53 s (30 s)
+05h-records restore gate cube100_flutter_fallback   Windows: strict (recorded 9.65 s <= 29.1 s): 14 x worst 10.53 s <= 30 s
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1989 median 2005 worst 2108 ms; 14 x worst 29.51 s (30 s)
+05h-records restore gate cube100_lowalpha0.05_s0.3  Windows: LISTED defect (recorded 14 x worst 36.73 s); 14 x worst now 29.51 s; WARNING PASSES30S: this entry now passes 30 s, remove it through /fix-plan; growth bound asserted in-window after the scene loop (RG-1)
+```
+
+The rest of the Release benchmark step as on the earlier runs: `agree-full gated: 410 of 560 AX43 case-bands gated
+(150 reported, reference pending); 72 of 72 AX45 case-bands gated`, 0 failures; AX46 per band "pooled over 4 of 6
+classes", means −0.081 … −0.158 %, no heterogeneity label; the work-ratio lines as above; the D5 cross-OS test
+(ctest #31) and the FTZ test (#112) green on the three OSes; `100% tests passed, 0 tests failed out of 223` per
+OS; pluginval strictness 10 passed on the three OSes (`All tests passed (15597 / 15595 / 15596 assertions in 13
+test cases)`, the artifacts `pluginval-linux/macos/windows`); `AU VALIDATION SUCCEEDED` on macOS. Contended
+restore at the gated low-α cube (3 runs): worst 3.389 s Linux, 2.005 s macOS, 2.506 s Windows (the F-a finding's
+range). Full rebuilds at 100 m / 96 kHz: low-α s 0.3 1.71 / 1.88 / 2.02 s medians, flutter 0.60 / 0.58 / 0.74 s;
+every room fixture < 1 s at 48 kHz on the three OSes; transient RSS delta 296 MB on Linux (n/a elsewhere).
+
+Job durations: `ci ok` wall clock 58.2 min set by `build (windows)` (58.1 min; its Release benchmark step on a
+slow spell, as the 36.73 s run was); build (linux) 32.3, build (macos) 34.3; `open-field validation` 9.0 / 7.7 /
+10.2 min and `python tools` 9.0 / 9.6 / 8.5 min (Linux / macOS / Windows). The trigger of P05H-QA-T ("the longest
+job of a green run, across all jobs and OSes") names `build (windows)`; the Windows build was 32.6 min on run 11
+and 49.2 min on run 9, so this is runner variance, the matter of file 56, not a code change: recorded, nothing to
+split.

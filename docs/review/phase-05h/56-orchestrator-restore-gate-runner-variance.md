@@ -41,6 +41,9 @@ runner-speed reference: its solve is the pilot only, no cap, the same W_max rule
 | 42954077281 (b83c49d, green) | Linux | 1755 / 1879 / 1986 | 27.81 | 583 | — | 3.22 |
 | 42954077281 | macOS | 1715 / 1967 / 2122 | 29.70 | 501 | — | 3.93 |
 | 42954077281 | Windows | 1317 / 1341 / 1428 | 19.99 | 488 | — | 2.75 |
+| 42964823518 (67f13f3, RG-1 form, green) | Linux | 1698 / 1759 / 1806 | 25.29 (not evaluated: flutter −16.8 %) | 583 | 1707 | 3.02 |
+| 42964823518 | macOS | 1926 / 2069 / 2273 | 31.82 (reported only; GROWTH, OVER30S; < 2 172) | 533 | 1878 | 3.88 |
+| 42964823518 | Windows | 1989 / 2005 / 2108 | 29.51 (asserted in-window: 2 005 ≤ 2 231) | 744 | 2020 | 2.70 |
 
 (The macOS flutter median of the records run is read from file 31's 14 × worst line, 7.52 s, as a worst, not a
 median: the ratio for that row is approximate.) Within one OS the low-α restore median moves by a factor 1.63 on
