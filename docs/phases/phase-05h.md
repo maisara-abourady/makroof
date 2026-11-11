@@ -148,12 +148,13 @@ after seeing the gate's result.
     apply; the gate carries a defect register instead (v); phase-07c re-derives W_max once under (C), only
     after the AX38 4c 3-minute bounce record is in its packet; (v) the restore gate runs on all three OSes in
     the register form (section 5 "Blocking"): strict where the recorded value at the pinned W_max is
-    ≤ 29.1 s; a registered defect with the growth bound (median-of-10 restore ≤ 1.10 × the recorded median)
-    elsewhere (Linux cube 30.27 s, closes at 07c; macOS cube 33.40 s, closes at phase-07c condition 9 / 07d
-    or Phase 13); the named finding (the unit-decay synthesis in `tail::BandNoiseGenerator`, 95.5 % of the
-    3.29 s non-diffuse 100 m / 96 kHz build) and its remedy, phase-07c §5 condition 9; phase-07c is the next
-    phase after this one. H1-F1: 14 × t_restore ≤ 30 s is the project's own convention (pluginval's
-    watchdog resets per restore), 14 a kept constant. H1-F3: section 2 item 1.
+    ≤ 29.1 s; a registered defect with the growth bound (median-of-10 restore ≤ 1.10 × the recorded median
+    (since RG-1: the pinned baseline median, (b))) elsewhere (Linux cube 30.27 s, closes at 07c; macOS cube
+    33.40 s, closes at phase-07c condition 9 / 07d or Phase 13); the named finding (the unit-decay synthesis
+    in `tail::BandNoiseGenerator`, 95.5 % of the 3.29 s non-diffuse 100 m / 96 kHz build) and its remedy,
+    phase-07c §5 condition 9; phase-07c is the next phase after this one. H1-F1: 14 × t_restore ≤ 30 s is the
+    project's own convention (pluginval's watchdog resets per restore), 14 a kept constant. H1-F3: section 2
+    item 1.
   - **Seat 1's floor at a gated scene** (decider file 53 §1, exact text). At each gated 100 m build of
     AX38 4c, Seat 1's floor counts as **met** when the achieved SE is ≤ 0.33 dB per emitter and band and
     at least one of these holds:

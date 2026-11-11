@@ -18,10 +18,11 @@ The session raises each item in its **first message** and again before the beta 
 4. **Phase 07c not landed (conditional).** If the asynchronous diffuse solve (phase-07c) would land after
    the first release without the estimator parameters versioned in saved state, Seat 7's condition fails
    and the item returns to Maisara (decider file 47 §4, strongest objection).
-5. **Release machines for the AX38 4c strict re-check (RG-1).** One macOS and one Windows machine bought
-   once (no standing runner; Seat 7 file 60: larger hosted runners ≈ €100–130/month and still shared VMs);
-   on them the strict 30 s and the 1.10 growth bound are asserted on all three OSes (Linux on the dev box)
-   and the register entries close or the absolute CHECK returns on named hardware.
+5. **Release machines for the AX38 4c strict re-check (RG-1).** Release machines bought once, no standing
+   runner (Seat 7, file 60 round 1: larger hosted runners ≈ €100–130/month, a standing cost before any
+   revenue, and the macOS larger runner still a shared VM; decider files 64 item 7 and 66 §7: a person's
+   purchase); on them the strict 30 s and the 1.10 growth bound are asserted on all three OSes (AX41) and the
+   register entries close or the absolute CHECK returns on named hardware.
 
 ## Goal
 
