@@ -383,6 +383,7 @@ after seeing the gate's result.
       named, through `/fix-plan`; the 30 s warning on a listed entry is its recorded state until phase-07c,
       not a trigger; the printed growth line uses the in-window baseline 1 817 ms. The register entries (Linux
       30.27 s, macOS 33.40 s, Windows 36.73 s; remedy phase-07c conditions 9–10; closing phases unchanged)
+      (Linux closed in 05i under (c) on 05i's runs, AX38 4c; Windows and macOS stay listed)
       stand. One machine-readable line per OS/scene per run; §0 row 05h carries the latest figures and the
       counts; a WARNING run is named in the PR. Baselines: flutter reference and ratio the mean of the
       measured runs per OS (Linux 701 ms / 3.05, Windows 737 / 2.83: runs 42909003931, 42924781618,

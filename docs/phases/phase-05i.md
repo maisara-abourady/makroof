@@ -93,7 +93,8 @@ case-band is gated through `update_goldens.py --extend` with its reason, never b
    assertion stays in this form (in-window on Linux and Windows, printed on macOS) until Phase 13; the strict
    30 s branch applies to the flutter scene, and to the low-α scene only on the release machines; otherwise it
    stays listed and the run is recorded; the Linux (30.27 s), macOS (33.40 s) and Windows (36.73 s) entries
-   stay listed with the remedy phase-07c conditions 9–10; (iii) two consecutive macOS runs with the low-α
+   stay listed with the remedy phase-07c conditions 9–10 (Linux closed in 05i under (c) on 05i's runs, AX38 4c;
+   Windows and macOS stay listed); (iii) two consecutive macOS runs with the low-α
    median above 2 172 ms are a (d) defect, remedy named, through `/fix-plan` (the trigger re-derived at the
    07c re-pin); (iv) the per-scene solve median accrues per run; after ≥ 3 runs the orchestrator proposes its
    bound k from the spread through `/fix-plan` (set in 05i: AX38 4c, decider file 9); (v) the baselines, the
