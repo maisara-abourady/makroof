@@ -47,3 +47,23 @@ numbers is itself evidence for (b)); Seat 5's CI-gate mandate (`docs/board/READM
 seam); the one-phase rule (a `nightly.yml` redesign is not 05h's). The decider decides at minimum tension; the
 answer is for Maisara (a reading of her AX37 (5.4) at the budget), with the AMENDS line if the clause text changes,
 and the exact plan text and test form.
+
+## Per-job durations of CI run 42935789745 (Seat 5's verification request, file 49 §5; from the jobs API, started_at → completed_at)
+
+```
+ci ok wall clock (first job start to last job end): 43.1 min
+  42.9 min  build (windows)
+  35.7 min  build (macos)
+  27.3 min  build (linux)
+  22.1 min  python tools (linux)
+  16.6 min  python tools (windows)
+  16.6 min  python tools (macos)
+  14.0 min  tail gates (macos, classroom)
+  12.2 min  tail gates (macos, concert_hall_box)
+  11.8 min  tail gates (windows, living_room)
+  11.7 min  tail gates (macos, living_room)
+  11.6 min  tail gates (macos, club)
+  10.7 min  tail gates (windows, club)
+```
+
+The `ci ok` wall clock is set by `build (windows)` (42.9 min; `build (macos)` 35.7, `build (linux)` 27.3: the Debug ctest + the Release benchmark step with the records), not by the python job (22.1 min Linux): the 2^23 renders add nothing to the wall clock of this run. Run 42924781618 (before the form): wall clock 57.4 min, `build (windows)` 57.2 min. The python job has no `timeout-minutes` (GitHub's default 360 min), as Seat 5 notes. Whether runner minutes are billed for this repository is not known to the orchestrator (a public repository on GitHub-hosted runners is not billed; the repository's visibility is Maisara's to state; Seat 7 if billed).
