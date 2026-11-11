@@ -976,10 +976,11 @@ constexpr double kPerRestoreBudgetMs = 30000.0 / 14.0;
 //     solves).
 // (c) Staleness of the real-time instances while one more instance renders offline under room-size
 //     automation (the offline instance steps the room size 1 m per processed block, back to back: the worst
-//     rebuild rate a bounce can ask for); the real-time step is the listener +0.5 m in x.
+//     rebuild rate a bounce can ask for); the real-time step is a room-size step (to -3 m in w/d/h), a full
+//     rebuild that contends at the gate with the offline instance's builds.
 // (d) The worst host-thread wait for prepare, restore and the offline switch (setNonRealtime(true) plus the
-//     first offline block) of one instance while the other instances rebuild without pause (room-size steps
-//     of 1 m every 50 ms on each of them).
+//     first offline block, after a room-size edit so that block builds) of one instance while the other
+//     instances rebuild without pause (room-size steps of 1 m every 50 ms on each of them).
 TEST_CASE("records: AX38 (iv) per-instance restore, room-size and joint staleness, offline contention and "
           "host-thread waits (1, 4, 8 instances)",
           "[.][benchmark][diffuse-records-05i]")
@@ -1066,13 +1067,19 @@ TEST_CASE("records: AX38 (iv) per-instance restore, room-size and joint stalenes
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     const auto t2 = Clock::now();
                     for (auto& p : pipes)
-                        p->setParameter(module3d::kListenerX, lx + 1.0f);
+                    {
+                        p->setParameter(module3d::kRoomW, w - 3.0f);
+                        p->setParameter(module3d::kRoomD, d - 3.0f);
+                        p->setParameter(module3d::kRoomH, h - 3.0f);
+                    }
                     const auto ss = spread(waitAllIdle(pipes, t2));
                     stop.store(true);
                     bounce.join();
                     std::printf("05i-records (iv) %-26s %6.0f Hz, %d inst: real-time staleness while 1 more "
                                 "instance renders offline (room size stepping 1 m per block, back to back; "
-                                "%d offline rebuilds meanwhile), listener +0.5 m step: min %.0f median %.0f "
+                                "%d offline rebuilds meanwhile), room-size step (to -3 m in w/d/h) on every "
+                                "real-time "
+                                "instance at once: min %.0f median %.0f "
                                 "max %.0f ms\n",
                                 label.c_str(), fs, instances, offSteps.load(), ss.min, ss.median, ss.max);
                 }
@@ -1105,6 +1112,9 @@ TEST_CASE("records: AX38 (iv) per-instance restore, room-size and joint stalenes
                         p.restore(sc, values);
                         const auto q2 = Clock::now();
                         p.setNonRealtime(true);
+                        p.setParameter(module3d::kRoomW, w - static_cast<float>(4 + r));
+                        p.setParameter(module3d::kRoomD, d - static_cast<float>(4 + r));
+                        p.setParameter(module3d::kRoomH, h - static_cast<float>(4 + r));
                         p.process(in, out, 512); // the offline branch builds before this block
                         const auto q3 = Clock::now();
                         p.setNonRealtime(false);
@@ -1117,7 +1127,7 @@ TEST_CASE("records: AX38 (iv) per-instance restore, room-size and joint stalenes
                     std::printf("05i-records (iv) %-26s %6.0f Hz, %d inst: worst host-thread wait of one "
                                 "instance while the other %d rebuild without pause (room size stepping 1 m "
                                 "every 50 ms), 3 runs: prepare %.0f ms, restore %.0f ms, offline switch + "
-                                "first block %.0f ms\n",
+                                "first block after a room-size edit %.0f ms\n",
                                 label.c_str(), fs, instances, instances - 1, spread(prep).max,
                                 spread(rest).max, spread(offl).max);
                 }
