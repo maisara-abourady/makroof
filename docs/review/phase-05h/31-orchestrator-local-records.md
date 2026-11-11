@@ -668,3 +668,25 @@ slow spell, as the 36.73 s run was); build (linux) 32.3, build (macos) 34.3; `op
 job of a green run, across all jobs and OSes") names `build (windows)`; the Windows build was 32.6 min on run 11
 and 49.2 min on run 9, so this is runner variance, the matter of file 56, not a code change: recorded, nothing to
 split.
+
+## Review r3 (file 74) major 1: the generator's FFT size pinned; local run (Release, this 4-core Linux box with the reviewer's pytest running; 2026-11-11; `records_r3.log`)
+
+`BandNoiseGenerator::fftSize()` (src/sim/tail/NoiseTail.h, one accessor) is asserted beside the formula's value in
+the records test (commit d7ea48a). The hidden `[diffuse-records]` run after the change: `All tests passed (35
+assertions in 2 test cases)` (33 before: the two new REQUIREs). The pins:
+
+```
+05h-records work pin cube100_flutter_fallback   unit decay 377517 samples (pinned 377517); synthesis FFT size 524288, generator 524288 (pinned 524288)
+05h-records work pin cube100_lowalpha0.05_s0.3  unit decay 1152000 samples (pinned 1152000); synthesis FFT size 2097152, generator 2097152 (pinned 2097152)
+```
+
+The GATE lines on this box, for the record only (a loaded box: flutter +53 % off the Linux reference, so the low-α
+absolute median is `not-evaluated(runner)` as the form says; the ratio 3.861 above its 3.660 warning line printed
+with WARNING, not asserted; the flutter 30 s asserted at 15.81 s):
+
+```
+05h-records GATE os=Linux scene=cube100_flutter_fallback x14worst=15.81 median=1074 fullRebuildMedian=1118 solveMedianMs=164.4 nsPerEval=14.42 status=asserted(30s) flutterRef=701 flutterDev=+53.2%
+05h-records GATE os=Linux scene=cube100_lowalpha0.05_s0.3 ratio=3.861 ratioWarnAt=3.660 solveMedianMs=149.7 nsPerEval=12.38 x14worst=68.15 median=4147 growthBound=2275 fullRebuildMedian=4322 status=not-evaluated(runner,flutter+53.2%) trigger=0 warnings=RATIO GROWTH OVER30S 
+```
+
+CI run 13 on d7ea48a (the fingerprint changed by the fix: `9ef97889…`) is the evidence of record for the head.
