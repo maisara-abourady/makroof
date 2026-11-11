@@ -79,15 +79,23 @@ struct GateEntry
     double baselineRatio;
     double flutterRefMs;
     bool absoluteAsserted;
-    bool listed;    // recorded > 29.1 s: a listed defect (register text); the strict 30 s stays printed
-    bool strict30s; // the strict 14 x worst <= 30 s REQUIRE: the flutter scene only (interrogator file 69
-                    // item 2: an entry leaving the register under section 5 (c) never re-arms it on the
-                    // low-alpha scene)
+    bool listed;       // in the AX38 4c defect register (plan text); false once closed under (c): print only
+    bool strict30s;    // the strict 14 x worst <= 30 s REQUIRE: the flutter scene only (interrogator file 69
+                       // item 2: an entry leaving the register under section 5 (c) never re-arms it on the
+                       // low-alpha scene)
+    double solveRefMs; // phase-05i Q5 (docs/review/phase-05i/9, Seat 5 file 8): the scene's solve-median
+                       // baseline, the mean of the in-window runs only (phase-05i 3.3 (v)): Linux and macOS
+                       // run 43007183782; Windows runs 42964823518 and 43007183782
+    int solveRefRuns;  // runs behind solveRefMs; below 3 the bound prints PROVISIONAL
 };
 // RG-1 constants (provenance: docs/review/phase-05h/56 table, 64, 66).
 constexpr double kGrowth = 1.10;    // median-of-10 restore <= kGrowth x baselineMedianMs, in-window, x64
 constexpr double kGuardPct = 5.0;   // the run's flutter median within +-5 % of flutterRefMs (Seat 7 r2)
 constexpr double kRatioWarn = 1.20; // low-alpha / flutter ratio above kRatioWarn x baselineRatio: WARNING
+// phase-05i Q5: a scene's solve median above kSolveWarn x solveRefMs prints SOLVE in that scene's warnings=;
+// one-sided (the work pins are asserted), never asserted on hosted runners, never a (d) trigger; kept apart
+// from kRatioWarn so the 07c re-pin re-derives each from >= 3 in-window runs.
+constexpr double kSolveWarn = 1.20;
 // macOS trigger (RG-1 round 4, Seat 5 file 57 r3): two consecutive macOS runs with the low-alpha median above
 // 1.15 x the mean of the four measured macOS medians (2106 / 1849 / 1887 / 1715 -> 1889; 0 of 4 rows over)
 // are a (d) defect through /fix-plan; read by the orchestrator from the GATE lines, no state in the test.
@@ -98,14 +106,15 @@ constexpr std::size_t kFftSizeLowAlpha96k =
 constexpr std::size_t kFftSizeFlutter96k = 524288; // 377517 + 2 x 15697 -> 2^19
 constexpr GateEntry kGateRegister[] = {
     // The flutter scene: strict 14 x worst <= 30 s on every OS (headroom >= 2.3x, Seat 5); no growth bound.
-    {"cube100_flutter_fallback", "Linux", 10.59, 0.0, 0.0, 0.0, false, false, true},
-    {"cube100_flutter_fallback", "macOS", 7.59, 0.0, 0.0, 0.0, false, false, true},
-    {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true},
-    // The gated low-alpha cube: listed on every OS (Linux 30.27 s local / file 1; macOS 33.40 s; Windows
-    // 36.73 s on CI run 42942694523's slow runner, file 53).
-    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, true, false},
-    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false},
-    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, true, false},
+    {"cube100_flutter_fallback", "Linux", 10.59, 0.0, 0.0, 0.0, false, false, true, 131.2, 1},
+    {"cube100_flutter_fallback", "macOS", 7.59, 0.0, 0.0, 0.0, false, false, true, 102.7, 1},
+    {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true, 144.4, 2},
+    // The gated low-alpha cube. macOS is listed (recorded 33.40 s, local / file 1; remedy phase-07c
+    // conditions 9-10). Linux (30.27 s local / file 1) and Windows (36.73 s on CI run 42942694523's slow
+    // runner, file 53) closed under AX38 4c (c) on phase 05i's runs (docs/review/phase-05i/9): print only.
+    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1},
+    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false, 83.7, 1},
+    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, false, false, 90.4, 2},
 };
 const GateEntry* gateRegisterEntry(const std::string& scene)
 {
@@ -465,15 +474,20 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                 REQUIRE(fourteen <= 30.0);
             }
             else
-                std::printf("05h-records restore gate %-26s %s: %s (recorded 14 x worst %.2f s); 14 "
-                            "x worst now %.2f s%s; growth bound %s after the scene loop (RG-1)\n",
-                            key, kOsName,
-                            entry->listed ? "LISTED defect" : "register entry closed, hosted-runner form",
-                            entry->recorded14xS, fourteen,
-                            fourteen <= 30.0 ? "; WARNING PASSES30S: this entry now passes 30 s, remove it "
-                                               "through /fix-plan"
-                                             : "; WARNING OVER30S (printed, not asserted on hosted runners)",
-                            entry->absoluteAsserted ? "asserted in-window" : "reported only");
+                std::printf(
+                    "05h-records restore gate %-26s %s: %s (recorded 14 x worst %.2f s); 14 "
+                    "x worst now %.2f s%s; growth bound %s after the scene loop (RG-1)\n",
+                    key, kOsName,
+                    entry->listed ? "LISTED defect" : "register entry closed, hosted-runner form",
+                    entry->recorded14xS, fourteen,
+                    fourteen <= 30.0
+                        ? (entry->listed ? "; WARNING PASSES30S: this entry now passes 30 s, remove it "
+                                           "through /fix-plan"
+                                         : "; passes 30 s (register entry closed under AX38 4c (c))")
+                        : (entry->listed ? "; WARNING OVER30S (printed, not asserted on hosted runners)"
+                                         : "; WARNING OVER30S on a closed register entry (printed, not "
+                                           "asserted on hosted runners; name the run in the PR)"),
+                    entry->absoluteAsserted ? "asserted in-window" : "reported only");
         }
         else
             std::printf("05h-records restore gate %-26s %s: reported set, not gated\n", key, kOsName);
@@ -515,6 +529,14 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
         const bool inWindow = std::abs(flutterDevPct) <= kGuardPct;
         const double growthBound = kGrowth * entry->baselineMedianMs;
         const double fourteen = 14.0 * la.restore.max / 1000.0;
+        const auto* flEntry = gateRegisterEntry("cube100_flutter_fallback");
+        REQUIRE(flEntry != nullptr);
+        const double flSolveWarnAt = kSolveWarn * flEntry->solveRefMs;
+        const double laSolveWarnAt = kSolveWarn * entry->solveRefMs;
+        const auto solveBasis = [](const GateEntry& e) {
+            return e.solveRefRuns < 3 ? "PROVISIONAL" : "PINNED";
+        };
+        const std::string flWarnings = fl.solveMedianMs > flSolveWarnAt ? "SOLVE " : "";
         std::string warnings;
         if (ratio > kRatioWarn * entry->baselineRatio)
             warnings += "RATIO ";
@@ -532,18 +554,23 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
         else
             std::snprintf(status, sizeof(status), "not-evaluated(runner,flutter%+.1f%%)", flutterDevPct);
         std::printf("05h-records GATE os=%s scene=cube100_flutter_fallback x14worst=%.2f median=%.0f "
-                    "fullRebuildMedian=%.0f solveMedianMs=%.1f nsPerEval=%.2f status=asserted(30s) "
-                    "flutterRef=%.0f flutterDev=%+.1f%%\n",
+                    "fullRebuildMedian=%.0f solveMedianMs=%.1f solveWarnAt=%.1f solveBasis=%s(n=%d) "
+                    "nsPerEval=%.2f status=asserted(30s) flutterRef=%.0f flutterDev=%+.1f%% warnings=%s\n",
                     kOsName, 14.0 * fl.restore.max / 1000.0, fl.restore.median, fl.fullRebuildMedianMs,
-                    fl.solveMedianMs, fl.nsPerEval, entry->flutterRefMs, flutterDevPct);
+                    fl.solveMedianMs, flSolveWarnAt, solveBasis(*flEntry), flEntry->solveRefRuns,
+                    fl.nsPerEval, entry->flutterRefMs, flutterDevPct, flWarnings.c_str());
         if (!entry->absoluteAsserted && la.restore.median > kMacGrowthTriggerMs)
             warnings += "MACTRIGGER ";
-        std::printf("05h-records GATE os=%s scene=cube100_lowalpha0.05_s0.3 ratio=%.3f ratioWarnAt=%.3f "
-                    "solveMedianMs=%.1f nsPerEval=%.2f x14worst=%.2f median=%.0f growthBound=%.0f "
-                    "fullRebuildMedian=%.0f status=%s trigger=%.0f warnings=%s\n",
-                    kOsName, ratio, kRatioWarn * entry->baselineRatio, la.solveMedianMs, la.nsPerEval,
-                    fourteen, la.restore.median, growthBound, la.fullRebuildMedianMs, status,
-                    entry->absoluteAsserted ? 0.0 : kMacGrowthTriggerMs, warnings.c_str());
+        if (la.solveMedianMs > laSolveWarnAt)
+            warnings += "SOLVE ";
+        std::printf(
+            "05h-records GATE os=%s scene=cube100_lowalpha0.05_s0.3 ratio=%.3f ratioWarnAt=%.3f "
+            "solveMedianMs=%.1f solveWarnAt=%.1f solveBasis=%s(n=%d) nsPerEval=%.2f x14worst=%.2f "
+            "median=%.0f growthBound=%.0f fullRebuildMedian=%.0f status=%s trigger=%.0f warnings=%s\n",
+            kOsName, ratio, kRatioWarn * entry->baselineRatio, la.solveMedianMs, laSolveWarnAt,
+            solveBasis(*entry), entry->solveRefRuns, la.nsPerEval, fourteen, la.restore.median, growthBound,
+            la.fullRebuildMedianMs, status, entry->absoluteAsserted ? 0.0 : kMacGrowthTriggerMs,
+            warnings.c_str());
         if (entry->absoluteAsserted && inWindow)
             REQUIRE(la.restore.median <= growthBound);
     }
