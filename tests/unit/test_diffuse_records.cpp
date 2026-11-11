@@ -75,7 +75,12 @@ constexpr GateEntry kGateRegister[] = {
     // with a CHANGELOG reason whenever W_max or n*_max is re-derived (D-H1 (v)(b)).
     {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2043.0, true},
     {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 2106.0, true},
-    {"cube100_lowalpha0.05_s0.3", "Windows", 29.04, 0.0, false},
+    // Windows: strict at 29.04 / 29.50 / 28.57 s on CI runs 42909003931 / 42924781618 / 42935789745; crossed
+    // 30 s on run 42942694523 (14 x worst 36.73 s, median 2 589 ms, a shared runner 25-30 % slower on every
+    // record of that run): listed from that run under phase-05h section 5 (d) (no re-run, no cut; the remedy
+    // phase-07c conditions 9-10, or Phase 13's release-machine re-check if the runner is the cause), baseline
+    // = that run's median (D-H1 (v)(b)); orchestrator file 53.
+    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2589.0, true},
 };
 const GateEntry* gateRegisterEntry(const std::string& scene)
 {

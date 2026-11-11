@@ -143,3 +143,9 @@ Reason: phase 05h, D-H1 (v)(b): the AX38 4c restore gate's growth-bound baseline
 Reason: phase 05h session 2 (D-H2 (a)/(c), decider file 19): the last references of this session's hybrid_fast runs at 1.25 m landed (W2 both emitters; the CS-NW+ listener wall / edge / corner at 0.1 m and the wall at 0.3 m for both emitters; the emitter-wall case, emitter 0; the W1 listener-wall 0.1 m emitter 1), promoting 80 case-bands from reported to gated: AX43 410 of 560, AX45 72 of 72 (482 certified case-bands); no existing reference value changed; the gated counts pinned in tests/unit/test_diffuse_agreement.cpp re-pinned to 410 / 72. Provenance: tools/validation/data/phase05h_hybrid_references.provenance.json (28 rows at 1.25 m, 28 at 2.5 m, 10 at 0.625 m).
 
 - `phase05h_agreement_reference`: extended (80 case-bands promoted to gated: W2_e0, W2_e1, W1_listener_wall_0.1_e1, W1_listener_edge_0.1_e0/e1, W1_listener_corner_0.1_e0/e1, W1_listener_wall_0.3_e0/e1, W1_emitter_wall_0.1_e0, 8 bands each)
+
+## 2026-11-11
+
+Reason: phase 05h, D-H1 (v)(d) (phase-05h section 5 (d)): the AX38 4c restore gate's Windows entry at the gated low-alpha cube crossed 30 s on CI run 42942694523 (14 x worst 36.73 s, median-of-10 restore with the solve 2589 ms; strict 29.04 / 29.50 / 28.57 s on the three earlier green runs; the shared runner was 25-30 % slower on the restore, flutter and full-rebuild records of that run, the (iv) load inside its earlier range) and enters the register as a listed defect with that run's median as its growth-bound baseline (constants in tests/unit/test_diffuse_records.cpp, not a golden file); no re-run, no W_max cut, no range change, no seam; remedy phase-07c conditions 9-10 or Phase 13's release-machine re-check (orchestrator file 53).
+
+- `(records-test constants)`: the Windows low-alpha entry listed, baseline 2589 ms (no golden file changed)
