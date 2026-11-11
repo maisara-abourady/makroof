@@ -918,3 +918,368 @@ TEST_CASE("records: the AX43 reported set (near-wall and both-near placements), 
         }
     }
 }
+
+// ---- Phase 05i, scope 2 (AX38 (iv), the K-e12 finding of AX38 4c, D-H3 (e)) and scope 4 (file 36 Q4) ----
+// Records only: printed with their condition, never a CHECK (phase-05i §4 criterion 2). CI copies every
+// "05i-records" line into the job summary (ci.yml, "Records to the job summary").
+namespace {
+
+// Waits until every pipeline's builder is idle; returns each pipeline's time from t0 to idle (ms).
+std::vector<double> waitAllIdle(const std::vector<std::unique_ptr<plugin::ScenePipeline>>& pipes,
+                                Clock::time_point t0)
+{
+    std::vector<double> stale(pipes.size(), 0.0);
+    std::vector<bool> done(pipes.size(), false);
+    for (;;)
+    {
+        bool all = true;
+        for (std::size_t i = 0; i < pipes.size(); ++i)
+        {
+            if (!done[i] && pipes[i]->builderIdle())
+            {
+                done[i] = true;
+                stale[i] = ms(t0, Clock::now());
+            }
+            all = all && done[i];
+        }
+        if (all)
+            return stale;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+
+std::string joinMs(const std::vector<double>& v)
+{
+    std::string s;
+    char buf[32];
+    for (std::size_t i = 0; i < v.size(); ++i)
+    {
+        std::snprintf(buf, sizeof(buf), "%s%.0f", i ? " " : "", v[i]);
+        s += buf;
+    }
+    return s;
+}
+
+// AX38 4c's per-restore budget: 30 s / 14 restores (D-H1; the register's form).
+constexpr double kPerRestoreBudgetMs = 30000.0 / 14.0;
+
+} // namespace
+
+// AX38 (iv), phase-05i scope 2 and scope 4: 1, 4 and 8 instances at the AQ10 room and at the gated 100 m
+// low-alpha cube, 48 and 96 kHz.
+// (a) Load: the instances prepared and restored one after another on one host thread (as a host loads a
+//     project); prepare() and restore() timed per instance (scope 4: the per-instance restore times inside
+//     the (iv) loop, file 36 Q4; phase-07c condition 7 does not exist yet).
+// (b) Staleness when the instances are automated together, at two steps applied to every instance at once:
+//     a room-size step (width, depth and height each -1 m) and a joint step (the same room-size step plus the
+//     listener +0.5 m in x); from the change to each instance's builder idle (the gate serialises the
+//     solves).
+// (c) Staleness of the real-time instances while one more instance renders offline under room-size
+//     automation (the offline instance steps the room size 1 m per processed block, back to back: the worst
+//     rebuild rate a bounce can ask for); the real-time step is the listener +0.5 m in x.
+// (d) The worst host-thread wait for prepare, restore and the offline switch (setNonRealtime(true) plus the
+//     first offline block) of one instance while the other instances rebuild without pause (room-size steps
+//     of 1 m every 50 ms on each of them).
+TEST_CASE("records: AX38 (iv) per-instance restore, room-size and joint staleness, offline contention and "
+          "host-thread waits (1, 4, 8 instances)",
+          "[.][benchmark][diffuse-records-05i]")
+{
+    std::vector<float> a(512, 0.1f), b(512, -0.1f);
+    const float* const in[2] = {a.data(), b.data()};
+    float* const out[2] = {a.data(), b.data()};
+    for (const auto& [label, sc] : std::vector<std::pair<std::string, contract::SceneDescription>>{
+             {"AQ10 room", aq10Room()}, {"cube100_lowalpha0.05_s0.3", cube("cube100_lowalpha0.05_s0.3")}})
+        for (const double fs : {48000.0, 96000.0})
+            for (const int instances : {1, 4, 8})
+            {
+                const auto values = module3d::parameterValuesFromScene(sc);
+                const float w = static_cast<float>(sc.room.geometry.dimensions.x);
+                const float d = static_cast<float>(sc.room.geometry.dimensions.y);
+                const float h = static_cast<float>(sc.room.geometry.dimensions.z);
+                const float lx = static_cast<float>(sc.listener.position.x);
+                std::vector<std::unique_ptr<plugin::ScenePipeline>> pipes;
+                for (int i = 0; i < instances; ++i)
+                    pipes.push_back(std::make_unique<plugin::ScenePipeline>());
+                // (a)
+                std::vector<double> prepMs, restMs;
+                const auto t0 = Clock::now();
+                for (auto& p : pipes)
+                {
+                    const auto p0 = Clock::now();
+                    p->prepare(fs, 512, false);
+                    const auto p1 = Clock::now();
+                    p->beginRestore();
+                    p->restore(sc, values);
+                    prepMs.push_back(ms(p0, p1));
+                    restMs.push_back(ms(p1, Clock::now()));
+                }
+                const double load = ms(t0, Clock::now());
+                std::printf(
+                    "05i-records (iv) %-26s %6.0f Hz, %d inst: load until the last is audible %.0f ms; "
+                    "per instance (load order) prepare [%s] ms, restore [%s] ms\n",
+                    label.c_str(), fs, instances, load, joinMs(prepMs).c_str(), joinMs(restMs).c_str());
+                // (b) room-size step, then the joint step, on every instance at once.
+                for (const bool joint : {false, true})
+                {
+                    const float step = joint ? 2.0f : 1.0f;
+                    const auto t1 = Clock::now();
+                    for (auto& p : pipes)
+                    {
+                        p->setParameter(module3d::kRoomW, w - step);
+                        p->setParameter(module3d::kRoomD, d - step);
+                        p->setParameter(module3d::kRoomH, h - step);
+                        if (joint)
+                            p->setParameter(module3d::kListenerX, lx + 0.5f);
+                    }
+                    const auto ss = spread(waitAllIdle(pipes, t1));
+                    std::printf(
+                        "05i-records (iv) %-26s %6.0f Hz, %d inst: staleness when automated together, "
+                        "%s step on every instance at once: min %.0f median %.0f max %.0f ms\n",
+                        label.c_str(), fs, instances,
+                        joint ? "joint (room size -1 m in w/d/h and listener +0.5 m in x)"
+                              : "room-size (-1 m in w/d/h)",
+                        ss.min, ss.median, ss.max);
+                }
+                // (c) one more instance renders offline, stepping the room size 1 m per block.
+                {
+                    plugin::ScenePipeline off;
+                    off.prepare(fs, 512, true);
+                    off.beginRestore();
+                    off.restore(sc, values);
+                    off.process(in, out, 512); // the first offline build
+                    std::atomic<bool> stop{false};
+                    std::atomic<int> offSteps{0};
+                    std::thread bounce([&] {
+                        int k = 0;
+                        while (!stop.load())
+                        {
+                            ++k;
+                            const float s = static_cast<float>(1 + (k % 4));
+                            off.setParameter(module3d::kRoomW, w - s);
+                            off.setParameter(module3d::kRoomD, d - s);
+                            off.setParameter(module3d::kRoomH, h - s);
+                            off.process(in, out, 512);
+                            offSteps.fetch_add(1);
+                        }
+                    });
+                    while (offSteps.load() < 1)
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    const auto t2 = Clock::now();
+                    for (auto& p : pipes)
+                        p->setParameter(module3d::kListenerX, lx + 1.0f);
+                    const auto ss = spread(waitAllIdle(pipes, t2));
+                    stop.store(true);
+                    bounce.join();
+                    std::printf("05i-records (iv) %-26s %6.0f Hz, %d inst: real-time staleness while 1 more "
+                                "instance renders offline (room size stepping 1 m per block, back to back; "
+                                "%d offline rebuilds meanwhile), listener +0.5 m step: min %.0f median %.0f "
+                                "max %.0f ms\n",
+                                label.c_str(), fs, instances, offSteps.load(), ss.min, ss.median, ss.max);
+                }
+                // (d) one instance's host-thread waits while the others rebuild without pause.
+                {
+                    std::atomic<bool> stop{false};
+                    std::thread churn([&] {
+                        int k = 0;
+                        while (!stop.load())
+                        {
+                            ++k;
+                            const float s = static_cast<float>(1 + (k % 4));
+                            for (int i = 1; i < instances; ++i)
+                            {
+                                pipes[static_cast<std::size_t>(i)]->setParameter(module3d::kRoomW, w - s);
+                                pipes[static_cast<std::size_t>(i)]->setParameter(module3d::kRoomD, d - s);
+                                pipes[static_cast<std::size_t>(i)]->setParameter(module3d::kRoomH, h - s);
+                            }
+                            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                        }
+                    });
+                    auto& p = *pipes[0];
+                    std::vector<double> prep, rest, offl;
+                    for (int r = 0; r < 3; ++r)
+                    {
+                        const auto q0 = Clock::now();
+                        p.prepare(fs, 512, false);
+                        const auto q1 = Clock::now();
+                        p.beginRestore();
+                        p.restore(sc, values);
+                        const auto q2 = Clock::now();
+                        p.setNonRealtime(true);
+                        p.process(in, out, 512); // the offline branch builds before this block
+                        const auto q3 = Clock::now();
+                        p.setNonRealtime(false);
+                        prep.push_back(ms(q0, q1));
+                        rest.push_back(ms(q1, q2));
+                        offl.push_back(ms(q2, q3));
+                    }
+                    stop.store(true);
+                    churn.join();
+                    std::printf("05i-records (iv) %-26s %6.0f Hz, %d inst: worst host-thread wait of one "
+                                "instance while the other %d rebuild without pause (room size stepping 1 m "
+                                "every 50 ms), 3 runs: prepare %.0f ms, restore %.0f ms, offline switch + "
+                                "first block %.0f ms\n",
+                                label.c_str(), fs, instances, instances - 1, spread(prep).max,
+                                spread(rest).max, spread(offl).max);
+                }
+            }
+}
+
+// AX38 (iv), phase-05i scope 2: the offline wait. M instances render offline in parallel (M = 1, 4, 8; the
+// M-parallel case), each stepping the room size 1 m per processed block, 4 steps back to back (the worst
+// rebuild rate a bounce can ask for); the wait is the duration of each process() call that builds (the
+// offline branch builds before the block whose scene changed, AX5 / X11), and the bounce's wall time.
+TEST_CASE("records: AX38 (iv) offline wait per rebuilding block, 1 / 4 / 8 offline instances in parallel",
+          "[.][benchmark][diffuse-records-05i]")
+{
+    for (const auto& [label, sc] : std::vector<std::pair<std::string, contract::SceneDescription>>{
+             {"AQ10 room", aq10Room()}, {"cube100_lowalpha0.05_s0.3", cube("cube100_lowalpha0.05_s0.3")}})
+        for (const double fs : {48000.0, 96000.0})
+            for (const int m : {1, 4, 8})
+            {
+                const auto values = module3d::parameterValuesFromScene(sc);
+                const float w = static_cast<float>(sc.room.geometry.dimensions.x);
+                const float d = static_cast<float>(sc.room.geometry.dimensions.y);
+                const float h = static_cast<float>(sc.room.geometry.dimensions.z);
+                std::vector<std::unique_ptr<plugin::ScenePipeline>> pipes;
+                for (int i = 0; i < m; ++i)
+                {
+                    pipes.push_back(std::make_unique<plugin::ScenePipeline>());
+                    pipes.back()->prepare(fs, 512, true);
+                    pipes.back()->beginRestore();
+                    pipes.back()->restore(sc, values);
+                }
+                std::vector<std::vector<double>> waits(static_cast<std::size_t>(m));
+                const auto t0 = Clock::now();
+                std::vector<std::thread> threads;
+                for (int i = 0; i < m; ++i)
+                    threads.emplace_back([&, i] {
+                        std::vector<float> a(512, 0.1f), b(512, -0.1f);
+                        const float* const in[2] = {a.data(), b.data()};
+                        float* const out[2] = {a.data(), b.data()};
+                        auto& p = *pipes[static_cast<std::size_t>(i)];
+                        for (int k = 0; k <= 4; ++k)
+                        {
+                            if (k > 0)
+                            {
+                                p.setParameter(module3d::kRoomW, w - static_cast<float>(k));
+                                p.setParameter(module3d::kRoomD, d - static_cast<float>(k));
+                                p.setParameter(module3d::kRoomH, h - static_cast<float>(k));
+                            }
+                            const auto c0 = Clock::now();
+                            p.process(in, out, 512); // k = 0: the restore's build
+                            waits[static_cast<std::size_t>(i)].push_back(ms(c0, Clock::now()));
+                        }
+                    });
+                for (auto& t : threads)
+                    t.join();
+                const double wall = ms(t0, Clock::now());
+                std::vector<double> all;
+                for (const auto& v : waits)
+                    all.insert(all.end(), v.begin() + 1, v.end()); // the four room-size steps
+                const auto ss = spread(all);
+                std::printf(
+                    "05i-records (iv) offline %-26s %6.0f Hz, %d offline instance%s in parallel: wait "
+                    "per rebuilding block (room size -1 m per block, 4 steps back to back) min %.0f "
+                    "median %.0f worst %.0f ms; first build (after restore) worst %.0f ms; wall %.0f "
+                    "ms\n",
+                    label.c_str(), fs, m, m == 1 ? "" : "s", ss.min, ss.median, ss.max,
+                    [&] {
+                        double x = 0.0;
+                        for (const auto& v : waits)
+                            x = std::max(x, v.front());
+                        return x;
+                    }(),
+                    wall);
+            }
+}
+
+// The K-e12 record (AX38 4c finding, D-H3 (e), phase-05i scope 2): a room edit in flight, then a restore, at
+// the two gated builds (the 100 m cubes at 96 kHz), worst of 10, printed once as a record, never a CHECK. The
+// edit is a room-size step (w/d/h -1 m: a full rebuild with the diffuse solve and new unit decays; a material
+// edit reaches the pipeline only through a restore, so the room size is the host-reachable edit); the restore
+// lands at a random point of that rebuild; the host-thread wait is beginRestore() + restore(), i.e. the
+// quiesce wait (cancel points only in the diffuse solve, AX39 D6) plus the synchronous restore with its
+// solve. H1-F1's convention (the gate measures with the builder idle) is not read as met here: a worst above
+// the per-restore budget 30 s / 14 = 2.143 s is printed as a FINDING under the register's form (remedy
+// phase-07c conditions 9 and 10).
+TEST_CASE("records: K-e12 restore with a room edit in flight at the gated 100 m cubes, 96 kHz, worst of 10",
+          "[.][benchmark][diffuse-records-05i]")
+{
+    constexpr int kRuns = 10;
+    std::mt19937_64 rng(0x05E12);
+    for (const char* key : {"cube100_flutter_fallback", "cube100_lowalpha0.05_s0.3"})
+    {
+        const auto sc = cube(key);
+        const auto values = module3d::parameterValuesFromScene(sc);
+        const float w = static_cast<float>(sc.room.geometry.dimensions.x);
+        const float d = static_cast<float>(sc.room.geometry.dimensions.y);
+        const float h = static_cast<float>(sc.room.geometry.dimensions.z);
+        plugin::ScenePipeline pipe;
+        pipe.prepare(96000.0, 512, false);
+        const auto edit = [&](float s) {
+            pipe.setParameter(module3d::kRoomW, w - s);
+            pipe.setParameter(module3d::kRoomD, d - s);
+            pipe.setParameter(module3d::kRoomH, h - s);
+        };
+        // The idle restore (H1-F1's condition) and the room-edit rebuild time, uncancelled.
+        // Every timed restore loads a state the pipeline has not built (a distinct room size, as a project or
+        // preset load does), so it is a full synchronous build, never the skip of an unchanged state.
+        int fresh = 0;
+        const auto freshValues = [&] {
+            auto v = values;
+            const double s = 3.0 + 0.1 * fresh++;
+            v[module3d::kRoomW] = w - s;
+            v[module3d::kRoomD] = d - s;
+            v[module3d::kRoomH] = h - s;
+            return v;
+        };
+        pipe.beginRestore();
+        pipe.restore(sc, values);
+        std::vector<double> idle;
+        for (int i = 0; i < 3; ++i)
+        {
+            const auto v = freshValues();
+            const auto t0 = Clock::now();
+            pipe.beginRestore();
+            pipe.restore(sc, v);
+            idle.push_back(ms(t0, Clock::now()));
+        }
+        const auto tb = Clock::now();
+        edit(1.0f);
+        while (!pipe.builderIdle())
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        const double rebuild = ms(tb, Clock::now());
+        std::uniform_real_distribution<double> u(0.0, rebuild);
+        std::vector<double> waits, delays;
+        for (int i = 0; i < kRuns; ++i)
+        {
+            pipe.beginRestore();
+            pipe.restore(sc, values); // builder idle, IR current
+            const double dl = u(rng);
+            edit(static_cast<float>(1 + (i % 2)));
+            std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(dl));
+            const auto v = freshValues();
+            const auto t0 = Clock::now();
+            pipe.beginRestore();
+            pipe.restore(sc, v);
+            waits.push_back(ms(t0, Clock::now()));
+            delays.push_back(dl);
+        }
+        const auto ws = spread(waits);
+        const auto is = spread(idle);
+        std::printf(
+            "05i-records K-e12 os=%s %-26s 96 kHz: restore with a room edit in flight (room size -1/-2 m in "
+            "w/d/h, restore of a new room size at a random point of the %.0f ms rebuild), %d runs: min %.0f "
+            "median %.0f worst "
+            "%.0f ms (idle restore of a new state median %.0f ms, 3 runs); per-restore budget %.0f ms: %s\n",
+            kOsName, key, rebuild, kRuns, ws.min, ws.median, ws.max, is.median, kPerRestoreBudgetMs,
+            ws.max > kPerRestoreBudgetMs
+                ? "FINDING (worst above the budget; register form, remedy phase-07c conditions 9-10)"
+                : "within");
+        for (int i = 0; i < kRuns; ++i)
+            std::printf(
+                "05i-records K-e12 os=%s %-26s run %2d: restore at %.0f ms of %.0f -> host thread %.0f ms\n",
+                kOsName, key, i, delays[static_cast<std::size_t>(i)], rebuild,
+                waits[static_cast<std::size_t>(i)]);
+    }
+}
