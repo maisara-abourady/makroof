@@ -38,11 +38,14 @@ runner-speed reference: its solve is the pilot only, no cap, the same W_max rule
 | 42949252041 | Linux | 2546 / 2716 / 2977 | **41.67 (listed; median 2 716 > 2 247, failed)** | 880 | 2690 | 3.09 |
 | 42949252041 | macOS | 1503 / 1715 / 1952 | 27.33 | 484 | 1523 | 3.54 |
 | 42949252041 | Windows | 1764 / 1811 / 1827 | 25.57 | 622 | 1753 | 2.91 |
+| 42954077281 (b83c49d, green) | Linux | 1755 / 1879 / 1986 | 27.81 | 583 | — | 3.22 |
+| 42954077281 | macOS | 1715 / 1967 / 2122 | 29.70 | 501 | — | 3.93 |
+| 42954077281 | Windows | 1317 / 1341 / 1428 | 19.99 | 488 | — | 2.75 |
 
 (The macOS flutter median of the records run is read from file 31's 14 × worst line, 7.52 s, as a worst, not a
 median: the ratio for that row is approximate.) Within one OS the low-α restore median moves by a factor 1.63 on
-Linux (1 666 → 2 716 ms), 1.43 on Windows (1 811 → 2 589 ms), 1.23 on macOS (1 715 → 2 106 ms) between runs on
-identical code: shared-runner speed. The ratio low-α / flutter on the same run moves far less: Linux 2.85–3.24
+Linux (1 666 → 2 716 ms), 1.93 on Windows (1 341 → 2 589 ms, with run 42954077281 added on 2026-11-11), 1.23 on
+macOS (1 715 → 2 106 ms) between runs on identical code: shared-runner speed. The ratio low-α / flutter on the same run moves far less: Linux 2.85–3.24
 (±6 %), Windows 2.64–3.08 (±8 %), macOS 3.54–3.92 (±5 %). The 1.10 × growth bound on an absolute median is inside
 the runner's own spread; the strict 30 s line (≈ 2 143 ms worst) sits in the middle of the observed Windows and
 Linux ranges.
@@ -101,3 +104,11 @@ At 96 kHz the flutter scene's non-diffuse build is 889 ms: the unit-decay synthe
 136 ms at the low-α cube: the fallback's image list is the difference); the low-α cube's synthesis is ≈ 95 % of its
 3 339 ms. Seat 3's inference (file 58: flutter ≈ 60 % synthesis) is confirmed by measurement; the flutter restore
 with the solve on CI (≈ 0.5–0.9 s) adds its pilot-only solve (≈ 0.16 s) to this.
+
+
+## Added 2026-11-11: CI run 42954077281 (b83c49d, the pre-RG-1 form) green on three OSes
+
+Appended to the table above (the rows marked 42954077281; full-rebuild medians not extracted). Every listed entry
+sat inside its bound on normal runners (Linux 27.81 s, macOS 29.70 s, Windows 19.99 s, all three printing the
+§5 (c) 'passes 30 s' warning). Windows' low-α median 1 341 ms against 2 589 ms two runs earlier (×1.93) widens
+the observed spread; the ratios stay in their bands (Linux 3.22, macOS 3.93, Windows 2.75).
