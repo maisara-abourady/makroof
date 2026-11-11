@@ -108,48 +108,80 @@ def done_units() -> set:
     return {(r["room"], r["rung"], r["band"]) for r in rows}
 
 
-def write_provenance():
+def l_ref_table(rows: list) -> dict:
+    """max over a room's pairs of |E(1.25 m) / E(2.5 m) - 1| per band (AX36's rung rule; D-H2 (a) certifies < 1 %)."""
+    by = {(r["room"], float(r["rung"]), int(r["band"])): r["e_target"] for r in rows}
+    out = {}
+    for (room, rung, b), fine in sorted(by.items()):
+        coarse = by.get((room, RUNGS[0], b))
+        if rung == RUNGS[1] and coarse is not None:
+            out[f"{room}/{BANDS_HZ[b]}"] = max(abs(fine[n] / coarse[n] - 1) for n in fine)
+    return out
+
+
+def write_provenance(keep_commit: bool = False):
+    """Writes the provenance file; keys this function does not own (e.g. recipe_check) are kept."""
     import numba
     import scipy
-    commit = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    git = lambda *a: subprocess.run(["git", "-C", str(REPO), *a], capture_output=True, text=True).stdout.strip()  # noqa: E731
+    old = json.loads(PROVENANCE.read_text()) if PROVENANCE.exists() else {}
+    commit = git("rev-parse", old["tool_commit"]) if keep_commit and old.get("tool_commit") else git("rev-parse", "HEAD")
+    dirty = bool(git("status", "--porcelain", "--", str(pathlib.Path(__file__).relative_to(REPO))))
     rows = [json.loads(line) for line in OUT.read_text().splitlines() if line.strip()] if OUT.exists() else []
-    PROVENANCE.write_text(json.dumps({
+    PROVENANCE.write_text(json.dumps({**old,
         "file": OUT.name,
         "produced_by": "tools/validation/compute_phase05i_bras_references.py (phase05b.step_r1's recipe per band column; "
                        "see its docstring)",
         "tool_commit": commit,
+        "tool_dirty_at_write": dirty,
         "python": platform.python_version(), "numba": numba.__version__, "numpy": np.__version__, "scipy": scipy.__version__,
         "requirements": "tools/acoustics/requirements.txt and tools/validation/requirements-offline.txt (hash-pinned)",
         "rungs_m": list(RUNGS), "order_hz": [BANDS_HZ[b] for b in ORDER],
         "rows": len(rows),
         "units": sorted(f"{r['room']}/{r['rung']}/{r['band_hz']}" for r in rows),
+        "l_ref_max_by_room_band": l_ref_table(rows),
     }, indent=1) + "\n")
 
 
-def check() -> int:
-    """The recipe reproduces the committed R1 references (phase05b.json r1, 500 Hz) in CR2 and CR3, both rungs."""
+def check(chunked: bool = False) -> int:
+    """The recipe reproduces the committed R1 references (phase05b.json r1, 500 Hz): CR2 and CR3 at both rungs (the
+    lean solver), or with ``chunked`` CR4 at 1.25 m (the chunked solver, which produced CR4's 1.25 m units)."""
     d = json.loads((HERE / "data" / "phase05b.json").read_text())["r1"]["rooms"]
     worst = 0.0
-    for room in ("CR2", "CR3"):
+    for room, sizes in ((("CR4", (RUNGS[1],)),) if chunked else (("CR2", RUNGS), ("CR3", RUNGS))):
         rs = room_setup(room)
-        for size in RUNGS:
+        for size in sizes:
             u = compute_unit(room, size, 3, rs)
             for n, v in u["e_target"].items():
                 ref = d[room]["rungs"][str(size)]["e_target"][n][0]
                 worst = max(worst, abs(v / ref - 1))
             log(f"check {room} {size} m 500 Hz: worst relative difference so far {worst:.3e} ({u['seconds']:.0f} s)")
-    print(json.dumps({"check": "500 Hz, CR2 and CR3, 2.5 and 1.25 m, against phase05b.json r1", "worst_rel_diff": worst}))
+    what = "CR4 1.25 m (chunked)" if chunked else "CR2 and CR3, 2.5 and 1.25 m (lean)"
+    print(json.dumps({"check": f"500 Hz, {what}, against phase05b.json r1", "worst_rel_diff": worst}))
+    if PROVENANCE.exists():  # recorded by the run itself, beside the references it vouches for
+        prov = json.loads(PROVENANCE.read_text())
+        prov.pop("recipe_check", None)
+        prov.setdefault("recipe_checks", {})[f"500 Hz, {what}, against phase05b.json r1"] = {
+            "worst_rel_diff": worst, "script_commit": subprocess.run(
+                ["git", "-C", str(REPO), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip(),
+            "date": time.strftime("%Y-%m-%d")}
+        PROVENANCE.write_text(json.dumps(prov, indent=1) + "\n")
     return 0 if worst < 1e-9 else 1
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--check", action="store_true", help="recompute CR2/CR3 at 500 Hz against the committed r1 values")
+    ap.add_argument("--check-chunked", action="store_true", help="recompute CR4 1.25 m at 500 Hz (chunked solver)")
+    ap.add_argument("--provenance", action="store_true", help="rewrite the provenance file only (tool commit kept)")
     ap.add_argument("--bands", nargs="*", type=int, default=list(ORDER), help="band indices, in this order")
     ap.add_argument("--rooms", nargs="*", default=list(ROOMS))
     a = ap.parse_args(argv)
-    if a.check:
-        return check()
+    if a.check or a.check_chunked:
+        return check(chunked=a.check_chunked)
+    if a.provenance:
+        write_provenance(keep_commit=True)
+        return 0
     have = done_units()
     setups = {}
     for b in a.bands:
