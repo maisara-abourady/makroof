@@ -138,6 +138,20 @@ def row_of(name, suite, cls, c, srcs, ref_emitter, fine, coarse, decision) -> li
     return [name] + row
 
 
+def load_phase05i_bras() -> dict:
+    """Phase 05i scope 1: the BRAS pairs' outer-band references (tools/validation/compute_phase05i_bras_references.py),
+    {(room, rung, band): {pair: E_target}}; empty when the file is absent."""
+    path = DATA / "phase05i_bras_references.jsonl"
+    if not path.exists():
+        return {}
+    out = {}
+    for line in path.read_text().splitlines():
+        if line.strip():
+            r = json.loads(line)
+            out[(r["room"], float(r["rung"]), int(r["band"]))] = r["e_target"]
+    return out
+
+
 def load_session2() -> dict:
     out = {}
     path = DATA / "phase05h_hybrid_references.jsonl"
@@ -193,7 +207,9 @@ def main() -> int:
     for e in (0, 1):
         fine, coarse = s2_ref(f"W2_e{e}")
         add(f"W2_e{e}", "AX43", "reference", w2, E, e, fine, coarse)
-    # 30 BRAS pairs (initial alpha), reference at 500 Hz-2 kHz (r1, two rungs), other bands one rung (scope6)
+    # 30 BRAS pairs (initial alpha), reference at 500 Hz-2 kHz (r1, two rungs); the other bands at the two rungs where
+    # phase 05i computed them (phase05i_bras_references.jsonl, step_r1's recipe per band), else one rung (scope6)
+    b05i = load_phase05i_bras()
     for room in ("CR2", "CR3", "CR4"):
         r1 = d05b["r1"]["rooms"][room]
         for pair, fine3 in r1["rungs"]["1.25"]["e_target"].items():
@@ -204,7 +220,12 @@ def main() -> int:
             for i, b in enumerate(AQ9):
                 fine[b], coarse[b] = fine3[i], coarse3[i]
             for b in range(8):
-                if b not in AQ9:
+                if b in AQ9:
+                    continue
+                f05i, c05i = b05i.get((room, 1.25, b)), b05i.get((room, 2.5, b))
+                if f05i is not None and c05i is not None:
+                    fine[b], coarse[b] = f05i[pair], c05i[pair]  # two rungs: l_ref = the 2.5 -> 1.25 m change
+                else:
                     coarse[b] = other[b]  # single rung, uncertified
             bs = bras_scene(pair)
             add(pair, "AX43", "bras", bs, bs["ems"], 0, fine, coarse)
