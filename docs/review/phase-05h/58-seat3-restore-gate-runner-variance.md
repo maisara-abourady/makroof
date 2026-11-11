@@ -36,3 +36,26 @@ So the flutter scene is a fair *comparability guard* (same code, same run) and a
 **7. Hand-offs.** Seat 5: the guard's CI form and whether `ci ok` may carry "not evaluated". Seat 7: (d)'s cost. Seat 2: the 0.58 per-evaluation ratio as a solve-path invariant; the fallback ISM's share of the flutter restore. Seats 6/8: a synthesis regression reads as a longer "settling" wait under 07c's interim tail.
 
 **8. Premortem.** (b) lands; a `BandNoiseGenerator` edit in 07b makes `make` ×1.3 slower on every OS; the ratio moves +9 %, green; 07c sizes its background synthesis and interim-tail rules on a cost a third heavier than recorded, and Maisara meets it as a longer settling wait in 07c's bounce record.
+
+
+---
+
+## Round 2: Seat 3 on the decider's provisional (x′) (file 59 round 2)
+
+SEAT 3 POSITION — round 2, (x′) only (file 59 "round 2" read; nothing from file 58 restated)
+
+**Rating: (x′) now 1 / later 2** (can live with; not veto-grade: no option touches the audio).
+
+**Now 1.** The one asserted timing figure is a relative one, the work pins stay (L343–344), the 1.15 multiplier clears every ratio on file (margins 5.5–11 %, K4), host-conformance evidence survives a red (`if: always()`). What it costs me now: nothing measured.
+
+**Later 2, and why.** Until 07c the gate's job from my seat is to watch the synthesis (≈ 88 % of the low-α restore) and the solve. (x′) asserts a ratio whose reference is itself ≈ 60 % synthesis (file 58's inference; the orchestrator's flutter split-timer run will replace it): a global synthesis slowdown reaches the ratio at ≈ 1/3 strength, and with k = 1.15 the first synthesis regression the CHECK sees is ≈ ×1.5–1.6 (my arithmetic: low-α +0.9·1.8 s, flutter +0.5·0.43 s → ratio ≈ 1.14–1.17 × baseline). A solve regression lowers the ratio. So between now and 07c the only asserted timing figure cannot see either term below ×1.5; every real regression lands in the printed line, which nobody is obliged to read, and 07c then sizes its background synthesis and interim-tail rules on a cost it did not know had grown. Undo: a test edit; the cost is the unread regression.
+
+**Conditions that move (x′) to 1 / 1** (each a test line, none a timing CHECK on an absolute figure):
+1. Pin the unit-decay length (1 152 000 samples at 96 kHz / 576 000 at 48 kHz) and, if Seat 2 confirms it cheap, the `BandNoiseGenerator` operation count (B-seat-2 item): a runner-free synthesis *work* pin.
+2. Assert the solve's per-evaluation ratio low-α / flutter on the same run ≤ 1.10 × 0.58 (file 1 §3: 0.58 / 0.57 / 0.58 on the three OSes): the solve-path detector the ratio inverts.
+3. The summary line carries `WARNING` when the absolute median exceeds 1.10 × its pinned baseline or 14 × worst exceeds 30 s, and the §0 note counts the warnings; a run with a WARNING is named in the PR.
+With 1–3, (x′) is blind only to a constant-factor synthesis slowdown below ≈ ×1.5 on a hosted runner, which no same-run ratio of two renderer workloads can separate from runner speed; that residue is Phase 13's and (d)'s.
+
+**Premortem of file 58 against (x′): stands, slightly worse.** A ×1.3 `make` slowdown in 07b moves the ratio ≈ +9–10 %, under 1.15: green, no WARNING unless condition 3 is in. With condition 3 it is printed and counted; with condition 1 it is caught only if the slowdown changes the work count, not if it is a constant factor. Maisara still meets it as a longer settling wait in 07c's bounce record; with condition 3 the orchestrator meets it first.
+
+**Hand-offs.** Seat 2: the operation-count pin; the flutter share once measured (if the share is ≥ 75 %, the ratio is blinder than I state; if ≤ 50 %, less). Seat 5: whether conditions 1–3 are test lines inside (x′)'s form. Seat 7: (d) for Phase 13.

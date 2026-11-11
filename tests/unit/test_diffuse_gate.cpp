@@ -665,57 +665,80 @@ TEST_CASE("probe: denormals in the diffuse estimator without the guard", "[.][pr
 // (tail::BandNoiseGenerator); the generator's constructor (the band spectra) is timed alone.
 TEST_CASE("probe: split timer of the non-diffuse 100 m / 96 kHz build", "[.][probe-restore-split]")
 {
-    auto scene = pipeline_test::loadScene("medium_room.json");
-    scene.room.geometry.dimensions = {100.0, 100.0, 100.0};
-    scene.listener.position = {50.0, 30.0, 1.7};
-    scene.emitters[0].position = {45.0, 70.0, 2.0};
-    scene.emitters[1].position = {55.0, 70.0, 2.0};
-    for (auto& s : scene.room.surfaces)
+    // Two scenes (file 56 / Seat 3 file 58: the flutter scene as the register's runner-speed reference): the
+    // gated low-alpha cube (alpha 0.05, s 0.3) and the flutter-fallback cube of the records test (two rigid
+    // parallel faces alpha 0.02, s 0; the rest alpha 0.95, s 0.05).
+    for (const char* label : {"lowalpha0.05_s0.3", "flutter_fallback"})
     {
-        s.bandsAbsorption.fill(0.05);
-        s.scattering = 0.3;
-    }
-    using Clock = std::chrono::steady_clock;
-    const auto ms = [](Clock::time_point a, Clock::time_point b) {
-        return std::chrono::duration<double, std::milli>(b - a).count();
-    };
-    for (const double fs : {96000.0, 48000.0})
-    {
-        sim::BuildOptions full;
-        full.sampleRate = fs;
-        full.kind = sim::BuildOptions::Kind::Omni;
-        full.tailLevelAx16 = true; // no diffuse solve: today's restore
-        std::vector<double> tFull, tCached, tGen, tMake;
-        const auto decay = sim::tail::eyringDecay(scene.room);
-        const sim::ism::OctaveFilterbank fb(fs);
-        const std::size_t len = sim::tail::unitDecayLength(sim::tail::tailLengthS(decay), fs);
-        for (int i = 0; i < 5; ++i)
+        auto scene = pipeline_test::loadScene("medium_room.json");
+        scene.room.geometry.dimensions = {100.0, 100.0, 100.0};
+        scene.listener.position = {50.0, 30.0, 1.7};
+        scene.emitters[0].position = {45.0, 70.0, 2.0};
+        scene.emitters[1].position = {55.0, 70.0, 2.0};
+        const bool flutter = std::string(label) == "flutter_fallback";
+        for (std::size_t f = 0; f < scene.room.surfaces.size(); ++f)
         {
-            auto t0 = Clock::now();
-            (void)sim::buildRoomIR(scene, full);
-            tFull.push_back(ms(t0, Clock::now()));
-            t0 = Clock::now();
-            const sim::tail::BandNoiseGenerator gen(fb, len);
-            tGen.push_back(ms(t0, Clock::now()));
-            std::vector<sim::tail::UnitDecay> cache;
-            t0 = Clock::now();
-            for (std::uint32_t e = 0; e < 2; ++e)
-                cache.push_back(gen.make(decay, sim::tail::tailSeedForOutput(scene.render.tailSeed, 0), e));
-            tMake.push_back(ms(t0, Clock::now()));
-            auto cached = full;
-            cached.cachedUnitDecays = &cache;
-            t0 = Clock::now();
-            (void)sim::buildRoomIR(scene, cached);
-            tCached.push_back(ms(t0, Clock::now()));
+            auto& s = scene.room.surfaces[f];
+            if (flutter && f < 2) // xMin, xMax: the rigid pair
+            {
+                s.bandsAbsorption.fill(0.02);
+                s.scattering = 0.0;
+            }
+            else if (flutter)
+            {
+                s.bandsAbsorption.fill(0.95);
+                s.scattering = 0.05;
+            }
+            else
+            {
+                s.bandsAbsorption.fill(0.05);
+                s.scattering = 0.3;
+            }
         }
-        const auto med = [](std::vector<double> v) {
-            std::sort(v.begin(), v.end());
-            return v[v.size() / 2];
+        using Clock = std::chrono::steady_clock;
+        const auto ms = [](Clock::time_point a, Clock::time_point b) {
+            return std::chrono::duration<double, std::milli>(b - a).count();
         };
-        std::printf("probe-split fs %.0f: T60max %.1f s, unit decay %zu samples; full build (no diffuse) "
-                    "median %.0f ms; "
-                    "generator ctor %.0f ms; make x2 %.0f ms; position-only build (cached decays) %.0f ms\n",
-                    fs, *std::max_element(decay.bandsT60S.begin(), decay.bandsT60S.end()), len, med(tFull),
-                    med(tGen), med(tMake), med(tCached));
+        for (const double fs : {96000.0, 48000.0})
+        {
+            sim::BuildOptions full;
+            full.sampleRate = fs;
+            full.kind = sim::BuildOptions::Kind::Omni;
+            full.tailLevelAx16 = true; // no diffuse solve: today's restore
+            std::vector<double> tFull, tCached, tGen, tMake;
+            const auto decay = sim::tail::eyringDecay(scene.room);
+            const sim::ism::OctaveFilterbank fb(fs);
+            const std::size_t len = sim::tail::unitDecayLength(sim::tail::tailLengthS(decay), fs);
+            for (int i = 0; i < 5; ++i)
+            {
+                auto t0 = Clock::now();
+                (void)sim::buildRoomIR(scene, full);
+                tFull.push_back(ms(t0, Clock::now()));
+                t0 = Clock::now();
+                const sim::tail::BandNoiseGenerator gen(fb, len);
+                tGen.push_back(ms(t0, Clock::now()));
+                std::vector<sim::tail::UnitDecay> cache;
+                t0 = Clock::now();
+                for (std::uint32_t e = 0; e < 2; ++e)
+                    cache.push_back(
+                        gen.make(decay, sim::tail::tailSeedForOutput(scene.render.tailSeed, 0), e));
+                tMake.push_back(ms(t0, Clock::now()));
+                auto cached = full;
+                cached.cachedUnitDecays = &cache;
+                t0 = Clock::now();
+                (void)sim::buildRoomIR(scene, cached);
+                tCached.push_back(ms(t0, Clock::now()));
+            }
+            const auto med = [](std::vector<double> v) {
+                std::sort(v.begin(), v.end());
+                return v[v.size() / 2];
+            };
+            std::printf(
+                "probe-split %s fs %.0f: T60max %.1f s, unit decay %zu samples; full build (no diffuse) "
+                "median %.0f ms; "
+                "generator ctor %.0f ms; make x2 %.0f ms; position-only build (cached decays) %.0f ms\n",
+                label, fs, *std::max_element(decay.bandsT60S.begin(), decay.bandsT60S.end()), len, med(tFull),
+                med(tGen), med(tMake), med(tCached));
+        }
     }
 }

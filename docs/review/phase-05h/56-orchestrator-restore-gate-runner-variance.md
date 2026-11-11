@@ -86,3 +86,18 @@ or an amendment of D-H1 (v)) unless it is one of the three NEEDS MAISARA cases; 
 plan-editor and the orchestrator apply; CI run 12 verifies on the head. Until then the branch's last green run on
 the head's code is run 42935789745 (b8b3c6d, before the CI-job commit); runs 9 and 10 each failed one build job on
 the restore gate only.
+
+## Measured: the split timer of the flutter scene (Seat 3's hand-off; probe `[probe-restore-split]` extended to both scenes, Release, this 4-core Linux box, median of 5; 2026-11-11)
+
+```
+probe-split lowalpha0.05_s0.3 fs 96000: T60max 50.5 s, unit decay 1152000 samples; full build (no diffuse) median 3339 ms; generator ctor 942 ms; make x2 2425 ms; position-only build (cached decays) 136 ms
+probe-split lowalpha0.05_s0.3 fs 48000: T60max 50.5 s, unit decay 576000 samples; full build (no diffuse) median 1224 ms; generator ctor 313 ms; make x2 801 ms; position-only build (cached decays) 57 ms
+probe-split flutter_fallback fs 96000: T60max 2.6 s, unit decay 377517 samples; full build (no diffuse) median 889 ms; generator ctor 148 ms; make x2 388 ms; position-only build (cached decays) 332 ms
+probe-split flutter_fallback fs 48000: T60max 2.6 s, unit decay 188759 samples; full build (no diffuse) median 328 ms; generator ctor 55 ms; make x2 145 ms; position-only build (cached decays) 122 ms
+```
+
+At 96 kHz the flutter scene's non-diffuse build is 889 ms: the unit-decay synthesis (ctor 148 + make 388 = 536 ms) is
+≈ 60 % of it, the position-only part (the AX22-fallback ISM list, the matching and the mix) ≈ 37 % (332 ms, against
+136 ms at the low-α cube: the fallback's image list is the difference); the low-α cube's synthesis is ≈ 95 % of its
+3 339 ms. Seat 3's inference (file 58: flutter ≈ 60 % synthesis) is confirmed by measurement; the flutter restore
+with the solve on CI (≈ 0.5–0.9 s) adds its pilot-only solve (≈ 0.16 s) to this.
