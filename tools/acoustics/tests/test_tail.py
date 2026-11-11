@@ -196,21 +196,24 @@ def test_diagnostics_match_independent_eyring_mixing_time_and_switch(render_cli_
 # scattering inside the matching window, every other face absorbing everything) is checked against an
 # independent single-scatter window integral over the finite 100 x 100 m floor (tools/acoustics/
 # ground_scatter.window_target: Hann weight, Eyring referral, per 10 ms; it does not import ref_hybrid),
-# in the log domain on double values, to D-T1's tolerance tau (AX42) plus the estimator's own SE; or as
-# an absolute bound below 1e-300 where the integral is zero. Kept: E_b finite and >= 0 (the C++ test
+# in the log domain on double values, to D-T1's tolerance tau (AX42) alone, at a validation N where the
+# estimator's own SE satisfies 3 SE <= tau in every band (decider file 42 QA, review file 39 blocker 1);
+# or as an absolute bound below 1e-300 where the integral is zero. Kept: E_b finite and >= 0 (the C++ test
 # checks the energy 50 ms after the direct sound against -60 dB).
 OPEN_FIELD_TAU_DB = 0.25
-OPEN_FIELD_VALIDATION_HISTORIES = 1 << 20  # AX37 (5.4) at a validation N (render_cli --diffuse-histories)
+OPEN_FIELD_VALIDATION_HISTORIES = 1 << 23  # AX37 (5.4) at a validation N (render_cli --diffuse-histories): 3 SE <= tau
 
 
 @pytest.mark.parametrize("s", [0.4, 0.5])
 @pytest.mark.parametrize("histories", [None, OPEN_FIELD_VALIDATION_HISTORIES])
 def test_open_field_diffuse_target_matches_the_finite_floor_integral(render_cli_path, s, histories):
     """AX37 (5.4): the diffuse E_target of open_field against the independent finite-floor single-scatter window
-    integral (ground_scatter.window_target). Two forms (review file 32 B3): the shipping rule (histories None: the
-    capped estimate, SE 0.4-2.4 dB, so the tolerance is tau + 3 SE and the check is a smoke test of the form) and a
-    fixed validation N (OPEN_FIELD_VALIDATION_HISTORIES through --diffuse-histories: SE about 0.1 dB, so the check is
-    AX42's tau + 3 SE with tau dominant, the form AX37 (5.4) names)."""
+    integral (ground_scatter.window_target). Two forms: the validation N (OPEN_FIELD_VALIDATION_HISTORIES = 2^23
+    through --diffuse-histories, validation only): the N rule 3 SE_b <= tau is asserted per band and the deviation
+    is held to tau alone (AX37 (5.4)'s check; decider file 42 QA); and the shipping rule (histories None: the capped
+    estimate, SE 0.4-2.4 dB), a labelled smoke test of the form (finite, >= 0, zero where the integral is zero,
+    |dev| <= tau + 3 SE as a gross-error detector), never AX37 (5.4)'s check. A band outside tau at 3 SE <= tau is a
+    finding to report (NFR-8), never a loosened bound."""
     scene = load("open_field")
     scene["room"]["surfaces"]["floor"]["scattering"] = s
     extra = () if histories is None else ("--diffuse-histories", str(histories))
@@ -220,6 +223,7 @@ def test_open_field_diffuse_target_matches_the_finite_floor_integral(render_cli_
     for other in ("xMin", "xMax", "yMin", "yMax", "ceiling"):
         assert scene["room"]["surfaces"][other]["absorption"] == [1.0] * 8, "open_field: every other face absorbs"
     rho_s = s * (1.0 - alpha_floor)
+    label = "smoke (shipping N, capped): not AX37 (5.4)'s check" if histories is None else "AX37 (5.4) validation N"
     for e in d["emitters"]:
         em = next(x for x in scene["emitters"] if x["id"] == e["id"])
         got = np.asarray(e["diffuse"]["targetEnergyDiffuseReferenceUnits"], float)
@@ -231,13 +235,19 @@ def test_open_field_diffuse_target_matches_the_finite_floor_integral(render_cli_
         se_db = np.asarray(e["diffuse"]["seDb"], float)
         if histories is not None:
             assert e["diffuse"]["n"] == histories and not e["diffuse"]["capHit"]
-            assert float(np.nanmax(se_db[np.isfinite(se_db)])) <= 0.5, se_db  # the validation N resolves tau
         for b in range(8):
             if ref[b] < 1e-300:
                 assert got[b] < 1e-300
+                continue
+            assert got[b] > 0.0
+            dev_db = 10 * np.log10(got[b] / ref[b])
+            z = dev_db / se_db[b] if se_db[b] > 0 else float("nan")
+            print(f"open_field s {s} emitter {e['id']} {label}: band {b} dev {dev_db:+.3f} dB SE {se_db[b]:.3f} dB z {z:+.2f}")
+            if histories is None:
+                assert abs(dev_db) <= OPEN_FIELD_TAU_DB + 3.0 * se_db[b], (b, got[b], ref[b], se_db[b])
             else:
-                assert got[b] > 0.0
-                assert abs(10 * np.log10(got[b] / ref[b])) <= OPEN_FIELD_TAU_DB + 3.0 * se_db[b], (b, got[b], ref[b], se_db[b])
+                assert 3.0 * se_db[b] <= OPEN_FIELD_TAU_DB, ("the validation N must resolve tau", b, se_db[b])
+                assert abs(dev_db) <= OPEN_FIELD_TAU_DB, ("AX37 (5.4): outside tau at 3 SE <= tau: report, never loosen", b, dev_db, se_db[b])
 
 
 # ---------------------------------------------------------------------------------------------

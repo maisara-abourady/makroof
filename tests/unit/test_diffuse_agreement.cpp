@@ -167,7 +167,10 @@ TEST_CASE(
     std::map<int, std::array<Stat, 8>> classZ, classZPrime;                     // per class, both forms
     std::array<std::map<int, Stat>, 8> roomZPrime{}; // per reference room (the CHECK)
     std::map<int, std::array<Stat, 8>> classDev;     // AX46: signed relative deviation per class and band
-    std::map<int, std::array<double, 8>> classLRef;  // max l_ref per class and band
+    std::map<int, std::array<double, 8>> classLRef;  // max l_ref per class and band (a record)
+    std::map<int, std::array<Stat, 8>>
+        classSe2; // AX46 (decider file 42 QC): per-case estimator SE^2 (relative)
+    std::map<int, std::array<Stat, 8>> classLRefMean; // AX46 (QC): l_ref per case, averaged over the class
     for (const Case& k : cases)
     {
         const auto planned = diffuse_test::plan(k.scene);
@@ -265,6 +268,11 @@ TEST_CASE(
                                 k.name.c_str(), b, className(k.cls), dbs[b], ses[b], z, 100.0 * k.lRef[b]);
                     classDev[k.cls][b].add(std::pow(10.0, dbs[b] / 10.0) - 1.0);
                     classLRef[k.cls][b] = std::max(classLRef[k.cls][b], k.lRef[b]);
+                    {
+                        const double seRel = std::pow(10.0, ses[b] / 10.0) - 1.0;
+                        classSe2[k.cls][b].add(seRel * seRel);
+                        classLRefMean[k.cls][b].add(k.lRef[b]);
+                    }
                 }
                 else
                 {
@@ -353,14 +361,21 @@ TEST_CASE(
                 "%+.3f (3/sqrt(M_rooms) %.3f); rooms +/- %d / %d\n",
                 b, rooms.n, rooms.mean(), limitRooms, roomsPositive, roomsNegative);
         }
-    // AX46 in its D-H2 (d) form (decider file 19): per band and class on every class with >= 1 certified case
-    // at the pre-registered N (3 SE_class <= 1 % - l_ref); classes without a certified case print 'not
-    // evaluated (reference pending)'; the 100 m class is the tracer comparison, labelled 'not evaluated at 1
-    // % (compute limit)', never a pass; the pooled figure is labelled 'pooled over <n> of 5 classes'.
+    // AX46 in its D-H2 (d) form (decider file 19) with the file 42 readings (review file 39 majors 1-2,
+    // decider file 42 QB/QC, interrogator file 43): six classes (the BRAS pairs the sixth, printed before the
+    // 100 m tracer line); per band and class on every class with >= 1 certified case; a class-band is
+    // evaluated when 3 SE_class <= 1 % - mean l_ref with SE_class = sqrt(mean SE_i^2 / n) from the per-case
+    // estimator SEs (the quantity N controls) and l_ref the class mean (D-H3 (a)'s one reading of a bounded
+    // residual), then CHECK |mean deviation| <= 1 %; the empirical SE of the per-case deviations (n >= 2) and
+    // the class max l_ref are printed as records, and |mean| + 3 SE_emp > 1 % with the CHECK green is
+    // labelled (the heterogeneity watch; returns the clause to the board). Classes without a certified case
+    // print 'not evaluated (reference pending)'; the 100 m class is the tracer comparison, labelled 'not
+    // evaluated at 1 % (compute limit)', never a pass; the pooled figure is labelled 'pooled over <n> of 6
+    // classes'.
     {
         int evaluatedClasses = 0;
         Stat pooledClasses[8];
-        for (int cls = 0; cls < 5; ++cls)
+        for (const int cls : {0, 1, 2, 3, 5, 4})
         {
             const auto it = classDev.find(cls);
             if (it == classDev.end())
@@ -379,17 +394,30 @@ TEST_CASE(
             {
                 const Stat& st = it->second[b];
                 if (st.n == 0)
+                {
+                    std::printf("agree-full AX46 class %-10s band %zu: not evaluated (reference pending)\n",
+                                className(cls), b);
                     continue;
-                const double budget = kBiasLimit - classLRef[cls][b];
-                const bool evaluated = budget > 0.0 && st.n >= 2 && 3.0 * st.se() <= budget;
-                std::printf(
-                    "agree-full AX46 class %-10s band %zu: mean deviation %+.3f%% (SE %.3f%%, %d cases, "
-                    "l_ref max "
-                    "%.3f%%) %s\n",
-                    className(cls), b, 100.0 * st.mean(), 100.0 * st.se(), st.n, 100.0 * classLRef[cls][b],
-                    evaluated  ? "evaluated"
-                    : st.n < 2 ? "not evaluated (one certified case: no class SE)"
-                               : "not evaluated (pre-registered N insufficient for 3 SE <= 1 % - l_ref)");
+                }
+                const double lRefMean = classLRefMean[cls][b].mean();
+                const double seProp = std::sqrt(classSe2[cls][b].mean() / static_cast<double>(st.n));
+                const double budget = kBiasLimit - lRefMean;
+                const bool evaluated = st.n >= 1 && budget > 0.0 && 3.0 * seProp <= budget;
+                const bool heterogeneous = evaluated && st.n >= 2
+                                           && std::abs(st.mean()) + 3.0 * st.se() > kBiasLimit;
+                char seEmp[32];
+                if (st.n >= 2)
+                    std::snprintf(seEmp, sizeof(seEmp), "%.3f%%", 100.0 * st.se());
+                else
+                    std::snprintf(seEmp, sizeof(seEmp), "n/a");
+                std::printf("agree-full AX46 class %-10s band %zu: mean deviation %+.3f%% (SE_prop %.3f%%, "
+                            "SE_emp %s, %d cases, l_ref mean %.3f%% max %.3f%%) %s%s\n",
+                            className(cls), b, 100.0 * st.mean(), 100.0 * seProp, seEmp, st.n,
+                            100.0 * lRefMean, 100.0 * classLRef[cls][b],
+                            evaluated ? "evaluated"
+                                      : "not evaluated (pre-registered N insufficient for 3 SE_class <= 1 % "
+                                        "- mean l_ref)",
+                            heterogeneous ? "  |mean| + 3 SE_emp > 1 % (heterogeneity watch)" : "");
                 if (evaluated)
                 {
                     CHECK(std::abs(st.mean()) <= kBiasLimit);
@@ -403,7 +431,7 @@ TEST_CASE(
         for (std::size_t b = 0; b < 8; ++b)
             if (pooledClasses[b].n > 0)
                 std::printf("agree-full AX46 band %zu: mean of the evaluated class means %+.3f%% (pooled "
-                            "over %d of 5 classes; "
+                            "over %d of 6 classes; "
                             "never a bare 'bias <= 1 %%')\n",
                             b, 100.0 * pooledClasses[b].mean(), evaluatedClasses);
     }
