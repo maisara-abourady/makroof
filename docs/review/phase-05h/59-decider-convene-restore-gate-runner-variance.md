@@ -79,3 +79,88 @@ Seat 5 and Seat 3 cells (files 57, 58) **and** Seats 2, 6, 7 on B2/B6/B7, plus R
 **CONVENE:** Seats 2, 3 (running), 5 (running), 6, 7. Researcher: RQ-RG-1, RQ-RG-2, RQ-RG-3.
 
 Files read: /home/user/makroof/docs/review/phase-05h/56-orchestrator-restore-gate-runner-variance.md, /home/user/makroof/docs/review/phase-05h/19-decider-decision-D-H1-D-H2-r2.md (L95–182), /home/user/makroof/docs/review/phase-05h/53-orchestrator-windows-restore-gate-crossing.md, /home/user/makroof/docs/review/phase-05h/54-interrogator-windows-restore-gate-crossing.md, /home/user/makroof/docs/review/phase-05h/5-researcher-RQ-H1-H2.md (F9–F20), /home/user/makroof/docs/review/phase-05h/5-seat5-D-H1-D-H2.md, 5-seat3, 5-seat7 (W cells), /home/user/makroof/docs/phases/phase-05h.md (§3 D-H1, §5 L372–391), /home/user/makroof/docs/BUILD_PLAN.md (§6 L450–474), /home/user/makroof/tests/unit/test_diffuse_records.cpp (L40–109, L340–414), /home/user/makroof/docs/board/README.md (L45–124), /home/user/makroof/docs/PRD.md, /home/user/makroof/CLAUDE.md.
+
+
+---
+
+# Decider — restore-gate register form (file 56), round 2: PROVISIONAL DECISION on Seat 5's cell; CONVENE Seats 3 (pending), 2, 6, 7 on the concrete variant
+
+Corpus `c1b171fe649f` (no acoustic claim). PRD digest, restatement, options (a)–(f) and the nine-row table: as my round-1 hand-back; unchanged. Seat 5's cell (file 57) is in; file 58 (Seat 3) and Seats 2, 6, 7 are not. I cannot decide on one seat where my own table convened five, so the state is **proposed, pending**; the variant, the plan text and the test form are fixed now so the remaining seats rate one concrete thing.
+
+## Knowledge inventory (update)
+| id | what | source | status |
+|---|---|---|---|
+| K1 | per-run data, 13 OS-rows | file 56 | known (CI record) |
+| K2 | rule text (v)(a)–(d) | file 19 L104; phase-05h §5 L368–390 | known |
+| K3 | ratio means Windows 2.83 / Linux 3.05 / macOS ≈ 3.80; max/mean 1.088 / 1.062 / 1.033; a one-run baseline × 1.10 (2.90 / 3.14) is below the observed maxima 3.08 / 3.24 (run 42935789745) | file 56; Seat 5 §3; my arithmetic agrees | known |
+| K4 | bound multiplier: × 1.15 of the mean leaves every observed ratio inside (3.25 / 3.51 / 4.37 vs max 3.08 / 3.24 / 3.92; margins 5.5 / 8 / 11 %) | Seat 5 §5–6, re-done | known as an observed-spread bound; **not** a statistical tolerance (n = 4–5): stated as such in the text; RQ-RG-3 stays open, not load-bearing |
+| K5 | CI order: Benchmark step L404 precedes pluginval L425 / auval L434; first `if: always()` at L472 (artifact upload) → a red records REQUIRE removes host-conformance evidence on that OS | ci.yml, from the code (verified) | known |
+| K6 | precedent: AX38 (i) quiesce record "a print, never a CHECK with a timing threshold on shared runners" | BUILD_PLAN L139 (verified by grep) | known |
+| K7 | Phase 13 release-machine strict re-check exists in plan text (4 occurrences) | BUILD_PLAN AX41 / AX38 4c | known |
+| K8 | remedy 07c conditions 9–10; ≈ 0.15 s left | plan | known |
+| K9 | ratio blind to a uniform slowdown of both scenes; what covers it | file 56; Seat 5 §4 ("nothing on a shared runner can see a 10 % synthesis change under ×1.63 noise") | under-informed → Seats 2/3 (B2, B3) |
+| K10 | flutter median spread Linux 514–880 ms (−28/+23 %): a ±10 % guard (e) evaluates on about half the runs | Seat 5 §3 from file 56 | known |
+
+## Tension map (Seat 5's words; other convened seats pending; 1, 4, 8, 9 = 0/0 by the table)
+| option | Seat 5 now / later | Seat 5's reason |
+|---|---|---|
+| (a) as it stands | **3** / 2 | "red on 2 of 5 runs by runner speed, each red masking pluginval/auval on that OS"; later "every PR to 07c waits on runner luck … the fingerprint skip never fires" |
+| (a) + `if: always()` | 2 / 2 | "2→1 is not reachable while an absolute timing CHECK sits on a shared runner" (§6) |
+| (b) as written (one-run × 1.10) | 2 / 1 | "would already have been red on run 42935789745 on both OSes" |
+| (b) multi-run mean × 1.15 + `if: always()` | 1 / 1 (read from §6 conditions) | "blind to a global synthesis slowdown … re-baselined at 07c" |
+| (c) slowest-run baseline | 1 / 2 | "the baseline creeps upward at every slower runner, each creep a plan edit" |
+| (d) dedicated runner | 2 / 1 | out at step 1 (one-phase rule); "Phase 13's question" |
+| (e) runner guard | 1 / 2 | "a regression that slows both scenes reads as 'runner slow'" |
+| (g) nightly-only (Seat 5's) | 1 / 2 | "same shared runners, less coverage, and the nightly is not scheduled" |
+| **(x) Seat 5's: no timing figure is a CHECK on shared runners** | **0 / 1** | "a record nobody reads is my §17 blind spot; mitigated by a machine-readable summary line and Phase 13's strict re-check" |
+| (f) mine | not rated by Seat 5 | withdrawn: it contains (e)'s guard, which Seat 5 rates later 2 |
+
+## Minimum-tension working (as far as one seat allows)
+1. **Bounds:** (d) out (one-phase rule; file 56). Every other option keeps W_max, range and formulation ((v)(d)). (x) moves the 30 s line from CHECK to print on shared runners: that amends D-H1 (v)(a)/(b) → `FOR MAISARA`, inside the bounds (H1-F1's convention stands; enforced strictly at Phase 13, K7).
+2. **Veto-grade:** (a) as it stands dropped (3 now).
+3. **Worst-off:** (x) max 1; (b)-conditioned max 1; the rest max 2.
+4. **Compose:** **(x′)** = (x) + Seat 5's (b)-conditioned ratio bound as the one asserted timing figure (relative, multi-run mean baseline × 1.15) + `if: always()` + a machine-readable summary line + §0 count. Seat 5's §2 already puts the widened (b) inside (x), so (x′) is (x) as Seat 5 wrote it, named. Cells for Seat 5: 0 / 1 (its own option).
+5–6. Sum and reversibility wait for the other seats.
+7. **Proposed:** (x′). Falls or changes if Seat 3, 2, 6 or 7 rates it ≥ 2 (compose from their conditions) or 3 (drop).
+
+## Draft FOR MAISARA RG-F1 (to be interrogated once the seats are in)
+**Question.** May the AX38 4c blocking restore gate's absolute timing assertions (30 s strict; 1.10 × median growth) become printed records on shared CI runners, with the only asserted timing figure a runner-normalised ratio, until Phase 13's release machines re-enforce them strictly?
+
+**Answer (exact wording).** "On GitHub-hosted runners no absolute timing figure of the restore gate is a CHECK. Per OS and gated scene the records test prints min / median / worst of 10 restores, 14 × worst against the 30 s line, the 29.1 s strict/listed rule and the register's growth bound, every run, in one machine-readable summary line; the register entries, their remedies and closing phases stand. Asserted on every run: (1) the exact W_pilot / W_final pins and the AX41 realised-work ratio ≤ 1.02 (deterministic, runner-independent); (2) the runner-normalised bound median(low-α restore) / median(flutter restore, same run) ≤ 1.15 × the pinned ratio per OS, pinned as the mean of the runs on file (Linux 3.05 from runs 42909003931 / 42924781618 / 42935789745 / 42949252041; Windows 2.83 from those plus 42942694523; macOS 3.80 from the same four as Linux, the first row approximate), re-pinned with a CHANGELOG reason at every W_max / n*_max re-derivation and at 07c. A bound broken is a defect under (v)(d) (no re-run, no cut, no range change, no seam). The strict 30 s and the 1.10 × growth bound are re-enforced on all three OSes at Phase 13's release-machine re-check (AX41) and on any dedicated runner. `ci.yml`: the pluginval and auval steps run `if: always()` so no records failure hides host conformance. §0 row 05h records, per run, the printed 14 × worst per OS."
+
+**PRD ids and decisions.** L101 ("but … usable in a DAW session"), NFR-2, NFR-1, NFR-6, NFR-4 (three OSes), L20; her acceptance 2026-11-10; D-H1 (v) / H1-F1 / H1-F2 (file 19).
+**Reasoning.** The 30 s convention bounds a user-facing wait (L101); a CHECK that is red on 2 of 5 identical runs measures the runner, not that wait, and each red removes the pluginval/auval evidence (NFR-4) on that OS (K5). The plan already treats timing on shared runners as a print (K6) and already names Phase 13's release machines as where the bound is enforced (K7). NFR-1 is untouched (no cut). What the ratio asserts is the solve's cost relative to the same machine, the one regression a shared runner can see (K3, K4).
+- *(x′) chosen:* serves L101 (the wait is still measured and reported every run, enforced where measurable), NFR-4 (host conformance evidence kept), NFR-1.
+- *(a):* serves the letter of "blocking"; strains NFR-4 (K5) and CLAUDE.md's culture (red by runner).
+- *(b) alone, (c), (e):* keep an absolute or guarded timing CHECK on shared runners; strain the same, less often ((c) weakens to a creep detector; (e) hides the global case).
+- *(d):* a Phase 13 / Seat 7 question; not 05h's.
+**What would make her veto it.** The reading that "a blocking CI gate" (her 2026-11-10 acceptance of Challenge 1) means an absolute 30 s CHECK on every CI run now, red or not, and that printing it until Phase 13 removes the pressure to shorten the 100 m build.
+`AMENDS her decision of 2026-11-10: "I accept the board's answer by definition."` (AQ10 amended (1) and AX38 4c: the restore block's (a)/(b) assertions become printed records on hosted runners, with the ratio bound asserted and strict enforcement at Phase 13; D-H1 (v)(a)–(b) and phase-05h §5 "Blocking" rewritten accordingly.)
+
+## Exact test form (orchestrator, if (x′) survives)
+- `GateEntry` gains `double baselineRatio` (mean of the runs above) and `double flutterRefMs` (print only); `listed`, `recorded14xS`, `baselineMedianMs` kept for the print.
+- Per gated scene: print the existing restore line; print `05h-records restore gate <scene> <OS>: RECORD 14 x worst %.2f s (30 s line; %s) ; growth %.0f vs %.0f ms (record) ; ratio low-α/flutter %.3f <= %.3f` with `%s` = `strict` / `LISTED defect` / `WARNING passes 30 s` as today. Order the flutter scene before the low-α scene (it already is) and keep its median in a static for the ratio.
+- Assert only: `REQUIRE(ratio <= 1.15 * entry->baselineRatio)` at `cube100_lowalpha0.05_s0.3`; the existing `REQUIRE`s L331, L343–344 unchanged; L392 and L399 removed (printed instead).
+- One summary line per OS, grep-able: `05h-records SUMMARY <OS> low-alpha 14xworst=%.2f flutter 14xworst=%.2f ratio=%.3f bound=%.3f`.
+- Constants re-pinned only with `tests/golden/CHANGELOG.md` reason (not a golden).
+- `ci.yml`: `if: always()` on the pluginval (L425) and auval (L434) steps; `test_ci_workflow.py` adjusted if it pins step conditions.
+
+## Exact plan text (plan-editor): phase-05h §5 "Blocking" (a)–(b) and AX38 4c's register paragraph replaced by the Answer's wording; (c)–(d) kept with "growth bound" → "ratio bound"; phase-05i scope 3 keeps the re-baseline; AX41's Phase 13 sentence gains "the strict 30 s and 1.10 × growth bound, as printed since 05h"; a §6 row with the AMENDS line.
+
+## Future-debt register (chosen (x′), Seat 5 only so far)
+| seat | commits later phases to | undoing costs | evidence arrives | repaid when |
+|---|---|---|---|---|
+| 5 (later 1) | a record that must be read: the summary line per run, §0 count; strict re-enforcement on release machines | a test edit (restore the two REQUIREs) | Phase 13 release-machine run; 07c's restore record | Phase 13, or 07c if the entries pass 30 s there |
+
+**Strongest objection so far:** Seat 2's W-x′ later 1 (file 19 L121: the remedy ladder "ends in a red gate unless the finding gets a remedy") — under (x′) the gate never goes red on shared runners, so the pressure for 07c condition 9 is the plan's ordering alone. It holds if Seat 2 rates (x′) ≤ 1 with "07c next" unchanged; otherwise compose.
+
+## CONVENE (one round, on (x′) exactly as worded above)
+- **Seat 3** (file 58 when it lands; if it rated only (a)–(e), ask it to rate (x′) and B3 (i)–(iii)).
+- **Seat 2:** B2 (i)–(ii) plus: does (x′) keep enough pressure for 07c condition 9; is the flutter restore a fair same-run reference; a deterministic `BandNoiseGenerator` operation count as a runner-independent synthesis pin (Seat 5's hand-off, §7).
+- **Seat 6:** B6 (i)–(ii) on (x′): is the producer's load-time guarantee weakened by "printed until Phase 13"?
+- **Seat 7:** B7 on (x′): contractor cost of the test/plan edit vs the red-PR tax; the Phase 13 dedicated-runner question (F18) for the record.
+- **Researcher:** RQ-RG-1 stays (supports step 1 against (a)/(c)); RQ-RG-2/3 downgraded to non-load-bearing (the × 1.15 is an observed-spread bound, stated as such).
+
+Summary: `RG-1 | (x′): no absolute timing CHECK on hosted runners; ratio ≤ 1.15 × mean baseline asserted; records printed; if: always(); strict at Phase 13 | proposed, pending Seats 3, 2, 6, 7 | Seat 5 (0 / 1) | pending | medium | L101/NFR-2, NFR-4, NFR-1, (v)(d) | none needed | Phase 13's release-machine run shows the 30 s line met (entries close) or broken (the absolute CHECK returns on that hardware)`.
+
+Files: /home/user/makroof/docs/review/phase-05h/57-seat5-restore-gate-runner-variance.md, /home/user/makroof/.github/workflows/ci.yml (L404, L425, L434, L472), /home/user/makroof/tests/unit/test_diffuse_records.cpp (L331, L343–344, L392, L399), /home/user/makroof/docs/BUILD_PLAN.md L139.
