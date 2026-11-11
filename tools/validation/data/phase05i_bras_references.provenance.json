@@ -51,9 +51,6 @@
   "CR4/2.5/63",
   "CR4/2.5/8000"
  ],
- "tool_commit_note": "the run (2026-11-11 10:10-10:49 UTC, branch claude/charming-franklin-pyvvw3) used the script file as first committed in 2c11610, byte-identical (git diff 2c11610 empty); hybrid_fast.py, ref_hybrid.py and phase05b.py unchanged since main d606b10",
- "machine": "4 cores, 15 GB RAM; CR4 at 1.25 m by the chunked solver (float32 kernel 5.06 GB per band)",
- "tool_dirty_at_write": false,
  "l_ref_max_by_room_band": {
   "CR2/63": 0.0037201700256500603,
   "CR2/125": 0.0036909851040324293,
@@ -82,5 +79,12 @@
    "script_commit": "8199f8664054dc45fba0ea814a01c5586c4b74d7",
    "date": "2026-11-11"
   }
- }
+ },
+ "orchestrator_notes": {
+  "written_by": "the orchestrator, by hand (not script output)",
+  "tool_commit_note": "the run (2026-11-11 10:10-10:49 UTC, branch claude/charming-franklin-pyvvw3) used the script file as first committed in 2c11610, byte-identical (git diff 2c11610 empty); hybrid_fast.py, ref_hybrid.py and phase05b.py unchanged since main d606b10",
+  "machine": "4 cores, 15 GB RAM; CR4 at 1.25 m by the chunked solver (float32 kernel 5.06 GB per band)"
+ },
+ "tool_files_dirty_at_write": false,
+ "tool_files_dirty_note": "the generator, hybrid_fast.py, phase05b.py and ref_hybrid.py, as the tree stood when this file was written (with --provenance: at the rewrite, not at the run; the run's state is in orchestrator_notes)"
 }
