@@ -423,6 +423,8 @@ jobs:
           killall -9 AudioComponentRegistrar || true
 
       - name: pluginval (strictness 10)
+        # DECISION RG-1 (decider file 64): host-conformance evidence is kept whatever the records step reads.
+        if: always()
         shell: bash
         run: |
           PLUGINS=(build/release/SpatialScene_artefacts/Release/VST3/SpatialScene.vst3)
@@ -432,7 +434,7 @@ jobs:
           tools/ci/run_pluginval.sh --output-dir build/pluginval-logs "${PLUGINS[@]}"
 
       - name: auval (macOS)
-        if: runner.os == 'macOS'
+        if: always() && runner.os == 'macOS'
         run: |
           set -o pipefail
           run_auval() { auval -v aufx Spsc Mkrf 2>&1 | tee build/auval.log; }

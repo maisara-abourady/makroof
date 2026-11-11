@@ -9,6 +9,7 @@
 #include "plugin/core/DiffuseSolveGate.h"
 #include "plugin/core/ScenePipeline.h"
 #include "sim/Engine.h"
+#include "sim/Fft.h"
 #include "sim/conv/Denormals.h"
 #include "sim/diffuse/DiffuseEstimator.h"
 #include "sim/diffuse/ThreadPool.h"
@@ -735,10 +736,11 @@ TEST_CASE("probe: split timer of the non-diffuse 100 m / 96 kHz build", "[.][pro
             };
             std::printf(
                 "probe-split %s fs %.0f: T60max %.1f s, unit decay %zu samples; full build (no diffuse) "
-                "median %.0f ms; "
-                "generator ctor %.0f ms; make x2 %.0f ms; position-only build (cached decays) %.0f ms\n",
+                "median %.0f ms; generator ctor %.0f ms; make x2 %.0f ms; position-only build (cached "
+                "decays) %.0f ms; filterbank maxHalfLength %zu, synthesis FFT size %zu\n",
                 label, fs, *std::max_element(decay.bandsT60S.begin(), decay.bandsT60S.end()), len, med(tFull),
-                med(tGen), med(tMake), med(tCached));
+                med(tGen), med(tMake), med(tCached), fb.maxHalfLength(),
+                sim::Fft::nextPowerOfTwo(len + 2 * fb.maxHalfLength()));
         }
     }
 }
