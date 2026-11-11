@@ -440,3 +440,44 @@ The catch per band (3·SE_pool + mean ℓ_ref): 0.0094–0.0096 dB at 63–250 H
   Linux x86-64, same test (local, Debug): `FTZ off [operand+underflow], FTZ on [underflow]; IRs bit-identical
   (calibration: denormal operand without the guard yes, underflow without the guard yes, operand flag under
   the guard no)`; the probe's calibration line reads the same.
+
+## CI run 42924781618 (2026-11-11, on 03213e7; the final run: `ci ok` green on Linux, macOS, Windows) and nightly 42924784861 (green)
+
+Jobs `build (linux)` 130208649120, `build (macos)` 130208648898, `build (windows)` 130208648915. The head
+a9d8313 carries the same CI fingerprint (prose only after 03213e7). Debug ctest: 223 / 223 on each OS (the
+FTZ test #112 in D-H3 (c)'s per-architecture form passes on all three; the D5 golden #31; the tracer #124).
+Release benchmark step: `agree-full gated: 410 of 560 AX43 case-bands gated (150 reported, reference
+pending); 72 of 72 AX45 case-bands gated`; `agree-full summary: … max |C++ - ref| 0.0460 dB over the gated
+set; 0 stage-2 runs; 0 failures (N_test 65536)` on each OS. Detector probe calibration: Linux / Windows
+"denormal operand without the guard yes, underflow without the guard yes, operand flag under the guard no";
+macOS "denormal operand without the guard no, underflow without the guard yes, operand flag under the guard
+yes" (the AArch64 pattern of the section above). pluginval strictness 10 passed on the three OSes
+(artifacts `pluginval-linux/macos/windows`); auval "AU VALIDATION SUCCEEDED" (macOS). Artifacts:
+`listening-pack` (236 MB, `phase-05h/` inside), `SpatialScene-linux/macos/windows`.
+
+Restore gate (`kGateRegister`, baselines 2 043 / 2 106 ms):
+
+```
+Linux  : 96 kHz with the solve, 10 runs: min 1961 median 2092 worst 2155 ms; 14 x worst 30.18 s (30 s) -> LISTED defect (recorded 30.27 s); growth bound median 2092 <= 2247 ms
+macOS  : 96 kHz with the solve, 10 runs: min 1665 median 1849 worst 2231 ms; 14 x worst 31.23 s (30 s) -> LISTED defect (recorded 33.40 s); growth bound median 1849 <= 2317 ms
+Windows: 96 kHz with the solve, 10 runs: min 2011 median 2056 worst 2107 ms; 14 x worst 29.50 s (30 s) -> strict (recorded 29.04 s <= 29.1 s): 29.50 s <= 30 s
+contended (another pipeline solving the same room), 3 runs: Linux min 2095 median 2098 worst 4174 ms; macOS min 1794 median 2058 worst 2266 ms; Windows min 2021 median 2055 worst 2101 ms
+```
+
+The Linux listed entry did not pass 30 s on this run (30.18 s; it did on run 42909003931 at 29.62 s), so the
+§5 (c) warning did not print and the entry stays listed; its removal is phase-05i scope 3's call. The gated
+cube's contended restore on Linux shows a second worst-of-3 outlier above 3 s (4.174 s; the other two runs
+2.095–2.098 s): finding F-a (decider file 36 R2) recurs on the Linux runner, same remedy.
+
+AX38 (iv), 8 instances, load until the last is audible (ms) / staleness when rebuilding together (min, median, max; ms):
+
+```
+                               Linux                      macOS                      Windows
+AQ10 room 48 kHz          4175 / 197 916 1662         2887 / 137 594 1114         4464 / 211 939 1666
+AQ10 room 96 kHz          7596 / 447 2041 3799        6160 / 371 1487 2539        8290 / 481 2111 3697
+100 m low-alpha 48 kHz    9924 / 946 4256 7984        9060 / 874 3718 6924       10329 / 954 4132 7350
+100 m low-alpha 96 kHz   21357 / 2100 10519 19773    20373 / 2396 9973 17316     24440 / 2604 10223 17601
+```
+
+Consistent with run 42909003931 (21.1 / 20.4 / 25.6 s at 8 × 100 m / 96 kHz): the R3 answer stands on this
+run too.
