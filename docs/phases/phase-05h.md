@@ -295,11 +295,14 @@ after seeing the gate's result.
       references printed with the fixed label `uncertified rung, no ℓ_ref, not pass/fail`, never asserted
       (AX43 (b)); the gated set keeps one per-band-α room and one mixed-s room, or the gap is reported.
 - [ ] Bias check (AX46): mean signed deviation ≤ 1 % per band and per case class, pooled and per class,
-      at the pre-registered test N (3·SE ≤ 1 % − ℓ_ref); classes with ℓ_ref ≥ 1 % reported. **Scope now
-      (D-H2 (d)):** every class with ≥ 1 certified case (reference positions, absorbing face, small rooms;
-      one-end near-wall once the c4 cross-check passes); classes without one print 'not evaluated (reference
-      pending)'; the 100 m class is the tracer comparison, labelled 'not evaluated at 1 % (compute limit)',
-      never a pass; the pooled figure labelled 'pooled over <n> of 5 classes'.
+      at the pre-registered test N (3·SE_class ≤ 1 % − mean ℓ_ref, SE_class estimator-propagated, AX46);
+      classes with ℓ_ref ≥ 1 % reported. **Scope now (D-H2 (d)):** every class with ≥ 1 certified case
+      (reference positions, absorbing face, small rooms, one-end near-wall (the c4 cross-check recorded
+      passing: `docs/review/phase-05h/6-orchestrator-K20-certified-listing.md`, 2026-11-11, |rel. diff| ≤
+      3.4e-6), and BRAS pairs (500 Hz–2 kHz, outer bands as 05i certifies)); classes without one print
+      'not evaluated (reference pending)'; the 100 m class is the tracer comparison, labelled 'not evaluated
+      at 1 % (compute limit)', never a pass; six classes labelled; the pooled figure labelled 'pooled over
+      <n> of 6 classes'.
 - [ ] C++ E_target vs tracer within ±1 dB on the 15 (A) cases (deterministic test on committed data).
 - [ ] Rooms where AX16 is exact per reflection order (uniform α) unchanged within D-T6's bound: the AX45
       gate, |ΔL_C++ − ΔL_ref| ≤ 0.25 dB per emitter and band over 72 case-bands at z_FW 3.81, stage 2;
@@ -322,8 +325,9 @@ after seeing the gate's result.
 - [ ] Realised-work assertion at the gated scenes: realised work / W_scene ≤ **1.02**, the ratio
       pre-registered from C++ data before the first CI run (AX41; D-H1 (iii)); W_pilot and W_final per gated
       scene exact in the D5 golden.
-- [ ] `open_field`: the AX37 (5.4) finite-floor check and the −60 dB check (PR CI, three OSes); the
-      outer-band tracer check (AX37 (5.1) (ii)) reported before any golden.
+- [ ] `open_field`: the AX37 (5.4) finite-floor check at the validation N 2^23 (3·SE ≤ τ asserted per band,
+      |dev| ≤ τ; the shipping-N render a labelled smoke test; decider file 44 QA) and the −60 dB check (PR CI,
+      three OSes); the outer-band tracer check (AX37 (5.1) (ii)) reported before any golden.
 - [ ] `render_cli --diagnostics` reports the diffuse E_target per band beside the AX16 one, and the AX41
       diagnostics (test).
 - [ ] Same scene + seed → bit-identical IR on the same platform; no NaN/Inf/denormals; allocation-free
@@ -372,8 +376,8 @@ after seeing the gate's result.
       macOS (recorded 33.40 s; CI run 42909003931 37.37 s, median 2 106 ms pinned; closes at phase-07c
       condition 9 / 07d, or at Phase 13's release-machine re-check if the runner is the cause); medians
       re-baselined from CI run 42909003931 (CHANGELOG entry of the baselines). No OS/scene is unasserted. (c)
-      A listed entry that passes 30 s is a job-summary warning and leaves the register through `/fix-plan`
-      before the next phase is `done`. (d) A new failure at an unlisted OS/scene, or a listed entry breaking
+      A listed entry that passes 30 s is a job-log warning (printed by the records test; nothing writes
+      `$GITHUB_STEP_SUMMARY`) and leaves the register through `/fix-plan` before the next phase is `done`. (d) A new failure at an unlisted OS/scene, or a listed entry breaking
       its growth bound, is a defect: no re-run, no W_max cut after pinning, no room-range narrowing, no
       formulation seam; it enters the register with its remedy, phase-07c forward and then phase-07c §5
       condition 9 (the unit-decay synthesis off the synchronous restore). This phase may be set `done` with
