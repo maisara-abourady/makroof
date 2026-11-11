@@ -2313,3 +2313,5 @@ finding changed). Interrogator ledger rows P05I-00…P05I-95 are in files 6, 10 
 
 Decided for Maisara (open to her veto): Q1, Q2, Q3, Q4, D-Q5 (no AMENDS), D-G1 and G1-C1 (both AMENDS her decision of
 2026-11-10, "I accept the board's answer by definition"). NEEDS MAISARA: none.
+| P05I-Q1-ROR | Q1 on the run of record 43031773338 (decider file 9's drop rule): Linux closed; Windows stays listed (46.63 s OVER30S, slow runner), its records-test flag back to true in the contractor's review push; macOS listed | none | — | — | file 9 | file 22 (diff check) faithful; minor wording P05I-114 applied | applied (70ed68b and the §0 commit) | closed (code item owed to the review push) |
+| P05I-S0 | §0 rows 05i (`done`) and 05h | — | — | — | — | file 22 faithful; P05I-122, -125, -126 applied | applied | closed |
