@@ -74,8 +74,11 @@ REASON_05I = ("phase 05i scope 1 (D-H2 (a)/(c), decider file 19; AX43 (c)): the 
               "tools/validation/compute_phase05i_bras_references.py (phase05b.step_r1's recipe per band column; its --check "
               "reproduces the committed R1 500 Hz values in CR2 and CR3 exactly; provenance in "
               "tools/validation/data/phase05i_bras_references.provenance.json); every one of the 150 case-bands certifies "
-              "(l_ref <= 0.38 %) and is gated under rule G-a: AX43 560 of 560, AX45 72 of 72; no existing reference value "
-              "changed; the 63 Hz column is gated as an agreement with ref_hybrid, never claimed as a room validation below "
+              "(l_ref <= 0.38 %) and is gated under rule G-a: AX43 560 of 560, AX45 72 of 72; no gated reference value "
+              "changed; in these 150 case-bands the reported, never-gated single-rung value (ref_coarse, from "
+              "phase05_scope6.json: the full ref_hybrid with air in the kernel at one patch size min(dims)/2 = 1.45 / 2.20 / "
+              "2.47 m, uncertified) is replaced by the two certified rungs (up to 0.33 % apart, the size of l_ref; the "
+              "scope-6 values stay in phase05_scope6.json); the 63 Hz column is gated as an agreement with ref_hybrid, never claimed as a room validation below "
               "the Schroeder frequency")
 SUITES = {"AX43": 0.0, "AX45": 1.0}
 # AX46 classes: 0 reference positions, 1 one-end near-wall, 2 absorbing face, 3 small rooms, 4 100 m (none here),
