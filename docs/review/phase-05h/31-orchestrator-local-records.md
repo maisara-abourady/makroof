@@ -578,3 +578,23 @@ All tests passed (33 assertions in 2 test cases)
 ```
 
 On a machine 42 % slower than the flutter reference the form behaves as decided: the work pins and the flutter strict 30 s line are asserted (14.98 s), the low-α entry's growth bound is `not-evaluated(runner)` with its GROWTH and OVER30S warnings printed, the ratio 3.21 is under the 3.66 warning line, the solve medians (63.7 / 102.8 ms; 5.27 / 9.01 ns per evaluation over W_pilot + W_final of both emitters) are printed; 33 assertions passed. (The probe `[probe-restore-split]` now prints the filterbank half-length 15 697 and the synthesis FFT sizes 2 097 152 / 524 288 that the work pins hold.)
+
+## CI run 42954077281 (2026-11-11, on b83c49d: the pre-RG-1 register form; `ci ok` green on Linux, macOS, Windows) and nightly 42954079834 (green)
+
+The runners were at normal speed this time: every listed entry inside its bound. It changes nothing in file 56's matter (two of the previous five runs were red on identical code; RG-1 decides the form) but it is the branch's last green `ci ok` before the RG-1 commit.
+
+```
+05h-records restore cube100_flutter_fallback   96 kHz with the solve, 10 runs: min 568 median 583 worst 598 ms; 14 x worst 8.38 s (30 s)
+05h-records restore gate cube100_flutter_fallback   Linux: strict (recorded 10.59 s <= 29.1 s): 14 x worst 8.38 s <= 30 s
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1755 median 1879 worst 1986 ms; 14 x worst 27.81 s (30 s)
+05h-records restore gate cube100_lowalpha0.05_s0.3  Linux: LISTED defect (recorded 14 x worst 30.27 s); 14 x worst now 27.81 s; growth bound median 1879 <= 2247 ms; WARNING: this entry now passes 30 s,
+05h-records restore cube100_flutter_fallback   96 kHz with the solve, 10 runs: min 462 median 501 worst 586 ms; 14 x worst 8.20 s (30 s)
+05h-records restore gate cube100_flutter_fallback   macOS: strict (recorded 7.59 s <= 29.1 s): 14 x worst 8.20 s <= 30 s
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1715 median 1967 worst 2122 ms; 14 x worst 29.70 s (30 s)
+05h-records restore gate cube100_lowalpha0.05_s0.3  macOS: LISTED defect (recorded 14 x worst 33.40 s); 14 x worst now 29.70 s; growth bound median 1967 <= 2317 ms; WARNING: this entry now passes 30 s,
+05h-records restore cube100_flutter_fallback   96 kHz with the solve, 10 runs: min 477 median 488 worst 530 ms; 14 x worst 7.43 s (30 s)
+05h-records restore gate cube100_flutter_fallback   Windows: strict (recorded 9.65 s <= 29.1 s): 14 x worst 7.43 s <= 30 s
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1317 median 1341 worst 1428 ms; 14 x worst 19.99 s (30 s)
+05h-records restore gate cube100_lowalpha0.05_s0.3  Windows: LISTED defect (recorded 14 x worst 36.73 s); 14 x worst now 19.99 s; growth bound median 1341 <= 2848 ms; WARNING: this entry now passes 30 
+run 11 ci ok wall clock 45.0 min; longest: build (linux) 33.0, build (macos) 32.8, build (windows) 32.6, tail gates (macos, stone_box) 12.0, ASan + UBSan (linux) 11.7
+```
