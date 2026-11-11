@@ -481,3 +481,36 @@ AQ10 room 96 kHz          7596 / 447 2041 3799        6160 / 371 1487 2539      
 
 Consistent with run 42909003931 (21.1 / 20.4 / 25.6 s at 8 × 100 m / 96 kHz): the R3 answer stands on this
 run too.
+
+## AX46 in the file 42 form (local Release run `agree_full8.log`, 2026-11-11; the test edits of QB/QC, before CI run 8)
+
+```
+agree-full AX46 class near_wall  band 0: mean deviation -0.136% (SE_prop 0.078%, SE_emp 0.139%, 9 cases, l_ref mean 0.162% max 0.474%) evaluated
+agree-full AX46 class near_wall  band 1: mean deviation -0.157% (SE_prop 0.077%, SE_emp 0.145%, 9 cases, l_ref mean 0.181% max 0.532%) evaluated
+agree-full AX46 class near_wall  band 2: mean deviation -0.169% (SE_prop 0.076%, SE_emp 0.148%, 9 cases, l_ref mean 0.192% max 0.567%) evaluated
+agree-full AX46 class near_wall  band 3: mean deviation -0.181% (SE_prop 0.075%, SE_emp 0.152%, 9 cases, l_ref mean 0.203% max 0.599%) evaluated
+agree-full AX46 class near_wall  band 4: mean deviation -0.191% (SE_prop 0.074%, SE_emp 0.154%, 9 cases, l_ref mean 0.212% max 0.628%) evaluated
+agree-full AX46 class near_wall  band 5: mean deviation -0.201% (SE_prop 0.074%, SE_emp 0.157%, 9 cases, l_ref mean 0.221% max 0.653%) evaluated
+agree-full AX46 class near_wall  band 6: mean deviation -0.210% (SE_prop 0.073%, SE_emp 0.159%, 9 cases, l_ref mean 0.229% max 0.675%) evaluated
+agree-full AX46 class near_wall  band 7: mean deviation -0.217% (SE_prop 0.072%, SE_emp 0.160%, 9 cases, l_ref mean 0.236% max 0.694%) evaluated
+agree-full AX46 class bras       band 0: not evaluated (reference pending)
+agree-full AX46 class bras       band 1: not evaluated (reference pending)
+agree-full AX46 class bras       band 2: not evaluated (reference pending)
+agree-full AX46 class bras       band 3: mean deviation +0.117% (SE_prop 0.029%, SE_emp 0.031%, 30 cases, l_ref mean 0.113% max 0.367%) evaluated
+agree-full AX46 class bras       band 4: mean deviation +0.110% (SE_prop 0.028%, SE_emp 0.029%, 30 cases, l_ref mean 0.109% max 0.360%) evaluated
+agree-full AX46 class bras       band 5: mean deviation +0.110% (SE_prop 0.028%, SE_emp 0.029%, 30 cases, l_ref mean 0.109% max 0.351%) evaluated
+agree-full AX46 class bras       band 6: not evaluated (reference pending)
+agree-full AX46 class bras       band 7: not evaluated (reference pending)
+agree-full AX46 band 0: mean of the evaluated class means -0.134% (pooled over 4 of 6 classes; never a bare 'bias <= 1 %')
+agree-full AX46 band 1: mean of the evaluated class means -0.140% (pooled over 4 of 6 classes; never a bare 'bias <= 1 %')
+agree-full AX46 band 2: mean of the evaluated class means -0.144% (pooled over 4 of 6 classes; never a bare 'bias <= 1 %')
+agree-full AX46 band 3: mean of the evaluated class means -0.081% (pooled over 4 of 6 classes; never a bare 'bias <= 1 %')
+agree-full AX46 band 4: mean of the evaluated class means -0.085% (pooled over 4 of 6 classes; never a bare 'bias <= 1 %')
+agree-full AX46 band 5: mean of the evaluated class means -0.087% (pooled over 4 of 6 classes; never a bare 'bias <= 1 %')
+agree-full AX46 band 6: mean of the evaluated class means -0.155% (pooled over 4 of 6 classes; never a bare 'bias <= 1 %')
+agree-full AX46 band 7: mean of the evaluated class means -0.158% (pooled over 4 of 6 classes; never a bare 'bias <= 1 %')
+agree-full gated: 410 of 560 AX43 case-bands gated (150 reported, reference pending); 72 of 72 AX45 case-bands gated
+All tests passed (14141 assertions in 1 test case)
+```
+
+Six classes: the BRAS pairs evaluated at 500 Hz–2 kHz (mean +0.110…+0.117 %, SE_prop 0.028–0.029 %, 30 cases); the near-wall class evaluated in all eight bands (SE_prop 0.072–0.078 %, mean ℓ_ref 0.16–0.24 %; means −0.14…−0.22 %; no heterogeneity label: |mean| + 3·SE_emp ≤ 0.70 %); reference and absorbing as before; small "reference pending"; the 100 m class the tracer line; "pooled over 4 of 6 classes". 14141 assertions passed, 410 / 560 and 72 / 72 unchanged.
