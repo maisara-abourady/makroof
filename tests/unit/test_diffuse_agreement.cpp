@@ -438,8 +438,8 @@ TEST_CASE(
     // The gated counts, pinned (review file 32 M3): the golden's gated_* columns drive everything, so a
     // regeneration that un-gates a case-band must fail here; re-pinned through update_goldens.py --extend
     // with a CHANGELOG reason.
-    constexpr int kGatedAx43 = 410,
-                  kGatedAx45 = 72; // 2026-11-10 golden round, final extension (482 certified case-bands)
+    constexpr int kGatedAx43 = 560,
+                  kGatedAx45 = 72; // 2026-11-11 phase 05i: the BRAS outer bands gated (632 certified case-bands)
     std::printf("agree-full gated: %d of 560 AX43 case-bands gated (%d reported, reference pending); %d of "
                 "72 AX45 case-bands "
                 "gated\n",

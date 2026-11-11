@@ -69,6 +69,14 @@ REASON_0625 = ("phase 05h H3-F6 (docs/review/phase-05h/25-decider-decision-D-H3-
                "certified rung per AX43: dead_booth, living_room, classroom and club (both emitters, 8 bands) referenced at "
                "0.625 m with l_ref = the 1.25 -> 0.625 m change (dead_booth 0.28 %, up from 0.17 %); the agreement suite was "
                "green at 1.25 m and is re-run at 0.625 m; nothing regenerated to pass")
+REASON_05I = ("phase 05i scope 1 (D-H2 (a)/(c), decider file 19; AX43 (c)): the 30 BRAS pairs' outer bands (250 Hz and "
+              "4 kHz, then 125 Hz and 8 kHz, 63 Hz last) referenced at the 2.5 and 1.25 m rungs by "
+              "tools/validation/compute_phase05i_bras_references.py (phase05b.step_r1's recipe per band column; its --check "
+              "reproduces the committed R1 500 Hz values in CR2 and CR3 exactly; provenance in "
+              "tools/validation/data/phase05i_bras_references.provenance.json); every one of the 150 case-bands certifies "
+              "(l_ref <= 0.38 %) and is gated under rule G-a: AX43 560 of 560, AX45 72 of 72; no existing reference value "
+              "changed; the 63 Hz column is gated as an agreement with ref_hybrid, never claimed as a room validation below "
+              "the Schroeder frequency")
 SUITES = {"AX43": 0.0, "AX45": 1.0}
 # AX46 classes: 0 reference positions, 1 one-end near-wall, 2 absorbing face, 3 small rooms, 4 100 m (none here),
 # 5 BRAS (measured-room pairs), 6 both-near / placements reported only
@@ -304,6 +312,10 @@ def main() -> int:
     if "`phase05h_agreement_reference`: `room` column added" not in log:
         log = (log.rstrip("\n") + f"\n\n## {datetime.date.today().isoformat()}\n\nReason: " + REASON_ROOM
                + "\n\n- `phase05h_agreement_reference`: `room` column added (schema only; no reference value changed)\n")
+    if load_phase05i_bras() and "`phase05h_agreement_reference`: extended (150 case-bands promoted" not in log:
+        log = (log.rstrip("\n") + f"\n\n## {datetime.date.today().isoformat()}\n\nReason: " + REASON_05I
+               + "\n\n- `phase05h_agreement_reference`: extended (150 case-bands promoted to gated: the 30 BRAS pairs at "
+               "63, 125, 250 Hz, 4 and 8 kHz; no tolerance, N or case changed)\n")
     CHANGELOG.write_text(log)
     n_cert = sum(int(r[1 + COLUMNS.index(f"certified_{b}")]) for r in rows for b in range(8))
     n_gated = sum(int(r[1 + COLUMNS.index(f"gated_{b}")]) for r in rows for b in range(8))
