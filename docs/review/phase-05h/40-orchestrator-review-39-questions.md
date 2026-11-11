@@ -81,3 +81,31 @@ D-H1 (v)(d) (no W_max cut, no range change, no seam); D-H2 (d) and D-H3 (a) as d
 the seats' likely cells only where a seat must be convened (the decider says which, if any), the AMENDS line
 where a recorded decision is amended, and the exact plan text and test form for the plan-editor and the
 orchestrator.
+
+## Evidence appended by the orchestrator (from `agree_full7.log`, the final local run of the extended set; the CI runs print the same lines)
+
+**Q-B, the BRAS class (class 5, 30 pairs, bands 3–5 certified):** per-class record lines "bras: mean z +0.576 /
++0.558 / +0.576, mean z′ +0.598 / +0.587 / +0.595 over 30 (3/√M 0.548)" at 500 Hz / 1 kHz / 2 kHz: inside
+3/√M as a record; no BRAS room with |mean z′| > 3 in the per-room watch. No AX46 class line is printed for it.
+
+**Q-C, the near-wall class in both SE forms (nine certified cases):**
+
+| band | mean dev | empirical class SE (present code) | estimator-propagated class SE (√(mean SE²)/√n) | ℓ_ref max | ℓ_ref mean | evaluated now? |
+|---|---|---|---|---|---|---|
+| 0 | −0.136 % | 0.139 % | 0.078 % | 0.474 % | 0.162 % | yes |
+| 1 | −0.158 % | 0.145 % | 0.077 % | 0.532 % | 0.181 % | yes |
+| 2 | −0.170 % | 0.149 % | 0.076 % | 0.567 % | 0.192 % | no |
+| 3 | −0.182 % | 0.152 % | 0.075 % | 0.599 % | 0.203 % | no |
+| 4 | −0.192 % | 0.155 % | 0.074 % | 0.628 % | 0.213 % | no |
+| 5 | −0.202 % | 0.157 % | 0.074 % | 0.653 % | 0.221 % | no |
+| 6 | −0.210 % | 0.159 % | 0.073 % | 0.675 % | 0.229 % | no |
+| 7 | −0.218 % | 0.161 % | 0.072 % | 0.694 % | 0.236 % | no |
+
+The empirical spread is about twice the estimator-propagated SE (the per-case deviations carry each
+reference's own ℓ_ref, 0.47–0.69 % at the 0.1 m placements), so a larger N cannot close bands 2–7 under the
+present form (file 39 Q1 answered from the data: the estimator part is 0.07 %, the rest is reference
+scatter). In the D-H3 (a) form (3 · propagated SE + mean ℓ_ref ≤ 1 %: 0.23 % + 0.24 % = 0.47 %) every band
+is evaluable and the class means (−0.14…−0.22 %) are inside 1 % by 4.6×. The other classes: reference 19
+cases (SE 0.027–0.032 %, ℓ_ref max ≤ 0.29 %, evaluated, means −0.03 %), absorbing 12 cases (SE 0.125 %, ℓ_ref
+max 0.325 %, evaluated, mean −0.227 %), small 'reference pending' (AX45's two small-room cases are in the AX45
+suite), 100 m the tracer line.
