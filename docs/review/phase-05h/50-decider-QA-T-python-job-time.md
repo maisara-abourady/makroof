@@ -83,3 +83,39 @@ P05H-QA-T | (f) own three-OS job `open-field-validation`, marker `open_field_val
 **Decided for Maisara.** P05H-QA-T: the 2^23 open-field check keeps both s values, both emitters, three OSes and τ alone (NFR-1, AX37 (5.4)) and moves to its own CI job so the python job returns to ≈ 10.5 min; (a) strains Seat 5's budget, (b)/(c) strain NFR-1 by dropping a measured run, (f) serves both. Seat 5 gave most (one hour of CI edit, a job to watch) and gets back a timeout-bounded, parallel home for later validation renders. `AMENDS her decision of 2026-11-10: "I accept the board's answer by definition."` (AX37 (5.4) trigger sentence only.)
 
 **NEEDS MAISARA:** none.
+
+
+---
+
+## Addendum to P05H-QA-T (file 50) — answers to interrogator file 51. State: **stands, revised with C1–C6 accepted.** Winner (f) unchanged.
+
+**Q1 (K8).** Accepted. Restated K8: the Linux python job of run 42935789745 (22.1 min, file 47 L58) already contains checkout, pip, the render_cli build, the whole `pytest tools` run and the pair; the new job runs a strict subset, so it is bounded by ≈ 22 min < 27.3 (`build (linux)`); macOS/Windows ≤ 16.6 < 35.7 / 42.9. My "pair + set-up < 14.0" is struck (14.0 was the longest tail-gates job, not a set-up bound). Run-to-run variance is what the trigger sentence watches.
+
+**Q2.** Yes. "both s values, both emitters" entered AX37 (5.4) on 2026-11-11 under an AMENDS line (BUILD_PLAN L138), so it is her recorded decision (README L102–104). (b)/(c) break it and fall at step 1. The step-5 sentence about Seats 2/9 is struck (not-required seats sit at 0/0; nothing else), and the step-7 "PRD tie-break" is struck. Survivors (a), (a′), (d), (f); worst-off: (f) at 1 alone ((a) 2, (a′) 2 later, (d) up to 2). The decision follows without a tie-break.
+
+**Q3.** Yes; the block is below.
+
+**Q4.** Across all jobs and OSes. Seat 5's budgeted quantity is the `ci ok` wall clock (file 49 §5), which is set by the single longest job of the run, whichever OS it is on; a per-OS reading would fire on a Linux-only slowdown that changes no one's feedback loop.
+
+**C1** accepted: confidence high; one cell, (a′), read from conditions, not on the chosen option. **C2** accepted as in Q2. **C3** accepted as in Q1. **C4** accepted: L8 now reads "NFR-1 is served equally by every survivor that keeps τ (PRD L105); (b)/(c) are out by her recorded decision ('both s values'), not by an NFR-1 ranking"; NFR-1 stays the acceptance-check id. **C5** accepted (block below). **C6** accepted: (i) include-only matrix (committed as cb7effb, per the orchestrator); (ii) `WORK` unchanged; (iii) `pytest.param` form; (iv) trigger wording "across all jobs and OSes"; (v) "≈ 10–11 min (run 42924781618: 10.5/10.7/10.1)".
+
+### FOR MAISARA P05H-QA-T-A
+**Question.** AX37 (5.4)'s board-return trigger ("more than 10 min to the python job on any OS") fired; what replaces it now that the 2^23 cases run in their own PR CI job?
+**Answer (exact wording).** Replace that sentence with: "The 2^23 cases carry the registered marker `open_field_validation` and run in the PR CI job `open-field-validation` (three-OS matrix, `timeout-minutes` 45, `--durations=10`, in `ci-ok`'s needs); the python job deselects the marker (back to ≈ 10–11 min; run 42924781618: 10.5/10.7/10.1). Record (CI run 42935789745, 2026-11-11): the pair 12.9 / 7.9 / 8.8 min on Linux / macOS / Windows; `ci ok` wall clock 43.1 min, set by `build (windows)`. If `open-field-validation` becomes the longest job of a green run, across all jobs and OSes, the clause returns to the board (Seat 5 convened), never a loosened τ and never a dropped s value (decider file 50, Seat 5 file 49)."
+**Rests on.** AX37 (5.4) as amended 2026-11-11 (τ alone, 3·SE ≤ τ, "both s values, both emitters", "in PR CI on three OSes"; its own sentence delegates the > 10 min case to the board with Seat 5); NFR-1 (PRD L105: thresholds from the Expert; τ untouched).
+**Reasoning.** The recorded decision itself sends the overflow to the board, so the new form is within its remit; every survivor keeps τ and NFR-1 equally; the difference is only the CI shape, Seat 5's mandate, and (f) is the only survivor whose worst cell is 1. The trigger is re-expressed on the quantity Seat 5 budgets (the `ci ok` wall clock) instead of a job that was never on the critical path.
+- (a) keep in the python job: serves AX37 (5.4) and NFR-1; strains Seat 5's budget (2/2).
+- (a′) (a) + timeout + durations: same; later 2 stands (growth unaddressed).
+- (b) s 0.4 only: breaks "both s values" (her recorded decision).
+- (c) (b) + nightly: breaks "both s values" and "three OSes".
+- (d) concurrent renders: serves the ids; unmeasured, 1/1–2.
+- (f) own job: serves AX37 (5.4), NFR-1 and "PR CI on three OSes"; Seat 5 1/1.
+**What would make her veto it.** "The python job was never on the critical path (file 47: `build (windows)` 42.9 min vs python 22.1), so the 10 min trigger could have stood and no job was needed." It did not stand because her own sentence made the 10 min figure the return trigger, and Seat 5 keeps (a) at 2 without a timeout and with the growth over 05i/08/12 unaddressed.
+`AMENDS her decision of 2026-11-10: "I accept the board's answer by definition."` (AX37 (5.4), ledger P05B2-M-01: the board-return trigger sentence replaced by the job sentence; "both s values, both emitters", τ alone, 3·SE ≤ τ and "in PR CI on three OSes" unchanged.)
+
+### Final plan text (plan-editor)
+AX37 (5.4): the replacement sentence exactly as in the Answer above. §6 row: "AX37 (5.4): the 2^23 open_field cases moved to the PR CI job `open-field-validation` (three OSes, marker `open_field_validation`, timeout 45); python job back to ≈ 10–11 min (run 42924781618: 10.5/10.7/10.1); trigger now 'longest job of a green run, across all jobs and OSes'. Orchestrator file 47, Seat 5 file 49, decider file 50, interrogator file 51; CI change cb7effb."
+
+**Summary.** P05H-QA-T | (f) | stands (revised per C1–C6) | Seat 5 (1/1) | sum 2 | high (one cell, (a′), read from conditions, not on the chosen option) | AX37 (5.4), NFR-1 | no corpus claim | `open-field-validation` the longest job of a green run. P05H-QA-T-A | trigger sentence as above | for Maisara | — | — | high | AX37 (5.4), NFR-1 | — | same.
+
+**Decided for Maisara.** P05H-QA-T (f) and P05H-QA-T-A as above; Seat 5 gave the hour of CI work and gets a bounded, parallel home for later validation renders; one AMENDS line (trigger sentence only). **NEEDS MAISARA:** none.
