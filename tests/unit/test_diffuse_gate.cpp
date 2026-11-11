@@ -385,7 +385,10 @@ const char* flagText(DenormalFlags f) noexcept
 // form: x86-64 DE | UE set in the unguarded FTZ-off arm and DE clear in the FTZ-on arm; AArch64 UFC set in
 // the FZ-off arm and IDC | UFC set in the FZ-on arm. The macOS runner's pattern that decided the AArch64
 // form (CI run 42921348351, the named scene): FTZ off [underflow], FTZ on [underflow], IDC in neither arm on
-// the caller's thread (the denormal operands are consumed on the pool worker, under its own guard).
+// the caller's thread. Note (review file 39 minor 1): ThreadPool(1) has no worker (size() = workers + 1), so
+// the solve share runs on the caller inside runShare()'s own ScopedFlushDenormals, whose destructor restores
+// the saved MXCSR / FPCR and so clears the share's sticky flags; the flags the test asserts come from the
+// tail synthesis outside the pool (the premise D-H3 (c) names), not from the solve.
 bool calibrateDetector(bool& operandSeenWithoutGuard, bool& underflowSeenWithoutGuard,
                        bool& operandSeenUnderGuard)
 {
@@ -466,7 +469,9 @@ TEST_CASE(
         flagsOn = denormalFlags();
     }
     std::printf(
-        "ftz: the absorbent room without the guard: flags FTZ off [%s], FTZ on [%s]; IRs %s (calibration on "
+        "ftz: the named room (dead_booth geometry, alpha 0.01 at 63 Hz / 0.999 above, s 0.5) without the "
+        "guard: "
+        "flags FTZ off [%s], FTZ on [%s]; IRs %s (calibration on "
         "this architecture: denormal operand without the guard %s, underflow without the guard %s, operand "
         "flag under the guard %s)\n",
         flagText(flagsOff), flagText(flagsOn), bitIdentical(off, on) ? "bit-identical" : "DIFFERENT",
@@ -474,7 +479,8 @@ TEST_CASE(
         operandUnderGuard ? "yes" : "no");
     REQUIRE(bitIdentical(off, on));
     // D-H3 (c) (decider file 20 L183 (1)), the per-architecture form; the macOS runner's pattern (CI run
-    // 42921348351: FTZ off [underflow], FTZ on [underflow]) decided the AArch64 arms.
+    // 42921348351: FTZ off [underflow], FTZ on [underflow]) decided the AArch64 arms. The flags are raised by
+    // the tail synthesis on this thread (the solve share's flags are restored away by runShare()'s guard).
 #if defined(SPATIAL_DENORMALS_SSE)
     REQUIRE((flagsOff.operand || flagsOff.underflow)); // DE | UE set: denormals arose
     REQUIRE_FALSE(flagsOn.operand);                    // DAZ: no denormal operand reaches an instruction
