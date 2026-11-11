@@ -646,20 +646,25 @@ Source of the session-2 references: hybrid_fast runs this session (28 cases with
 
 ## Cross-check: committed c4 CS-NW+ references (emitter 0, 500 Hz-2 kHz, 1.25 m) vs session-2 runs
 
-| case | band | c4 1.25 m | session-2 1.25 m | rel. diff |
+Filled 2026-11-11 from the agreement golden at HEAD (`ref_fine`, the 1.25 m rung; review file 39 minor 2): the
+cross-check passes, |rel. diff| <= 3.4e-6 on the four 0.1 m near-wall cases and the reference placement
+(`W1_e0`), so the near_wall class is evaluable under D-H2 (d) (AX46). The 0.3 m wall case is a different
+placement and has no c4 value.
+
+| case (golden name) | band | c4 1.25 m | golden ref_fine 1.25 m | rel. diff |
 |---|---|---|---|---|
-| W1_listener_wall | 500 | 0.00245147 |  |  |
-| W1_listener_wall | 1000 | 0.00217259 |  |  |
-| W1_listener_wall | 2000 | 0.00185478 |  |  |
-| W1_listener_edge | 500 | 0.00193517 |  |  |
-| W1_listener_edge | 1000 | 0.00170712 |  |  |
-| W1_listener_edge | 2000 | 0.00145014 |  |  |
-| W1_listener_corner | 500 | 0.00188346 |  |  |
-| W1_listener_corner | 1000 | 0.00165693 |  |  |
-| W1_listener_corner | 2000 | 0.00140219 |  |  |
-| W1_emitter_wall | 500 | 0.00253217 |  |  |
-| W1_emitter_wall | 1000 | 0.00224259 |  |  |
-| W1_emitter_wall | 2000 | 0.0019104 |  |  |
-| W1_reference_positions | 500 | 0.00266781 |  |  |
-| W1_reference_positions | 1000 | 0.00242877 |  |  |
-| W1_reference_positions | 2000 | 0.00214324 |  |  |
+| W1_listener_wall_0.1_e0 | 500 | 0.00245147 | 0.0024514664 | -1.46e-06 |
+| W1_listener_wall_0.1_e0 | 1000 | 0.00217259 | 0.0021725943 | +2.00e-06 |
+| W1_listener_wall_0.1_e0 | 2000 | 0.00185478 | 0.0018547757 | -2.29e-06 |
+| W1_listener_edge_0.1_e0 | 500 | 0.00193517 | 0.0019351663 | -1.93e-06 |
+| W1_listener_edge_0.1_e0 | 1000 | 0.00170712 | 0.0017071187 | -7.37e-07 |
+| W1_listener_edge_0.1_e0 | 2000 | 0.00145014 | 0.0014501351 | -3.41e-06 |
+| W1_listener_corner_0.1_e0 | 500 | 0.00188346 | 0.0018834592 | -4.11e-07 |
+| W1_listener_corner_0.1_e0 | 1000 | 0.00165693 | 0.0016569284 | -9.69e-07 |
+| W1_listener_corner_0.1_e0 | 2000 | 0.00140219 | 0.00140219 | +2.86e-08 |
+| W1_emitter_wall_0.1_e0 | 500 | 0.00253217 | 0.0025321652 | -1.91e-06 |
+| W1_emitter_wall_0.1_e0 | 1000 | 0.00224259 | 0.002242592 | +8.97e-07 |
+| W1_emitter_wall_0.1_e0 | 2000 | 0.0019104 | 0.0019103979 | -1.11e-06 |
+| W1_e0 | 500 | 0.00266781 | 0.0026678094 | -2.39e-07 |
+| W1_e0 | 1000 | 0.00242877 | 0.0024287668 | -1.31e-06 |
+| W1_e0 | 2000 | 0.00214324 | 0.0021432354 | -2.14e-06 |
