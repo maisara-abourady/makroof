@@ -1,0 +1,90 @@
+{
+ "file": "phase05i_bras_references.jsonl",
+ "produced_by": "tools/validation/compute_phase05i_bras_references.py (phase05b.step_r1's recipe per band column; see its docstring)",
+ "tool_commit": "2c116109ad848aa2ceea31754fc8662f425bb5a9",
+ "python": "3.13.18",
+ "numba": "0.68.1",
+ "numpy": "2.5.4",
+ "scipy": "1.18.1",
+ "requirements": "tools/acoustics/requirements.txt and tools/validation/requirements-offline.txt (hash-pinned)",
+ "rungs_m": [
+  2.5,
+  1.25
+ ],
+ "order_hz": [
+  250,
+  4000,
+  125,
+  8000,
+  63
+ ],
+ "rows": 30,
+ "units": [
+  "CR2/1.25/125",
+  "CR2/1.25/250",
+  "CR2/1.25/4000",
+  "CR2/1.25/63",
+  "CR2/1.25/8000",
+  "CR2/2.5/125",
+  "CR2/2.5/250",
+  "CR2/2.5/4000",
+  "CR2/2.5/63",
+  "CR2/2.5/8000",
+  "CR3/1.25/125",
+  "CR3/1.25/250",
+  "CR3/1.25/4000",
+  "CR3/1.25/63",
+  "CR3/1.25/8000",
+  "CR3/2.5/125",
+  "CR3/2.5/250",
+  "CR3/2.5/4000",
+  "CR3/2.5/63",
+  "CR3/2.5/8000",
+  "CR4/1.25/125",
+  "CR4/1.25/250",
+  "CR4/1.25/4000",
+  "CR4/1.25/63",
+  "CR4/1.25/8000",
+  "CR4/2.5/125",
+  "CR4/2.5/250",
+  "CR4/2.5/4000",
+  "CR4/2.5/63",
+  "CR4/2.5/8000"
+ ],
+ "l_ref_max_by_room_band": {
+  "CR2/63": 0.0037201700256500603,
+  "CR2/125": 0.0036909851040324293,
+  "CR2/250": 0.003463012635049556,
+  "CR2/4000": 0.0034294035064129647,
+  "CR2/8000": 0.0033068692329383254,
+  "CR3/63": 0.0037788761549477634,
+  "CR3/125": 0.0037378192919295117,
+  "CR3/250": 0.003788596376995912,
+  "CR3/4000": 0.003580781473103256,
+  "CR3/8000": 0.003489696093014194,
+  "CR4/63": 0.0013361131619931133,
+  "CR4/125": 0.0014047379673129967,
+  "CR4/250": 0.0014175988183071642,
+  "CR4/4000": 0.0011568993378179293,
+  "CR4/8000": 0.0014784426015816976
+ },
+ "recipe_checks": {
+  "500 Hz, CR2 and CR3, 2.5 and 1.25 m (lean), against phase05b.json r1": {
+   "worst_rel_diff": 0.0,
+   "script_commit": "8199f8664054dc45fba0ea814a01c5586c4b74d7",
+   "date": "2026-11-11"
+  },
+  "500 Hz, CR4 1.25 m (chunked), against phase05b.json r1": {
+   "worst_rel_diff": 0.0,
+   "script_commit": "8199f8664054dc45fba0ea814a01c5586c4b74d7",
+   "date": "2026-11-11"
+  }
+ },
+ "orchestrator_notes": {
+  "written_by": "the orchestrator, by hand (not script output)",
+  "tool_commit_note": "the run (2026-11-11 10:10-10:49 UTC, branch claude/charming-franklin-pyvvw3) used the script file as first committed in 2c11610, byte-identical (git diff 2c11610 empty); hybrid_fast.py, ref_hybrid.py and phase05b.py unchanged since main d606b10",
+  "machine": "4 cores, 15 GB RAM; CR4 at 1.25 m by the chunked solver (float32 kernel 5.06 GB per band)"
+ },
+ "tool_files_dirty_at_write": false,
+ "tool_files_dirty_note": "the generator, hybrid_fast.py, phase05b.py and ref_hybrid.py, as the tree stood when this file was written (with --provenance: at the rewrite, not at the run; the run's state is in orchestrator_notes)"
+}

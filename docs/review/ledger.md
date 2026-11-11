@@ -2292,3 +2292,26 @@ dependency of 11-3 (11-c3); Apple-silicon hardware for 13-2/13-3 and starting K1
 review-skill drift (DF-EQ "switchable" vs phase-08 scope 3 "always applied"; map-10 note); "13b" in phase-06b now
 means `13-1b`; map-13's references table uses the superseded four-way numbering (the phase-13 umbrella's coverage
 table is authoritative).
+
+## phase-05i — the 05i records, the Raise items, the restore-gate register, the solve bound, gate scope G-1 (2026-11-11; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d from round 2 on)
+
+Questions `docs/review/phase-05i/4-orchestrator-questions.md` (Q1–Q5, on CI run 43007183782's records, file 3); code facts
+file 7 (its first bullet corrected after P05I-47: the gate is held for the whole room-IR build). Round 1 (files 5, 6) ran
+without the corpus (the private repository was attached later in the session, file 10 re-checked its corpus items: no
+finding changed). Interrogator ledger rows P05I-00…P05I-95 are in files 6, 10 and 14; the diff check in file 16.
+
+| id | decision | convening | seats | researcher | decider | interrogator | outcome | status |
+|---|---|---|---|---|---|---|---|---|
+| P05I-Q1 | FOR MAISARA: the AX38 4c Linux and Windows low-α register entries close under (c) on 05i's runs (43007183782 plus the PR's run of record); macOS stays listed; `listed` false (print only) | none (reading of her AX38 4c (c)) | — | — | files 5, 9 | 6 (WITH CORRECTIONS) → 10 SURVIVES | applied in code (52fc283) and CHANGELOG; plan text after the run of record | open until the run of record |
+| P05I-Q2 | FOR MAISARA: Raise item 1 not re-opened; the K-e12 record (worst 3.28 / 2.65 / 3.23 s; median above 2.143 s on Linux and Windows) written into AX38 4c as a finding, remedy 07c conditions 9–10 | none | — | — | files 5, 9 | 6 (WITH CORRECTIONS) → 10 SURVIVES | applied (e168fb5) | closed |
+| P05I-Q3 | FOR MAISARA: Raise item 2 (R3) stands; F-b extended; F-c withdrawn into G-1; following strained against Table 15.1's 700 ms row from 1 instance at 100 m and at the AQ10 room from 4 at 96 kHz; artifacts not measured | none (records against her rules) | — | — | files 5, 9, 11 | 6 PRD MISREAD → 10 FALLS (gate scope, P05I-47) → 14 SURVIVES WITH CORRECTIONS | applied with file 14's corrections (e168fb5) | closed |
+| P05I-Q4 | Raise item 3 (M-d) did not arise | none | — | — | file 5 | 6, 10 SURVIVES | recorded | closed |
+| P05I-DQ5 | DECISION: `SOLVE` printed when the solve median exceeds `kSolveWarn` 1.20 × the in-window baseline (PROVISIONAL, n = 1–2), never asserted | Seat 5 (after 6 UNDERCONVENED) | 8 | — | files 5, 9 | 6 FALLS (out-of-window baseline) → 10 SURVIVES | applied in code (52fc283), CHANGELOG, plan (e168fb5) | closed |
+| P05I-DG1 | DECISION A′: AX38 (i) register entry G-1 (gate held for the whole build) with its own release rule; remedy phase-07c-1 condition 12 and A12 (10 → 12 → 9); 05i gate-wait poller (printed) | Seats 1, 2, 3, 5 (lead), 6, 7, 8; 4, 9 not required | 12-seat1/2/3/5/6/7/8 | 12-researcher-RQ-G1 (K-g7 NOT READY, not load-bearing) | files 11, 13 | 14 SURVIVES WITH CORRECTIONS | applied (poller in code; plan e168fb5) | closed (G-1 open until 07c-1 A12) |
+| P05I-G1C1 | FOR MAISARA: AX38 (iii) "settling" on every instance whose latest change is not yet audible (queued, building, crossfading); the crossfade exposure and "going live" left to phase-10-2 scope 3 | Seat 6 (C1) | 12-seat6 | — | file 13 | 14 SURVIVES WITH CORRECTIONS | applied (e168fb5) | closed |
+| P05I-BK | Bookkeeping: AX43 560 / 560, AX45 72 / 72, catch ≈ 0.008 dB in all eight bands, 26 rooms; §6 rows | — | — | — | — | file 16 (diff check) | applied (e168fb5) | see file 16 |
+
+Decided for Maisara (open to her veto): Q1, Q2, Q3, Q4, D-Q5 (no AMENDS), D-G1 and G1-C1 (both AMENDS her decision of
+2026-11-10, "I accept the board's answer by definition"). NEEDS MAISARA: none.
+| P05I-Q1-ROR | Q1 on the run of record 43031773338 (decider file 9's drop rule): Linux closed; Windows stays listed (46.63 s OVER30S, slow runner), its records-test flag back to true in the contractor's review push; macOS listed | none | — | — | file 9 | file 22 (diff check) faithful; minor wording P05I-114 applied | applied (70ed68b and the §0 commit) | closed (code item owed to the review push) |
+| P05I-S0 | §0 rows 05i (`done`) and 05h | — | — | — | — | file 22 faithful; P05I-122, -125, -126 applied | applied | closed |

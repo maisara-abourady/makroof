@@ -290,9 +290,9 @@ after seeing the gate's result.
       **Scope now (D-H2 (a), H2-F1; decider file 19, interrogator file 21):** gated on the
       subset with a certified two-rung reference (ℓ_ref recorded), listed per case-band in the agreement
       golden with its status; the rest 'reported (reference pending)', never dropped; the report prints
-      '<gated> of 560 gated; <n> reported (reference pending)' (410 / 560 at the time of writing, after the
-      session-2 golden round; all 28 cases at the 1.25 m rung, the 150 reported case-bands the BRAS pairs'
-      outer bands; the four small rooms referenced at the 0.625 m rung, H3-F6); single-rung
+      '<gated> of 560 gated; <n> reported (reference pending)' (560 / 560 since phase 05i, which gated the 150
+      BRAS pairs' outer case-bands; 410 / 560 after the session-2 golden round, all 28 cases at the 1.25 m rung;
+      the four small rooms referenced at the 0.625 m rung, H3-F6); single-rung
       references printed with the fixed label `uncertified rung, no ℓ_ref, not pass/fail`, never asserted
       (AX43 (b)); the gated set keeps one per-band-α room and one mixed-s room, or the gap is reported.
 - [ ] Bias check (AX46): mean signed deviation ≤ 1 % per band and per case class, pooled and per class,
@@ -300,17 +300,17 @@ after seeing the gate's result.
       classes with ℓ_ref ≥ 1 % reported. **Scope now (D-H2 (d)):** every class with ≥ 1 certified case
       (reference positions, absorbing face, small rooms, one-end near-wall (the c4 cross-check recorded
       passing: `docs/review/phase-05h/6-orchestrator-K20-certified-listing.md`, 2026-11-11, |rel. diff| ≤
-      3.4e-6), and BRAS pairs (500 Hz–2 kHz, outer bands as 05i certifies)); classes without one print
-      'not evaluated (reference pending)'; the 100 m class is the tracer comparison, labelled 'not evaluated
+      3.4e-6), and BRAS pairs (500 Hz–2 kHz; the outer bands certified in phase 05i, all eight bands));
+      classes without one print 'not evaluated (reference pending)'; the 100 m class is the tracer comparison, labelled 'not evaluated
       at 1 % (compute limit)', never a pass; six classes labelled; the pooled figure labelled 'pooled over
       <n> of 6 classes'.
 - [ ] C++ E_target vs tracer within ±1 dB on the 15 (A) cases (deterministic test on committed data).
 - [ ] Rooms where AX16 is exact per reflection order (uniform α) unchanged within D-T6's bound: the AX45
       gate, |ΔL_C++ − ΔL_ref| ≤ 0.25 dB per emitter and band over 72 case-bands at z_FW 3.81, stage 2;
       mixed-α rooms checked against the tracer (M-2) / `ref_hybrid` and reported (D-T6), not tuned.
-      **Scope now (D-H2 (a)):** the certified subset ('<gated> of 72 gated', 72 / 72 at the time of writing,
-      after the session-2 golden round), the rest listed as 'reported (reference pending)'; M-2 printed per
-      band.
+      **Scope now (D-H2 (a)):** the certified subset ('<gated> of 72 gated', 72 / 72 since
+      the session-2 golden round, unchanged in phase 05i), the rest listed as 'reported (reference pending)';
+      M-2 printed per band.
 - [ ] Determinism (AX39): RNG known-answer test, D5 face-sequence hashes with the per-case n\* and N
       equal on the three OSes, cross-OS E_target comparison.
 - [ ] U silent at the default placement of every room and preset fixture (AX44, Seat 6 (ii) as read by
@@ -376,13 +376,14 @@ after seeing the gate's result.
       restore ≤ 1.10 × the pinned baseline median when the run's flutter median is within ±5 % of its pinned
       reference, else `NOT EVALUATED (runner)`. **Printed with WARNING, never asserted on hosted runners:**
       the low-α/flutter restore ratio above 1.20 × its pinned ratio; the per-scene solve median and its ns per
-      evaluation (a bound proposed through `/fix-plan` once ≥ 3 runs give its spread); 14 × worst above 30 s;
+      evaluation (bound: AX38 4c, set in phase 05i); 14 × worst above 30 s;
       the absolute median above 1.10 × baseline where not asserted (macOS until Phase 13); the §5 (c) 'passes
       30 s' line. On macOS two consecutive runs with the low-α median above 2 172 ms (1.15 × the mean of the
       four measured macOS medians, rounded down; re-derived at the 07c re-pin) are a defect under (d), remedy
       named, through `/fix-plan`; the 30 s warning on a listed entry is its recorded state until phase-07c,
       not a trigger; the printed growth line uses the in-window baseline 1 817 ms. The register entries (Linux
       30.27 s, macOS 33.40 s, Windows 36.73 s; remedy phase-07c conditions 9–10; closing phases unchanged)
+      (Linux closed in 05i under (c) on 05i's runs, AX38 4c; Windows and macOS stay listed)
       stand. One machine-readable line per OS/scene per run; §0 row 05h carries the latest figures and the
       counts; a WARNING run is named in the PR. Baselines: flutter reference and ratio the mean of the
       measured runs per OS (Linux 701 ms / 3.05, Windows 737 / 2.83: runs 42909003931, 42924781618,

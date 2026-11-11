@@ -404,14 +404,30 @@ jobs:
       - name: Benchmark (release)
         shell: bash
         run: |
+          set -o pipefail
           BIN=build/release/tests/unit/spatial_tests
           if [[ "${RUNNER_OS}" == "Windows" ]]; then BIN="$BIN.exe"; fi
           if [[ "${RUNNER_OS}" == "Linux" ]]; then
-            xvfb-run -a "$BIN" "[benchmark]" --benchmark-samples 10
+            xvfb-run -a "$BIN" "[benchmark]" --benchmark-samples 10 2>&1 | tee build/benchmark.log
             xvfb-run -a "$BIN" "[probe-denormals-detector]" || [ $? -eq 4 ]
           else
-            "$BIN" "[benchmark]" --benchmark-samples 10
+            "$BIN" "[benchmark]" --benchmark-samples 10 2>&1 | tee build/benchmark.log
             "$BIN" "[probe-denormals-detector]" || [ $? -eq 4 ]
+          fi
+
+      # Phase 05i (phase-05i §4 criterion 2): the AX38 records, the K-e12 record and the restore gate's GATE lines
+      # in the job summary, whatever the benchmark step read (records, never gates).
+      - name: Records to the job summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f build/benchmark.log ]]; then
+            {
+              echo "### Records, ${{ matrix.name }} (AX38 4c / (iv), K-e12, restore gate)"
+              echo '```'
+              grep -E "^(05h|05i)-records|^agree-full (gated|summary)|^agree-full pooled bias band [0-9] \[(CHECK, additive|record, per reference room)" build/benchmark.log || echo "(no record lines)"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Install AU for validation (macOS)
