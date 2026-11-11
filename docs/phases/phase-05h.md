@@ -327,7 +327,8 @@ after seeing the gate's result.
       scene exact in the D5 golden.
 - [ ] `open_field`: the AX37 (5.4) finite-floor check at the validation N 2^23 (3·SE ≤ τ asserted per band,
       |dev| ≤ τ; the shipping-N render a labelled smoke test; decider file 44 QA) and the −60 dB check (PR CI,
-      three OSes); the outer-band tracer check (AX37 (5.1) (ii)) reported before any golden.
+      three OSes — the 2^23 cases in the `open-field-validation` job, the smoke cases in the python job
+      (decider file 50)); the outer-band tracer check (AX37 (5.1) (ii)) reported before any golden.
 - [ ] `render_cli --diagnostics` reports the diffuse E_target per band beside the AX16 one, and the AX41
       diagnostics (test).
 - [ ] Same scene + seed → bit-identical IR on the same platform; no NaN/Inf/denormals; allocation-free
