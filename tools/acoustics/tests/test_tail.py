@@ -205,7 +205,10 @@ OPEN_FIELD_VALIDATION_HISTORIES = 1 << 23  # AX37 (5.4) at a validation N (rende
 
 
 @pytest.mark.parametrize("s", [0.4, 0.5])
-@pytest.mark.parametrize("histories", [None, OPEN_FIELD_VALIDATION_HISTORIES])
+@pytest.mark.parametrize(
+    "histories",
+    [None, pytest.param(OPEN_FIELD_VALIDATION_HISTORIES, marks=pytest.mark.open_field_validation)],
+)
 def test_open_field_diffuse_target_matches_the_finite_floor_integral(render_cli_path, s, histories):
     """AX37 (5.4): the diffuse E_target of open_field against the independent finite-floor single-scatter window
     integral (ground_scatter.window_target). Two forms: the validation N (OPEN_FIELD_VALIDATION_HISTORIES = 2^23

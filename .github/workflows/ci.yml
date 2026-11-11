@@ -115,6 +115,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.run == 'true'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -165,7 +166,9 @@ jobs:
           # The Phase 04 ensemble gates run in the tail-gates job.
           # The Phase 05 validation gate (marker nightly) runs in .github/workflows/nightly.yml.
           # The full D-B a* gate recomputation (marker slow) runs in nightly.yml; its committed record is gated here.
-          python -m pytest tools -v -rP -m "not ensemble and not nightly and not slow"
+          # The AX37 (5.4) open_field check at the validation N 2^23 (marker open_field_validation) runs in the
+          # open-field-validation job (decider file 50, P05H-QA-T); its shipping-N smoke cases stay here.
+          python -m pytest tools -v -rP -m "not ensemble and not nightly and not slow and not open_field_validation"
 
       - name: Listening pack
         if: runner.os == 'Linux'
@@ -262,6 +265,61 @@ jobs:
             export RENDER_CLI="$PWD/build/cli/render_cli"
           fi
           python -m pytest tools/acoustics/tests/test_tail.py -v -rP -m ensemble -k "${{ matrix.room }}" --durations=10
+
+  # Phase 05h (AX37 (5.4); decider file 50, P05H-QA-T): the open_field finite-floor check at the validation N of
+  # 2^23 histories (two renders of 4-6.5 min each per OS: 12.9 / 7.9 / 8.8 min on Linux / macOS / Windows in CI run
+  # 42935789745), in its own three-OS job so the python job keeps its ~10 min; off the critical path (the build jobs
+  # are longer). If it becomes the longest job of a green run on any OS, the clause returns to the board (Seat 5).
+  open-field-validation:
+    name: open-field validation (${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, name: linux }
+          - { os: macos-15, name: macos }
+          - { os: windows-2022, name: windows }
+    env:
+      SPATIAL_REQUIRE_RENDER_CLI: "1"
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            tools/ci/requirements.txt
+            tools/acoustics/requirements.txt
+      - name: Install Python dependencies
+        run: python -m pip install -r tools/ci/requirements.txt -r tools/acoustics/requirements.txt
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x64
+      - name: Build render_cli
+        run: |
+          cmake --preset cli
+          cmake --build --preset cli
+      - name: AX37 (5.4) open_field check at the validation N
+        shell: bash
+        run: |
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            export RENDER_CLI="$PWD/build/cli/render_cli.exe"
+          else
+            export RENDER_CLI="$PWD/build/cli/render_cli"
+          fi
+          python -m pytest tools/acoustics/tests/test_tail.py -v -rP -m open_field_validation --durations=10
 
   build:
     name: build (${{ matrix.name }})
@@ -488,7 +546,7 @@ jobs:
   ci-ok:
     name: ci ok
     if: always()
-    needs: [changes, format, contract-tools, python, tail-gates, build, asan, tsan]
+    needs: [changes, format, contract-tools, python, open-field-validation, tail-gates, build, asan, tsan]
     runs-on: ubuntu-24.04
     steps:
       - name: Check job results
