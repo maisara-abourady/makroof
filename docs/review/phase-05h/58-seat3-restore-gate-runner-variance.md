@@ -2,6 +2,6 @@
 
 ---
 
-## Round 4: Seat 3 on c2 narrowed to GROWTH-only at ±5 % (interrogator file 67)
+## Round 5: Seat 3 on the macOS trigger armed at 2 172 ms (decider file 70)
 
-SEAT 3 — round 4, one line: **(x‴) holds at 1 / 1.** The interrogator's narrowing is right: the macOS entry's recorded state is OVER30S until 07c, so a 30 s WARNING there carries no information; the GROWTH warning (two consecutive macOS low-α medians > 1.10 × 1 817 = 1 999 ms; the rows on file 2 106 / 1 849 / 1 887 / 1 715 fire it 0 times) is exactly the synthesis-growth detector I asked for, and it is the trigger that names a new defect, not 07c 9–10 restated. The ±5 % window with 1.10 unchanged evaluates the same four x64 rows, so my x64 detector's sensitivity is unchanged; only its evaluation rate falls, which c3's §0 count already records. No new condition.
+SEAT 3 — round 5: **1 / 1 holds at 2 172 ms.** A macOS synthesis detector exists before Phase 13; at the 0.92 share, two consecutive medians over 1.15 × the four-run mean fires at a uniform slowdown ≈ ×1.19 (2 172 / 1 889 = 1.15 → (1.15 − 0.08) / 0.92 ≈ 1.16–1.2, my arithmetic), close to the x64 bound; 0 of 4 rows fire, so it is not weather. The 1 817 print stays as the record. No new condition.
