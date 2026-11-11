@@ -27,7 +27,10 @@ Order: scope 4 (phase-13 scope 9) runs first, before C3's residual and S8 are re
    "**Robustness tests** (Catch2 + pluginval options)"; the other bullets in 13-4)
 3. **Flush-to-zero guard for MSVC on ARM64** (Windows on Arm): `sim/conv/Denormals.h` is a no-op there;
    implement with `_ReadStatusReg`/`_WriteStatusReg` (FPCR.FZ) together with an ARM64 Windows CI runner
-   that can test it (Phase 06 follow-up). (phase-13 scope 8)
+   that can test it (Phase 06 follow-up). Until then **Windows-on-ARM runs unguarded**: the guard is a
+   no-op on MSVC ARM64, so the AX37 (5.1) (i) guard and the phase-05h pool-worker guard do not apply there
+   and the `[pipeline]` FTZ test SKIPs (D-H3 (c), decider files 20, 25; the public compatibility notes say
+   so until this scope lands). (phase-13 scope 8)
 4. **Small-buffer callback timing on real macOS hardware** (Phase 06 follow-up, brief
    `docs/sessions/2026-11-07-phase-06-followups.md` O3(b)): with the Phase 06 work spreading (AX31), the
    worst callback at host buffer 64, 12 s IR, P = 512, while crossfading must stay under its real-time

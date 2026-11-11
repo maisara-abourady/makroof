@@ -146,6 +146,19 @@ def room_set_label(res: dict) -> str:
             + "); " + ", ".join(missing) + " pending**")
 
 
+def _mc_se(p: dict) -> str:
+    """Phase 05h (scope 5): the tail level's Monte Carlo SE per AQ9 band and its max over bands (AX42 units, dB of the
+    total E_target); 'U' marks a pair where AX44's note is raised. '–' when the diagnostics predate the switch."""
+    d = p.get("diagnostics", {})
+    bands_se = d.get("tail_level_se_db_bands")
+    if not bands_se:
+        return "–"
+    idx = {"500": 3, "1000": 4, "2000": 5}
+    per = " / ".join(f"{bands_se[idx[k]]:.3f}" for k in ("500", "1000", "2000") if idx[k] < len(bands_se))
+    mx = d.get("tail_level_se_db")
+    return f"{per}; max {mx:.3f}" + (" U" if d.get("tail_level_approximate") else "") if mx is not None else per
+
+
 def write(res: dict, path: pathlib.Path) -> None:
     L = []
     w = L.append
@@ -358,8 +371,8 @@ def write(res: dict, path: pathlib.Path) -> None:
     w("")
     w("## 4. Per pair (initial α)")
     w("")
-    w("| pair | T30 err 500/1k/2k (%) | EDT err 500/1k/2k (%) | C80 err 500/1k/2k (dB) | AQ9 T30 / EDT / C80 | flags | EDC plot |")
-    w("|---|---|---|---|---|---|---|")
+    w("| pair | T30 err 500/1k/2k (%) | EDT err 500/1k/2k (%) | C80 err 500/1k/2k (dB) | AQ9 T30 / EDT / C80 | tail-level MC SE 500/1k/2k (dB, AX42; max over bands) | flags | EDC plot |")
+    w("|---|---|---|---|---|---|---|---|")
     for name in sorted(res["pairs"]):
         p = res["pairs"][name]
         if p["alpha_set"] != "initial":
@@ -381,7 +394,8 @@ def write(res: dict, path: pathlib.Path) -> None:
         plot = p.get("edc_plot")
         w(f"| {name} | " + " / ".join(f(b[k]["T_err_pct"]) for k in AQ9) + " | " + " / ".join(f(b[k]["EDT_err_pct"]) for k in AQ9)
           + " | " + " / ".join(f(b[k]["C80_err_db"], 2) for k in AQ9) + f" | {pf(a['T'])} / {pf(a['EDT'])} / {pf(a['C80'])} | "
-          + (", ".join(flags) or "–") + " | " + (f"[png]({posixpath.relpath(plot, 'docs/validation')})" if plot else "–") + " |")
+          + _mc_se(p) + " | " + (", ".join(flags) or "–") + " | "
+          + (f"[png]({posixpath.relpath(plot, 'docs/validation')})" if plot else "–") + " |")
     w("")
     w("Flags: 'T20' = the T30 usable-range test failed (peak-referred dynamic range or the Lundeby late line < 45 dB); "
       "measured T20 is compared with simulated T20. 'meter-dependent' = octave and half-octave errors differ by > 5 points. "

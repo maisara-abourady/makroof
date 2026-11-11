@@ -1,0 +1,17 @@
+{
+ "file": "phase05h_hybrid_references.jsonl",
+ "produced_by": "compute_refs.py (session scratchpad copy of the recipe below; tools/validation/export_phase05h_references.py reads it): per case and rung, tools.validation.hybrid_fast.FastRoomKernel(dims, rung, t_end, variant without air, band) solved per band with phase05b2_dt1.lean_solve (chunked_solve(chunk=32, workers=3) where N*N*T*4 > 0.6 GB), the air factor exp(-m c t) applied per bin, ref_hybrid.target_hybrid(plan, env) as the window target; rungs 2.5 and 1.25 m for every case, 0.625 m for dead_booth, living_room, classroom, club and the D-T6 small room",
+ "tool_commit": "fbc7e7a0adb708d82529fbc7a0990a64523a9a0b",
+ "repo_state_note": "computed on branch claude/laughing-brahmagupta-vhem6q during phase 05h session 2 (2026-11-10); hybrid_fast.py and ref_hybrid.py unchanged since main 8583ba1",
+ "python": "Python 3.13.18",
+ "numba": "0.68.1",
+ "numpy": "2.5.4",
+ "scipy": "1.18.1",
+ "requirements": "tools/acoustics/requirements.txt (hash-pinned)",
+ "rows": 66,
+ "rows_by_rung": {
+  "2.5": 28,
+  "1.25": 28,
+  "0.625": 10
+ }
+}

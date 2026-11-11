@@ -1,0 +1,51 @@
+# 61 — Seat 6 (canvas designer): the restore-gate register form against shared-runner variance (file 56, B6)
+
+phase-05h (session 2). Verbatim seat output (the orchestrator saved it). Its (x) cell 0 / 1 and (f) 0 / 1 cover the decider's (x′), on the condition of one machine-readable line per OS/scene per run and the figures in §0.
+
+SEAT 6 POSITION — restore-gate register form vs shared-runner variance (file 56; B-core + B6)
+
+Files read: docs/review/phase-05h/56, 59, 57, 53, 54; 19 L95–139; docs/phases/phase-05h.md L94–107, L360–394; tests/unit/test_diffuse_records.cpp L40–92, L340–409; researcher file 5 F9–F12 (headers; F10's "same instances" line not readable from my grep, taken from the decider's reading); BUILD_PLAN AX38 fragments (L139 too long to read whole; (iii) "settling … project load included" confirmed); PRD L99–106; my file 5-seat6-D-H1.md. Corpus not needed (no acoustic claim).
+
+**1. Reading.** How a CI timing CHECK is asserted on machines that move ×1.63 on identical code, and whether changing it from asserted to reported touches the producer's project-load wait (PRD L101 "usable in a DAW session"). Cues: a picture that lies about the engine (criterion 6: a gate red when nothing changed says "defect" falsely; a baseline that creeps says "fine" falsely); silence is unmeasured (W3: a printed line nobody reads); heavy recompute on restore (S3, W1).
+
+Governing fact for my seat (unchanged from my file 5 L11): **no option moves the restore.** The producer's wait is the non-diffuse build, 1.5–3.0 s per 100 m / 96 kHz instance on these runners (file 56 table), and its cure is phase-07c conditions 9–10, not the gate. The 30 s line is 14 × t_restore, a CI convention (H1-F1) on a 14-parameter sequence; the producer-facing figures are the 1 / 3 / 10 s anchors, which phase-05h §2 item 2 already defines as **records to Maisara** ("UI response-time anchors (Card et al. 1991), not audibility limits"), never a CHECK. And a shared 3-vCPU M1 VM is not a producer's machine (researcher F9; file 5 L75 "ill-informed, conditions differ"), so the absolute assertion was never a guarantee to the user; it was a regression tripwire. The guarantee lives at Phase 13's release-machine re-check (AX41) and in "settling" (AX38 (iii)), both untouched by every option.
+
+**2. Ranking.**
+- *Prefer* **(f)** with k derived from the spread (Seat 5's 1.15 or RQ-RG-3's method), or **(x)** with the condition in §6 — equal for my seat.
+- *Can live with* (b), (e), (c).
+- *Can live with, 2/2* (a). Not veto-grade: it breaks criterion 6, not criteria 1–2.
+- (d) out of 05h's bounds; for Phase 13 it buys a stable number on one known machine, still not a user's machine; Seat 7's cost.
+
+**3. Tension now.** (a) **2**: a gate red on 2 of 5 runs by weather tells Maisara "defect" when the code did not change (criterion 6); the "no re-run" rule turns that lie into register entries (the Windows entry, file 53, is already one). (b) **1**: honest, but at k = 1.10 it re-creates (a) on Windows (decider's 1 % margin; Seat 5's arithmetic, redone: max/mean 1.088). (c) **1**. (e) **1**: honest when it says "not evaluated", but evaluates on roughly half the runs (Seat 5 iii). (f) **0**. (x) **0**.
+
+**4. Tension later.** (a) **2**: every PR of 05i/07b/07c waits on runner luck, so 07c, the phase that actually shortens the producer's wait and brings "settling" and the one-step update (my W-x′ later 1, file 19 L134), slips; undo is a test + plan edit, but the slipped weeks are not recoverable; evidence: the next red run. (b) **1**: blind to a uniform synthesis slowdown; k re-pinned at 07c (both scenes change). (c) **2**: the baseline ratchets up at each slow run, each ratchet a plan edit that re-draws the picture upward (criterion 6); undo: one re-baseline then (x). (e) **1**: the guard hides exactly the global-slowdown case, but the printed full-rebuild record still shows it to a reader. (f) **1**: two pinned constants from n = 4–5 samples; re-pinned at 07c. (x) **1**: W3 — a record nobody reads; a 20 % restore creep through 05i/07b would surface only at Phase 13.
+
+**B6 (i): is the producer's load-time guarantee weakened under (b)/(e)/(f)/(x)?** **0 on all four.** Reasons, in my measures: the user's per-instance wait is identical under every option (no option touches the build); the 1 / 3 / 10 s anchors and the AX38 (iv) 8-instance load were records, not assertions, before this matter (phase-05h §2 items 2–3); "settling" (AX38 (iii)) arrives at 07c regardless; the strict absolute form stays on Phase 13's release machines (AX41), the only machines whose number means anything to a producer. What is weakened is the *tripwire* for a regression between now and Phase 13; my later 1 on (x) and (e) is that, and the §6 condition closes it. I would rate ≥ 1 only if any option let the 30 s and 1/3/10 s figures stop being printed per run or stop reaching the §0 row and the PR table.
+
+**5. Evidence.** Per-run spread ×1.63/×1.43/×1.23, ratio ±5–8 %: file 56 table [Obs]. Rule text (a)–(d) and "never red by runner speed, the defect never hidden": file 19 L104 [Obs]. 1/3/10 s as anchors, records to Maisara: phase-05h L100–104 [Obs, plan text]. Runner specs, VM ≠ user machine: researcher F9, file 5 L75 [Obs]. Restore cause 95.5 % synthesis, remedy 07c 9–10: file 19 L104 finding [Obs]. F10's "same-instance control" as support for a same-run ratio: taken from the decider's reading, not read by me [Hyp]; researcher RQ-RG-2 as already routed. Incidents: W1 (an unpredictable 50–200 ms switch forced a redesign; the fix was architecture, not a tolerance), W3 (silence/unread records are unmeasured, ten years), criterion 6.
+
+**6. Conditions of acceptance.**
+- (a) 2/2 → 1/1: unreachable while an absolute CHECK sits on a shared runner (Seat 5's words; I concur).
+- (c) later 2 → 1: at most one re-baseline, then (x) or (f).
+- (x)/(e)/(f) later 1 → 0: every run prints one machine-readable line per OS/scene with four fields (ratio and its bound; absolute 14 × worst; full-rebuild median; "asserted / reported only / not evaluated (runner slow, flutter +N %)"), and §0 row 05h carries the latest figures and the count, not a pointer to logs.
+
+**B6 (ii): what §0 and the PR must say to Maisara.** Plain words, no euphemism, never "passed" for a reported-only run:
+1. "On shared CI machines the 100 m / 96 kHz restore reads 1.5–3.0 s per instance (per-OS min–max over N runs on identical code; the same machine moves up to ×1.63 between runs). The absolute 30 s line and the 1 / 3 / 10 s anchors are therefore **recorded, not judged**, on CI until Phase 13's release machines; what CI judges every run is the exact work pins and the restore's ratio to a reference workload on the same machine."
+2. "'Not evaluated (runner slow)' means: that day's machine was more than X % slower than its reference on an unrelated workload; the figure was recorded, nothing in the code changed, no re-run was made. Count: M of N runs per OS."
+3. The Raise item 2 table per OS: restore median range, full-rebuild median range, against 1 / 3 / 10 s labelled as UI response-time anchors (Card et al. 1991), not audibility limits; every OS above the 1 s anchor named; the sentence "the number on a producer's Mac is not known until Phase 13."
+4. The remedy and its date: phase-07c conditions 9–10 (≈ 0.15 s left), "settling" shown meanwhile (AX38 (iii)); nothing public says 100 m rooms load fast (Seat 7).
+
+**7. Hand-offs.** k and the guard band from n = 4–5: Seat 5, researcher RQ-RG-3. Whether the ratio's blind spot is covered by the full-rebuild and AQ4 records: Seats 2, 3. Contractor cost of red-by-weather PRs; dedicated runner for Phase 13: Seat 7. Reading vs amendment of D-H1 (v) for Maisara: decider. The Phase 13 release-machine measurement and Maisara's reading of the PR table: human.
+
+**8. Premortem.** If (a) stands: PRs queue on runner luck, 07c slips past the beta, and the first Mac tester opens a mix with six 100 m instances and waits 15 s with "settling" not yet built; the contractor notices first (a red gate everyone has learned to ignore), the tester second.
+
+
+---
+
+## Round 2: Seat 6 on the macOS GROWTH-only trigger (interrogator file 69): later 1 as armed now; 0 / 0 if armed only after the 07c re-pin, a print until then
+
+SEAT 6 — reply to interrogator file 69 item 1 (under 120 words).
+
+No: a print-to-register-edit trigger with ≈ 39 % weather exposure before 07c is criterion 6 in a softer form. The register would say "defect, remedy named" when the code did not change; cheaper than a red (no blocked PR, a /fix-plan edit), so I price it later 1, not 2 — and it buys nothing: the macOS low-α entry is already in the register with that same remedy (07c conditions 9–10), so a second entry adds no information for Maisara or the producer.
+
+What restores 0 / 0, inside the bounds: the trigger armed only after the 07c re-pin (both scenes change there anyway); until then a print only, counted in §0 row 05h. Three consecutive merely lowers the false rate on n = 4 data; it is still a false "defect".

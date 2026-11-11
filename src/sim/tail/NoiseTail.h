@@ -71,6 +71,8 @@ public:
     BandNoiseGenerator(const ism::OctaveFilterbank& filterbank, std::size_t length);
 
     std::size_t length() const noexcept { return length_; }
+    // Size of the synthesis transform (AX38 4c's runner-independent work pin, RG-1).
+    std::size_t fftSize() const noexcept { return fft_.size(); }
     UnitDecay make(const RoomDecay& decay, std::uint32_t seed, std::uint32_t emitterStream) const;
 
 private:
@@ -110,19 +112,72 @@ double matchWindow(double t, double startS, double endS) noexcept;
 // not used): 0.010 (13.82 / T60) e^(-13.82 t / T60) / (1 - e^(-13.82 L / T60)).
 double expectedUnitEnergyPer10ms(double t60S, double tS, double lengthS) noexcept;
 
+// Phase 05h (AX37, AX39, AX41, AX44): the diffuse part of the matching, per emitter. E_target,b is the
+// window-referred specular entries plus the window-referred propagated diffuse energy (AX37 (5.1)),
+// estimated by sim/diffuse (one solve per scene serving both emitters); the AX16 E_target is kept only
+// for diagnostics and the AX22 decision (5.2). All energies here are in the matching's units (band
+// energy per 10 ms at t_mix,e, i.e. the reference's units times the band-filter energy g_b).
+struct DiffuseMatch
+{
+    bool computed =
+        false; // false in a build that skipped the solve (validation: BuildOptions::tailLevelAx16)
+    contract::BandArray bandsDiffuseEnergy{};    // the propagated diffuse energy in the window
+    contract::BandArray bandsDiffuseReference{}; // the same in the reference's units (no g_b; tests)
+    contract::BandArray bandsSpecularEnergy{};   // the specular entries alone
+    contract::BandArray bandsAx16Energy{};       // specular + AX16 scattered entries (Phase 04's E_target)
+    // AX41 diagnostics (reported; cap hit, floor truncated and pilot floor are flags, R / VOV / slope
+    // are reported only). The path counts are per scene (the joint rule), the statistics per emitter.
+    std::int64_t nStar = 0;
+    std::int64_t nNeed = 0;
+    std::int64_t n = 0;
+    std::int64_t nCap = 0;
+    bool capHit = false;         // N_need > N_cap
+    bool floorTruncated = false; // N < n*
+    bool pilotFloor = false;     // n* < 1 000
+    bool pilotShipped = false;   // N_cap < one block
+    double achievedSeDb = 0.0;   // max over bands, SE in dB of the total E_target
+    contract::BandArray bandsSeDb{};
+    contract::BandArray bandsPilotSeDb{};
+    contract::BandArray bandsR{};
+    contract::BandArray bandsVov{};
+    contract::BandArray bandsPilotVov{};
+    contract::BandArray bandsVovUnion{};
+    contract::BandArray bandsSlope{};
+    double vovUnion = 0.0;
+    double weight = 1.0; // NW-4C w (AX44)
+    double listenerDistanceM = 0.0;
+    double emitterDistanceM = 0.0;
+    bool bothNear = false;          // d_L < 0.70 m and d_E < 0.70 m
+    double realisedWorkRatio = 0.0; // (W_pilot + W_final) / W_scene
+    std::int64_t wPilot = 0;
+    std::int64_t wFinal = 0;
+    std::int64_t wScene = 0;
+    std::uint64_t faceHash = 0; // AX39 D5
+    std::size_t latticeImages = 0;
+};
+
 struct TailMatch
 {
     MixingTime mixing;
-    double expectedSigmaDb = 0.0;                  // 4.34 / sqrt(expected k_eff), every band
-    contract::BandArray bandsTargetEnergy{};       // E_target,b: band energy per 10 ms at t_mix,e
-    contract::BandArray bandsExpectedUnitEnergy{}; // ebar_b
-    contract::BandArray bandsAmplitude{};          // E_b, with E_b^2 ebar_b = E_target,b
+    double expectedSigmaDb = 0.0; // 4.34 / sqrt(expected k_eff), every band
+    // E_target,b: band energy per 10 ms at t_mix,e. Phase 05h (AX37 (5.1)): specular entries plus the
+    // propagated diffuse energy (diffuse.bandsSpecularEnergy + diffuse.bandsDiffuseEnergy) when
+    // diffuse.computed, else the Phase 04 value (specular + AX16 scattered entries).
+    contract::BandArray bandsTargetEnergy{};
+    contract::BandArray bandsExpectedUnitEnergy{};                    // ebar_b
+    contract::BandArray bandsAmplitude{};                             // E_b, with E_b^2 ebar_b = E_target,b
     std::array<int, contract::kNumOctaveBands> bandsNonZeroEntries{}; // realised, in the window
     contract::BandArray bandsRealisedKeff{};    // k_real = (sum x)^2 / sum x^2 of the weighted entries
     contract::BandArray bandsRealisedSigmaDb{}; // 4.34 / sqrt(k_real) (0 when k_real = 0)
     // Per-axis energy shares sum E_i u_{i,k}^2 / sum E_i (k = x, y, z) of the entries in the window,
     // 1/3 each in an isotropic field (Kuttruff Eqs. 5.1-5.2); a necessary condition only, not gated.
+    // Phase 05h (AX37 (5.3)): computed from the SPECULAR ENTRIES ONLY (the AX16 scattered entries are
+    // no longer in the matching); labelled so in the diagnostics.
     std::array<std::array<double, 3>, contract::kNumOctaveBands> bandsAxisShares{};
+    // Phase 05h: the diffuse part and the user note U (AX44, TailMatch.approximate):
+    // U = (both-near AND (cap hit OR VOV_union >= 0.1)) OR (cap hit AND achieved SE > 0.33 dB).
+    DiffuseMatch diffuse;
+    bool approximate = false;
 };
 
 // Energy matching of one emitter (phase-04 scope 3, steps 1-4). Entries outside the window (the

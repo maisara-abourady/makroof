@@ -490,7 +490,9 @@ DiffuseResult estimateDiffuse(const DiffuseProblem& problem, const DiffuseLimits
     {
         // Validation: N histories from history 0, no pilot.
         const std::int64_t blocks = (limits.fixedHistories + kBlockHistories - 1) / kBlockHistories;
-        allocate(fin, 0, blocks, numE);
+        const std::int64_t start = std::max<std::int64_t>(0, limits.fixedStart) / kBlockHistories
+                                   * kBlockHistories;
+        allocate(fin, start, blocks, numE);
         if (!runBlocks(p, fin, 0, blocks, pool, options))
         {
             res.cancelled = true;
@@ -503,7 +505,9 @@ DiffuseResult estimateDiffuse(const DiffuseProblem& problem, const DiffuseLimits
         // Pilot (AX41): blocks from history 0, run a pool's worth at a time, scanned in order; the stop
         // test is applied at each block boundary, so blocks past the stop are discarded (D4).
         const std::int64_t maxBlocks = (nStarMax + kBlockHistories - 1) / kBlockHistories;
-        allocate(pilot, 0, maxBlocks, numE);
+        const std::int64_t offset = std::max<std::int64_t>(0, limits.historyOffset) / kBlockHistories
+                                    * kBlockHistories;
+        allocate(pilot, offset, maxBlocks, numE);
         std::int64_t used = 0;
         std::int64_t wPilot = 0;
         bool stopped = false;
@@ -544,7 +548,7 @@ DiffuseResult estimateDiffuse(const DiffuseProblem& problem, const DiffuseLimits
         if (!shipPilot)
         {
             const std::int64_t blocks = res.count.n / kBlockHistories;
-            allocate(fin, kFinalRangeStart, blocks, numE);
+            allocate(fin, offset + kFinalRangeStart, blocks, numE);
             if (!runBlocks(p, fin, 0, blocks, pool, options))
             {
                 res.cancelled = true;

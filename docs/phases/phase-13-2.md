@@ -20,12 +20,20 @@ on the code 13-1 optimised.
 
 1. **Diffuse-estimator work limits and the restore (AX41, AQ10 amended 2026-11-10, phase 05b):**
    re-check W_max (provisional 3.05 M image evaluations per emitter, sized to pluginval's restore
-   watchdog less D-H1's margin; re-derived once under phase-07c; board answer, decider files 43, 47, 51) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines; any change is
+   watchdog less D-H1's margin; re-derived once under phase-07c; board answer, decider files 43, 47, 51) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines, together with the AX38 4c strict 30 s and growth bound on all three OSes (the figures printed by every 05h+ CI run; RG-1); any change to W_max or n\*_max is
    an output change (golden round, §6 row) and must be fixed before the first release. Q2a (C), moving the
    diffuse solve off the synchronous restore, prepare and `reset()`, is its own phase,
    [`phase-07c.md`](phase-07c.md) (board answer, decider files 47 §4 (iii), 51 §4 items 4 and 8): **it is a
    prerequisite for the beta**; if it has not landed, the estimator parameters are versioned in saved
    state before release. (phase-13 scope 13)
+   **Accuracy wording (AX43, D-H3 (a) / H3-F1, 2026-11-10; decider file 27, interrogator file 28; Seat
+   7's (f9) sentence):** the copy is written from the agreement suite's printed lines and quotes the
+   per-case line (τ, the max |C++ − ref|) and the CHECKed pooled figure in this form: "Across the N
+   certified test cases the average offset from the reference is <mean signed deviation> dB (<x> %),
+   inside the references' own resolution (about <mean ℓ_ref> dB) plus three standard errors", with N
+   from the '<gated> of 560' line and the printed bound; never the as-written or per-room numbers as a
+   pass/fail, never "no bias" bare, never "validated" (AX39, AX43). Where its tail level is only
+   reported (reference pending), a room is not counted.
 
 ## Out of scope
 

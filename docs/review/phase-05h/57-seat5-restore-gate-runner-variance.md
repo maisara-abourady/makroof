@@ -1,0 +1,58 @@
+# 57 — Seat 5 (deadline keeper): the restore-gate register form against shared-runner variance (file 56)
+
+phase-05h (session 2). Verbatim seat output (the orchestrator saved it).
+
+SEAT 5 POSITION
+
+Files read: `docs/review/phase-05h/56-…runner-variance.md`, `53`, `54`, `19-decider…r2.md` L104, my `5-seat5-D-H1-D-H2.md` and `17-seat5-D-H3.md`, BUILD_PLAN AX38 (L139), phase-05h §5 L365–390, `tests/unit/test_diffuse_records.cpp` L56–92, L340–403, `.github/workflows/ci.yml` L381–475. Corpus not needed (no acoustic claim).
+
+**1. Reading.** How an absolute timing CHECK on shared runners can serve as a gate when identical code moves ×1.63 between runs. Cues: WI-3 (Rowland: when the instrument fails on everything, calibrate the instrument); §4.4 last row (a test green only at one machine speed); my D-H3 fact (file 17 L5): the records test runs in the Benchmark step, L404, before pluginval L425 and auval L434, with no `if: always()` until L472 (from the code), so every red REQUIRE in it removes the host-conformance evidence (criterion 3) from that OS for that run and `ci-ok` never writes the pass marker. The register was my own form (W-x); the data now say its (b) bound is inside runner noise, and I say so.
+
+**2. Ranking.**
+- *Prefer* **(x), mine**: on shared runners no timing figure is a CHECK (the rule AX38 (i) already states for the quiesce record, L139: "a print, never a CHECK with a timing threshold on shared runners"); the restore figures, the 30 s line, the 29.1 s rule and the growth bound are printed per run and the register entries stand; what is asserted is runner-independent: the exact W_pilot/W_final pins and the AX41 ratio already REQUIREd (L340–344, from the code) for the solve's size, plus (b) in the widened form below for the per-evaluation cost; strict 30 s and growth bound re-enforced on Phase 13's release machines (AX41 already says so) and on any dedicated runner Seat 7 buys. Plus `if: always()` on pluginval/auval.
+- *Can live with* (b) only with a multi-run baseline and a 1.15 bound; (c); (e) beside the deterministic pins.
+- *Cannot live with* (a) as it stands; (d) as the 05h answer; nightly-only (added option (g)).
+
+**3. Tension now.** (a) **3**: red on 2 of 5 runs by runner speed, each red masking pluginval/auval on that OS (3 by the same rule as file 17 L5; the interrogator may read it as 2 since criterion 3, not 1, is hit; the condition in §6 settles it either way). (b) as written **2**: redoing the arithmetic from file 56's table, Windows ratios 2.64/2.73/3.08/2.79/2.91, Linux 2.85/3.02/3.24/3.09: a one-run baseline × 1.10 (Windows 2.90, Linux 3.14) is below observed maxima (3.08, 3.24): it would already have been red on run 42935789745 on both OSes. (c) 1. (d) 2 (weeks of blocked PRs; Seat 7's cost). (e) 1 (honest when "not evaluated", but the flutter median itself spreads Linux 514–880 ms (−28/+23 %), Windows 622–927 ms, so a ±10 % guard evaluates on roughly half the runs). (g) 1. (x) **0**.
+
+**4. Tension later.** (a) **2**: every PR to 07c waits on runner luck; "no re-run" turns runner speed into register "defects"; the fingerprint skip never fires. (b) 1 with the §6 fix: blind to a global synthesis slowdown (file 56 says so; nothing on a shared runner can see a 10 % synthesis change under ×1.63 noise anyway); re-baselined at 07c, which changes both scenes. (c) 2: the baseline creeps upward at every slower runner, each creep a plan edit. (d) 1: a self-hosted runner on a public repository is a maintenance and security line (criterion 4) [Hyp on cost]. (e) 2: a regression that slows both scenes reads as "runner slow": the guard hides exactly the global case. (g) 2: same shared runners, less coverage, and the nightly is not scheduled (CLAUDE.md). (x) 1: a record nobody reads is my §17 blind spot; mitigated by a machine-readable summary line and Phase 13's strict re-check.
+
+**5. Evidence.** CI step order and absence of `if: always()`: from the code, ci.yml L404–475 [Observed]. Variance ×1.63/×1.43/×1.23 and ratio ±5–8 %: file 56 table [Observed]. Ratio means (redone): Windows 2.83, Linux 3.05, macOS ≈ 3.80; × 1.15 = 3.25 / 3.51 / 4.37, all observed values inside. Exact work pins: test L340–344 [Observed]. "Never a CHECK on shared runners": AX38 (i), my file 17 L203 [Observed]. Instrument calibration: WI-3 [Self-report: incident]. Researcher: GitHub's documented hosted-runner performance variance and larger/dedicated-runner pricing (RQ-H2-1's neighbour) [Hyp until sourced].
+
+**6. Conditions of acceptance.** (a) 3→2 now: `if: always()` on the pluginval and auval steps (or the Benchmark step after them); 2→1 is not reachable while an absolute timing CHECK sits on a shared runner. (b) 2→1 now: baseline = mean of the runs on file per OS, bound 1.15 (outside the ±8 % spread), re-pinned with a CHANGELOG reason; the 30 s figures printed; plus the `if: always()`. (c) later 2→1: at most one re-baseline, then (x). (e) later 2→1: only beside the exact work pins, with "not evaluated" counted in §0. (d): Phase 13's question, not 05h's.
+
+**7. Hand-offs.** Whether (x) is a reading or an amendment of D-H1 (v)/H1-F2 (accepted for Maisara): decider; it overrides no veto. A deterministic operation count for `BandNoiseGenerator` (IFFT count × size) as a runner-independent synthesis pin: Seats 2, 3 (07c moves it anyway). Dedicated-runner cost and public-repo security: Seat 7. The restore cost reading of (v): Seat 3.
+
+**8. Premortem.** If (a) stands: within three PRs the Linux or Windows build job is red on about 40 % of runs, pluginval/auval never run there on those runs, and a host-conformance regression lands in 07c; the contractor notices when the only red on a PR is "the gate everyone ignores".
+
+
+---
+
+## Round 2: Seat 5's B5 answers (i)–(vi) and re-rating (file 59)
+
+SEAT 5 — B5 answers (files 58, 59 read; arithmetic redone from file 56's table; no files written)
+
+**(i) What keeps `ci ok` meaningful on shared VMs.** Only CHECKs whose statistic is runner-free: the exact W_pilot/W_final pins and AX41 ratio (L343–344), Seat 3's ns/evaluation ratio 0.58 and the unit-decay length, the D5 hashes. A wall-clock CHECK with a 10 % bound on a runner that moves ×1.63 is a coin; `ci ok` red on it says nothing. "NOT EVALUATED (runner)" is compatible with `ci ok` provided it is printed, counted, and is not a pass of the absolute bound. Under every option that keeps any CHECK in the Benchmark step, pluginval/auval need `if: always()` (ci.yml L404–434, from the code).
+
+**(ii) k.** Ratios: Linux 2.85/3.02/3.24/3.09 → mean 3.05, SD 0.162, CV 5.3 %; Windows 2.64/2.73/3.08/2.79/2.91 → 2.83, SD 0.171, CV 6.0 %; macOS 3.92(approx)/3.90/3.82/3.54 → 3.80, SD 0.175, CV 4.6 %. Nonparametric is useless at n = 4–5 (next value exceeds the max with probability 1/(n+1) ≈ 17–20 %). Normal one-sided prediction bound, pooled relative deviations (10 df, pooled CV 5.4 %; the three CVs differ by < ×1.3 in variance ratio 1.7, nowhere near F-significance, so pooling is defensible): k = 1 + t₀.₉₉(10)·√(1+1/n)·CV = 1 + 2.76·1.10·0.054 = **1.16**; per OS at 3·CV: Linux 1.16, Windows 1.18, macOS 1.14. I would pin **k = 1.20 pooled** (false red ≈ 0.2 % per OS-run). But the price: with low-α ≈ 88 % synthesis and flutter ≈ 60 % (Seat 3), ratio = (1+0.88d)/(1+0.60d); k = 1.20 fires at a synthesis factor ×2.25, k = 1.15 at ×1.94, and the solve's sign inverts. A ratio CHECK that cannot fire below ×2 is a defect of the gate under the decider's own line: **print the ratio with k = 1.20 as a WARNING; do not assert it.** Seat 3's ns/eval ratio is the runner-free speed detector; assert that (Seat 2 to confirm it is an invariant).
+
+**(iii) Guard band** (pin = mean flutter median on file: Linux 701, Windows 737, macOS 497 incl. the approximate row / 484 without). ±10 %: Linux 514 and 880 out (2 of 4 not evaluated); Windows 626, 622, 927 out (3 of 5); macOS 0 (1 of 4 if the 537 row is judged against 484). **5 (or 6) of 13 not evaluated.** ±15 %: the same 5 (Windows 626 sits at the 626.3 edge). ±20 %: 3 of 13. The outliers are −27/+26 % (Linux), −16/+26 % (Windows): no band under ±30 % evaluates them, and at ±30 % the bound is meaningless. In-window low-α spread: Linux 2043/2092 (2.4 %), Windows 2000/2056 (2.8 %), fine under 1.10 × mean; **macOS 2106/1849/1887/1715 with flutter steady at 474–494: ×1.23 on low-α while the guard reads "normal"**; against a mean baseline 1 889 the first row (2 106, +11.5 %) is red. The flutter is not a speedometer for a 2 s job on the 3-vCPU M1 VM. On macOS the absolute bound stays a print until Phase 13 (or 1.15 × mean, decider's choice).
+
+**(iv) Printed / asserted / fields.** Asserted every run: flutter strict 30 s (headroom 2.3–4× > runner ×1.7); W pins; ns/eval ratio ≤ 1.10 × 0.58; unit-decay samples == 1 152 000; low-α absolute median ≤ 1.10 × `baselineMedianMs` only when |flutter median − `flutterRefMs`| ≤ 10 % and `absoluteAsserted` is true (Linux, Windows). Printed: min/median/worst, 14 × worst vs 30 s, the 29.1 s rule, ratio vs 1.20 × `baselineRatio`, `EVALUATED | NOT EVALUATED (runner: flutter X vs ref Y ±10 %)`, plus one machine-readable line for the §0 count. Fields: `scene, os, recorded14xS, listed, baselineMedianMs, baselineRatio, flutterRefMs, absoluteAsserted` on the low-α entries; `nsPerEvalRef = 0.58`, `unitDecaySamples`, `guardPct = 10`, `kRatio = 1.20` as named constants with their provenance comment.
+
+**(v) Pinning.** Now: `flutterRefMs` and `baselineRatio` = mean of all runs on file per OS (run ids in the CHANGELOG); `baselineMedianMs` = mean of in-window runs (Linux 2 068, Windows 2 028; macOS 1 889, print only). Never a red or out-of-window run as baseline (that is (c)). Re-pin only when the restore path changes (W_max/n*_max re-derivation, 07c's synthesis move): one run pins PROVISIONAL (growth printed, not asserted), the mean of ≥ 3 runs re-pins with a CHANGELOG reason naming the code change.
+
+**(vi) Phase 13 backstop.** Sufficient for the release promise (30 s, L101/NFR-2) on named machines; **not** for 07c's sizing (Seat 3's premortem). Condition: 07c condition 9's packet repeats file 7's split timer on the same local box before sizing its interim rules. With that, Phase 13 + the in-window x64 bound (a regression waits ≤ 1–2 PRs) is enough.
+
+**Re-rating.** Seat 3 is right: work pins see size, not speed; nothing on a shared runner sees synthesis speed within 10 %. So (x) → **(x′) = (f) with the restore-ratio CHECK demoted to a print, Seat 3's two pins asserted, the absolute bound in-window on x64 only, baselines per (v): 0 now / 1 later.** (f) as written (k unspecified, ±10 %, absolute on macOS): 1 / 1. (b) with k = 1.10 one-run baseline: 2 / 2 (red on run 42935789745 on both x64 OSes). (a), (c), (e) unchanged from file 57.
+
+
+---
+
+## Round 3: Seat 5 on the macOS GROWTH-only trigger (interrogator file 69): 0 / 2 as armed now; 0 / 1 if armed only after the 07c re-pin (or 1.15 × the in-window mean)
+
+SEAT 5 — on the macOS double trigger (interrogator file 69 item 1)
+
+It moves me: 0 / 1 → 0 / 2 later. No red, so `ci ok` is safe; but at ≈ 39 % within ten runs the trigger produces a `/fix-plan` register edit on weather that adds nothing: the macOS low-α entry is already listed with the same remedy (07c condition 9), so a second entry has no new remedy, only a wrong "defect" label (my file 57 §4 objection to (a), now in plan text instead of CI).
+
+Cheapest restoring change, inside the bounds: the double is a **printed, counted line (§0 note) until 07c re-pins the macOS baseline** from ≥ 3 in-window runs; armed only after that re-pin. Alternative if the decider wants it armed now: bound 1.15 × mean of in-window medians (1 889 → 2 172 ms): 0 of 4 rows over, double rate ≈ 0 on file. Then 0 / 1 holds.

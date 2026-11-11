@@ -8,6 +8,8 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${SPATIAL_DEFAUL
 configure_file(DefaultSceneJson.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/plugin/core/DefaultSceneJson.h" @ONLY)
 
 add_library(spatial_plugin_core STATIC
+            DiffuseSolveGate.h
+            DiffuseSolveGate.cpp
             IrBuilderThread.h
             IrBuilderThread.cpp
             ScenePipeline.h

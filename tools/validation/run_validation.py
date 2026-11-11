@@ -316,6 +316,12 @@ def run(binary, cache, log=print, only=None, plots=True) -> dict:
             e0 = dg["emitters"][0]
             entry["diagnostics"] = {k: e0.get(k) for k in ("handoverS", "expectedMixS", "ismFallback", "realisedKeffAtMix",
                                                            "axisShares", "directS", "realisedKeff")}
+            # Phase 05h (scope 5, Seat 9 / AX40): the tail level's Monte Carlo standard error (AX42, dB of the total
+            # E_target, max over bands and per AQ9 band) beside the ensemble spread, and whether U is raised.
+            dfe = e0.get("diffuse", {})
+            entry["diagnostics"]["tail_level_se_db"] = dfe.get("achievedSeDb")
+            entry["diagnostics"]["tail_level_se_db_bands"] = dfe.get("seDb")
+            entry["diagnostics"]["tail_level_approximate"] = e0.get("approximate")
             entry["edc_plot"] = plot_edc(sc["name"], hs, hm) if plots else None
         res["pairs"][sc["name"]] = entry
     for room in sorted({p["room"] for p in res["pairs"].values()}):

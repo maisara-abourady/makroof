@@ -129,7 +129,18 @@ TEST_CASE("hybrid IR: emitters get independent tails (PCG32 stream = emitter cha
     const auto ir = sim::buildRoomIR(scene, kOmni48, &d);
     REQUIRE(d.emitters.size() == 2);
     CHECK(d.emitters[0].match.mixing.mixS == d.emitters[1].match.mixing.mixS);
-    CHECK(d.emitters[0].match.bandsAmplitude == d.emitters[1].match.bandsAmplitude);
+    // Phase 05h: the specular and AX16 parts are exact and equal by symmetry; the diffuse part is a Monte
+    // Carlo estimate keyed per emitter (AX39 D1), so the switched E_b agree within the estimator's own SE.
+    CHECK(d.emitters[0].match.diffuse.bandsSpecularEnergy == d.emitters[1].match.diffuse.bandsSpecularEnergy);
+    CHECK(d.emitters[0].match.diffuse.bandsAx16Energy == d.emitters[1].match.diffuse.bandsAx16Energy);
+    for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+    {
+        const double e0 = d.emitters[0].match.bandsTargetEnergy[b],
+                     e1 = d.emitters[1].match.bandsTargetEnergy[b];
+        const double se = std::max(d.emitters[0].match.diffuse.bandsSeDb[b],
+                                   d.emitters[1].match.diffuse.bandsSeDb[b]);
+        CHECK(std::abs(10.0 * std::log10(e0 / e1)) <= 4.0 * std::max(se, 1e-6) + 1e-9);
+    }
     const std::size_t late = 48000; // 1 s
     double cross = 0.0;
     for (std::size_t n = late; n < late + 48000; ++n)
@@ -227,12 +238,13 @@ TEST_CASE("hybrid IR length: L_IR = 1.5 T60_max from emission (12 s cap), or the
     CHECK(d.irLength == ir.length());
 }
 
-// AX16 consistency check, not physics (ledger OF; phase-05b scope 7). The shipped IR renders no scattered
-// energy before t_mix,e (AX21; B11 not promoted in phase 05b) and E_b = 0 in a room whose other faces absorb
-// everything, so nothing arrives 50 ms after the direct sound. A Lambert-scattering floor would return
-// -23 ... -46 dB per band in that interval (exact integral with heights and AX4 air,
-// tools/acoustics/ground_scatter.py and its test; ledger OF's -23 to -43 dB omits both).
-TEST_CASE("open_field AX16 consistency: E_b = 0, nothing 50 ms after the direct sound (floor s 0.4 and 0.5)",
+// Phase 05h, AX37 (5.4): open_field gets the generic outcome. The floor's Lambert scattering puts a
+// finite, non-negative diffuse energy into the matching window (checked against an independent
+// finite-floor window integral in tools/acoustics/tests/test_tail.py); the shipped IR still renders no
+// scattered energy before t_mix,e (AX21) and the energy later than t_dir + 50 ms stays below -60 dB re
+// the direct sound (C1 margin > 44 dB; the sentinel check of phase04_open_field_omni, AX37 (5.4)).
+TEST_CASE("open_field (AX37 (5.4)): E_b finite and >= 0, nothing 50 ms after the direct sound (floor s 0.4 "
+          "and 0.5)",
           "[sim][hybrid]")
 {
     for (const double floorScattering : {0.4, 0.5})
@@ -244,11 +256,17 @@ TEST_CASE("open_field AX16 consistency: E_b = 0, nothing 50 ms after the direct 
         sim::HybridDiagnostics d;
         const auto ir = sim::buildRoomIR(scene, kOmni48, &d);
         for (const auto& e : d.emitters)
+        {
+            REQUIRE(e.match.diffuse.computed);
             for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
             {
-                CHECK(e.match.bandsAmplitude[b] == 0.0);
-                CHECK(e.match.bandsNonZeroEntries[b] == 0);
+                CHECK(std::isfinite(e.match.bandsAmplitude[b]));
+                CHECK(e.match.bandsAmplitude[b] >= 0.0);
+                CHECK(std::isfinite(e.match.diffuse.bandsDiffuseEnergy[b]));
+                CHECK(e.match.diffuse.bandsDiffuseEnergy[b] >= 0.0);
+                CHECK(e.match.bandsNonZeroEntries[b] == 0); // AX16 entries: still none in the window
             }
+        }
         for (int e = 0; e < 2; ++e)
         {
             const auto& taps = ir.ir(e, 0);

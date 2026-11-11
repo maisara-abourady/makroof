@@ -1,5 +1,7 @@
 #include "sim/diffuse/ThreadPool.h"
 
+#include "sim/conv/Denormals.h"
+
 #include <algorithm>
 
 namespace sim::diffuse {
@@ -31,6 +33,10 @@ ThreadPool& ThreadPool::process()
 
 void ThreadPool::runShare()
 {
+    // AX37 (5.1) (i), D-H3 (c): the build's FTZ/DAZ guard covers only the thread that constructs it, so every
+    // share (worker or caller) runs under its own guard; the IR then never depends on any thread's inherited
+    // FP mode.
+    const sim::conv::ScopedFlushDenormals flushDenormals;
     for (;;)
     {
         std::int64_t i = 0;

@@ -1,0 +1,57 @@
+# Seat 8 — D-H1 and D-H2 (phase 05h session 2)
+
+Verbatim final output of the agent (extracted from its transcript by the orchestrator, 2026-11-10).
+
+SEAT 8 POSITION — D-H1
+
+**Whose-ears sentence for this matter.** A producer builds the biggest space the canvas allows (a huge stone hall, a hangar), opens the project on her laptop with several instances, and needs the room to be there when playback starts and to be the size she chose, the same for every track she puts in it.
+
+1. **Reading.** How long she waits at load in 100 m rooms, how wrong the tail is there until (C), and which cube stands in for "worst room" in CI. Cues: 10 (*where was it judged*: the numbers are a shared CI runner, min 1.50 s to worst 2.59 s on macOS, not her M1; K12/RQ-H1-2 open); S8 translation; the §8 speed requirement. R-a…R-d, Q-a…Q-d and N-a/N-b: `NOT MY MATTER` (Seat 1's measures, Seat 5's assertion, Seats 1/3/4 by AX41); one note on N-b under hand-offs.
+
+2–4. **Ranking and tension (now / later).**
+
+| option | label | now | later | what my seat measures |
+|---|---|---|---|---|
+| **W-a** keep 3.05 M, run the gate, record the defect, 07c next, name the Phase 07 build | prefer | 1 | 1 | Wait: 2.0–2.6 s is the **non-diffuse** build (file 1 §4); the solve adds 58–162 ms. W-a names that build as the finding, which is the wait she actually feels; (C) gets a date one phase away. Error: s = 1 cube SE 0.36 dB with U; two tracks at different positions in the same room differ by up to √2·SE ≈ 0.51 dB [Inf] (identical scenes give identical levels, AX40/D7, so my file-45 "two instances" wording narrows to "two positions"). Under 1 jnd of G (Vorländer Table 6.1, 1 dB). Later: the 2.3 s build is Phase 07/07c/10 work and (C) does not cure it (K15): the load wait outlives (C). Undo: none needed; the record carries it. |
+| **W-b** re-derive on Linux, ≈ 2.0–2.4 M | can live with | 1 | 1 | Buys her ≈ 20–30 ms of a 2.0–2.6 s restore (solve ×0.685: Linux 99 → ≈ 68 ms, macOS 58–83 → ≈ 40–57 ms) [Inf, redone from file 1 §3], about 1 %; costs ×1.21 SE: s = 1 cube ≈ 0.44 dB, layout 4 ≈ 1.6 dB (two positions up to ≈ 2.3 dB apart [Inf], > 2 jnd). Still fails macOS. A precision price for nothing she can hear in the wait. Undo: one golden round when (C) re-derives (same as W-a). |
+| **W-c** (C) first, 05h blocked | can live with | 2 | 1 | Her wait does not change: the 2.3 s is the ISM build, and "heard at once at the interim level" (07c §7) still comes after it. What W-c delays is the switch, i.e. the fix of the systematic +2.4 dB (absorbing-floor cube) and +3.87 / −1.17 dB (layouts 4/5) AX16 errors (phase-05h §0; file 47 (iii) 5): rooms with an absorbing audience floor are what hall-building producers make (C18's four rooms), a 100 m s = 1 cube is not. One phase longer on AX16 levels in the listening pack and any Phase 08 golden. Later 1, with a debt: W_max from the background budget (54–68 M) makes each solve ≈ 2.4–3.0 s per emitter at one thread (× 44.7 ns) [Inf]; offline bounces wait for every final solve (07c condition 6), so a 3-minute position-automated bounce at 100 m could run far slower than real time, my R2 condition (file 45) brought forward with less data. The AX38 4c bounce record (O18) exists only once 05h runs. |
+| **W-e** Linux-enforced, macOS/Windows recorded | can live with, if the `FOR MAISARA` reading survives | 1 | 2 | Nothing she hears changes. But the block is enforced on the OS she does not run and recorded on the one she does: cue 10, GM1's shape (approved in one room, heard in another). Later 2 because Phase 08 and 12 build on a macOS number that binds nothing until Phase 13. Undo: a plan-wording change, cheap. |
+| **P-a** s = 0.3 gated | prefer | 0 | 1 | No producer builds a 100 m cube; "vast" is a cathedral, a hangar, a field (FR-3D-3). She never sets s knowingly (FR-3D-4: Expert-defined); she inherits a preset's s. So P-a vs P-b is about which default Phase 12 ships (Seat 9), not what storytellers build. P-a is the one a default might resemble; the s = 1 box is a test box and stays reported either way. Later 1: if a Phase 12 hall default is s = 1, Trigger 2 (file 53 §2) catches it. |
+| **P-b** s = 1 gated | can live with | 1 | 1 | U raised and Raise item 1 fired on a room nobody builds. Safer bound for whatever she builds; costs Maisara an escalation about a non-room. |
+
+5. **Evidence.** File 1 §3–§4 (`Doc`): restore and solve figures above. AX40, AX39 D7 (plan ids): identical scene → identical E_target. Vorländer Table 6.1 (corpus): G jnd 1 dB. Phase-05h §0, file 47 (iii) 5 (`Doc`): AX16 errors > 1 dB in layouts 4/5 and the absorbing-floor cube. 46-orchestrator-C18 (`Doc`): 20 × 30 × 10 m halls with an audience floor are uncapped. AX38 4c escalation text: 1/3/10 s are UI anchors, not audibility limits; Table 15.1's 3 s row covers movement > 1 m only (corpus §15). Incidents: GM1 (translation failure found on the audience's chain), WM4, RT11 (dead ends need time). `[Hyp]`: the update count in a 3-minute bounce (file 45). To the **researcher**: RQ-H1-2 (is 2.3–2.6 s the plugin or the shared runner) and RQ-H1-3 (host tolerance) decide whether this wait is a producer problem or a CI problem; I rate it as both until answered.
+
+6. **Conditions.** W-c now 2 → 1: the switch (O14–O16) still lands in the same push as 07c's move, so no build with AX16 levels in capped rooms outlives it. W-e later 2 → 1: a *recorded* macOS failure carries the same remedy ((C) forward) as an enforced one, and Phase 13 enforces it on macOS before beta. For whichever W wins: the AX38 4c "3-minute bounce at 100 m, ratio to real time" record is in 07c's packet before W_max is re-derived under (C).
+
+7. **Hand-offs.** The wait's severity in real hosts: Seat 5 (RQ-H1-3). Whether the ×1.21 SE or a 0.5–2.3 dB difference between two positions is audible: Seat 1. The gate's OS scope and CI discipline: Seat 5. Which s a hall preset ships with, and whether α 0.05 / s = 1 at 100 m resembles any preset: Seat 9. N-b: Seats 1, 3, 4; my only note is that it trades precision in the rooms producers use (uncapped) against the test boxes, which runs my way. The 2.3 s Phase 07 build itself: Seat 2.
+
+8. **Premortem.** If W-c wins and 07c lands on an unswitched tail, the first thing a beta producer hears in an audience-floor hall is a tail 2–4 dB too strong with "settling" shown; if W-a wins and (C) slips, she hears two tracks in a huge stone hall sit about half a dB apart with an "approximate" note and stacks another reverb on top. Beta support notices first.
+
+**Workflow requirement most affected:** speed (a session that loads and bounces within minutes), which none of the W options moves until the Phase 07 build is named and worked.
+
+---
+
+SEAT 8 POSITION — D-H2
+
+**Whose-ears sentence.** A producer reaches for a club, a hall, a living room or a vocal booth, puts two sources in it, and expects one room for both.
+
+1. **Reading.** Only the priority order for M-e: which ungated rooms producers reach first. Cues: 4 (a source that pulls attention to itself: two emitters in one room at tail levels that differ for no positional reason read as two rooms [Inf from S6/GM7]); 10 (the listening pack's rooms are where Maisara judges, phase-05h §6).
+
+2–4. **Ranking and tension.**
+- **M-e** prefer (0 / 1) with this order: **(i) emitter 1 of the Phase 04 rooms already certified-pending at emitter 0, club and concert_hall_box first**, then living_room and dead_booth, then classroom and stone_box: one room must be one room for both sources, and club / concert_hall_box are the two rooms the listening checklist names ("sounds like a correction") and the two FR-3D-3 categories producers reach first (clubs & warehouses; halls). dead_booth and living_room next: the dry anchor against which a space is built (GF2/GF6 internal vs external; S3). **(ii) W1 e1** (the 20 × 30 × 10 m hall-sized room, the C18 class). **(iii) the 0.3 m wall case** at 500 Hz–2 kHz (a source against a wall is a real placement). **(iv) the small room, stone_box e1, W2** last: the 3 × 2.5 × 2.5 m α 0.03 box and the flutter scene are test boxes (AQ10 calls W2 a generic flutter scene), not rooms a storyteller builds. BRAS outer bands: Seat 9's. Later 1: phase-05i gates what is certified; the rest stays listed.
+- **M-a** can live with (0 / 1): same runs, but "cheapest first" puts the small room and the 0.3 m wall before club e1; the order should be by use, cost deciding only ties.
+- **M-b** can live with (1 / 2): the listening pack (scope 8) and any Phase 08 golden in the six Phase 04 rooms rest on no gated reference for one more phase; undo is phase-05i's compute, not rework.
+- **G-a** consequence: can live with (1 / 1). Maisara's listening judgement in club and concert_hall_box is made on rooms that are "reported, not gated". Condition: the listening-pack README states per room whether its tail level is gated, reported-only or without reference (cue 10).
+- **U-a** over **U-c** (0 / 0): a printed number beside the listening rooms is better than none; the label does the honest work. **M-c, M-d, B-a/B-b:** `NOT MY MATTER` (Seats 5, 7, 1, 2).
+
+5. **Evidence.** phase-04.md line 192 (`Doc`): the six rooms. PRD FR-3D-3, FR-3D-4. phase-05h §4 scope 8, §6 (`Doc`): the listening rooms. AQ10 (plan id): W1 the 20 × 30 × 10 m room, W2 a generic flutter scene. File 3 table (`Doc`): what exists per room and emitter. Incidents GM7, GF2/GF6, WM10. Vorländer Table 6.1 (corpus): 1 dB jnd of G, the scale on which an emitter-to-emitter level split would be heard; whether the estimator's per-emitter bias could reach it is Seat 1's and Seat 2's, `[Hyp]` from me.
+
+6. **Conditions.** M-b later 2 → 1: the listening-pack README carries the per-room gating status, and phase-05i's order is the one above.
+
+7. **Hand-offs.** Compute order among my first tier (which of club / concert_hall_box e1 fits in a day on 4 cores): Seat 2. Whether an e0/e1 asymmetry in reference status could mean an audible asymmetry in shipped level: Seat 1. Mapping Phase 04 rooms to Phase 12 presets and the BRAS bands: Seat 9.
+
+8. **Premortem.** If the order goes by compute cost, the small room and W2 are certified first and the club and hall stay "reported only" into phase-05i; Maisara notices when the listening checklist asks her to judge a correction nobody gated.
+
+**Workflow requirement most affected:** the real-room path (a measured or validated reference for the rooms producers actually use), then translation (the listening pack says where each room was judged).
+
+Files read: /home/user/makroof/docs/review/phase-05h/4-decider-convene-D-H1-D-H2.md; /home/user/makroof/docs/review/phase-05h/3-orchestrator-D-H1-D-H2-question.md; /home/user/makroof/docs/review/phase-05h/1-orchestrator-cpp-costs.md; /home/user/makroof/docs/phases/phase-05h.md; /home/user/makroof/docs/phases/phase-07c.md; /home/user/makroof/docs/BUILD_PLAN.md (AQ10, AX36, AX38, AX41–AX46); /home/user/makroof/docs/review/phase-05b2/45-seat8-R1-R3.md, 47-decider-board-answers-C1-Q2a-final.md, 51-decider-addendum-J1.md, 53-decider-J1-trigger-definitions.md, 54-interrogator-J1-triggers-round2.md, 55-seat1-confirm-clause-d.md; /home/user/makroof/docs/sessions/2026-11-10-phase-05h.md (Session 2); /home/user/makroof/docs/corpus/vorlaender-auralization.md (Table 6.1, §11.2.5, Table 15.1); /home/user/makroof/docs/phases/phase-04.md (room list); /home/user/makroof/docs/PRD.md (FR-3D-3, FR-3D-4); /home/user/makroof/docs/review/phase-05b2/46-orchestrator-C18.md (room class).

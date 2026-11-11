@@ -13,6 +13,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -59,6 +60,8 @@ struct Options
     std::optional<double> switchEveryS;
     bool noAirAbsorption = false;
     bool tailOnly = false;
+    bool tailLevelAx16 = false; // phase 05h, validation only: the Phase 04 (AX16) tail level
+    std::optional<std::uint64_t> diffuseHistories; // phase 05h, validation only: a fixed solve size
     std::optional<double> rate;
     std::optional<sim::BuildOptions::Kind> mode;
     bool help = false;
@@ -150,7 +153,7 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         else if (arg != "--rate" && arg != "--mode" && arg != "--tail-seed" && arg != "--ensemble"
                  && arg != "--ensemble-emitter" && arg != "--image-cap" && arg != "--atmosphere"
                  && arg != "--mix-floor-ms" && arg != "--block" && arg != "--partition"
-                 && arg != "--switch-every")
+                 && arg != "--switch-every" && arg != "--tail-level" && arg != "--diffuse-histories")
             return "unknown argument '" + arg + "'";
 
         if (i + 1 >= args.size())
@@ -168,6 +171,21 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             options.mode = parseMode(value);
             if (!options.mode)
                 return "--mode must be omni, omni-early, binaural or stereoSpeakers, got '" + value + "'";
+        }
+        else if (arg == "--tail-level")
+        {
+            if (value != "diffuse" && value != "ax16")
+                return "--tail-level must be diffuse (the product) or ax16 (validation), got '" + value + "'";
+            options.tailLevelAx16 = value == "ax16";
+        }
+        else if (arg == "--diffuse-histories")
+        {
+            options.diffuseHistories = parseSeed(value);
+            if (!options.diffuseHistories || *options.diffuseHistories == 0
+                || *options.diffuseHistories % 64 != 0
+                || *options.diffuseHistories > (std::uint64_t{1} << 24))
+                return "--diffuse-histories must be a positive multiple of 64 up to 16777216, got '" + value
+                       + "'";
         }
         else if (arg == "--tail-seed")
         {
@@ -492,6 +510,57 @@ bool writeDiagnostics(const std::filesystem::path& path, const contract::SceneDe
         num(e.handoverS);
         os << ",\"expectedMixS\":";
         num(e.expectedMixS);
+        // Phase 05h (AX37, AX41, AX44): the diffuse part of the matching beside the AX16 E_target.
+        const auto& dm = m.diffuse;
+        os << ",\"axisSharesBasis\":\"specular entries only\"";
+        os << ",\"approximate\":" << (m.approximate ? "true" : "false");
+        os << ",\"diffuse\":{\"computed\":" << (dm.computed ? "true" : "false");
+        os << ",\"targetEnergyAx16\":";
+        arr(dm.bandsAx16Energy);
+        os << ",\"targetEnergySpecular\":";
+        arr(dm.bandsSpecularEnergy);
+        os << ",\"targetEnergyDiffuse\":";
+        arr(dm.bandsDiffuseEnergy);
+        os << ",\"targetEnergyDiffuseReferenceUnits\":";
+        arr(dm.bandsDiffuseReference);
+        os << ",\"nStar\":" << dm.nStar << ",\"nNeed\":" << dm.nNeed << ",\"n\":" << dm.n
+           << ",\"nCap\":" << dm.nCap << ",\"capHit\":" << (dm.capHit ? "true" : "false")
+           << ",\"floorTruncated\":" << (dm.floorTruncated ? "true" : "false")
+           << ",\"pilotFloor\":" << (dm.pilotFloor ? "true" : "false")
+           << ",\"pilotShipped\":" << (dm.pilotShipped ? "true" : "false") << ",\"achievedSeDb\":";
+        num(dm.achievedSeDb);
+        os << ",\"seDb\":";
+        arr(dm.bandsSeDb);
+        os << ",\"pilotSeDb\":";
+        arr(dm.bandsPilotSeDb);
+        os << ",\"r\":";
+        arr(dm.bandsR);
+        os << ",\"vov\":";
+        arr(dm.bandsVov);
+        os << ",\"pilotVov\":";
+        arr(dm.bandsPilotVov);
+        os << ",\"vovUnion\":";
+        arr(dm.bandsVovUnion);
+        os << ",\"vovUnionMax\":";
+        num(dm.vovUnion);
+        os << ",\"slope\":";
+        arr(dm.bandsSlope);
+        os << ",\"weight\":";
+        num(dm.weight);
+        os << ",\"listenerDistanceM\":";
+        num(dm.listenerDistanceM);
+        os << ",\"emitterDistanceM\":";
+        num(dm.emitterDistanceM);
+        os << ",\"bothNear\":" << (dm.bothNear ? "true" : "false") << ",\"realisedWorkRatio\":";
+        num(dm.realisedWorkRatio);
+        os << ",\"wPilot\":" << dm.wPilot << ",\"wFinal\":" << dm.wFinal << ",\"wScene\":" << dm.wScene
+           << ",\"faceHash\":\"0x";
+        {
+            char buf[32];
+            std::snprintf(buf, sizeof buf, "%016llx", static_cast<unsigned long long>(dm.faceHash));
+            os << buf;
+        }
+        os << "\",\"latticeImages\":" << dm.latticeImages << '}';
         os << '}';
     }
     os << "]}\n";
@@ -600,6 +669,12 @@ std::string usage()
            "  --no-air-absorption  validation only: switch off air absorption (AX4 keeps it on)\n"
            "  --tail-only  validation only, --mode omni: write just the matched late tail (no early part,\n"
            "               no crossfade), for decay-time ensembles\n"
+           "  --tail-level diffuse|ax16  validation only, --mode omni: ax16 matches the tail level on the\n"
+           "               specular + AX16 scattered entries as Phase 04 did (no diffuse solve); the\n"
+           "               product and the default use the propagated diffuse energy (AX37, phase 05h)\n"
+           "  --diffuse-histories N   validation only, --mode omni: run the diffuse solve with a fixed N "
+           "histories\n"
+           "                            (a multiple of 64; no pilot, no cap) instead of the AX41 joint rule\n"
            "  --ensemble   validation only, --mode omni --ir: render N realisations with tail seeds\n"
            "               tailSeed, tailSeed + 1, ...; channel 2k = emitter 0 and 2k + 1 = emitter 1 of\n"
            "               seed tailSeed + k (output 0)\n"
@@ -725,6 +800,9 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
     build.kind = options.mode.value_or(sim::kindForOutputMode(scene.render.outputMode));
     build.airAbsorption = !options.noAirAbsorption;
     build.tailOnly = options.tailOnly;
+    build.tailLevelAx16 = options.tailLevelAx16;
+    if (options.diffuseHistories)
+        build.diffuseFixedHistories = static_cast<std::int64_t>(*options.diffuseHistories);
     if (options.imageCap)
         build.imageCountCapOverride = *options.imageCap;
     build.atmosphere = options.atmosphere;

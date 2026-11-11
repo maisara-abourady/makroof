@@ -5,7 +5,7 @@ Size: **L** (remainder, if needed: `13-1b`) · Depends on: 00–12, including 05
 ## Raise with Maisara (she does not track these herself)
 
 The session raises each item in its **first message** and again before the beta decision. (phase-13 R0; in this
-split the first message is 13-1's and "again before the beta decision" is 13-5's, which carries the same four items:
+split the first message is 13-1's and "again before the beta decision" is 13-5's, which carries the same five items:
 D-PS4 instruction 5.)
 
 1. **Commissioning decision (BUILD_PLAN §3 F2).** Check BUILD_PLAN §6 for Maisara's answer, recorded by
@@ -20,6 +20,11 @@ D-PS4 instruction 5.)
 4. **Phase 07c not landed (conditional).** If the asynchronous diffuse solve (phase-07c) would land after
    the first release without the estimator parameters versioned in saved state, Seat 7's condition fails
    and the item returns to Maisara (decider file 47 §4, strongest objection). (phase-13 R4)
+5. **Release machines for the AX38 4c strict re-check (RG-1).** Release machines bought once, no standing
+   runner (Seat 7, file 60 round 1: larger hosted runners ≈ €100–130/month, a standing cost before any
+   revenue, and the macOS larger runner still a shared VM; decider files 64 item 7 and 66 §7: a person's
+   purchase); on them the strict 30 s and the 1.10 growth bound are asserted on all three OSes (AX41) and the
+   register entries close or the absolute CHECK returns on named hardware. (phase-13 R5, added 2026-11-11 by DECISION RG-1)
 
 ## Goal
 
@@ -99,7 +104,7 @@ Apple developer account and notarization logistics; JUCE licence tier cost at la
 - K1, K2, K3 "umbrella (shared)", read by 13-1; risk text verbatim. (D-PS4 instruction 4) The lead time decides when
   Maisara starts enrolment (a person's action), a follow-up for 13-1's session. (`3-decider-decision.md`, K1–K3
   paragraph)
-- Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (D-PS4 instruction
+- Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (Five since R5, 2026-11-11.) (D-PS4 instruction
   5; final corrections list item 3)
 - S10 in 13-1 (13-c2, NOT A DECISION, resolution (a): convening round).
 

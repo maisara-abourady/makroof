@@ -6,7 +6,7 @@ Size: **M** (remainder, if needed: `13-5b`, if notarization fights back) · Depe
 
 The session raises each item in its **first message** and again before the beta decision. (phase-13 R0; in this
 split the first message is 13-1's and "again before the beta decision" is 13-5's: D-PS4 instruction 5. This
-sub-phase raises all four before the beta decision, L5 below.)
+sub-phase raises all five before the beta decision, L5 below.)
 
 1. **Commissioning decision (BUILD_PLAN §3 F2).** Check BUILD_PLAN §6 for Maisara's answer, recorded by
    phase 05d. If it is missing or "deferred", put the question to her again with the Phase 05/05d
@@ -20,6 +20,11 @@ sub-phase raises all four before the beta decision, L5 below.)
 4. **Phase 07c not landed (conditional).** If the asynchronous diffuse solve (phase-07c) would land after
    the first release without the estimator parameters versioned in saved state, Seat 7's condition fails
    and the item returns to Maisara (decider file 47 §4, strongest objection). (phase-13 R4)
+5. **Release machines for the AX38 4c strict re-check (RG-1).** Release machines bought once, no standing
+   runner (Seat 7, file 60 round 1: larger hosted runners ≈ €100–130/month, a standing cost before any
+   revenue, and the macOS larger runner still a shared VM; decider files 64 item 7 and 66 §7: a person's
+   purchase); on them the strict 30 s and the 1.10 growth bound are asserted on all three OSes (AX41) and the
+   register entries close or the absolute CHECK returns on named hardware. (phase-13 R5, added 2026-11-11 by DECISION RG-1)
 
 ## Goal
 
@@ -50,7 +55,12 @@ All of the umbrella's (phase-13 assumptions, shared: AQ10, AX5).
 3. **DAW compatibility matrix:** `docs/compat/v1.md` table: rows = DAW + OS + format (Logic/AU, Ableton
    macOS VST3, Reaper macOS VST3, Windows DAW(s) VST3); columns = load, play, automate, editor drag-record,
    offline bounce, reopen project, sample-rate change, 10 instances. Maisara fills it in. The public
-   compatibility notes state the Bitwig sandbox gap (AX38 (i)) until scope 3 has measured it. (phase-13 scope 6;
+   compatibility notes state the Bitwig sandbox gap (AX38 (i)) until scope 3 has measured it. **The
+   matrix also receives the per-host trace results of phase-07c §5 condition 11** (D-H3 (e), AX38 (i)
+   half (2): the thread that serves `reset()`, `setNonRealtime` and freeze / offline render, per host and
+   situation, from the `SPATIAL_HOST_TRACE` build run as a person's action); they are evidence for the
+   compatibility notes, never a per-host code path (NFR-8). Until measured, the notes carry AX38 (i)'s
+   interim sentence (no host named, no stall figure as a product promise, not in launch copy). (phase-13 scope 6;
    "scope 3" is phase-13 scope 3, in 13-4)
 4. Placeholder identity (`AX8`: company name, plugin/manufacturer codes, bundle ID) confirmed or changed
    **before** the first beta, since changing it later breaks users' projects. (phase-13 scope 7)
@@ -98,7 +108,7 @@ The umbrella's risks (phase-13 K1–K3) apply; they are read by 13-1 (D-PS4 inst
 ## Notes from the split
 
 - Remainder (G3): `13-5b` (notarization). (D-PS4 Q1)
-- Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (D-PS4 instruction
+- Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (Five since R5, 2026-11-11.) (D-PS4 instruction
   5; final corrections list item 3)
 - The installer packages both macOS slices (13-3); the beta decision lists every recorded deficit, including AQ10
   misses from 13-1 and 13-2 and the robustness results from 13-4; the compatibility notes on Bitwig use 13-4's

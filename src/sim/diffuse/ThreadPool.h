@@ -12,6 +12,9 @@
 
 namespace sim::diffuse {
 
+// Convention (AX37 (5.1) (i), D-H3 (c)): every share that runs on this pool, on a worker or on the caller,
+// runs under ScopedFlushDenormals (FTZ/DAZ), so a build never depends on the FP mode a thread inherited; a
+// later pool job is written for that.
 class ThreadPool
 {
 public:

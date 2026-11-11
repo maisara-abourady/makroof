@@ -50,9 +50,14 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
 
 ## Out of scope
 
-- The umbrella's §9 (phase-07c §9): Changing the estimator (AX39–AX44); a both-near fallback (§5 B15); a kernel
-  cache (AX38 (ii), phase-10 AX only); n\*_max (Q2b (i) stays unless the C++ W1 measurement moves it, AX41).
-- Conditions 2, 4–7 and the decisions D-C1–D-C3: [phase-07c-1](phase-07c-1.md).
+- The umbrella's §9 (phase-07c §9): Changing the estimator (AX39–AX44); a both-near fallback (§5 B15); a kernel cache
+  (AX38 (ii), phase-10 AX only); n\*_max (Q2b (i) stays at the pinned 1 024 and is not re-derived here unless the W1
+  measurement per output mode moves it, AX41; D-H1 (iv)). Moving the unit-decay synthesis **is** in scope (condition
+  9); caching its constructor spectra per (fs, length) is not the AX38 (ii) kernel cache but an alternative recorded,
+  not chosen. **W_max re-derivation (condition 3) has a prerequisite:** the (C) W_max is pinned only after the AX38 4c
+  record "offline-bounce time of a 3-minute room-size automation at 100 m, with its ratio to real time" is in this
+  phase's packet (Seat 8; D-H1 (iv), AX41).
+- Conditions 2, 4–7 and 9–11 and the decisions D-C1–D-C3: [phase-07c-1](phase-07c-1.md).
 
 ## Acceptance criteria — automated
 

@@ -27,6 +27,7 @@ import numpy as np
 import pytest
 from scipy import integrate
 
+from tools.acoustics import ground_scatter
 from tools.acoustics import air, bands, ensembles, golden, metrics, render_cli, wav
 
 from conftest import REPO
@@ -191,16 +192,65 @@ def test_diagnostics_match_independent_eyring_mixing_time_and_switch(render_cli_
               f"realised/target at the handover {[None if x is None else round(x, 1) for x in e['realisedOverTargetDb']]} dB")
 
 
-def test_open_field_has_no_tail(render_cli_path):
-    """E_b = 0 in every band for the fixture (floor s = 0.4) and for floor s = 0.5 (the C++ test
-    test_hybrid_ir.cpp also checks the energy 50 ms after the direct sound)."""
-    for s in (0.4, 0.5):
-        scene = load("open_field")
-        scene["room"]["surfaces"]["floor"]["scattering"] = s
-        d = ensembles.diagnostics(render_cli_path, scene)
-        for e in d["emitters"]:
-            assert e["amplitude"] == [0.0] * 8
-            assert e["nonZeroEntries"] == [0] * 8
+# Phase 05h, AX37 (5.4): open_field gets the generic outcome. Its diffuse E_target (the floor's Lambert
+# scattering inside the matching window, every other face absorbing everything) is checked against an
+# independent single-scatter window integral over the finite 100 x 100 m floor (tools/acoustics/
+# ground_scatter.window_target: Hann weight, Eyring referral, per 10 ms; it does not import ref_hybrid),
+# in the log domain on double values, to D-T1's tolerance tau (AX42) alone, at a validation N where the
+# estimator's own SE satisfies 3 SE <= tau in every band (decider file 42 QA, review file 39 blocker 1);
+# or as an absolute bound below 1e-300 where the integral is zero. Kept: E_b finite and >= 0 (the C++ test
+# checks the energy 50 ms after the direct sound against -60 dB).
+OPEN_FIELD_TAU_DB = 0.25
+OPEN_FIELD_VALIDATION_HISTORIES = 1 << 23  # AX37 (5.4) at a validation N (render_cli --diffuse-histories): 3 SE <= tau
+
+
+@pytest.mark.parametrize("s", [0.4, 0.5])
+@pytest.mark.parametrize(
+    "histories",
+    [None, pytest.param(OPEN_FIELD_VALIDATION_HISTORIES, marks=pytest.mark.open_field_validation)],
+)
+def test_open_field_diffuse_target_matches_the_finite_floor_integral(render_cli_path, s, histories):
+    """AX37 (5.4): the diffuse E_target of open_field against the independent finite-floor single-scatter window
+    integral (ground_scatter.window_target). Two forms: the validation N (OPEN_FIELD_VALIDATION_HISTORIES = 2^23
+    through --diffuse-histories, validation only): the N rule 3 SE_b <= tau is asserted per band and the deviation
+    is held to tau alone (AX37 (5.4)'s check; decider file 42 QA); and the shipping rule (histories None: the capped
+    estimate, SE 0.4-2.4 dB), a labelled smoke test of the form (finite, >= 0, zero where the integral is zero,
+    |dev| <= tau + 3 SE as a gross-error detector), never AX37 (5.4)'s check. A band outside tau at 3 SE <= tau is a
+    finding to report (NFR-8), never a loosened bound."""
+    scene = load("open_field")
+    scene["room"]["surfaces"]["floor"]["scattering"] = s
+    extra = () if histories is None else ("--diffuse-histories", str(histories))
+    d = ensembles.diagnostics(render_cli_path, scene, extra=extra)
+    dims = scene["room"]["geometry"]["dimensions"]
+    alpha_floor = np.asarray(scene["room"]["surfaces"]["floor"]["absorption"], float)
+    for other in ("xMin", "xMax", "yMin", "yMax", "ceiling"):
+        assert scene["room"]["surfaces"][other]["absorption"] == [1.0] * 8, "open_field: every other face absorbs"
+    rho_s = s * (1.0 - alpha_floor)
+    label = "smoke (shipping N, capped): not AX37 (5.4)'s check" if histories is None else "AX37 (5.4) validation N"
+    for e in d["emitters"]:
+        em = next(x for x in scene["emitters"] if x["id"] == e["id"])
+        got = np.asarray(e["diffuse"]["targetEnergyDiffuseReferenceUnits"], float)
+        assert e["diffuse"]["computed"] is True
+        assert np.all(np.isfinite(got)) and np.all(got >= 0.0)
+        assert np.all(np.isfinite(e["amplitude"])) and np.all(np.asarray(e["amplitude"]) >= 0.0)
+        ref = ground_scatter.window_target(em["position"], scene["listener"]["position"], rho_s, d["airEnergyPerMetre"],
+                                           e["windowStartS"], e["mixS"], d["t60"], half_width=(0.0, dims[0], 0.0, dims[1]))
+        se_db = np.asarray(e["diffuse"]["seDb"], float)
+        if histories is not None:
+            assert e["diffuse"]["n"] == histories and not e["diffuse"]["capHit"]
+        for b in range(8):
+            if ref[b] < 1e-300:
+                assert got[b] < 1e-300
+                continue
+            assert got[b] > 0.0
+            dev_db = 10 * np.log10(got[b] / ref[b])
+            z = dev_db / se_db[b] if se_db[b] > 0 else float("nan")
+            print(f"open_field s {s} emitter {e['id']} {label}: band {b} dev {dev_db:+.3f} dB SE {se_db[b]:.3f} dB z {z:+.2f}")
+            if histories is None:
+                assert abs(dev_db) <= OPEN_FIELD_TAU_DB + 3.0 * se_db[b], (b, got[b], ref[b], se_db[b])
+            else:
+                assert 3.0 * se_db[b] <= OPEN_FIELD_TAU_DB, ("the validation N must resolve tau", b, se_db[b])
+                assert abs(dev_db) <= OPEN_FIELD_TAU_DB, ("AX37 (5.4): outside tau at 3 SE <= tau: report, never loosen", b, dev_db, se_db[b])
 
 
 # ---------------------------------------------------------------------------------------------
@@ -588,3 +638,36 @@ def test_envelope_step_reported(render_cli_path, tmp_path, name):
     print(f"{name}: envelope step across the handover, R = {r}, [emitter][63 Hz..8 kHz]: measured {measured} dB; "
           f"AX21 prediction {predicted} dB (reported only)")
     assert all(math.isfinite(x) for row in measured for x in row)
+
+
+# ---------------------------------------------------------------------------------------------
+# Phase 05h: the AX41 diagnostics of the switched tail level in render_cli --diagnostics (§4 scope 5 "(test)")
+# ---------------------------------------------------------------------------------------------
+def test_diagnostics_carry_the_ax41_fields(render_cli_path):
+    """Every emitter's `diffuse` block carries the AX41 joint-rule fields and they are consistent with the rule:
+    n* a multiple of 64, N <= N_cap unless the pilot ships, cap hit := N_need > N_cap, the realised work ratio in
+    (0, 1.02], U per AX44, and the switched E_target = specular + diffuse per band (AX37 (5.1))."""
+    d = diag(str(render_cli_path), "medium_room")
+    assert d["emitters"], "no emitters in the diagnostics"
+    for e in d["emitters"]:
+        df = e["diffuse"]
+        assert df["computed"] is True
+        for key in ("nStar", "nNeed", "n", "nCap", "capHit", "floorTruncated", "pilotFloor", "pilotShipped",
+                    "achievedSeDb", "seDb", "pilotSeDb", "vov", "vovUnion", "vovUnionMax", "slope", "weight",
+                    "listenerDistanceM", "emitterDistanceM", "bothNear", "realisedWorkRatio", "wPilot", "wFinal",
+                    "wScene", "faceHash", "latticeImages", "targetEnergySpecular", "targetEnergyDiffuse",
+                    "targetEnergyAx16"):
+            assert key in df, key
+        assert df["nStar"] % 64 == 0 and df["nStar"] >= 64
+        assert df["capHit"] == (df["nNeed"] > df["nCap"])
+        if not df["pilotShipped"]:
+            assert df["n"] <= max(df["nCap"], df["nStar"])
+        assert 0.0 < df["realisedWorkRatio"]  # AX41's 1.02 is pre-registered at the gated scenes (records test)
+        assert df["wPilot"] + df["wFinal"] == pytest.approx(df["realisedWorkRatio"] * df["wScene"], rel=1e-9)
+        assert 0.0 <= df["weight"] <= 1.0
+        u = (df["bothNear"] and (df["capHit"] or df["vovUnionMax"] >= 0.1)) or (df["capHit"] and df["achievedSeDb"] > 0.33)
+        assert e["approximate"] == u  # AX44
+        for b in range(8):
+            spec, diffuse = df["targetEnergySpecular"][b], df["targetEnergyDiffuse"][b]
+            assert spec >= 0.0 and diffuse >= 0.0
+            assert e["targetEnergy"][b] == pytest.approx(spec + diffuse, rel=1e-9)

@@ -44,12 +44,14 @@ inline constexpr std::int64_t kBlockHistories = 64;      // AX39 D4
 inline constexpr std::int64_t kFinalRangeStart = 8000;   // AX41: the final range is [8 000, 8 000 + N)
 inline constexpr std::int64_t kUnionVovHistories = 8000; // AX44: VOV_union over the first 8 000
 inline constexpr std::int64_t kPilotFloor = 1000;        // AX41: pilot-floor flag below this n*
-inline constexpr std::int64_t kNStarMax = 1024; // AX41 n*_max (provisional until the C++ re-derivation)
-inline constexpr std::int64_t kWMaxPerEmitterProvisional = 3'050'000; // AX41 provisional W_max
-inline constexpr double kSeTargetDb = 0.083;                          // AX42 target SE
-inline constexpr double kBothNearM = 0.70;                            // AX44
-inline constexpr double kApproximateSeDb = 0.33;                      // AX44 U, capped branch
-inline constexpr double kVovLimit = 0.1;                              // AX41 / AX44
+inline constexpr std::int64_t kNStarMax =
+    1024; // AX41 n*_max, pinned by D-H1 (iv) (W1 diffuse share <= 14 ms)
+inline constexpr std::int64_t kWMaxPerEmitterProvisional =
+    3'050'000; // AX41 W_max per emitter, pinned by D-H1 (iv) (the name predates the pin)
+inline constexpr double kSeTargetDb = 0.083;     // AX42 target SE
+inline constexpr double kBothNearM = 0.70;       // AX44
+inline constexpr double kApproximateSeDb = 0.33; // AX44 U, capped branch
+inline constexpr double kVovLimit = 0.1;         // AX41 / AX44
 // 10 / ln 10: dB per unit relative energy (the prototype rounded it to 4.343).
 inline constexpr double kDbPerRelative = 4.342944819032518;
 
@@ -84,8 +86,15 @@ struct DiffuseLimits
     std::int64_t wScene = 2 * kWMaxPerEmitterProvisional; // W_scene = 2 W_max (AX41)
     std::int64_t nStarMax = kNStarMax; // clamped to [64, 8 000]: the pilot stays below the final range
     double seTargetDb = kSeTargetDb;
-    // Validation only: a fixed number of histories from history 0, no pilot and no cap (fixed-N tests).
+    // Validation only: a fixed number of histories from history `fixedStart` (a multiple of 64), no
+    // pilot and no cap (the AX43 agreement tests: stage 1 on [0, N), stage 2 on the disjoint range
+    // [N, 5 N)).
     std::int64_t fixedHistories = 0;
+    std::int64_t fixedStart = 0;
+    // Validation only (Seat 1's clause (d) replicates, phase-05h §3): shifts every history index of the
+    // shipping rule (pilot and final range alike) by this offset, so replicate r on a disjoint
+    // pre-registered stream is the rule as built on histories [r 2^20, ...). 0 in every product path.
+    std::int64_t historyOffset = 0;
 };
 
 // AX41 joint path-count rule as a pure function of integer counts (D7).

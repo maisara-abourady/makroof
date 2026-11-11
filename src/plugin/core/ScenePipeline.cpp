@@ -6,6 +6,7 @@
 #include "plugin/core/DefaultSceneJson.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstring>
 #include <exception>
@@ -92,9 +93,43 @@ ScenePipeline::ScenePipeline(BuilderClock* clock)
 ScenePipeline::~ScenePipeline()
 {
     // Stop accepting work and wait for a running decision first (unique_ptr::reset() nulls the pointer
-    // before the destructor joins, and a running decision reads builder_), then stop and join.
-    builder_->quiesce();
+    // before the destructor joins, and a running decision reads builder_), then stop and join. gate_
+    // is released after that (member order): with the last pipeline its pool joins its workers here.
+    quiesceBuilder();
     builder_.reset();
+}
+
+void ScenePipeline::quiesceBuilder()
+{
+    builderAbandon_.store(true, std::memory_order_release);
+    gate_->notifyWaiters(); // a builder waiting at the gate leaves the queue (AX38 (i))
+    builder_->quiesce();
+}
+
+void ScenePipeline::restartBuilder()
+{
+    builderAbandon_.store(false, std::memory_order_release);
+    builder_->restart();
+}
+
+sim::RoomIR ScenePipeline::solveAndBuild(const contract::SceneDescription& scene, Source source)
+{
+    const bool builder = source == Source::Builder;
+    const auto cls = builder ? DiffuseSolveGate::Class::Builder
+                             : (source == Source::Offline ? DiffuseSolveGate::Class::Offline
+                                                          : DiffuseSolveGate::Class::Synchronous);
+    // The offline path takes the gate only after quiesce() has returned (AX38 (i)).
+    assert(source != Source::Offline || !builder_->accepting());
+    const std::atomic<bool>* abandon = builder ? &builderAbandon_ : nullptr;
+    DiffuseSolveGate::Scope gate(*gate_, cls, abandon);
+    if (!gate.entered())
+        throw sim::BuildCancelled();
+    sim::BuildOptions options;
+    options.sampleRate = sampleRate_;
+    options.kind = sim::BuildOptions::Kind::Omni; // Phase 07: the omni hybrid IR until 08/09
+    options.diffusePool = &gate_->pool();
+    options.cancel = abandon;
+    return sim::buildRoomIR(scene, options);
 }
 
 // ---- parameters ----
@@ -158,7 +193,7 @@ bool ScenePipeline::decide(Source source)
         }
         if (!irSet)
         {
-            auto built = std::make_shared<const sim::RoomIR>(buildIr(scene, sampleRate_));
+            auto built = std::make_shared<const sim::RoomIR>(solveAndBuild(scene, source));
             irSet = engine_.makeIrSet(*built);
             ir = std::move(built);
         }
@@ -200,15 +235,16 @@ bool ScenePipeline::decide(Source source)
     }
     catch (const std::exception&)
     {
-        // std::bad_alloc or an unexpected build failure: nothing is recorded as handled and the current IR
-        // keeps playing; the generation is built again like a failed submit (D7).
+        // std::bad_alloc, a cancelled builder solve (sim::BuildCancelled: the builder was quiesced and its
+        // result would be discarded anyway) or an unexpected build failure: nothing is recorded as handled
+        // and the current IR keeps playing; the generation is built again like a failed submit (D7).
         return false;
     }
 }
 
 void ScenePipeline::resetSequence(bool restartBuilder)
 {
-    builder_->quiesce(); // 1. an in-flight build is discarded
+    quiesceBuilder(); // 1. an in-flight build is discarded
     if (fallback_.load(std::memory_order_acquire) || !engine_.isPrepared())
     {
         snapTrim(); // AX34: steps 1-3 and 5 do nothing
@@ -225,14 +261,14 @@ void ScenePipeline::resetSequence(bool restartBuilder)
     decide(Source::ResetStep3); // 3. reuses the last built IrSet when its scene is current
     snapTrim();                 // 4.
     if (restartBuilder && active_.load(std::memory_order_acquire)) // 5.
-        builder_->restart();
+        this->restartBuilder();
 }
 
 // ---- host lifecycle ----
 
 void ScenePipeline::prepare(double sampleRate, int maxBlock, bool nonRealtime)
 {
-    builder_->quiesce(); // no submit in flight while prepare() drops the IRs and reallocates
+    quiesceBuilder(); // no submit in flight while prepare() drops the IRs and reallocates
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
         lastIr_.reset();
@@ -269,7 +305,7 @@ void ScenePipeline::prepare(double sampleRate, int maxBlock, bool nonRealtime)
     if (!nonRealtime)
     {
         decide(Source::Synchronous); // the initial IR, installed at once at the first partition
-        builder_->restart();
+        restartBuilder();
     }
     // Offline: the next process() builds and submits (the only submitter during a bounce).
 }
@@ -287,25 +323,25 @@ void ScenePipeline::setNonRealtime(bool nonRealtime)
     if (nonRealtime)
         resetSequence(false); // enter: the reset sequence, builder kept quiesced
     else if (active_.load(std::memory_order_acquire))
-        builder_->restart(); // leave: the builder takes over again
+        restartBuilder(); // leave: the builder takes over again
 }
 
 void ScenePipeline::release()
 {
     active_.store(false, std::memory_order_release); // stays released until the next prepare()
-    builder_->quiesce();
+    quiesceBuilder();
 }
 
 // ---- state ----
 
 void ScenePipeline::beginRestore()
 {
-    builder_->quiesce();
+    quiesceBuilder();
 }
 
 void ScenePipeline::restore(const contract::SceneDescription& base, const module3d::ParameterValues& values)
 {
-    builder_->quiesce(); // also when the caller skipped beginRestore()
+    quiesceBuilder(); // also when the caller skipped beginRestore()
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
         base_ = module3d::SceneModel::sanitize(base);
@@ -320,7 +356,7 @@ void ScenePipeline::restore(const contract::SceneDescription& base, const module
     if (active_.load(std::memory_order_acquire) && !nonRealtime_.load(std::memory_order_acquire))
     {
         decide(Source::Synchronous); // the restore's decision: EqualPower, or a skip
-        builder_->restart();
+        restartBuilder();
     }
     // Before prepare(), after release(), offline or in the AX34 fallback: stored only; the next prepare()
     // (realtime) or process() (offline) makes the decision.
@@ -398,8 +434,33 @@ void ScenePipeline::process(const float* const in[2], float* const out[2], int n
         return;
     }
     // Offline bounce: build and submit the changed scene before this block (AQ4 synchronous rebuild).
-    if (nonRealtime_.load(std::memory_order_acquire) && engine_.isPrepared() && hasWork())
+    const bool offline = nonRealtime_.load(std::memory_order_acquire);
+    if (offline && engine_.isPrepared() && hasWork())
         decide(Source::Offline);
+#ifndef NDEBUG
+    // AX38 (i): the diffuse-solve gate asserts it is never entered from a real-time process(). Debug builds
+    // only: two thread_local stores on the real-time path (no allocation, no lock, no syscall); nothing in
+    // release.
+    struct RealtimeMark
+    {
+        bool on;
+        explicit RealtimeMark(bool realtime) noexcept
+            : on(realtime)
+        {
+            if (on)
+            {
+                ++detail::realtimeProcessDepth;
+                detail::ranRealtimeProcess =
+                    true; // D-H3 (e): the gate counts later Synchronous entries from here
+            }
+        }
+        ~RealtimeMark() noexcept
+        {
+            if (on)
+                --detail::realtimeProcessDepth;
+        }
+    } mark(!offline);
+#endif
     const int maxBlock = std::max(1, maxBlock_);
     for (int start = 0; start < n; start += maxBlock)
     {

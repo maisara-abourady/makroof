@@ -25,6 +25,12 @@ def pytest_configure(config):
         "slow: full recomputation of a committed reference record (minutes, several GB; Phase 05e D-B gate); "
         "the python CI job deselects it, .github/workflows/nightly.yml runs it",
     )
+    config.addinivalue_line(
+        "markers",
+        "open_field_validation: AX37 (5.4) open_field check at the validation N 2^23 (two renders, 4-6.5 min "
+        "each); CI runs it in the open-field-validation job on three OSes and deselects it in the python job "
+        "(decider file 50, P05H-QA-T)",
+    )
 
 
 @pytest.fixture(scope="session")

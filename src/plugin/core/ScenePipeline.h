@@ -28,6 +28,7 @@
 // way. Every other submit uses EqualGain (AX18 placeholder until Phase 10).
 #include "contract/SceneDescription.h"
 #include "module3d/ParameterMap.h"
+#include "plugin/core/DiffuseSolveGate.h"
 #include "plugin/core/IrBuilderThread.h"
 #include "sim/Engine.h"
 #include "sim/RealtimeEngine.h"
@@ -127,9 +128,11 @@ public:
     // The builder's current trim gain target and value (tests).
     float trimGain() const noexcept { return trimGain_; }
 
-    // Builds the omni IR of a scene as the pipeline does (Kind::Omni, Phase 07). For tests and the
-    // recorded rebuild times.
+    // Builds the omni IR of a scene as the pipeline does (Kind::Omni, Phase 07), with the process pool
+    // and no gate. For tests and the recorded rebuild times.
     static sim::RoomIR buildIr(const contract::SceneDescription& scene, double sampleRate);
+    // The diffuse-solve gate this pipeline holds (AX38 (i); tests).
+    DiffuseSolveGate& gate() const noexcept { return *gate_; }
 
 private:
     enum class Source
@@ -142,6 +145,13 @@ private:
 
     // Takes stateMutex_ itself. Returns true when the generation was recorded as handled.
     bool decide(Source source);
+    // Phase 05h, the solve seam (AX38, phase-07c condition 2): the ONE function through which restore,
+    // prepare, reset() and the offline process() reach the diffuse solve. Enters the gate in the
+    // source's class, builds with the gate's pool, leaves. Throws sim::BuildCancelled when a builder
+    // was quiesced while waiting or solving (D6). Never called with stateMutex_ or the builder mutex held.
+    sim::RoomIR solveAndBuild(const contract::SceneDescription& scene, Source source);
+    void quiesceBuilder();
+    void restartBuilder();
     void resetSequence(bool restartBuilder);
     bool hasWork() const noexcept;
     void snapTrim() noexcept;
@@ -189,6 +199,12 @@ private:
 
     std::unique_ptr<BuilderClock> ownClock_;
     BuilderClock* clock_ = nullptr;
+    // The process-wide gate and pool (AX38 (i), AX39): shared by every pipeline alive, released after
+    // the builder below is joined (member order), so the pool's threads die with the last pipeline.
+    std::shared_ptr<DiffuseSolveGate> gate_ = DiffuseSolveGate::shared();
+    // Set while the builder is quiesced: a builder waiting at the gate leaves, a builder solve stops
+    // between blocks (D6); cleared on restart.
+    std::atomic<bool> builderAbandon_{false};
     // Last member: destroyed (stopped and joined) first, before the engine and the state it uses.
     std::unique_ptr<IrBuilderThread> builder_;
 };

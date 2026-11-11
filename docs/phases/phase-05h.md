@@ -1,7 +1,8 @@
 # Phase 05h — Tail-level switch implementation (the B11 switch, remainder of phase 05b)
 
 Size: **L** (the implementation that did not fit phase 05b's second session; split into `phase-05i.md` if
-it cannot be finished in two sessions, CLAUDE.md) · Depends on: 05b (`done (not promoted; tail-level
+it cannot be finished in two sessions, CLAUDE.md — **split applied 2026-11-10 at the end of session 2:
+the remainder is [`phase-05i.md`](phase-05i.md)**) · Depends on: 05b (`done (not promoted; tail-level
 switch specified in phase-05h)`, with this split), 05f, 07 `done` · Read first, in this order:
 `CLAUDE.md`; this file in full; `docs/phases/phase-05b2.md` §0 (why the switch exists, what it fixes and
 how much) and §3 (the decisions as posed and settled); `docs/BUILD_PLAN.md` §2 **AX37–AX46** (the settled
@@ -86,14 +87,27 @@ verbatim: "I accept the board's answer by definition."; ledger P05B2-M-01…07):
    replicate p95. A floor failure already present in the starting state (the joint-rule replicates of
    the reported set) is recorded as a finding and escalated once. Otherwise none (a margin above about
    20 % of W_max returns to the seats, not to her).
+   **At the pinned W_max item 1 does not fire** (H1-F3, decider file 19, interrogator file 21): the gated
+   cube `cube100_lowalpha0.05_s0.3` meets the floor via clause (d) (p95 0.250 / 0.178 dB, SE 0.117 /
+   0.115 dB; `docs/review/phase-05h/10-orchestrator-clause-d-replicates.md`) and W_max was not cut.
+   **Starting-state finding of the reported set, recorded once here beside item 1 and in the 05h PR's
+   Raise-with-Maisara section:** the α 0.05 / s = 1 cube (`cube100_lowalpha0.05_s1`, a scene that is not
+   gated) fails the floor in the starting state (SE 0.381 / 0.384 dB, VOV 0.178 / 0.183, p95 0.701 /
+   0.810 dB); it is a synthetic bound no fixture or preset approaches, buildable by a user (FR-3D-4, AQ3,
+   AX6), where AX44's note U is raised; it is never a reason for a range change or a W_max cut (AX38 4c).
+   Item 1 fires later only on D-H1 (ii)'s lines: the SE crossing 0.33 dB or the p95 crossing 1 dB at the
+   gated cube, or the p95 crossing 1 dB at the reported s = 1 cube.
 2. **The AX38 4c escalation** (when the C++ records exist, scope 6): the full-rebuild records go to
    Maisara against the 1 / 3 / 10 s marks, labelled **UI response-time anchors (Card et al. 1991), not
    audibility limits**, with Table 15.1's conditions stated (its 3 s row covers only translational
    movement > 1 m, derived from 30–50 cm/s VR movement, has no row for room-geometry or material edits,
    and is applied to full rebuilds by extension only); any room above 3 s is named as a finding.
+   If the records are not in this phase's CI run, the evaluation is carried by phase-05i (its scope 4)
+   and the decider answers it for Maisara under `docs/board/README.md`.
 3. **AX38 (iv) load time** (conditional): if the 8-instance, 100 m time until the last instance is
    audible at project load exceeds 10 s, it goes to Maisara before the first release (also phase-13
-   "Raise with Maisara" item 3).
+   "Raise with Maisara" item 3). If the (iv) record is not in this phase's CI run, phase-05i (scope 4)
+   carries it the same way.
 
 ## 3. Decisions before implementation
 
@@ -122,8 +136,25 @@ after seeing the gate's result.
     diffuse budget, plus about 5 % for the realised-work ratio, about 27 % of W_max; a 27 % smaller W_max
     raises the capped-scene SE by about 1/√0.73, about 17 % [Inferred] (e.g. layout 4 from about 1.33 to
     1.56 dB, the low-α cube from about 0.50 to 0.58 dB) (file 51 §3).
-  - Decided by the board loop from the C++ measurements (C++ cost per evaluation, realised against
-    planned work at block 64, restore spread over ≥ 10 runs) before the gate is implemented.
+  - **Decided (2026-11-10; D-H1 (i)–(v), decider `docs/review/phase-05h/19-decider-decision-D-H1-D-H2-r2.md`,
+    interrogator `21-interrogator-D-H1-D-H2-r2.md` SURVIVES; H1-F1–H1-F3 answered for Maisara, open to her
+    veto; recorded in AX38 4c, AQ10 and AX41):** (i) the gated closed low-α cube is
+    `cube100_lowalpha0.05_s0.3` (α 0.05, s 0.3; `ismFallback` false on both emitters, asserted); the s = 1
+    cube stays in the reported set with a p95 > 1 dB escalation line; (ii) "any further rise" is a record
+    (below); (iii) the realised-work ratio is **1.02**, pre-registered from the C++ measurements (0.935 /
+    0.991 / 0.986 at flutter / s 0.3 / s 1); (iv) W_max **3.05 M per emitter** and n\*_max **1 024** are
+    pinned: the (A) formula from the C++ cost gives Linux ≈ 2.4 M, Windows ≈ 5.8 M and no W_max ≥ 0 on macOS
+    (2.1429 − 2.3277 = −0.185 s), so **no margin is taken out of W_max** and the 20 % trigger above does not
+    apply; the gate carries a defect register instead (v); phase-07c re-derives W_max once under (C), only
+    after the AX38 4c 3-minute bounce record is in its packet; (v) the restore gate runs on all three OSes in
+    the register form (section 5 "Blocking"): strict where the recorded value at the pinned W_max is
+    ≤ 29.1 s; a registered defect with the growth bound (median-of-10 restore ≤ 1.10 × the recorded median
+    (since RG-1: the pinned baseline median, (b))) elsewhere (Linux cube 30.27 s, closes at 07c; macOS cube
+    33.40 s, closes at phase-07c condition 9 / 07d or Phase 13); the named finding (the unit-decay synthesis
+    in `tail::BandNoiseGenerator`, 95.5 % of the 3.29 s non-diffuse 100 m / 96 kHz build) and its remedy,
+    phase-07c §5 condition 9; phase-07c is the next phase after this one. H1-F1: 14 × t_restore ≤ 30 s is the
+    project's own convention (pluginval's watchdog resets per restore), 14 a kept constant. H1-F3: section 2
+    item 1.
   - **Seat 1's floor at a gated scene** (decider file 53 §1, exact text). At each gated 100 m build of
     AX38 4c, Seat 1's floor counts as **met** when the achieved SE is ≤ 0.33 dB per emitter and band and
     at least one of these holds:
@@ -137,20 +168,35 @@ after seeing the gate's result.
     change, with the SE, the VOV and the replicate p95. It is never fixed by a time cap, a narrower range
     or a formulation seam.
 
-    **Starting state.** The joint-rule replicates at the gated scenes (phase-05h reported set) establish
-    the provisional (A) state. If the floor already fails there, that is recorded as a finding and
-    escalated once. After that, the trigger fires on any further rise of the achieved SE or the replicate
-    p95 at that scene.
+    **Starting state (D-H1 (ii), R-e; decider file 19, interrogator file 21; Seat 5 file 17 L155–158).**
+    The starting state per gated scene and emitter is the **record** in
+    `docs/review/phase-05h/10-orchestrator-clause-d-replicates.md` (cited in the 05h PR and the ledger):
+    the fixed-key achieved SE (deterministic, AX40 / D7; the cross-OS E_target comparison of phase-05h scope 9 shows
+    whether it differs by OS) and the replicate p95 (30 disjoint pre-registered streams). It is a record,
+    not a golden: no test asserts on it, no file is regenerated, and the margin report reproduces it as its
+    baseline column. If the floor already fails there at a gated scene, that is recorded as a finding and
+    escalated once (at the pinned W_max it does not fail: H1-F3; the reported s = 1 cube's failure is a
+    finding of the reported set, recorded beside phase-05h §2 item 1). **Recorded** (a flagged line in the
+    margin report of every later run that re-derives W_max or re-baselines the non-diffuse build, beside
+    the baseline column): any rise of the achieved SE ≥ 0.05 dB or of the replicate p95 ≥ 0.10 dB above the
+    starting state (two constants in plan text). The starting-state values are constants in the test, per
+    gated scene, with the file-10 provenance in a comment, re-pinned with a CHANGELOG reason whenever W_max
+    or n\*_max is re-derived (Seat 5, file 17 L155–158). **Escalated** (phase-05h §2 item 1, to Maisara with
+    the SE, the VOV and the p95): the achieved SE crossing 0.33 dB, or the replicate p95 crossing 1 dB
+    (1 jnd of G, Vorländer Table 6.1), at a gated scene, or the p95 crossing 1 dB at the reported s = 1
+    cube. Nothing else escalates.
   - **Clause (d) at the gated cubes** (Seat 1, `docs/review/phase-05b2/55-seat1-confirm-clause-d.md`):
     Seat 1 accepts clause (d) at the gated closed 100 m cubes at s = 0.3, on two conditions: the
     replicates run the shipping rule as built, on disjoint pre-registered streams; and the check is
     repeated on the C++ build.
-  - **OPEN, settle before the gate is implemented** (interrogator file 54; not decided here):
-    - the gated closed low-α 100 m cube's α and s are pinned in AX38 4c (C14/C16 computed it at s = 0.3
-      and s = 1; at s = 1 the achieved SE 0.44–0.50 dB fails Seat 1's floor, so the starting-state clause
-      would fire once); decided by the board loop with the C++ data;
-    - the rise that counts as "any further rise" in Trigger 1's starting-state clause is defined (e.g.
-      relative to the scene's replicate spread) before the gate is implemented.
+  - **Closed by D-H1 (2026-11-10; decider file 19, interrogator file 21)**, the two premises interrogator
+    file 54 left open:
+    - the gated closed low-α 100 m cube is pinned in AX38 4c as `cube100_lowalpha0.05_s0.3` (α 0.05,
+      s 0.3; D-H1 (i), P-a′); the s = 1 cube (`cube100_lowalpha0.05_s1`) stays in the reported set, its
+      SE / VOV / p95 printed beside the gated cube's, a p95 > 1 dB there escalated like a gated scene;
+    - "any further rise" in Trigger 1's starting-state clause is the record above (D-H1 (ii), R-e): rises of
+      the achieved SE ≥ 0.05 dB or of the replicate p95 ≥ 0.10 dB above the file-10 starting state are
+      printed, not escalated; only the 0.33 dB / 1 dB crossings escalate.
 
 ## 4. Scope
 
@@ -201,11 +247,10 @@ after seeing the gate's result.
 6. **Costs:** W1/W2 (AQ10) including the diffuse share, peak memory per instance at the AQ10 room, CR4
    and the largest supported room, the AX38 4c records and the AX38 (iv) multi-instance records, the flags
    at the gated scenes and the realised work against W_scene (AX41), recorded in §0 row 05h; the AX38 4c
-   escalation applied to them. **C++ re-derivation** of W_max (from the C++ cost at the CI runner's pool
-   size, the worst gated cost and the worst OS restore build, with D-H1's margin) and of n\*_max (from the
-   C++ W1 measurement, diffuse share ≤ 25 ms for two emitters), once, pinned as cross-platform constants
-   (AX41); the realised-work ratio pre-registered from C++ data before the first CI run. If n\*_max comes
-   out below 1 000, it goes back to Seats 1, 3 and 4.
+   escalation applied to them. W_max and n\*_max are pinned by D-H1 (iv) (3.05 M per emitter, 1 024; no
+   margin: the (A) formula gives no W_max ≥ 0 on macOS, section 3) as cross-platform constants (AX41); the
+   realised-work ratio 1.02 is pre-registered from the C++ data (D-H1 (iii)). n\*_max came out at 1 024
+   (W1 diffuse share ≤ 14 ms), so the "below 1 000 → Seats 1, 3 and 4" rule did not fire.
 7. **Plan bookkeeping** through `/fix-plan`: D-H1's AX change; AX16 "switched" confirmed with the
    implementation; the re-derived W_max and n\*_max in AX41 (and AQ10's amendment if they move); §6 rows.
 8. **Listening pack:** a `phase-05h` entry: Phase 04 tail level vs switched tail level, loudness-matched
@@ -233,36 +278,132 @@ after seeing the gate's result.
 - [ ] D-H1 recorded as an AX change (ledger rows linked) **before** the restore gate is implemented.
 - [ ] C++ E_target = `ref_hybrid` within τ = 0.25 dB (AX42) over the 70 pre-registered cases / 560
       case-bands at z_FW 4.290, with the pooled bias check and stage 2, no reseed (AX43; Release, hidden
-      tag, three OSes).
+      tag, three OSes). **Pooled bias check (D-H3 (a), H3-F1; decider file 27, interrogator file 28):** the
+      additive bound, per band: |mean (C++ − ref) in dB| ≤ 3·SE_pool + mean ℓ_ref over the M gated
+      case-bands, the catch (the right-hand side) printed per band beside the mean deviation and restated
+      in §0 at each golden round, never pinned (a board return above 0.02 dB); the as-written statistic
+      (mean z against 3/√M), the per-class means in both forms, the pooled z′ and the per-room z′ (the
+      golden's `room` column) printed as records, never checked, with the |mean z′| > 3 label and the
+      rooms' sign count (a labelled room or every room of one sign, with the per-case checks green, reopens
+      the clause by a board round; the per-room form (e′) is the pre-registered alternative). Applied only
+      after the pre-registered application run read 'within' in every band (it did: `agree_full5.log`).
+      **Scope now (D-H2 (a), H2-F1; decider file 19, interrogator file 21):** gated on the
+      subset with a certified two-rung reference (ℓ_ref recorded), listed per case-band in the agreement
+      golden with its status; the rest 'reported (reference pending)', never dropped; the report prints
+      '<gated> of 560 gated; <n> reported (reference pending)' (410 / 560 at the time of writing, after the
+      session-2 golden round; all 28 cases at the 1.25 m rung, the 150 reported case-bands the BRAS pairs'
+      outer bands; the four small rooms referenced at the 0.625 m rung, H3-F6); single-rung
+      references printed with the fixed label `uncertified rung, no ℓ_ref, not pass/fail`, never asserted
+      (AX43 (b)); the gated set keeps one per-band-α room and one mixed-s room, or the gap is reported.
 - [ ] Bias check (AX46): mean signed deviation ≤ 1 % per band and per case class, pooled and per class,
-      at the pre-registered test N (3·SE ≤ 1 % − ℓ_ref); classes with ℓ_ref ≥ 1 % reported.
+      at the pre-registered test N (3·SE_class ≤ 1 % − mean ℓ_ref, SE_class estimator-propagated, AX46);
+      classes with ℓ_ref ≥ 1 % reported. **Scope now (D-H2 (d)):** every class with ≥ 1 certified case
+      (reference positions, absorbing face, small rooms, one-end near-wall (the c4 cross-check recorded
+      passing: `docs/review/phase-05h/6-orchestrator-K20-certified-listing.md`, 2026-11-11, |rel. diff| ≤
+      3.4e-6), and BRAS pairs (500 Hz–2 kHz, outer bands as 05i certifies)); classes without one print
+      'not evaluated (reference pending)'; the 100 m class is the tracer comparison, labelled 'not evaluated
+      at 1 % (compute limit)', never a pass; six classes labelled; the pooled figure labelled 'pooled over
+      <n> of 6 classes'.
 - [ ] C++ E_target vs tracer within ±1 dB on the 15 (A) cases (deterministic test on committed data).
 - [ ] Rooms where AX16 is exact per reflection order (uniform α) unchanged within D-T6's bound: the AX45
       gate, |ΔL_C++ − ΔL_ref| ≤ 0.25 dB per emitter and band over 72 case-bands at z_FW 3.81, stage 2;
       mixed-α rooms checked against the tracer (M-2) / `ref_hybrid` and reported (D-T6), not tuned.
+      **Scope now (D-H2 (a)):** the certified subset ('<gated> of 72 gated', 72 / 72 at the time of writing,
+      after the session-2 golden round), the rest listed as 'reported (reference pending)'; M-2 printed per
+      band.
 - [ ] Determinism (AX39): RNG known-answer test, D5 face-sequence hashes with the per-case n\* and N
       equal on the three OSes, cross-OS E_target comparison.
-- [ ] U silent at the default placement of every valid fixture (AX44, Seat 6 (ii)); W1 both_corner
-      asserts the cap flag; the pre-registered flags at the gated scenes (AX41).
-- [ ] Realised-work assertion at the gated scenes: realised work / W_scene ≤ the ratio pre-registered
-      from C++ data before the first CI run (AX41).
-- [ ] `open_field`: the AX37 (5.4) finite-floor check and the −60 dB check (PR CI, three OSes); the
-      outer-band tracer check (AX37 (5.1) (ii)) reported before any golden.
+- [ ] U silent at the default placement of every room and preset fixture (AX44, Seat 6 (ii) as read by
+      D-H3 (b), H3-F2), asserted by the D5 golden, and U with the five AX41 flags pinned at every fixture;
+      `edge_values` and `open_field` are known, correct U cases (cap; K-b3), named by the golden's pinned U,
+      the cause line printing the cause (cap / both-near / VOV_union ≥ 0.1), the movability record and the
+      tail's energy after t_dir + 50 ms relative to the direct sound printed for every fixture (AX37
+      (5.4)'s quantity: `open_field` −85 dB, `edge_values` −30 / −16 dB, `medium_room` +7 dB).
+      `layout4_s1/both_corner` asserts the cap flag; W1 both_corner asserts U with its flags (n\* 1 024,
+      N 1 024, N_cap 1 088, cap hit 0, floor truncated 0) pinned as constants in the records test with the
+      file-13 provenance, re-pinned with a CHANGELOG reason at each W_max / n\*_max change (D-H3 (d),
+      H3-F4); the pre-registered flags at the gated scenes (AX41).
+- [ ] Realised-work assertion at the gated scenes: realised work / W_scene ≤ **1.02**, the ratio
+      pre-registered from C++ data before the first CI run (AX41; D-H1 (iii)); W_pilot and W_final per gated
+      scene exact in the D5 golden.
+- [ ] `open_field`: the AX37 (5.4) finite-floor check at the validation N 2^23 (3·SE ≤ τ asserted per band,
+      |dev| ≤ τ; the shipping-N render a labelled smoke test; decider file 44 QA) and the −60 dB check (PR CI,
+      three OSes — the 2^23 cases in the `open-field-validation` job, the smoke cases in the python job
+      (decider file 50)); the outer-band tracer check (AX37 (5.1) (ii)) reported before any golden.
 - [ ] `render_cli --diagnostics` reports the diffuse E_target per band beside the AX16 one, and the AX41
       diagnostics (test).
 - [ ] Same scene + seed → bit-identical IR on the same platform; no NaN/Inf/denormals; allocation-free
       audio thread (existing tracker test) unchanged; the FTZ on/off `[pipeline]` test bit-identical per
-      platform (AX37 (5.1)).
+      platform (AX37 (5.1)) — the absorbent room is the named scene: dead_booth geometry, α 0.01 at 63 Hz /
+      0.999 above, s 0.5 (the near-rigid 63 Hz band's long tail against the 8.6 ms fast bands, not
+      absorbency; a uniformly absorbent room reads clear); the denormal flag asserted per architecture
+      (x86-64 DE | UE in the FZ-off arm and DE clear in the FZ-on arm; AArch64 UFC in the FZ-off arm and IDC |
+      UFC in the FZ-on arm, the D-H3 (c) form, decided by the K-c4 runs 42909003931 and 42921348351 (file 31);
+      never red by design: SKIP when the calibration of file 20 L183 (3) fails; MSVC ARM64 SKIP, phase-13
+      scope 8) with the calibration step and `ThreadPool(1)`; the `[probe-denormals-detector]` probe standing
+      in `ci.yml` on three OSes, re-run on each path change; every pool share under the FTZ/DAZ guard
+      (`ThreadPool::runShare`, D-H3 (c) (g)), re-probed in the same CI run before the PR (D5 hashes identical,
+      cross-OS E_target within 1e-7), else the caller-only form (f) with the scene named (D-H3 (c), H3-F3;
+      decider files 25, 27).
 - [ ] Gate (AX38): the debug assert and the real-time-beside-gate test (zero allocations, gate never
       touched), covering `reset()`; the two-order output test, one pipeline offline; TSan `[pipeline]` with
-      two pipelines, one switching to offline mid-solve.
+      two pipelines, one switching to offline mid-solve. **AX38 (i) register entry (D-H3 (e), H3-F5):**
+      `reset()` / `setNonRealtime(true)` delivered on the processing thread waits for the in-flight build,
+      measured worst 2 664 ms (closed low-α 100 m cube, 96 kHz, Linux Release; 491 ms flutter; cancel
+      points only in the diffuse solve, between 64-history blocks), and in the stale case builds
+      synchronously (≈ 3.6 s): up to ≈ 6.3 s; the `[diffuse-quiesce]` hidden record prints the median-of-10
+      wait against 1.10 × the recorded median per OS in the job summary (a print, never a CHECK); a
+      test-build counter and summary line counts Synchronous-class entries from a thread that has run the
+      realtime `process()` branch (never an assert); remedy phase-07c §5 condition 10; release rule: no
+      build reaches a producer outside the team (beta included) while the entry is open.
 - [ ] W1/W2 (with the diffuse share) and the AX38 records recorded (AQ10). Memory block (AX38 4c): the
       peak working-set delta of the larger of the two gated 100 m, 96 kHz builds ≤ 1 GB (Linux;
-      recorded on macOS and Windows), `ismFallback` stated per emitter.
-- [ ] **Blocking** (AQ10 amended, AX38 4c): the synchronous state restore at the two gated 100 m, 96 kHz
-      builds (the AX22-fallback (flutter) scene and the closed low-α cube), 14 × t_restore ≤ 30 s, on the
-      Release build, with D-H1's margin taken from W_max. A failure is a defect: no re-run, no W_max cut
-      after pinning, no room-range narrowing, no formulation seam; the remedy is bringing phase-07c forward.
+      recorded on macOS and Windows), `ismFallback` stated per emitter. **K-e12 record (AX38 4c finding,
+      D-H3 (e)):** a room-or-material edit in flight, then a restore, at the two gated builds, worst of 10,
+      three OSes, printed once, never a CHECK (the gate's restores are measured with the builder idle); in
+      this phase's AX38 (iv) records if it fits, else phase-05i (scope 2) with the PR saying which. The
+      AX38 (iv) records not produced here go to phase-05i (scope 2) the same way.
+- [ ] **Blocking, in the register form** (AQ10 amended, AX38 4c; D-H1 (v) W-x′ and H1-F2, decider file 19,
+      interrogator file 21; RG-1, decider files 64/66/68/70, interrogator files 65/67/69/71): the synchronous
+      state restore at the two gated 100 m, 96 kHz builds (the AX22-fallback (flutter) scene and
+      `cube100_lowalpha0.05_s0.3`), on the Release build on Linux, macOS and Windows, at the pinned W_max 3.05
+      M (no margin taken from W_max), printing per OS and scene the min / median / worst of 10 restores, the
+      worst-of-10 solve and 14 × (worst restore + worst solve). (a)–(b) (RG-1, 2026-11-11): On GitHub-hosted
+      runners the restore gate asserts what is runner-independent and prints what is not. **Asserted every
+      run:** the exact W_pilot / W_final pins and realised work ≤ 1.02 (AX41); per gated scene the unit-decay
+      length and the FFT size n (`Fft::nextPowerOfTwo(length + 2·maxHalfLength)`), exact; 14 × worst-of-10
+      restore ≤ 30 s at the flutter scene on every OS; and, on Linux and Windows only, median-of-10 low-α
+      restore ≤ 1.10 × the pinned baseline median when the run's flutter median is within ±5 % of its pinned
+      reference, else `NOT EVALUATED (runner)`. **Printed with WARNING, never asserted on hosted runners:**
+      the low-α/flutter restore ratio above 1.20 × its pinned ratio; the per-scene solve median and its ns per
+      evaluation (a bound proposed through `/fix-plan` once ≥ 3 runs give its spread); 14 × worst above 30 s;
+      the absolute median above 1.10 × baseline where not asserted (macOS until Phase 13); the §5 (c) 'passes
+      30 s' line. On macOS two consecutive runs with the low-α median above 2 172 ms (1.15 × the mean of the
+      four measured macOS medians, rounded down; re-derived at the 07c re-pin) are a defect under (d), remedy
+      named, through `/fix-plan`; the 30 s warning on a listed entry is its recorded state until phase-07c,
+      not a trigger; the printed growth line uses the in-window baseline 1 817 ms. The register entries (Linux
+      30.27 s, macOS 33.40 s, Windows 36.73 s; remedy phase-07c conditions 9–10; closing phases unchanged)
+      stand. One machine-readable line per OS/scene per run; §0 row 05h carries the latest figures and the
+      counts; a WARNING run is named in the PR. Baselines: flutter reference and ratio the mean of the
+      measured runs per OS (Linux 701 ms / 3.05, Windows 737 / 2.83: runs 42909003931, 42924781618,
+      42935789745, 42949252041, Windows also 42942694523; macOS 484 / 3.75: runs 42924781618, 42935789745,
+      42949252041); baseline median the mean of in-window runs (Linux 2 068, Windows 2 028; macOS 1 817, print
+      only); never a red or out-of-window run; re-pinned only when the restore path changes, one run
+      PROVISIONAL, ≥ 3 runs with a CHANGELOG reason; the ±5 % window and the solve bound re-derived from ≥ 3
+      in-window runs at the 07c re-pin. A broken assertion is a defect under (d): no re-run, no W_max cut, no
+      range change, no seam. `ci.yml` runs pluginval and auval `if: always()`. Phase 13 re-enforces the strict
+      30 s and the 1.10 growth bound on all three OSes on the release machines (AX41); phase-07c condition 9's
+      packet repeats the file 7 split timer on one named local box before sizing its interim rules. (c) A
+      listed entry whose printed 14 × worst passes 30 s is a job-log warning (the PASSES30S warning printed by
+      the records test; nothing writes `$GITHUB_STEP_SUMMARY`) and leaves the register through `/fix-plan`
+      before the next phase is `done`; its register text closes; the low-α scene's hosted-runner assertion
+      stays in this form (in-window on Linux and Windows, printed on macOS) until Phase 13; the strict 30 s
+      branch applies to the flutter scene, and to the low-α scene only on the release machines. (d) A broken
+      assertion, or the macOS trigger, is a defect: no re-run, no W_max cut, no range change, no seam; it
+      enters the register with its remedy through `/fix-plan` — a timing entry: phase-07c conditions 9–10; a
+      work-pin entry: the code change named, re-pinned only with a CHANGELOG reason. This phase may be set
+      `done` with the register entries recorded in §0 row 05h; the macOS and Windows records go to Maisara in
+      the PR (section 2 item 2).
 - [ ] The solve seam: restore, prepare and `reset()` call the diffuse solve through one function (scope 2).
 - [ ] Only if Phase 08 went first (scope 10): binaural goldens re-rendered, binaural W1/W2 per mode with
       the diffuse share and the binaural AX38 (iv) records recorded, phase-08 item 8 re-run, and the
@@ -291,12 +432,12 @@ concentrated absorption, marked provisional there, are re-listened on the switch
 Equivalence of the `src/sim` formulation to the validated model (not just to its numbers on a few
 cases); the independence of the tracer comparison; the AX22 interaction (AX37 (5.2)); memory scaling at
 100 m (AX38); determinism (the D1–D7 package, AX39); the AX38 gate (threading, three-class order,
-`reset()`); the cap-hit and floor-truncated flags (AX41); D-H1's margin; no per-scene logic.
+`reset()`); the cap-hit and floor-truncated flags (AX41); D-H1's register (v); no per-scene logic.
 
 ## 8. Risks and atomicity
 
-- The plan is recorded first: done (AX37–AX46, committed in phase 05b). D-H1 is the one decision still
-  open, and it blocks only the restore gate.
+- The plan is recorded first: done (AX37–AX46, committed in phase 05b). D-H1 is decided (section 3,
+  2026-11-10); the restore gate is implemented in its register form (section 5).
 - **Atomicity:** the matching change does not land in `src/sim` (commit to the branch) without, in the
   same push, the `ref_hybrid` agreement test, the tracer test and the updated goldens, and the PR is not
   opened before a manual nightly BRAS run on that push is green (CLAUDE.md "When CI runs").
@@ -304,9 +445,12 @@ cases); the independence of the tracer comparison; the AX22 interaction (AX37 (5
 - The realised-work assertion or the restore gate fails at the pinned W_max → back to D-H1, not a
   loosened gate.
 - The outer-band tracer check fails in a band → D-T2 and Maisara with numbers, never back to AX16.
-- A default placement of a valid fixture raises U → the placement changes, not the predicate (AX44 (ii)).
+- A default placement of a room or preset fixture raises U → the placement changes, not the predicate
+  (AX44 (ii), as read by D-H3 (b): the two contract-limits fixtures `edge_values` and `open_field` are
+  known, correct U cases, not rooms).
 - **Split rule (CLAUDE.md):** if this phase cannot be finished in two sessions, the remainder goes into
-  `phase-05i.md` with the same atomicity rule.
+  `phase-05i.md` with the same atomicity rule. **Applied 2026-11-10:** [`phase-05i.md`](phase-05i.md)
+  carries the remainder (its §3); this phase closes on what landed in session 2 once its CI run is green.
 
 ## 9. Out of scope
 

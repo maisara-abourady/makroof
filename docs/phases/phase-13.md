@@ -7,7 +7,7 @@ a sub-phase is named.
 
 ## Raise with Maisara (she does not track these herself)
 
-The four items (phase-13 R0–R4) are carried verbatim by [13-1](phase-13-1.md) (first message) and
+The five items (phase-13 R0–R5; R5 added 2026-11-11 by DECISION RG-1) are carried verbatim by [13-1](phase-13-1.md) (first message) and
 [13-5](phase-13-5.md) ("before the beta decision") (D-PS4 instruction 5).
 
 ## Goal
@@ -38,7 +38,7 @@ umbrella (D-PS4 Q1).
 
 ## Where the original items went
 
-Labels: **H** header, **R0–R4** Raise preamble and items, **G** goal, **A** assumptions, **S1–S13** scope items
+Labels: **H** header, **R0–R5** Raise preamble and items (R5 added 2026-11-11), **G** goal, **A** assumptions, **S1–S13** scope items
 (S3 bullets S3.1–S3.6, S4 bullets S4.1–S4.3), **O** out of scope, **C1–C5** automated criteria in file order,
 **L1–L5** listening/manual items, **F1–F4** contractor review focus clauses, **K1–K3** risks, **D1–D4**
 definition-of-done clauses. "phase-13 scope n" = Sn.
@@ -53,6 +53,7 @@ definition-of-done clauses. "phase-13 scope n" = Sn.
 | R2 DELTA panel report | 13-1 and 13-5 | D-PS4 instruction 5 |
 | R3 Load time with 8 instances (AX38 (iv)) | 13-1 and 13-5 | D-PS4 instruction 5 |
 | R4 Phase 07c not landed (conditional) | 13-1 and 13-5 | D-PS4 instruction 5 |
+| R5 Release machines for the AX38 4c strict re-check (RG-1) | 13-1 and 13-5 | added 2026-11-11 |
 | G Goal | umbrella (shared) | each sub-phase states its share |
 | A AQ10, AX5 | umbrella (shared) | carried to every sub-phase |
 | S1 Profiling and optimization (incl. memory per instance and the memory-budget decision) | 13-1 (scope 1) | non-uniform partitioning → `13-1b` |
@@ -95,7 +96,7 @@ definition-of-done clauses. "phase-13 scope n" = Sn.
 3. If `13-1b` changes rebuild time or diffuse-solve time, 13-2's i₀ sentence, its N_cap rule and S13's W_max / n*_max
    re-check re-run before 13-3's records are taken. (instruction 3, final)
 4. K1, K2, K3 "umbrella (shared)", read by 13-1; risk text verbatim. (instruction 4)
-5. Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (instruction 5)
+5. Raise items: all four carried by 13-1 (first message) and by 13-5 ("before the beta decision"). (Five since R5, 2026-11-11.) (instruction 5)
 6. S13's 'release machines', in 13-2, and S9, in 13-3, need Apple-silicon hardware; Maisara provides it (follow-up).
    (instruction 6, final)
 7. Remainders (G3): `13-1b` (optimisation, non-uniform partitioning, S9 remedy); `13-5b` (notarization). (Q1)

@@ -103,8 +103,9 @@ def render_ensemble(
     return out, fs
 
 
-def diagnostics(binary: pathlib.Path, scene: dict | pathlib.Path, rate: int = 48000) -> dict:
-    """render_cli --diagnostics of the hybrid omni IR."""
+def diagnostics(binary: pathlib.Path, scene: dict | pathlib.Path, rate: int = 48000, extra=()) -> dict:
+    """render_cli --diagnostics of the hybrid omni IR (``extra``: more render_cli arguments, e.g. the validation-only
+    ``--diffuse-histories N``)."""
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         if isinstance(scene, dict):
@@ -113,7 +114,7 @@ def diagnostics(binary: pathlib.Path, scene: dict | pathlib.Path, rate: int = 48
         else:
             path = pathlib.Path(scene)
         out = tmp / "diag.json"
-        result = render_cli.run(binary, "--scene", path, "--mode", "omni", "--rate", str(rate), "--diagnostics", out)
+        result = render_cli.run(binary, "--scene", path, "--mode", "omni", "--rate", str(rate), "--diagnostics", out, *extra)
         if result.returncode != 0:
             raise RuntimeError(f"render_cli failed ({result.returncode}): {result.stderr}")
         return json.loads(out.read_text(encoding="utf-8"))

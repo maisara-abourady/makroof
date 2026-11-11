@@ -265,8 +265,172 @@ def _phase_06(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
     (pack / "README.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+# phase-05h (scope 8): the Phase 04 tail level (AX16 entries, render_cli --tail-level ax16) against the
+# switched tail level (the propagated diffuse energy, AX37), NOT loudness-matched: the level difference is
+# the point. Through the six Phase 04 rooms, open_field, the BRAS scene with the largest real dL_b
+# (bras_cr3_ls1_mp2) and three synthetic concentrated-absorption rooms (Kuttruff Table 5.2 layout 4 at
+# s = 0.4 and s = 1, layout 5 at s = 1, as scenes at the AX28 positions), clicks and pink bursts, plus one
+# both-near omni render (listener and an emitter within 0.70 m of surfaces, AX44). The scene choice is
+# listening content, not a gate. The README names, per room, whether its tail level is gated against a
+# certified reference, reported against an uncertified one, or without a reference yet (D-H2).
+PHASE_05H_ROOMS = ("dead_booth", "living_room", "classroom", "club", "concert_hall_box", "stone_box", "open_field")
+AQ10_SRC, AQ10_RCV, AQ10_DIMS = (7.0, 20.0, 2.0), (10.0, 8.0, 1.7), (20.0, 30.0, 10.0)
+
+
+def _synthetic_scene(name: str, dims, alpha_faces, s: float) -> dict:
+    """A Table 5.2 layout as a scene at the AX28 positions (scaled from the AQ10 room), both emitters."""
+    import copy
+    import json as _json
+
+    scene = copy.deepcopy(_json.loads((SCENES_DIR / "medium_room.json").read_text()))
+    scale = [d / a for d, a in zip(dims, AQ10_DIMS)]
+    scene["room"]["geometry"]["dimensions"] = list(dims)
+    for face, a in zip(("xMin", "xMax", "yMin", "yMax", "floor", "ceiling"), alpha_faces):
+        # The contract's minimum absorption is 0.01 (E_ABSORPTION_RANGE); Table 5.2's rigid faces (alpha = 0) are
+        # rendered at that minimum. Listening content, not a gate (the (A)-case references use alpha = 0 exactly).
+        scene["room"]["surfaces"][face] = {"absorption": [max(float(a), 0.01)] * 8, "scattering": float(s)}
+    scene["listener"]["position"] = [p * k for p, k in zip(AQ10_RCV, scale)]
+    scene["emitters"][0]["position"] = [p * k for p, k in zip(AQ10_SRC, scale)]
+    scene["emitters"][1]["position"] = [p * k for p, k in zip((13.0, 20.0, 2.0), scale)]
+    scene["_name"] = name
+    return scene
+
+
+def _phase_05h_scenes() -> dict[str, dict]:
+    import copy
+    import json as _json
+
+    from tools.acoustics import radiosity
+
+    out: dict[str, dict] = {}
+    for name in PHASE_05H_ROOMS:
+        out[name] = _json.loads((SCENES_DIR / f"{name}.json").read_text())
+    out["bras_cr3_ls1_mp2"] = _json.loads((REPO / "tests" / "scenes" / "validation" / "bras_cr3_ls1_mp2.json").read_text())
+    layouts = {case: (dims, alpha) for case, dims, alpha, *_ in radiosity.TABLE_5_2}
+    out["t52_layout4_s0.4"] = _synthetic_scene("t52_layout4_s0.4", *layouts[4], 0.4)
+    out["t52_layout4_s1"] = _synthetic_scene("t52_layout4_s1", *layouts[4], 1.0)
+    out["t52_layout5_s1"] = _synthetic_scene("t52_layout5_s1", *layouts[5], 1.0)
+    # Both-near (AX44): club with the listener 0.3 m from the yMin wall and emitter 0 0.3 m from the yMax wall.
+    club = copy.deepcopy(out["club"])
+    dims = club["room"]["geometry"]["dimensions"]
+    club["listener"]["position"][1] = 0.3
+    club["emitters"][0]["position"][1] = dims[1] - 0.3
+    out["club_both_near_0.3"] = club
+    return out
+
+
+def _reference_status() -> dict[str, str]:
+    """Per listening room, the D-H2 status of its tail-level reference from the agreement golden."""
+    import json as _json
+
+    path = REPO / "tests" / "golden" / "phase05h_agreement_reference.json"
+    if not path.exists():
+        return {}
+    g = _json.loads(path.read_text())
+    cols = g["columns"]
+    gated = [cols.index(f"gated_{b}") for b in range(8)]
+    fine = [cols.index(f"ref_fine_{b}") for b in range(8)]
+    coarse = [cols.index(f"ref_coarse_{b}") for b in range(8)]
+    # The listening rooms only: <room>_e0 / _e1 of the six Phase 04 rooms, the BRAS pair, the three (A) layouts.
+    wanted = {f"{r}_e{e}": r for r in PHASE_05H_ROOMS if r != "open_field" for e in (0, 1)}
+    wanted.update({"bras_cr3_ls1_mp2": "bras_cr3_ls1_mp2", "t52_layout4_s0.4": "t52_layout4_s0.4",
+                   "t52_layout4_s1.0": "t52_layout4_s1", "t52_layout5_s1.0": "t52_layout5_s1"})
+    status: dict[str, str] = {}
+    for name, row in zip(g["names"], g["rows"]):
+        if name not in wanted:
+            continue
+        room = wanted[name]
+        n_gated = sum(1 for i in gated if row[i] > 0.5)
+        n_ref = sum(1 for i, j in zip(fine, coarse) if (row[i] == row[i]) or (row[j] == row[j]))
+        s = (f"{n_gated}/8 bands gated" if n_gated else ("reported against an uncertified reference" if n_ref else "no reference yet"))
+        status[room] = status.get(room, "") + ("; " if room in status else "") + f"{name}: {s}"
+    status.setdefault("club_both_near_0.3", "reported set (AX43: club both-near at 0.3 m), not gated")
+    status.setdefault("open_field", "the finite-floor integral check (AX37 (5.4)), not a ref_hybrid reference")
+    return status
+
+
+def _phase_05h(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
+    import json as _json
+
+    pack.mkdir(parents=True, exist_ok=True)
+    dry_dir = pack / "dry"
+    dry_dir.mkdir(exist_ok=True)
+    inputs = {name: SIGNALS[name][0]() for name in ("clicks", "pink_bursts")}
+    for name, data in inputs.items():
+        wav.write_float32(dry_dir / f"{name}.wav", data, FS)
+    scenes = _phase_05h_scenes()
+    status = _reference_status()
+    rows = []
+    for scene_name, scene in scenes.items():
+        scene_dir = pack / scene_name
+        scene_dir.mkdir(exist_ok=True)
+        scene_path = scene_dir / "scene.json"
+        scene_path.write_text(_json.dumps({k: v for k, v in scene.items() if not k.startswith("_")}, indent=1))
+        for signal in inputs:
+            for label, extra in (("switched", ()), ("phase04_ax16", ("--tail-level", "ax16"))):
+                out = scene_dir / f"{signal}_{label}.wav"
+                result = render_cli.run(binary, "--scene", scene_path, "--in", dry_dir / f"{signal}.wav", "--out", out,
+                                        "--mode", "omni", *extra)
+                if result.returncode != 0:
+                    raise RuntimeError(f"render_cli failed for {scene_name} / {signal} ({label}):\n{result.stderr}")
+                rendered, _ = wav.read_float32(out)
+                peak = float(np.max(np.abs(rendered))) if rendered.size else 0.0
+                if peak > 10 ** (PEAK_LIMIT_DBFS / 20):
+                    gain_db = PEAK_LIMIT_DBFS - 20 * np.log10(peak)
+                    wav.write_float32(out, (rendered.astype(np.float64) * 10 ** (gain_db / 20)).astype(np.float32), FS)
+                    rows.append(f"{scene_name}/{signal}_{label}.wav: SCALED by {gain_db:.1f} dB for playback")
+        # the tail levels, from the diagnostics, for the README
+        diag = scene_dir / "diagnostics_switched.json"
+        r = render_cli.run(binary, "--scene", scene_path, "--mode", "omni", "--diagnostics", diag)
+        if r.returncode == 0:
+            d = _json.loads(diag.read_text())
+            for e in d["emitters"]:
+                ax16 = np.asarray(e["diffuse"]["targetEnergyAx16"], float)
+                sw = np.asarray(e["targetEnergy"], float)
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    delta = 10 * np.log10(ax16 / sw)
+                rows.append(f"{scene_name} emitter {e['id']}: Phase 04 (AX16) minus switched tail level per band (dB): "
+                            + " ".join("n/a" if not np.isfinite(x) else f"{x:+.2f}" for x in delta)
+                            + f"; approximate note U: {'yes' if e.get('approximate') else 'no'}")
+        log(f"phase-05h: rendered {scene_name}")
+    lines = [
+        "SPATIAL SCENE LISTENING PACK - phase-05h",
+        "=" * 60,
+        "",
+        textwrap.fill(
+            "Phase 05h: the late tail's LEVEL is now set from the propagated diffuse energy (AX37) instead of the "
+            "Phase 04 AX16 entries. Every scene folder holds, per signal, <signal>_phase04_ax16.wav (the Phase 04 "
+            "level) and <signal>_switched.wav (the new level). They are NOT loudness-matched: the level difference "
+            "of the tail is the point. Mono omni preview (both ears the same). What to listen for (phase-05h "
+            "listening checklist): (1) in the concentrated-absorption scenes t52_layout4_s0.4, t52_layout4_s1 and "
+            "t52_layout5_s1 the switched tail sounds natural against the early part (no 'reverb pasted on top', no "
+            "tail that is too weak); (2) in the uniform-material room stone_box nothing audible changed; (3) in the "
+            "mixed-material rooms (club, concert_hall_box, ...) any change sounds like a correction, not an artefact; "
+            "(4) no new seam where the early echoes hand over to the tail; (5) club_both_near_0.3 has the listener "
+            "and one source within 0.7 m of a wall (AX44). open_field has only the floor's scattering: nearly dry. "
+            "bras_cr3_ls1_mp2 is the measured BRAS room with the largest real level change. The t52_* rooms render Kuttruff "
+            "Table 5.2's rigid faces at the contract's minimum absorption 0.01 (the references use 0). The reference status "
+            "below says, per room, whether its tail level is gated against a certified reference, reported against "
+            "an uncertified one, or without a reference yet (decision D-H2): the listening judgement is listening "
+            "content, not an accuracy result.", 78),
+        "",
+        "SIGNALS: clicks.wav (sharp clicks), pink_bursts.wav (pink-noise bursts).",
+        "",
+        "TAIL-LEVEL CHANGE PER SCENE (from render_cli --diagnostics; positive = Phase 04 was louder)",
+        "-" * 60,
+        *rows,
+        "",
+        "REFERENCE STATUS PER ROOM (D-H2)",
+        "-" * 60,
+        *(f"{room}: {s}" for room, s in sorted(status.items())),
+        "(gated = certified ref_hybrid reference at two rungs, AX43; reported = one rung, no l_ref; the t52 rooms are "
+        "the (A) cases at alpha = 0 on the rigid faces.)",
+    ]
+    (pack / "README.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 # phase-05f: the same A/B pack, now with the CR4 pair (CR4 accepted in phase-05f).
-SPECIAL_BUILDERS = {"phase-05e": _phase_05e, "phase-05f": _phase_05e, "phase-06": _phase_06}
+SPECIAL_BUILDERS = {"phase-05e": _phase_05e, "phase-05f": _phase_05e, "phase-06": _phase_06, "phase-05h": _phase_05h}
 
 
 def build(out_root: pathlib.Path, phase: str, binary: pathlib.Path, log=print) -> pathlib.Path:
