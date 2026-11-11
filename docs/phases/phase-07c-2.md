@@ -43,7 +43,11 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
 3. **W_max re-derived under (C)** from the background budget: Seat 6's 3 s per emitter, the AX38 (iv)
    load mark, and Table 15.1's 700 ms / 3 s rows (Seats 1 (i), 3 (5), 5). It is not kept at (A). It stays a
    pinned work count, the same on every platform (AX41), re-derived from the C++ cost, never a time cap;
-   AX41 and the AQ10 amendment are updated through `/fix-plan`. (phase-07c condition 3)
+   AX41 and the AQ10 amendment are updated through `/fix-plan`. The W_max raise changes the work: the solve
+   bound's baselines (`solveRefMs`) are re-pinned with the new work and k (`kSolveWarn`) re-derived (D-Q5).
+   Whether the per-evaluation solve time (`nsPerEval` on the GATE line) stays invariant across 07c's moves is
+   checked here; if it moves, the D-Q5 solve baselines are re-pinned and Seats 2 and 3 convened (D-Q5
+   future-debt register, decider file `docs/review/phase-05i/9-decider-r2.md`). (phase-07c condition 3)
 8. **Follow-on checks.** The Phase 12 (ii) preset check (no preset default raises U) is re-run under this
    phase's W_max (Seat 6 (e)). Phase 08 goldens in capped rooms carry a tolerance derived from the
    achieved SE, unless this phase lands before they are frozen (Seat 4). (phase-07c condition 8)

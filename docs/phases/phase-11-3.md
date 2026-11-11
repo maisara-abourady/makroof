@@ -46,7 +46,10 @@ Inside the umbrella's `src/plugin/ui/` (JUCE components, message thread only) (p
    near-rigid rooms can show the indicator at any placement" is the text candidate for that capped case
    (Seat 6 owns the words, within AX39's wording rules).
 3. **"Settling" state** (AX38 (iii)): shown on every instance whose latest change is not yet audible (queued at
-   the gate, building or crossfading; Phase 10's staleness above zero), project load included. (phase-11 scope 9)
+   the gate, building or crossfading; Phase 10's staleness above zero), project load included. How it is drawn
+   (delay, hysteresis, and a scene-level aggregate when several instances share a scene, so the user is not
+   reading N per-instance indicators) is decided here (AX38 (iii) as amended by G1-C1; Seat 6,
+   `docs/review/phase-05i/12-seat6-dg1.md`). (phase-11 scope 9)
 
 ## Out of scope
 

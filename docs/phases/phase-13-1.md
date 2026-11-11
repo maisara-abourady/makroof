@@ -57,7 +57,11 @@ performance budget, per instance (CPU and memory), on the optimised code that ev
    295.2 / 1509.1 ms. RSS per instance at 96 kHz, maximum room: +122.6 MB (Linux only; the pipeline
    keeps the last built and the last submitted `RoomIR`/`IrSet`). Measure memory per instance on all
    three OSes and report it in `docs/perf/v1.md`; any memory budget is a decision for this phase (no
-   number is set here). Input since phase 05b: AX38's working ceiling for the diffuse computation (≤ 1 GB
+   number is set here). Phase-07c-1 condition 12 (f) records the process transient peak with 4 and 8
+   concurrent builds at 100 m, 48 and 96 kHz once the gate is narrowed; a breach of the budget is remedied by
+   a limit on concurrently running builds sized from that record, never an instance cap (PRD FR-3D-5,
+   FR-3D-6, FR-SIM-7, A5), a W_max cut or a range change (D-H1 (v)(d)) (D-G1,
+   `docs/review/phase-05i/13-decider-DG1.md`). Input since phase 05b: AX38's working ceiling for the diffuse computation (≤ 1 GB
    transient per solve, one solve per process; ≤ 128 MB additional resident per instance) and its records.
    (phase-13 scope 1; "13b" is `13-1b` in this split)
 2. **End treatment at the 12 s cap** (Phase 07 D3). Answer first: (Q1) audibility threshold of a
