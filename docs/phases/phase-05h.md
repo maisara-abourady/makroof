@@ -368,22 +368,25 @@ after seeing the gate's result.
       and Windows, at the pinned W_max 3.05 M (no margin taken from W_max), printing per OS and scene the
       min / median / worst of 10 restores, the worst-of-10 solve and 14 × (worst restore + worst solve).
       (a) Where the recorded value at the pinned W_max is ≤ 29.1 s, 14 × (worst-of-10 restore + worst-of-10
-      solve) ≤ 30 s is asserted strictly (Windows cube 29.04 s; the flutter cube on every OS, 7.6–10.6 s).
+      solve) ≤ 30 s is asserted strictly (the flutter cube on every OS, 7.6–10.6 s; the Windows cube was strict at
+      29.04 s until CI run 42942694523 listed it, (b)).
       (b) Every OS/scene recorded > 29.1 s is listed in AX38 4c's defect register (recorded value, median,
       remedy, closing phase) and asserted through the growth bound, median-of-10 restore ≤ 1.10 × the
       recorded median: the cube on Linux (recorded 30.27 s; CI run 42909003931 29.62 s, median 2 043 ms
       pinned; passed 30 s on that run, the (c) warning printed; 30.18 s, growth bound met, on the final run
-      42924781618, so it stays listed and (c)'s removal is phase-05i scope 3's call; closes at phase-07c) and on
-      macOS (recorded 33.40 s; CI run 42909003931 37.37 s, median 2 106 ms pinned; closes at phase-07c
-      condition 9 / 07d, or at Phase 13's release-machine re-check if the runner is the cause); medians
-      re-baselined from CI run 42909003931 (CHANGELOG entry of the baselines). No OS/scene is unasserted. (c)
-      A listed entry that passes 30 s is a job-log warning (printed by the records test; nothing writes
-      `$GITHUB_STEP_SUMMARY`) and leaves the register through `/fix-plan` before the next phase is `done`. (d) A new failure at an unlisted OS/scene, or a listed entry breaking
-      its growth bound, is a defect: no re-run, no W_max cut after pinning, no room-range narrowing, no
-      formulation seam; it enters the register with its remedy, phase-07c forward and then phase-07c §5
-      condition 9 (the unit-decay synthesis off the synchronous restore). This phase may be set `done` with
-      the register entries recorded in §0 row 05h; the macOS and Windows records go to Maisara in the PR
-      (section 2 item 2).
+      42924781618, so it stays listed and (c)'s removal is phase-05i scope 3's call; closes at phase-07c) and
+      on macOS (recorded 33.40 s; CI run 42909003931 37.37 s, median 2 106 ms pinned; closes at phase-07c
+      condition 9 / 07d, or at Phase 13's release-machine re-check if the runner is the cause); and on Windows
+      (recorded 36.73 s on CI run 42942694523, median 2 589 ms pinned; strict 29.04 / 29.50 / 28.57 s on the
+      three earlier runs; listed under (d); closes with the macOS entry); medians re-baselined from CI run
+      42909003931 (CHANGELOG entry of the baselines). No OS/scene is unasserted. (c) A listed entry that
+      passes 30 s is a job-log warning (printed by the records test; nothing writes `$GITHUB_STEP_SUMMARY`)
+      and leaves the register through `/fix-plan` before the next phase is `done`. (d) A new failure at an
+      unlisted OS/scene, or a listed entry breaking its growth bound, is a defect: no re-run, no W_max cut
+      after pinning, no room-range narrowing, no formulation seam; it enters the register with its remedy,
+      phase-07c forward and then phase-07c §5 condition 9 (the unit-decay synthesis off the synchronous
+      restore). This phase may be set `done` with the register entries recorded in §0 row 05h; the macOS and
+      Windows records go to Maisara in the PR (section 2 item 2).
 - [ ] The solve seam: restore, prepare and `reset()` call the diffuse solve through one function (scope 2).
 - [ ] Only if Phase 08 went first (scope 10): binaural goldens re-rendered, binaural W1/W2 per mode with
       the diffuse share and the binaural AX38 (iv) records recorded, phase-08 item 8 re-run, and the

@@ -80,7 +80,10 @@ case-band is gated through `update_goldens.py --extend` with its reason, never b
    42909003931 and 30.18 s (growth bound met) on the final 05h run 42924781618; if 05i's first run passes 30 s
    again, the entry leaves the register through `/fix-plan` before 05i is `done` (AX38 4c's register text and
    `kGateRegister`'s Linux row to the strict form), else it stays listed and the run is recorded; the macOS
-   entry (37.37 s, median 2 106 ms) stays listed with its remedy. The 29.1 s strict / listed rule unchanged; no
+   entry (37.37 s, median 2 106 ms) stays listed with its remedy. The Windows entry, listed from CI run
+   42942694523 (36.73 s, median 2 589 ms; strict 28.6–29.5 s on the three earlier runs), is read the same way:
+   if 05i's runs read it under 30 s again, its removal under (c) is 05i's call; the runner's speed is the
+   recorded likely cause, to be shown at Phase 13 (file 53). The 29.1 s strict / listed rule unchanged; no
    W_max cut, no range change, no seam.
 4. **Phase-05h §2 items 2 and 3 on the CI records**: answered for Maisara in phase 05h on CI run
    42909003931 (decider files 33/36, interrogator files 34/37, Seat 7 file 35): findings F-a (the contended
