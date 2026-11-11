@@ -76,11 +76,12 @@ case-band is gated through `update_goldens.py --extend` with its reason, never b
    finding under the register's form, remedied by phase-07c conditions 9 and 10.
 3. **Restore-gate register (AX38 4c, D-H1 (v)):** the growth-bound baselines were pinned in phase 05h from CI
    run 42909003931 (Linux 2 043 ms, macOS 2 106 ms; CHANGELOG reason) and the register's medians re-baselined.
-   What 05i carries: the Linux listed entry (14 × worst 29.62 s on that run) passes 30 s, so under phase-05h
-   §5 (c) it leaves the register through `/fix-plan` before 05i is `done` (AX38 4c's register text and
-   `kGateRegister`'s Linux row to the strict form), unless the first 05i run shows it above 30 s again, in
-   which case it stays listed and the run is recorded; the macOS entry (37.37 s, median 2 106 ms) stays listed
-   with its remedy. The 29.1 s strict / listed rule unchanged; no W_max cut, no range change, no seam.
+   What 05i carries: the Linux listed entry read 29.62 s (passes 30 s: the §5 (c) warning) on run
+   42909003931 and 30.18 s (growth bound met) on the final 05h run 42924781618; if 05i's first run passes 30 s
+   again, the entry leaves the register through `/fix-plan` before 05i is `done` (AX38 4c's register text and
+   `kGateRegister`'s Linux row to the strict form), else it stays listed and the run is recorded; the macOS
+   entry (37.37 s, median 2 106 ms) stays listed with its remedy. The 29.1 s strict / listed rule unchanged; no
+   W_max cut, no range change, no seam.
 4. **Phase-05h §2 items 2 and 3 on the CI records**: answered for Maisara in phase 05h on CI run
    42909003931 (decider files 33/36, interrogator files 34/37, Seat 7 file 35): findings F-a (the contended
    restore of the reported-set 100 m cube on Linux, worst 4.079 s of 3) and F-b (multi-instance load and

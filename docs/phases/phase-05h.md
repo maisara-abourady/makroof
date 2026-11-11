@@ -367,8 +367,9 @@ after seeing the gate's result.
       (b) Every OS/scene recorded > 29.1 s is listed in AX38 4c's defect register (recorded value, median,
       remedy, closing phase) and asserted through the growth bound, median-of-10 restore ≤ 1.10 × the
       recorded median: the cube on Linux (recorded 30.27 s; CI run 42909003931 29.62 s, median 2 043 ms
-      pinned; passes 30 s: the (c) warning, its removal carried to phase-05i scope 3; closes at phase-07c) and
-      on macOS (recorded 33.40 s; CI run 42909003931 37.37 s, median 2 106 ms pinned; closes at phase-07c
+      pinned; passed 30 s on that run, the (c) warning printed; 30.18 s, growth bound met, on the final run
+      42924781618, so it stays listed and (c)'s removal is phase-05i scope 3's call; closes at phase-07c) and on
+      macOS (recorded 33.40 s; CI run 42909003931 37.37 s, median 2 106 ms pinned; closes at phase-07c
       condition 9 / 07d, or at Phase 13's release-machine re-check if the runner is the cause); medians
       re-baselined from CI run 42909003931 (CHANGELOG entry of the baselines). No OS/scene is unasserted. (c)
       A listed entry that passes 30 s is a job-summary warning and leaves the register through `/fix-plan`
