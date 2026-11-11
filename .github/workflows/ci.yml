@@ -268,8 +268,9 @@ jobs:
 
   # Phase 05h (AX37 (5.4); decider file 50, P05H-QA-T): the open_field finite-floor check at the validation N of
   # 2^23 histories (two renders of 4-6.5 min each per OS: 12.9 / 7.9 / 8.8 min on Linux / macOS / Windows in CI run
-  # 42935789745), in its own three-OS job so the python job keeps its ~10 min; off the critical path (the build jobs
-  # are longer). If it becomes the longest job of a green run on any OS, the clause returns to the board (Seat 5).
+  # 42935789745), in its own three-OS job so the python job returns to ~10-11 min; off the critical path (the build
+  # jobs are longer). If it becomes the longest job of a green run, across all jobs and OSes, the clause returns to
+  # the board (Seat 5).
   open-field-validation:
     name: open-field validation (${{ matrix.name }})
     needs: changes
