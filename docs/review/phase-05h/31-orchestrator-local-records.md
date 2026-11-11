@@ -669,6 +669,80 @@ job of a green run, across all jobs and OSes") names `build (windows)`; the Wind
 and 49.2 min on run 9, so this is runner variance, the matter of file 56, not a code change: recorded, nothing to
 split.
 
+## CI run 42975074716 (2026-11-11, on 04556cd: the RG-1 gate form with review r3's generator FFT-size pin, d7ea48a; `ci ok` green on Linux, macOS, Windows) and nightly 42975078308 (green)
+
+The final run, the evidence of record: every job green; the head (f9bf8d6) has the same CI fingerprint (`9ef97889…`:
+prose only after 04556cd). Same form as run 42964823518 above plus the generator pin (`generator 524288 (pinned
+524288)` / `generator 2097152 (pinned 2097152)` on the three OSes). One GATE line per OS and scene:
+
+```
+05h-records GATE os=Linux scene=cube100_flutter_fallback x14worst=8.08 median=563 fullRebuildMedian=570 solveMedianMs=130.6 nsPerEval=11.45 status=asserted(30s) flutterRef=701 flutterDev=-19.6%
+05h-records GATE os=Linux scene=cube100_lowalpha0.05_s0.3 ratio=3.007 ratioWarnAt=3.660 solveMedianMs=80.5 nsPerEval=6.66 x14worst=24.75 median=1694 growthBound=2275 fullRebuildMedian=1765 status=not-evaluated(runner,flutter-19.6%) trigger=0 warnings=PASSES30S 
+05h-records GATE os=macOS scene=cube100_flutter_fallback x14worst=9.77 median=578 fullRebuildMedian=457 solveMedianMs=82.5 nsPerEval=7.23 status=asserted(30s) flutterRef=484 flutterDev=+19.4%
+05h-records GATE os=macOS scene=cube100_lowalpha0.05_s0.3 ratio=3.424 ratioWarnAt=4.500 solveMedianMs=81.7 nsPerEval=6.76 x14worst=30.27 median=1979 growthBound=1999 fullRebuildMedian=1863 status=reported-only trigger=2172 warnings=OVER30S 
+05h-records GATE os=Windows scene=cube100_flutter_fallback x14worst=14.99 median=1058 fullRebuildMedian=1040 solveMedianMs=149.6 nsPerEval=13.12 status=asserted(30s) flutterRef=737 flutterDev=+43.6%
+05h-records GATE os=Windows scene=cube100_lowalpha0.05_s0.3 ratio=2.979 ratioWarnAt=3.396 solveMedianMs=93.1 nsPerEval=7.70 x14worst=44.83 median=3152 growthBound=2231 fullRebuildMedian=3106 status=not-evaluated(runner,flutter+43.6%) trigger=0 warnings=GROWTH OVER30S
+```
+
+Reading, per the form (AX38 4c, phase-05h §5 (a)–(d)):
+- **Linux**: flutter 563 ms median, −19.6 % off the 701 ms reference (a fast runner again): the low-α absolute
+  median (1 694 ms) is `not-evaluated(runner)`; printed growth 1 694 ≤ 2 275. 14 × worst 24.75 s passes 30 s:
+  the PASSES30S warning (§5 (c); the third consecutive green run under 30 s on Linux after 27.81 s on run
+  42954077281 and 25.29 s on run 42964823518; the entry's removal is phase-05i scope 3's call). Ratio 3.007
+  (warn at 3.660).
+- **macOS**: flutter 578 ms, +19.4 % off 484 (slow): `reported-only` as the form says for macOS until Phase 13;
+  median 1 979 ms inside the printed growth bound 1 999 this time (no GROWTH warning) and 14 × worst 30.27 s
+  (OVER30S warning: the listed entry's recorded state, 33.40 s, until phase-07c); the (d) trigger 2 172 ms not
+  reached (1 979 < 2 172: zero consecutive runs over it, run 42964823518's 2 069 included). Ratio 3.424 (warn at
+  4.500).
+- **Windows**: a slow runner throughout (the build job 62.8 min): flutter 1 058 ms, +43.6 % off 737 (far outside
+  the ±5 % window), so the low-α median 3 152 ms is `not-evaluated(runner)` with the printed GROWTH warning
+  (3 152 > 2 231) and 14 × worst 44.83 s with OVER30S (the listed entry from run 42942694523 recorded 36.73 s).
+  This is the case RG-1 was decided for (file 56: identical code, ×1.57 on the median against run 42964823518's
+  2 005 ms on the same OS); under the pre-RG-1 form this run would have been red on the Windows gate alone. Ratio
+  2.979 (warn at 3.396).
+- Counts for §0 row 05h: asserted 3 of 6 OS/scene gates (the three flutter gates: 8.08 / 9.77 / 14.99 s), not
+  evaluated (runner) 2 (Linux low-α fast, Windows low-α slow), reported-only 1 (macOS low-α); warnings PASSES30S
+  ×1 (Linux), OVER30S ×2 (macOS, Windows), GROWTH ×1 (Windows); macOS trigger count 0. The work pins (W_pilot
+  3 154 338 / W_final 2 547 436 flutter, 1 696 086 / 4 348 889 low-α), realised work 0.9347 / 0.9910, the
+  unit-decay lengths (377 517 / 1 152 000) and the formula's and the generator's FFT sizes (524 288 flutter,
+  2 097 152 low-α at 96 kHz) identical on the three OSes (the REQUIREs green).
+- Solve medians (phase-05i scope 3 (iv)): flutter 130.6 / 82.5 / 149.6 ms (11.45 / 7.23 / 13.12 ns per
+  evaluation), low-α 80.5 / 81.7 / 93.1 ms (6.66 / 6.76 / 7.70 ns per evaluation), Linux / macOS / Windows.
+
+The restore and gate lines behind them:
+
+```
+05h-records restore cube100_flutter_fallback   96 kHz with the solve, 10 runs: min 562 median 563 worst 577 ms; 14 x worst 8.08 s (30 s)
+05h-records restore gate cube100_flutter_fallback   Linux: strict (recorded 10.59 s <= 29.1 s): 14 x worst 8.08 s <= 30 s
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1688 median 1694 worst 1768 ms; 14 x worst 24.75 s (30 s)
+05h-records restore gate cube100_lowalpha0.05_s0.3  Linux: LISTED defect (recorded 14 x worst 30.27 s); 14 x worst now 24.75 s; WARNING PASSES30S: this entry now passes 30 s, remove it through /fix-plan; growth bound asserted in-window after the scene loop (RG-1)
+05h-records restore cube100_flutter_fallback   96 kHz with the solve, 10 runs: min 469 median 578 worst 698 ms; 14 x worst 9.77 s (30 s)
+05h-records restore gate cube100_flutter_fallback   macOS: strict (recorded 7.59 s <= 29.1 s): 14 x worst 9.77 s <= 30 s
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 1713 median 1979 worst 2162 ms; 14 x worst 30.27 s (30 s)
+05h-records restore gate cube100_lowalpha0.05_s0.3  macOS: LISTED defect (recorded 14 x worst 33.40 s); 14 x worst now 30.27 s; WARNING OVER30S (printed, not asserted on hosted runners); growth bound reported only after the scene loop (RG-1)
+05h-records restore cube100_flutter_fallback   96 kHz with the solve, 10 runs: min 1043 median 1058 worst 1071 ms; 14 x worst 14.99 s (30 s)
+05h-records restore gate cube100_flutter_fallback   Windows: strict (recorded 9.65 s <= 29.1 s): 14 x worst 14.99 s <= 30 s
+05h-records restore cube100_lowalpha0.05_s0.3  96 kHz with the solve, 10 runs: min 3088 median 3152 worst 3202 ms; 14 x worst 44.83 s (30 s)
+05h-records restore gate cube100_lowalpha0.05_s0.3  Windows: LISTED defect (recorded 14 x worst 36.73 s); 14 x worst now 44.83 s; WARNING OVER30S (printed, not asserted on hosted runners); growth bound asserted in-window after the scene loop (RG-1)
+```
+
+The rest of the Release benchmark step as on run 42964823518: `agree-full gated: 410 of 560 AX43 case-bands gated
+(150 reported, reference pending); 72 of 72 AX45 case-bands gated`, 0 failures; AX46 per band "pooled over 4 of 6
+classes", means −0.134 … −0.144 % on the first bands, no heterogeneity label; `100% tests passed` out of 223 per
+OS; pluginval strictness 10 passed on the three OSes (`All tests passed (15599 / 15597 / 15597 assertions in 13
+test cases)`, Linux / macOS / Windows; the artifacts `pluginval-linux/macos/windows`); `AU VALIDATION SUCCEEDED`
+on macOS. Contended restore at the gated low-α cube (3 runs): worst 3.688 s Linux, 2.370 s macOS, 3.163 s
+Windows. Full rebuilds at 100 m / 96 kHz: low-α s 0.3 1.77 / 1.86 / 3.11 s medians, flutter 0.57 / 0.46 / 1.04 s;
+every room fixture < 1 s at 48 kHz on Linux and macOS, Windows' low-α cubes 1.42 s at 48 kHz on this slow runner;
+transient RSS delta 156 MB on Linux (n/a elsewhere).
+
+Job durations: `ci ok` wall clock 70.7 min set by `build (windows)` (62.8 min; the same slow spell the gate
+line shows); build (linux) 33.0, build (macos) 37.4; `open-field validation` 14.1 / 10.4 / 12.5 min and `python
+tools` 7.8 / 9.1 / 8.7 min (Linux / macOS / Windows). P05H-QA-T's trigger names `build (windows)` again: runner
+variance (32.6 / 49.2 / 58.1 / 62.8 min on runs 11 / 9 / 12 / 13 for the same code path), recorded, nothing to
+split. Nightly 42975078308: `BRAS validation (linux)` green.
+
 ## Review r3 (file 74) major 1: the generator's FFT size pinned; local run (Release, this 4-core Linux box with the reviewer's pytest running; 2026-11-11; `records_r3.log`)
 
 `BandNoiseGenerator::fftSize()` (src/sim/tail/NoiseTail.h, one accessor) is asserted beside the formula's value in

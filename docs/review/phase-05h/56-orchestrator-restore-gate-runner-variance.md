@@ -44,6 +44,9 @@ runner-speed reference: its solve is the pilot only, no cap, the same W_max rule
 | 42964823518 (67f13f3, RG-1 form, green) | Linux | 1698 / 1759 / 1806 | 25.29 (not evaluated: flutter −16.8 %) | 583 | 1707 | 3.02 |
 | 42964823518 | macOS | 1926 / 2069 / 2273 | 31.82 (reported only; GROWTH, OVER30S; < 2 172) | 533 | 1878 | 3.88 |
 | 42964823518 | Windows | 1989 / 2005 / 2108 | 29.51 (asserted in-window: 2 005 ≤ 2 231) | 744 | 2020 | 2.70 |
+| 42975074716 (04556cd, RG-1 form + r3 pin, green) | Linux | 1688 / 1694 / 1768 | 24.75 (not evaluated: flutter −19.6 %) | 563 | 1765 | 3.01 |
+| 42975074716 | macOS | 1713 / 1979 / 2162 | 30.27 (reported only; OVER30S; 1 979 ≤ 1 999, < 2 172) | 578 | 1863 | 3.42 |
+| 42975074716 | Windows | 3088 / 3152 / 3202 | 44.83 (not evaluated: flutter +43.6 %; GROWTH, OVER30S printed) | 1058 | 3106 | 2.98 |
 
 (The macOS flutter median of the records run is read from file 31's 14 × worst line, 7.52 s, as a worst, not a
 median: the ratio for that row is approximate.) Within one OS the low-α restore median moves by a factor 1.63 on
@@ -115,3 +118,13 @@ Appended to the table above (the rows marked 42954077281; full-rebuild medians n
 sat inside its bound on normal runners (Linux 27.81 s, macOS 29.70 s, Windows 19.99 s, all three printing the
 §5 (c) 'passes 30 s' warning). Windows' low-α median 1 341 ms against 2 589 ms two runs earlier (×1.93) widens
 the observed spread; the ratios stay in their bands (Linux 3.22, macOS 3.93, Windows 2.75).
+
+## Added 2026-11-11: CI run 42975074716 (04556cd, the RG-1 form with the generator FFT-size pin) green on three OSes
+
+Appended to the table above. The run RG-1 was decided for arrived: Windows' runner was slow throughout (the build
+job 62.8 min; flutter +43.6 % off its reference), its low-α median 3 152 ms (×1.57 against run 42964823518's
+2 005 ms on identical code) and 14 × worst 44.83 s; the gate printed GROWTH and OVER30S and asserted nothing
+runner-dependent there, and the run stayed green with the W pins, the FFT sizes and the three flutter gates
+asserted. Linux fast again (flutter −19.6 %, 24.75 s: PASSES30S for the third green run running); macOS inside
+its printed bound (1 979 ≤ 1 999) with 30.27 s. The spread on file now reaches ×2.35 on Windows' low-α median
+(1 341 → 3 152 ms) across green runs of the same code path.
