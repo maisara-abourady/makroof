@@ -161,3 +161,15 @@ Reason: phase 05h, DECISION RG-1 (decider files 64/66/68/70, interrogator files 
 Reason: phase 05i scope 1 (D-H2 (a)/(c), decider file 19; AX43 (c)): the 30 BRAS pairs' outer bands (250 Hz and 4 kHz, then 125 Hz and 8 kHz, 63 Hz last) referenced at the 2.5 and 1.25 m rungs by tools/validation/compute_phase05i_bras_references.py (phase05b.step_r1's recipe per band column; its --check reproduces the committed R1 500 Hz values in CR2 and CR3 exactly; provenance in tools/validation/data/phase05i_bras_references.provenance.json); every one of the 150 case-bands certifies (l_ref <= 0.38 %) and is gated under rule G-a: AX43 560 of 560, AX45 72 of 72; no gated reference value changed; in these 150 case-bands the reported, never-gated single-rung value (ref_coarse, from phase05_scope6.json: the full ref_hybrid with air in the kernel at one patch size min(dims)/2 = 1.45 / 2.20 / 2.47 m, uncertified) is replaced by the two certified rungs (up to 0.33 % apart, the size of l_ref; the scope-6 values stay in phase05_scope6.json); the 63 Hz column is gated as an agreement with ref_hybrid, never claimed as a room validation below the Schroeder frequency
 
 - `phase05h_agreement_reference`: extended (150 case-bands promoted to gated: the 30 BRAS pairs at 63, 125, 250 Hz, 4 and 8 kHz; no tolerance, N or case changed)
+
+## 2026-11-11 (05i, Q1)
+
+Reason: phase 05i, decider files 5/9 (Q1), interrogator files 6/10 (SURVIVES): the AX38 4c restore gate's Linux and Windows low-alpha register entries close under rule (c) on phase 05i's runs (CI run 43007183782: 14 x worst 27.61 s and 28.74 s, both in-window, growth bound asserted and met; the PR's run of record confirms it, else the entry stays listed). Constants in tests/unit/test_diffuse_records.cpp (not a golden): `listed` false for those two entries, which changes only the printed text; no assertion changes (the hosted-runner form stands until Phase 13).
+
+- `(records-test constants)`: the Linux and Windows low-alpha entries closed under AX38 4c (c), `listed` false, print only (no golden file changed)
+
+## 2026-11-11 (05i, D-Q5)
+
+Reason: phase 05i, DECISION D-Q5 (decider file 9, Seat 5 file 8, interrogator file 10: SURVIVES): the AX38 4c restore gate's per-scene solve-median bound. `kSolveWarn` 1.20 x the scene's in-window solve baseline per OS (`solveRefMs`: Linux 80.9 / 131.2 ms and macOS 83.7 / 102.7 ms from run 43007183782; Windows 90.4 / 144.4 ms from runs 42964823518 and 43007183782; low-alpha / flutter), PROVISIONAL (n = 1-2), printed as `SOLVE` in the scene's `warnings=`, never asserted; re-derived from >= 3 in-window runs at the 07c re-pin.
+
+- `(records-test constants)`: solve-median baselines (in-window runs 42964823518 Windows, 43007183782 all OSes) and `kSolveWarn` 1.20, PROVISIONAL (no golden file changed)
