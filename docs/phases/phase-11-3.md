@@ -45,8 +45,8 @@ Inside the umbrella's `src/plugin/ui/` (JUCE components, message thread only) (p
    shows, with the cap wording), `medium_room` +7 dB. Seat 7's report sentence "very long, very narrow or
    near-rigid rooms can show the indicator at any placement" is the text candidate for that capped case
    (Seat 6 owns the words, within AX39's wording rules).
-3. **"Settling" state** (AX38 (iii)): shown on every instance waiting at the diffuse-solve gate, project
-   load included. (phase-11 scope 9)
+3. **"Settling" state** (AX38 (iii)): shown on every instance whose latest change is not yet audible (queued at
+   the gate, building or crossfading; Phase 10's staleness above zero), project load included. (phase-11 scope 9)
 
 ## Out of scope
 

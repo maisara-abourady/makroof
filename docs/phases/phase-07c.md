@@ -79,7 +79,7 @@ offline thread per host.
 
 Moved verbatim to [phase-07c-1](phase-07c-1.md) (D-C1–D-C3, R1–R3; see "Where the original items went").
 
-## 5. Scope — conditions 1–11 (conditions 1–8: decider file 47 §4 (iii); condition 9: D-H1 (v) / H1-F2, decider file 19; conditions 10 and 11: D-H3 (e) / H3-F5, decider files 20, 25, 27)
+## 5. Scope — conditions 1–12 (conditions 1–8: decider file 47 §4 (iii); condition 9: D-H1 (v) / H1-F2, decider file 19; conditions 10 and 11: D-H3 (e) / H3-F5, decider files 20, 25, 27; condition 12: D-G1, phase 05i, decider file 13)
 
 The diffuse solve moves off the synchronous restore, prepare and `reset()`.
 1. **Timing** (section 3): before the first public release, with its W_max raise in one golden round;
@@ -87,11 +87,12 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()`.
 
 Conditions 2, 4, 5, 6, 7, 9, 10 and 11 are in [phase-07c-1](phase-07c-1.md) (9–11 added by phase 05h session 2,
 after the split: D-H1 (v) / H1-F2 and D-H3 (e) / H3-F5; condition 10 is 07c-1's first step); conditions 3 and 8 in
-[phase-07c-2](phase-07c-2.md); condition 1 is shared with phase-07c-2 (verbatim in both).
+[phase-07c-2](phase-07c-2.md); condition 1 is shared with phase-07c-2 (verbatim in both). Condition 12 (D-G1, added
+2026-11-11 by phase 05i: the gate narrowed to the solve) is in [phase-07c-1](phase-07c-1.md).
 
 ## 6. Acceptance criteria — automated
 
-Moved verbatim: A1–A5, A7, A8 to [phase-07c-1](phase-07c-1.md); A6, A9 to [phase-07c-2](phase-07c-2.md); A10, A11 (conditions 10 and 11, added by phase 05h session 2) are in [phase-07c-1](phase-07c-1.md).
+Moved verbatim: A1–A5, A7, A8 to [phase-07c-1](phase-07c-1.md); A6, A9 to [phase-07c-2](phase-07c-2.md); A10, A11 (conditions 10 and 11, added by phase 05h session 2) and A12 (condition 12, added 2026-11-11 by phase 05i: D-G1) are in [phase-07c-1](phase-07c-1.md).
 
 ## 7. Listening checklist (Maisara)
 
@@ -122,7 +123,7 @@ checklist, contractor focus, AX/ledger links and the "Raise with Maisara" item i
 
 | id | title | lead seat | size | depends on | ships | owns (automated) |
 |---|---|---|---|---|---|---|
-| [07c-1](phase-07c-1.md) | Diffuse solve off the synchronous paths | Seat 5 (Deadline keeper) | M (set by the split on conditions 2, 4–7, before conditions 9–11 were added; not re-sized) | 05h, 07 `done` | restore, prepare and `reset()` no longer run the diffuse solve; the real-time path adopts each solved snapshot by atomic swap with an AQ4 crossfade, starting from the interim level; offline waits and stays bit-identical; the restore gate re-scoped; W_max still at (A) | A1, A2, A3, A4, A5, A7, A8; conditions 9–11 (the unit-decay synthesis off the restore, the `reset()` half, the host trace build) |
+| [07c-1](phase-07c-1.md) | Diffuse solve off the synchronous paths | Seat 5 (Deadline keeper) | M (set by the split on conditions 2, 4–7, before conditions 9–11 were added; not re-sized) | 05h, 07 `done` | restore, prepare and `reset()` no longer run the diffuse solve; the real-time path adopts each solved snapshot by atomic swap with an AQ4 crossfade, starting from the interim level; offline waits and stays bit-identical; the restore gate re-scoped; W_max still at (A) | A1, A2, A3, A4, A5, A7, A8; conditions 9–12 (the unit-decay synthesis off the restore, the `reset()` half, the host trace build, the gate narrowed to the solve) |
 | [07c-2](phase-07c-2.md) | W_max re-derived under (C), one golden round | Seat 2 (Engine architect) | S | 07c-1 `done` (and, through it, 05h, 07) | W_max raised from the (A) restore budget to the (C) background budget, pinned and equal on the three OSes; goldens updated once; Seat 1's "now" 2 (capped-class SE, §0) repaid; Phase 12 (ii) re-run | A6, A9 |
 
 Order 07c-1 → 07c-2 (forced: under (A), W_max is sized to the restore convention (H1-F1; 'restore watchdog' in the convening round's wording), so it cannot be raised until the solve
@@ -130,7 +131,7 @@ is off the restore path; convening round, Map 07c).
 
 ## Where the original items went
 
-Labels: A1–A9 are the §6 criteria in file order (A10, A11 added 2026-11-10/11 by phase 05h session 2); L1–L3 the §7 items; F1–F6 the §8 focus items split at its
+Labels: A1–A9 are the §6 criteria in file order (A10, A11 added 2026-11-10/11 by phase 05h session 2; A12 added 2026-11-11 by phase 05i); L1–L3 the §7 items; F1–F6 the §8 focus items split at its
 semicolons; T1–T3 the §3 bullets; R1–R3 the §4 researcher questions.
 
 | original item | goes to |
@@ -154,6 +155,7 @@ semicolons; T1–T3 the §3 bullets; R1–R3 the §4 researcher questions.
 | A1, A2, A3, A4, A5, A7, A8 | 07c-1 (A4's test keeps running in CI through 07c-2) |
 | A6, A9 | 07c-2 |
 | A10, A11 (conditions 10 and 11) | 07c-1 |
+| condition 12, A12 (added 2026-11-11 by phase 05i: D-G1) | 07c-1 |
 | L1 | 07c-2 |
 | L2, L3 | 07c-1 |
 | F1, F2, F3, F4, F5 | 07c-1 |

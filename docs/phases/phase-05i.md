@@ -74,6 +74,14 @@ case-band is gated through `update_goldens.py --extend` with its reason, never b
    of 10, three OSes, printed once as a record, never a CHECK; H1-F1's convention stands on the condition
    the gate measures (builder idle) and is not read as met for this case; a record above 2.143 s is a
    finding under the register's form, remedied by phase-07c conditions 9 and 10.
+   **Gate-wait split (D-G1, decider file 13):** in record (d), a test thread polls
+   `DiffuseSolveGate::shared()`'s `waiting()` (Synchronous and Offline) at about 1 ms during each of the host
+   calls and reads `solvesCompleted()` around each call (`measureGateWait` in
+   `tests/unit/test_diffuse_records.cpp`), and prints queue(Synchronous), queue(Offline), the remainder (host
+   call − queue; it includes the pipeline's own quiesce and build), gate turns completed and the maximum poll
+   gap as resolution. This is the before-remedy baseline of AX38 (i) register entry G-1, re-run unchanged by
+   phase-07c-1 condition 12. Test-side only, no `src/` change, printed, never asserted; it lands before this
+   phase's PR is opened.
 3. **Restore-gate register (AX38 4c, D-H1 (v), RG-F1):** the gate runs in the RG-F1 form (phase-05h §5
    'Blocking'): work pins and the flutter 30 s asserted; the low-α absolute median ≤ 1.10 × baseline asserted
    on Linux and Windows only, inside a ±5 % flutter window; everything else printed with WARNING. Baselines
@@ -88,8 +96,8 @@ case-band is gated through `update_goldens.py --extend` with its reason, never b
    stay listed with the remedy phase-07c conditions 9–10; (iii) two consecutive macOS runs with the low-α
    median above 2 172 ms are a (d) defect, remedy named, through `/fix-plan` (the trigger re-derived at the
    07c re-pin); (iv) the per-scene solve median accrues per run; after ≥ 3 runs the orchestrator proposes its
-   bound k from the spread through `/fix-plan`; (v) the baselines, the ±5 % window and k are re-derived from ≥
-   3 in-window runs at the 07c re-pin (one run PROVISIONAL, printed not asserted); never a red or
+   bound k from the spread through `/fix-plan` (set in 05i: AX38 4c, decider file 9); (v) the baselines, the
+   ±5 % window and k are re-derived from ≥ 3 in-window runs at the 07c re-pin (one run PROVISIONAL, printed not asserted); never a red or
    out-of-window run as a baseline. The runner's speed remains the recorded likely cause of the listed
    entries, to be shown at Phase 13 (AX41).
 4. **Phase-05h §2 items 2 and 3 on the CI records**: answered for Maisara in phase 05h on CI run
@@ -114,8 +122,8 @@ case-band is gated through `update_goldens.py --extend` with its reason, never b
       'within' in every band and the catch printed; the report prints '<gated> of 560' and '<gated> of 72'
       with the new counts; no reference value edited by hand; every unfinished reference listed with its
       owner phase.
-- [ ] The AX38 (iv) records of scope 2 and the K-e12 record printed in the CI job summary on three OSes,
-      each with its condition stated; none asserted.
+- [ ] The AX38 (iv) records of scope 2 (with the gate-wait split) and the K-e12 record printed in the CI job
+      summary on three OSes, each with its condition stated; none asserted.
 - [ ] The restore gate (AX38 4c) in its register form with the baselines pinned (scope 3), green on three
       OSes; the register entries unchanged in substance (recorded value, median, remedy, closing phase).
 - [ ] The AX41 lists (scope 5) match the D5 golden and the reports test.
