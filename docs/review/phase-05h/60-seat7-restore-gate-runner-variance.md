@@ -1,0 +1,32 @@
+# 60 — Seat 7 (founder): the restore-gate register form against shared-runner variance (file 56, B7)
+
+phase-05h (session 2). Verbatim seat output (the orchestrator saved it). Its (x) cell 0 / 1 covers the decider's (x′) = (x) + the ratio bound, on the stated conditions (one summary line per run; Phase 13 named; `if: always()`).
+
+SEAT 7 POSITION
+
+**Assumptions that fell** (as in my D-H1 cell): subscription product, team = Maisara + a contracted engineer, no customer yet, repository public (the orchestrator's fact; my earlier `[Hyp]` resolved). My measures here are contractor sessions, manual CI runs and the public CI record. Corpus not needed (no acoustic claim).
+
+**1. Reading.** How the AX38 4c restore gate is asserted on shared runners whose speed moves ×1.63 on identical code (file 56 table). Cues: "the founder's hour is the scarcest asset" (R1); criterion 7, visible durability: a public repo whose checks go red on identical code is exactly the signal AI1's buyer scans for; "cost it against doing nothing, per year" (C4).
+
+**2. Ranking.** Prefer (x) and (f); can live with (b) with derived k and a multi-run baseline, (e); can live with (c) only as a one-step bridge; (a) I rate 2/2, not veto: it breaks nothing in my never-trade list (licence, price, public reasoning), so Seat 5's veto stands on its own ground, not mine. (d) is not 05h's; answered below for Phase 13.
+
+**3–4. Tension now / later.**
+- **(a) 2 / 2.** Now: each red is, under (d), a `/fix-plan` round (file 53/54: orchestrator file, interrogator, plan-editor brief, test and CHANGELOG edit ≈ half a session `[Inferred]`), and a repeat break has no step at all (file 56), so it becomes a board loop like this one (≈ a session). At 2 reds in 5 runs and ≈ 6–8 manual runs across the 05h/05i/07b/07c PRs `[Inferred]`, that is 2–3 sessions of tax buying no information. Each red also removes pluginval/auval for that OS (Seat 5, from ci.yml), so `ci ok` is unattainable on a slow run and 05h cannot be `done` under CLAUDE.md step 6 except by luck. Later: the Windows baseline pinned from the slow run (2 848 ms bound, 38–48 % above normal medians, file 54) means one OS is effectively unasserted while another is red half the time: an instrument that reads differently per OS on the public record. Undo: a plan/test edit (cheap) — which is (b)/(f)/(x).
+- **(b) 1 / 1 with Seat 5's condition** (mean-of-runs baseline, k outside the observed ±8 % spread), else **2 / 1**: Seat 5's arithmetic shows a one-run baseline × 1.10 would already have been red on run 42935789745. Cost: the same one-time edit as every non-(a) option, ≈ half a session now, re-pinned at 07c (owed under every option).
+- **(c) 1 / 2.** Same edit now; later a re-pin at every slower runner (a plan edit each) and a gate that cannot fire, which on a public repo is a testing record that says less than it shows (criterion 7).
+- **(e) 1 / 2.** Honest, but "not evaluated" on about half the runs (Seat 5's count) is a line a reviewer learns to skip; and it hides the global-slowdown case (Seat 5).
+- **(f) 1 / 1.** Slightly more code than (b); every run prints both lines; the "not evaluated" count in §0 must be explained once, not per PR. Condition: k and the band derived, not 1.10 by analogy (decider §1).
+- **(x) 0 / 1.** Cheapest edit; matches AX38 (i)'s existing rule for the quiesce record ("a print, never a CHECK … on shared runners"), so no new seam in the plan's logic. Later 1: a record nobody reads; condition: one machine-readable summary line per run and Phase 13's strict re-check named as the assertion's home.
+- **All non-(a) options:** `if: always()` on pluginval/auval (Seat 5) is a zero-cost condition I want on every option: it keeps the host-conformance evidence whatever the gate does.
+
+**(d) for the Phase 13 record (question ii).** Larger runners need a Team/Enterprise org plan and are not free for public repos (F18 `[Observed]`); minutes Linux 8-core $0.022, Windows 8-core $0.042, macOS 5-core M2 Pro $0.102. At ≈ 30 min per OS build `[Hyp]` that is ≈ $5 per three-OS run; at 20 runs a month ≈ $100 plus the plan (≈ $4/user/month `[Hyp]`, researcher to confirm): a standing ≈ €100–130/month before any revenue, ≈ 7 subscribers' gross at the PRD's $10–20 tier, forever — and the macOS larger runner is still a shared VM, so the variance is shifted, not removed. A self-hosted runner: hardware one-off (Mac mini ≈ €600–700 `[Hyp]`) plus a security line on a public repo (fork PRs can run code on your machine; GitHub's own guidance warns against it `[Hyp → researcher]`) and maintenance. **Sustainable for one founder only as the "release machines" of AX41 used by hand at each release — a one-off purchase, no standing cost (criterion 2) — not as a standing CI runner.** Phase 13's re-check is already a person's measurement on real machines; (d) buys nothing it needs.
+
+**(iii) Public wording.** Confirmed: nothing customer-facing changes; the Phase 13 compatibility note on large rooms (AX38) is untouched. Objection, small: the test's printed lines, `kGateRegister` comments and the CI history **are** public record. Keep "runner speed is the likely cause, to be shown at Phase 13" conditional everywhere (interrogator Fix C), and never a run of red checks on identical code.
+
+**5. Evidence.** Variance and red rate: file 56 `[Observed, CI]`. Step order, masking: Seat 5 file 57 from ci.yml `[Observed]`. Runner prices and plan gate: researcher F18, F20 `[Observed]`. Round cost of a (d) listing: files 53/54 `[Observed]`; session estimates `[Inferred]`. Team plan price, build minutes, Mac mini price, self-hosted-on-public-repo guidance: `[Hyp]` → researcher.
+
+**6. Conditions.** (a) → 1 now: the gate in its own CI job (or `if: always()` on pluginval/auval) and a written step for a repeat break; not reachable to 1 later while an absolute CHECK sits on a shared runner. (b) → 1/1: multi-run baseline, derived k. (c) → later 1: one re-pin at most, then (x). (e) → later 1: beside the deterministic pins, count in §0.
+
+**7. Hand-offs.** k, band, `kGateRegister` fields → Seat 5. The ratio's blind spot → Seats 2, 3. Whether (x)/(f) is a reading or amendment of D-H1 (v) → decider. Buying release machines → Maisara (a person's money).
+
+**8. Premortem.** If (a) stands: the 05i PR sits red on one OS for a week while a board loop re-reads the same rule, the contractor reviews a PR with no pluginval evidence on that OS, and a stranger reading the public Actions tab sees red checks on identical code — the one-shot signal — before the product has a page.
