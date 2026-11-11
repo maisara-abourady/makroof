@@ -968,8 +968,9 @@ constexpr double kPerRestoreBudgetMs = 30000.0 / 14.0;
 // AX38 (iv), phase-05i scope 2 and scope 4: 1, 4 and 8 instances at the AQ10 room and at the gated 100 m
 // low-alpha cube, 48 and 96 kHz.
 // (a) Load: the instances prepared and restored one after another on one host thread (as a host loads a
-//     project); prepare() and restore() timed per instance (scope 4: the per-instance restore times inside
-//     the (iv) loop, file 36 Q4; phase-07c condition 7 does not exist yet).
+//     project; prepare() builds the default scene synchronously, restore() then builds the project's scene,
+//     and both are in the load time, as in a host); prepare() and restore() timed per instance (scope 4: the
+//     per-instance restore times inside the (iv) loop, file 36 Q4; phase-07c condition 7 does not exist yet).
 // (b) Staleness when the instances are automated together, at two steps applied to every instance at once:
 //     a room-size step (width, depth and height each -1 m) and a joint step (the same room-size step plus the
 //     listener +0.5 m in x); from the change to each instance's builder idle (the gate serialises the
@@ -1016,8 +1017,9 @@ TEST_CASE("records: AX38 (iv) per-instance restore, room-size and joint stalenes
                 }
                 const double load = ms(t0, Clock::now());
                 std::printf(
-                    "05i-records (iv) %-26s %6.0f Hz, %d inst: load until the last is audible %.0f ms; "
-                    "per instance (load order) prepare [%s] ms, restore [%s] ms\n",
+                    "05i-records (iv) %-26s %6.0f Hz, %d inst: load until the last is audible %.0f ms "
+                    "(prepare's default-scene build + restore, per instance); per instance (load order) "
+                    "prepare [%s] ms, restore [%s] ms\n",
                     label.c_str(), fs, instances, load, joinMs(prepMs).c_str(), joinMs(restMs).c_str());
                 // (b) room-size step, then the joint step, on every instance at once.
                 for (const bool joint : {false, true})
@@ -1125,11 +1127,12 @@ TEST_CASE("records: AX38 (iv) per-instance restore, room-size and joint stalenes
                     stop.store(true);
                     churn.join();
                     std::printf("05i-records (iv) %-26s %6.0f Hz, %d inst: worst host-thread wait of one "
-                                "instance while the other %d rebuild without pause (room size stepping 1 m "
+                                "instance while %d other%s rebuild without pause (0: uncontended baseline; "
+                                "room size stepping 1 m "
                                 "every 50 ms), 3 runs: prepare %.0f ms, restore %.0f ms, offline switch + "
                                 "first block after a room-size edit %.0f ms\n",
-                                label.c_str(), fs, instances, instances - 1, spread(prep).max,
-                                spread(rest).max, spread(offl).max);
+                                label.c_str(), fs, instances, instances - 1, instances == 2 ? "" : "s",
+                                spread(prep).max, spread(rest).max, spread(offl).max);
                 }
             }
 }
@@ -1261,6 +1264,7 @@ TEST_CASE("records: K-e12 restore with a room edit in flight at the gated 100 m 
         const double rebuild = ms(tb, Clock::now());
         std::uniform_real_distribution<double> u(0.0, rebuild);
         std::vector<double> waits, delays;
+        std::vector<int> inFlight;
         for (int i = 0; i < kRuns; ++i)
         {
             pipe.beginRestore();
@@ -1269,6 +1273,10 @@ TEST_CASE("records: K-e12 restore with a room edit in flight at the gated 100 m 
             edit(static_cast<float>(1 + (i % 2)));
             std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(dl));
             const auto v = freshValues();
+            // Whether the edit's build was still in flight when the restore landed (phase-05i §3.2: H1-F1's
+            // builder-idle condition is not read as met here; a run with no build in flight is printed as
+            // such).
+            inFlight.push_back(pipe.builderIdle() ? 0 : 1);
             const auto t0 = Clock::now();
             pipe.beginRestore();
             pipe.restore(sc, v);
@@ -1287,9 +1295,10 @@ TEST_CASE("records: K-e12 restore with a room edit in flight at the gated 100 m 
                 ? "FINDING (worst above the budget; register form, remedy phase-07c conditions 9-10)"
                 : "within");
         for (int i = 0; i < kRuns; ++i)
-            std::printf(
-                "05i-records K-e12 os=%s %-26s run %2d: restore at %.0f ms of %.0f -> host thread %.0f ms\n",
-                kOsName, key, i, delays[static_cast<std::size_t>(i)], rebuild,
-                waits[static_cast<std::size_t>(i)]);
+            std::printf("05i-records K-e12 os=%s %-26s run %2d: restore at %.0f ms of %.0f (build in flight: "
+                        "%s) -> host thread %.0f ms\n",
+                        kOsName, key, i, delays[static_cast<std::size_t>(i)], rebuild,
+                        inFlight[static_cast<std::size_t>(i)] ? "yes" : "no",
+                        waits[static_cast<std::size_t>(i)]);
     }
 }
