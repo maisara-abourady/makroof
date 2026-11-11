@@ -1,8 +1,9 @@
 // Phase 05h, scope 6 and D-H1 (AX38 4b / 4c / (iv), AX41, Seat 1's clause (d)): the records of the switched
 // build. Hidden: CI runs them from the Release build with "[benchmark]". Recorded, not gated, except where
-// the plan pins a gate (docs/review/phase-05h/, decision D-H1): the gated-scene flags, the realised-work
-// assertion and the restore block are asserted in "[diffuse-gate-records]" once D-H1's constants are in the
-// code.
+// the plan pins a gate (docs/review/phase-05h/, decisions D-H1 and RG-1): the gated-scene flags, the
+// realised-work ratio, the W_pilot / W_final pins, the unit-decay length and synthesis FFT size per gated
+// scene, the flutter scene's 14 x worst-of-10 restore <= 30 s and, in a +-5 % flutter window on x64, the
+// low-alpha restore's growth bound are asserted in "[diffuse-records]"; everything else is printed.
 #include "DiffuseTestUtil.h"
 #include "PipelineTestUtil.h"
 
@@ -50,8 +51,9 @@ Spread spread(std::vector<double> v)
 }
 
 // Register of the AX38 4c restore gate at the pinned W_max 3.05 M (D-H1 (v), file 19; recorded values from
-// docs/review/phase-05h/1-orchestrator-cpp-costs.md §4, 96 kHz, worst-of-10 restore + worst solve; medians to
-// be re-baselined from the first three-OS run, O18). Only the two gated builds have entries.
+// docs/review/phase-05h/1-orchestrator-cpp-costs.md §4, 96 kHz, worst-of-10 restore + worst solve; the
+// baselines are the means of the measured CI runs named in tests/golden/CHANGELOG.md, RG-1). Only the two
+// gated builds have entries.
 #if defined(_WIN32)
 constexpr const char* kOsName = "Windows";
 #elif defined(__APPLE__)
@@ -388,16 +390,20 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                 const sim::ism::OctaveFilterbank fb(96000.0);
                 const std::size_t len = sim::tail::unitDecayLength(sim::tail::tailLengthS(decay), 96000.0);
                 const std::size_t n = sim::Fft::nextPowerOfTwo(len + 2 * fb.maxHalfLength());
+                // The generator's own transform size, not only the formula's value (review r3 major 1): a
+                // change to how the synthesis pads or sizes its FFT breaks the pin.
+                const sim::tail::BandNoiseGenerator generator(fb, len);
+                const std::size_t nGenerator = generator.fftSize();
                 const bool flutter = std::string(key) == "cube100_flutter_fallback";
                 const std::size_t lenPinned = flutter ? 377517u : 1152000u;
                 const std::size_t nPinned = flutter ? kFftSizeFlutter96k : kFftSizeLowAlpha96k;
                 std::printf(
                     "05h-records work pin %-26s unit decay %zu samples (pinned %zu); synthesis FFT size "
-                    "%zu (pinned %zu)\n",
-                    key, len, lenPinned, n, nPinned);
+                    "%zu, generator %zu (pinned %zu)\n",
+                    key, len, lenPinned, n, nGenerator, nPinned);
                 REQUIRE(len == lenPinned);
-                if (nPinned != 0)
-                    REQUIRE(n == nPinned);
+                REQUIRE(n == nPinned);
+                REQUIRE(nGenerator == nPinned);
                 // RG-1 solve print (no bound until >= 3 runs give its spread, through /fix-plan): the diffuse
                 // solve alone at the shipping rule, median of 5, and its ns per image evaluation over
                 // W_pilot + W_final of both emitters.
@@ -446,8 +452,8 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
         // AX38 4c blocking restore gate in the RG-1 form (decider files 64/66, interrogator 65/67; D-H1 (v)
         // amended for Maisara): on hosted runners the flutter scene's 14 x worst <= 30 s is asserted on every
         // OS; the low-alpha entry's growth bound is asserted in a +-5 % flutter window on x64 after the scene
-        // loop (the flutter scene runs last), everything else is printed with WARNING. A broken assertion is
-        // a defect under (d): no re-run, no cut, no range change, no seam.
+        // loop (the GATE block runs after both scenes, whatever their order), everything else is printed with
+        // WARNING. A broken assertion is a defect under (d): no re-run, no cut, no range change, no seam.
         if (const auto* entry = gateRegisterEntry(key))
         {
             const double fourteen = 14.0 * rs.max / 1000.0;

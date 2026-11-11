@@ -71,6 +71,8 @@ public:
     BandNoiseGenerator(const ism::OctaveFilterbank& filterbank, std::size_t length);
 
     std::size_t length() const noexcept { return length_; }
+    // Size of the synthesis transform (AX38 4c's runner-independent work pin, RG-1).
+    std::size_t fftSize() const noexcept { return fft_.size(); }
     UnitDecay make(const RoomDecay& decay, std::uint32_t seed, std::uint32_t emitterStream) const;
 
 private:
