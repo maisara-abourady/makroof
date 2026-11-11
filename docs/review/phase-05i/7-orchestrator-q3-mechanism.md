@@ -1,5 +1,12 @@
 # 7 — Orchestrator: facts for the interrogator's rebuttal question 5 (Q3 mechanism) and question 3's R + 2P path
 
+**CORRECTION (2026-11-11, after interrogator file 10, P05I-47; verified by the orchestrator):** the first bullet and
+the 'Reading' paragraph below are **wrong**. `ScenePipeline::solveAndBuild` (`src/plugin/core/ScenePipeline.cpp`
+L115–133) constructs a `DiffuseSolveGate::Scope` before `sim::buildRoomIR(scene, options)` and the Scope's destructor
+(`DiffuseSolveGate.h` L92–96) leaves the gate only when that call returns: **the gate is held for the whole room-IR
+build** (ISM, unit-decay synthesis and the diffuse solve); only the IR-set build (`makeIrSet`) runs outside it. The
+original text is kept below as written, for the record.
+
 From the code at the branch head (no new measurement):
 
 - **What the gate serialises.** `src/plugin/core/DiffuseSolveGate.{h,cpp}`: one process-wide gate whose pool has
