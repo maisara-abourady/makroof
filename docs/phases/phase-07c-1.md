@@ -83,8 +83,9 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()` (phas
    **The 07c re-pin** (AX38 4c; phase-05i §3.3 (v); D-Q5, decider file `docs/review/phase-05i/9-decider-r2.md`):
    after conditions 9 and 12 land (the gate then measures restore without the solve and the synthesis), the
    restore gate's growth-bound baselines, the ±5 % flutter window, the solve bound k (`kSolveWarn`) and its
-   `solveRefMs` baselines, and the macOS trigger (2 172 ms) are re-derived from ≥ 3 in-window runs: one run
-   PROVISIONAL, printed not asserted; never a red or out-of-window run as a baseline; a CHANGELOG reason.
+   `solveRefMs` baselines are re-derived from ≥ 3 in-window runs: one run PROVISIONAL, printed not asserted;
+   never a red or out-of-window run as a baseline; a CHANGELOG reason. The macOS trigger (2 172 ms) is
+   re-derived at the same re-pin (AX38 4c; phase-05i §3.3 (iii)).
 9. **The unit-decay synthesis moves off the synchronous restore** (D-H1 (v) / H1-F2, decider file 19,
    interrogator file 21; the register's macOS remedy): the unit-decay synthesis (`tail::BandNoiseGenerator`,
    constructor spectra 0.96 s + `make` × 2 emitters 2.18 s = 3.14 of 3.29 s at 100 m / 96 kHz, flat in room
@@ -94,7 +95,7 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()` (phas
    state); after both moves the restore gate measures ISM + matching + mix (≈ 0.15 s at 96 kHz) and passes a
    worst-of-10 rule with 10–20× headroom. Closes the AX38 4c register entries: the macOS entry (33.40 s;
    closes here, or at 07d, or at Phase 13's release-machine re-check if the runner is shown to be the cause)
-   and the Windows entry (36.73 s; same closing routes; listed since run 42942694523, its OVER30S on 05i's
+   and the Windows entry (36.73 s; remedy phase-07c conditions 9 (or 07d) and 10, or Phase 13's release-machine re-check; listed since run 42942694523, its OVER30S on 05i's
    run of record on a slow runner); the Linux entry already closed in phase 05i under (c). If this phase's
    loop finds condition 9 does not fit here, a `phase-07d.md` of size S–M is created (CLAUDE.md split rule)
    and the register's macOS 'closes at' names 07d. Alternatives recorded, not chosen: a cheaper generator (output-changing; a
@@ -206,9 +207,9 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()` (phas
       printed on three OSes, none asserted; the AX38 (i) register entry G-1 removed through `/fix-plan`. (D-G1,
       A12)
 - [ ] Condition 7, the 07c re-pin: after conditions 9 and 12 land, the restore gate's growth-bound baselines,
-      the ±5 % flutter window, `kSolveWarn` and its `solveRefMs` baselines and the macOS trigger (2 172 ms)
-      re-derived from ≥ 3 in-window runs (one run PROVISIONAL, printed not asserted; never a red or
-      out-of-window run as a baseline), with a CHANGELOG reason. (AX38 4c; D-Q5)
+      the ±5 % flutter window, `kSolveWarn` and its `solveRefMs` baselines re-derived from ≥ 3 in-window runs
+      (one run PROVISIONAL, printed not asserted; never a red or out-of-window run as a baseline), and the
+      macOS trigger (2 172 ms) re-derived, with a CHANGELOG reason. (AX38 4c; D-Q5)
 
 ## Listening / manual checklist
 
