@@ -129,52 +129,72 @@ std::vector<A4Scene> a4Set()
 contract::BandArray tailBandEnergy(const std::vector<sim::tail::UnitDecay>& units,
                                    const sim::HybridDiagnostics& d, std::size_t e, double t0, double t1)
 {
-    contract::BandArray out{};
+    contract::BandArray sum{};
     const auto& u = units[e];
     const double fs = d.sampleRate;
     const double mix = d.emitters[e].match.mixing.mixS;
     const auto offset = static_cast<std::size_t>(std::max(0.0, std::round(d.alignmentShiftS * fs)));
+    // Only the samples whose emission time lies in [t0, t1), the crossfade weight once per sample.
+    const auto first = std::max(offset, static_cast<std::size_t>(std::max(0.0, std::ceil(t0 * fs))));
+    const auto last = std::min(u.length(), t1 * fs < static_cast<double>(u.length())
+                                               ? static_cast<std::size_t>(std::max(0.0, std::ceil(t1 * fs)))
+                                               : u.length());
+    for (std::size_t j = first; j < last; ++j)
+    {
+        const double w =
+            sim::tail::crossfade(static_cast<double>(j - offset) / fs + d.alignmentShiftS, mix).tail;
+        const double w2 = w * w;
+        for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+            sum[b] += w2 * u.bands[b][j] * u.bands[b][j];
+    }
+    contract::BandArray out{};
     for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
     {
         const double a = d.emitters[e].match.bandsAmplitude[b];
-        double sum = 0.0;
-        for (std::size_t j = offset; j < u.length(); ++j)
-        {
-            const double t = static_cast<double>(j) / fs;
-            if (t < t0 || t >= t1)
-                continue;
-            const double w =
-                sim::tail::crossfade(static_cast<double>(j - offset) / fs + d.alignmentShiftS, mix).tail;
-            sum += w * w * u.bands[b][j] * u.bands[b][j];
-        }
-        out[b] = a * a * sum;
+        out[b] = a * a * sum[b];
     }
     return out;
 }
 
-// The IR of emitter 0 band-filtered through the filterbank's band b (circular FFT convolution, centred
-// filter).
-std::vector<double> bandFiltered(const std::vector<float>& x, const sim::ism::OctaveFilterbank& fb,
-                                 std::size_t b)
+// The first n samples of two signals split into the eight bands (circular FFT convolution with the centred
+// band filters on the prefix alone: outputs below n - halfLength are exact). One forward transform per signal
+// and per band filter, one inverse per band and signal (D1 prefix check; Windows Debug time).
+std::array<std::array<std::vector<double>, contract::kNumOctaveBands>, 2> prefixBands(
+    const std::vector<float>& x0, const std::vector<float>& x1, std::size_t n,
+    const sim::ism::OctaveFilterbank& fb, std::size_t bFrom = 0, std::size_t bTo = contract::kNumOctaveBands)
 {
-    const auto h = fb.bandImpulseResponse(b);
-    const std::size_t half = (h.size() - 1) / 2;
-    const std::size_t n = sim::Fft::nextPowerOfTwo(x.size() + h.size());
-    const sim::Fft fft(n);
-    std::vector<std::complex<double>> X(n), H(n);
-    for (std::size_t i = 0; i < x.size(); ++i)
-        X[i] = x[i];
-    for (std::size_t i = 0; i < h.size(); ++i)
-        H[(i + n - half) % n] = h[i];
+    // The band filters are real, so the two signals share one transform: x0 + i x1 in, h * x0 + i h * x1 out.
+    std::array<std::array<std::vector<double>, contract::kNumOctaveBands>, 2> out;
+    const std::size_t len = 2 * fb.maxHalfLength() + 1;
+    const std::size_t m = sim::Fft::nextPowerOfTwo(n + len);
+    const sim::Fft fft(m);
+    std::vector<std::complex<double>> X(m, {0.0, 0.0});
+    for (std::size_t i = 0; i < n; ++i)
+        X[i] = {i < x0.size() ? static_cast<double>(x0[i]) : 0.0,
+                i < x1.size() ? static_cast<double>(x1[i]) : 0.0};
     fft.forward(X);
-    fft.forward(H);
-    for (std::size_t k = 0; k < n; ++k)
-        X[k] *= H[k];
-    fft.inverse(X);
-    std::vector<double> y(x.size());
-    for (std::size_t i = 0; i < x.size(); ++i)
-        y[i] = X[i].real() / static_cast<double>(n);
-    return y;
+    std::vector<std::complex<double>> H(m), Y(m);
+    for (std::size_t b = bFrom; b < bTo; ++b)
+    {
+        const auto h = fb.bandImpulseResponse(b);
+        const std::size_t half = (h.size() - 1) / 2;
+        std::fill(H.begin(), H.end(), std::complex<double>(0.0, 0.0));
+        for (std::size_t i = 0; i < h.size(); ++i)
+            H[(i + m - half) % m] = h[i];
+        fft.forward(H);
+        for (std::size_t i = 0; i < m; ++i)
+            Y[i] = X[i] * H[i];
+        fft.inverse(Y);
+        out[0][b].resize(n);
+        out[1][b].resize(n);
+        const double scale = 1.0 / static_cast<double>(m);
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            out[0][b][i] = Y[i].real() * scale;
+            out[1][b][i] = Y[i].imag() * scale;
+        }
+    }
+    return out;
 }
 
 // EDT (s) of a band signal as tools/acoustics/metrics.py takes it (ISO 3382-1 A.2.1): the Schroeder curve
@@ -329,18 +349,22 @@ TEST_CASE("AX47 (b) / AX49: provisional against exact on the A4 set: steps <= 1 
                 CAPTURE(a4.name, fs, seed);
                 auto sc = a4.scene;
                 sc.render.tailSeed = seed;
-                auto ex = sim::StagedBuild::plan(sc, omni(fs));
-                auto pr = sim::StagedBuild::plan(sc, omni(fs));
-                const auto timing = pr.provisionalTiming();
+                // The two emitters synthesised in parallel (bit-identical to serial: test "AX49: the parallel
+                // …").
+                auto opts = omni(fs);
+                opts.parallelEmitterSynthesis = true;
+                // One plan serves both builds (assemble() and assembleProvisional() read the same plan; the
+                // exact unit decays are taken before the provisional replaces them).
+                auto build = sim::StagedBuild::plan(sc, opts);
+                const auto timing = build.provisionalTiming();
                 if (!timing.provisional)
                     continue; // L_p >= L: the exact tail itself (previous test)
-                ex.useDiffuseLevel(*level);
-                pr.useDiffuseLevel(*level);
+                build.useDiffuseLevel(*level);
                 sim::HybridDiagnostics dEx, dPr;
-                const auto irEx = ex.assemble(&dEx);
-                const auto irPr = pr.assembleProvisional(&dPr);
-                const auto uEx = ex.unitDecays();
-                const auto uPr = pr.unitDecays();
+                const auto irEx = build.assemble(&dEx);
+                const auto uEx = build.unitDecays();
+                const auto irPr = build.assembleProvisional(&dPr);
+                const auto uPr = build.unitDecays();
                 REQUIRE(uEx);
                 REQUIRE(uPr);
                 // The step <= 1 dB per emitter in every band, both windows (kept per (e, b) for the
@@ -385,10 +409,14 @@ TEST_CASE("AX47 (b) / AX49: provisional against exact on the A4 set: steps <= 1 
                                         std::llround((timing.fadeStartS - dEx.alignmentShiftS) * fs))
                                     - 2 * static_cast<std::ptrdiff_t>(fb.maxHalfLength());
                     REQUIRE(to > from);
+                    // Band-split the prefix only (up to L_f - h + the filter's half length: exact below
+                    // `to`).
+                    const auto bands = prefixBands(irPr.taps[tap], irEx.taps[tap],
+                                                   static_cast<std::size_t>(to) + fb.maxHalfLength(), fb);
                     for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
                     {
-                        const auto yE = bandFiltered(irEx.taps[tap], fb, b);
-                        const auto yP = bandFiltered(irPr.taps[tap], fb, b);
+                        const auto& yP = bands[0][b];
+                        const auto& yE = bands[1][b];
                         double diff = 0.0, ref = 0.0;
                         for (auto i = std::max<std::ptrdiff_t>(0, from); i < to; ++i)
                         {
@@ -410,10 +438,13 @@ TEST_CASE("AX47 (b) / AX49: provisional against exact on the A4 set: steps <= 1 
                 // Table 6.1), in every case whose exact band IR has a direct fraction d < 0.5 (D1 / O8:
                 // Kuttruff Eq. 5.44's w_d = w_r on the measured field; section 8.4). d is judged on the exact
                 // IR alone, before comparing.
+                // The whole IRs (emitter 0) split into bands in one pass (the EDT bands 3 and 4 are read).
+                const auto edtBands = prefixBands(
+                    irPr.taps[0], irEx.taps[0], std::max(irPr.taps[0].size(), irEx.taps[0].size()), fb, 3, 5);
                 for (const std::size_t b : {std::size_t{3}, std::size_t{4}})
                 {
-                    const auto yEx = bandFiltered(irEx.taps[0], fb, b);
-                    const auto yPr = bandFiltered(irPr.taps[0], fb, b);
+                    const auto& yEx = edtBands[1][b];
+                    const auto& yPr = edtBands[0][b];
                     double eEx = 0.0, peak = 0.0;
                     std::size_t at = 0;
                     for (std::size_t i = 0; i < yEx.size(); ++i)
