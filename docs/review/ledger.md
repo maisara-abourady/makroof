@@ -2403,3 +2403,8 @@ P07C1-S5-DC-01 … 06 CORRECT / consistent (record (h) figures, restore figures,
 ≈ 7.95 s), DC-05 NOT CHECKABLE (the 5 s line is a product line); DC-07 (record (h) does not print insertSolves → 07c-1b prints
 it), DC-08 major (mid-fade bound asserted only on AX47 equal-gain steps and fades from silence; the equal-power load fade over
 another scene recorded), DC-09 (window relative to the 30 ms AQ4 ramp), DC-10, DC-11 — applied.
+
+Head-code condition 10 record (plan commit f06b673) diff check: SURVIVES WITH CORRECTIONS — P07C1-H-DC-01…04, 06, 08 CORRECT
+(figures vs file 44); DC-05 (what the test asserts vs the records) and DC-07 (the drop's lock section dates from session 1,
+ee15c56; session 2's commits held the lock across the comparison and the AX47 step) corrected; DC-09 checked with git (only the
+two noted lines). Side note carried to the PR and 07c-1b follow-ups: the offline drop releases dropped IRs on the calling thread.
