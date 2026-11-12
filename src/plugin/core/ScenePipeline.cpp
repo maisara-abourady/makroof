@@ -597,8 +597,21 @@ ScenePipeline::Stats ScenePipeline::stats() const
 
 std::vector<std::string> ScenePipeline::renderLog() const
 {
-    std::lock_guard<std::mutex> lock(stateMutex_);
-    return renderLog_;
+    std::vector<std::string> out;
+    const auto events = rateEvents_.load(std::memory_order_acquire);
+    if (events > 0)
+    {
+        char line[320];
+        std::snprintf(
+            line, sizeof line,
+            "render log: offline signal unreliable: the host processed %.2f s of audio in %.2f s of wall "
+            "clock without setNonRealtime(true) while the reverb was settling (condition 6; %llu "
+            "episode(s))",
+            rateAudioS_.load(std::memory_order_relaxed), rateWallS_.load(std::memory_order_relaxed),
+            static_cast<unsigned long long>(events));
+        out.emplace_back(line);
+    }
+    return out;
 }
 
 std::optional<SavedDiffuse> ScenePipeline::savedDiffuse() const
@@ -649,19 +662,11 @@ void ScenePipeline::watchHostRate() noexcept
     const bool interim = interimPlaying_.load(std::memory_order_acquire);
     if (fast && !offline && interim && !rateLogged_)
     {
-        char line[256];
-        std::snprintf(
-            line, sizeof line,
-            "render log: offline signal unreliable: the host processed %.2f s of audio in %.2f s of "
-            "wall clock without setNonRealtime(true) while the reverb was settling (condition 6)",
-            audio, wall);
-        try
-        {
-            std::lock_guard<std::mutex> lock(stateMutex_);
-            renderLog_.emplace_back(line);
-        }
-        catch (...)
-        {}
+        // Called under the builder's mutex (hasWork()): no other lock here. The figures go to atomics and
+        // renderLog() writes the line.
+        rateAudioS_.store(audio, std::memory_order_relaxed);
+        rateWallS_.store(wall, std::memory_order_relaxed);
+        rateEvents_.fetch_add(1, std::memory_order_release);
         rateLogged_ = true;
     }
     if (!fast)

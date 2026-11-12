@@ -316,7 +316,9 @@ private:
     bool loadedState_ = false; // a restore happened (the first one is a project load)
     std::uint64_t platformTag_;
     Stats stats_;
-    std::vector<std::string> renderLog_;
+    std::atomic<std::uint64_t> rateEvents_{0}; // condition 6 render-log episodes (written by the builder)
+    std::atomic<double> rateAudioS_{0.0};
+    std::atomic<double> rateWallS_{0.0};
     std::atomic<bool> interimPlaying_{false};
     // Condition 6 host-rate watch (builder thread only, except the counter).
     std::atomic<std::uint64_t> processedSamples_{0};
