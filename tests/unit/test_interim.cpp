@@ -449,8 +449,9 @@ TEST_CASE("AX47 (b) / AX49: provisional against exact on the A4 set: steps <= 1 
                     const double rel = std::abs(edtPr / edtEx - 1.0);
                     CAPTURE(b, d, edtEx, edtPr, rel);
                     REQUIRE(edtEx > 0.0);
-                    // D1 / O8 (decider file 35): d < 0.217 (ISO 3382-2's d_min ~ 1.9 r_c in diffuse-field
-                    // terms) is printed for Phase 10's ruling on the constant; nothing is asserted on it.
+                    // D1 / O8 (decider files 35, 37): d < 0.217 (1/(1 + 1.9^2), ISO 3382-2's d_min ~ 1.9 r_c in
+                    // diffuse-field terms, 1.9 rounded) is printed for phase-05d's ruling on the AX47 (b) d
+                    // constant; nothing is asserted on it.
                     std::printf(
                         "07c1-records ax47(b) EDT %s %.0f Hz seed %u band %zu: d %.3f (d < 0.217: %s), EDT "
                         "exact %.1f ms, provisional %.1f ms (T60_b %.2f s): %+.2f %%\n",
