@@ -71,6 +71,7 @@ The items of the session's opening scope list, one for one.
 | 1 | 2026-11-12 | BRIEF GAPS | G1 session request not quoted verbatim (blocking); G2 stale BUILD_PLAN "contractor's review push" wording as a /fix-plan follow-up; G3 commit prefix; G4 macOS GATE line in O8 | none |
 | 2 | 2026-11-12 | BRIEF OK | none | G1, G2, G3, G4 |
 | 3 | 2026-11-12 | CONTINUE (pre-PR clearance given: O1–O6 MET on e6fc12b) | G5 PR + CI run of record with the three low-α GATE lines (O7, O8) | none |
+| 4 | 2026-11-12 | READY TO REPORT | none | G5 (PR #31; CI 43173536470 green, three low-α GATE lines checked in job logs) |
 
 ## Evidence log
 - O4 (2026-11-12, local): `tools/ci/check_format.sh` → "clang-format: 105 files clean", exit 0. `SPATIAL_WERROR=ON cmake --preset release -DSPATIAL_BUILD_PLUGIN=OFF` + `cmake --build --preset release --target spatial_tests` → "[180/180] Linking CXX executable tests/unit/spatial_tests", exit 0; CMakeCache `SPATIAL_WERROR:BOOL=ON`.
