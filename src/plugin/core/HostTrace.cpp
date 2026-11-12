@@ -103,7 +103,12 @@ Logger::Logger(const std::string& path, std::size_t capacity)
     : ring_(capacity)
     , origin_(std::chrono::steady_clock::now())
 {
+#if defined(_MSC_VER)
+    if (fopen_s(&file_, path.c_str(), "w") != 0)
+        file_ = nullptr;
+#else
     file_ = std::fopen(path.c_str(), "w");
+#endif
     if (file_ != nullptr)
         std::fprintf(file_, "# SpatialScene host trace (phase-07c-1 condition 11): entry thread nonRealtime "
                             "transport block start_us duration_us argument\n");

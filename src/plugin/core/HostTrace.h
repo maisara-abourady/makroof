@@ -90,8 +90,9 @@ private:
     };
     std::unique_ptr<Slot[]> slots_;
     std::size_t mask_;
-    alignas(64) std::atomic<std::size_t> enqueue_{0};
-    alignas(64) std::atomic<std::size_t> dequeue_{0};
+    // Not padded to cache lines: a diagnostic build, and MSVC warns (C4324) on over-aligned members.
+    std::atomic<std::size_t> enqueue_{0};
+    std::atomic<std::size_t> dequeue_{0};
     std::atomic<std::uint64_t> dropped_{0};
 };
 
