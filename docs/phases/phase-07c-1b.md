@@ -99,7 +99,7 @@ Follow-ups noted (review minors from 07c-1, not scope here):
 - [ ] Instance insertion (scope 6): the reading of whether instance insertion is a load under AX48 FM-3′ recorded
       (the AX48 text through `/fix-plan` if it changes), and a test asserting the decided behaviour. (review M1)
 - [ ] AX47 mid-fade check (scope 7): a test renders wet pink noise and speech through a project load and its settling
-      step (and an edit's interim and final) and asserts, per 10 ms window across each fade, that the output energy
+      step (and an edit's interim and final) and asserts, per analysis window (its length set in this phase's loop before the run, interrogator-checked) across each fade, that the output energy
       does not exceed the louder endpoint's (the two IRs rendered alone), on three OSes. (AX47 "Measurement"; review M2)
 - [ ] AX49 reversal (scope 8): the board's decision on the AX49 reversal recorded (AX row / ledger), applied via
       `/fix-plan`; no instance cap. (AX49 "Reversal"; record (h), run 43242209571)

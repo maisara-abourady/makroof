@@ -208,7 +208,9 @@ umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-
       answers recorded. (phase-07c A1) Recorded 2026-11-12: AX47–AX49 and the AX18 amendment (D-C1, D-C2, D-C3,
       D-C9; `docs/review/phase-07c-1/`).
 - [ ] Restore, prepare and `reset()` never run the diffuse solve synchronously, except the AX48 stage-1 (A)
-      solve at a restore with no IrSet current and no saved E_b whose five-part key matches (FM-3′); the
+      solve at a restore with no IrSet current and no saved E_b whose five-part key matches (FM-3′) (the
+      fresh-instance first prepare, which still solves synchronously as before 07c-1 and is counted in
+      `Stats::insertSolves`, moved to phase-07c-1b scope 6, review M1); the
       restore gate (AX38 4c) passes as in condition 9 (ISM + matching + the AX49 interim tail + mix; keyless:
       plus the stage-1 solve; the unchanged worst-of-10 / 14 × worst ≤ 30 s rule, headroom as measured), on
       the Release build, in AX38 4c's register form (the entries it closes removed through `/fix-plan`;
@@ -277,6 +279,8 @@ The original phase file has no risks section; the umbrella's §0 gives the ratio
 - Split 2026-11-12 (session 2 of 2): the 07c re-pin (the condition 7 criterion) and the AX38 4c register closures
   (A2's clause "in AX38 4c's register form (the entries it closes removed through `/fix-plan`; entries that stay open
   name phase-07d as 'closes at')") and the remaining items moved to [phase-07c-1b](phase-07c-1b.md).
+  A2's synchronous solve at a fresh instance's first prepare (counted in `Stats::insertSolves`) moved to
+  phase-07c-1b scope 6 (review M1).
 
 ## Notes from the split
 

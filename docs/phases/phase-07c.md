@@ -1,6 +1,6 @@
 # Phase 07c — Asynchronous diffuse solve (Q2a (C))
 
-Size: **split into 07c-1…07c-2** (originally M, about one phase of Phase 07 rework, decider file 47; each
+Size: **split into 07c-1, 07c-1b, 07c-2** (07c-1b split from 07c-1, 2026-11-12, two-session rule; originally M, about one phase of Phase 07 rework, decider file 47; each
 sub-phase's two-session remainder is `07c-<n>b`, CLAUDE.md) · Depends on: 05h, 07 `done` · **Must be `done` before Phase 13's
 beta** (or phase-13 scope 13's versioning fallback recorded) · Read first, in this order: `CLAUDE.md`; this file in full; `docs/BUILD_PLAN.md` §2 **AQ4, AQ10
 (amended 2026-11-10), AX5, AX18, AX33, AX38, AX41, AX44**; `docs/phases/phase-05h.md` (§3 D-H1, §4
@@ -126,9 +126,10 @@ checklist, contractor focus, AX/ledger links and the "Raise with Maisara" item i
 | id | title | lead seat | size | depends on | ships | owns (automated) |
 |---|---|---|---|---|---|---|
 | [07c-1](phase-07c-1.md) | Diffuse solve off the synchronous paths | Seat 5 (Deadline keeper) | M (set by the split on conditions 2, 4–7, before conditions 9–11 were added; not re-sized) | 05h, 07 `done` | restore, prepare and `reset()` no longer run the diffuse solve; the real-time path adopts each solved snapshot by atomic swap with an AQ4 crossfade, starting from the interim level; offline waits and stays bit-identical; the restore gate re-scoped; W_max still at (A) | A1, A2, A3, A4, A5, A7, A8; conditions 9–12 (the unit-decay synthesis off the restore, the `reset()` half, the host trace build, the gate narrowed to the solve) |
-| [07c-2](phase-07c-2.md) | W_max re-derived under (C), one golden round | Seat 2 (Engine architect) | S | 07c-1 `done` (and, through it, 05h, 07) | W_max raised from the (A) restore budget to the (C) background budget, pinned and equal on the three OSes; goldens updated once; Seat 1's "now" 2 (capped-class SE, §0) repaid; Phase 12 (ii) re-run | A6, A9 |
+| [07c-1b](phase-07c-1b.md) | Diffuse solve off the synchronous paths: remainder of 07c-1 (split from 07c-1, 2026-11-12, two-session rule) | Seat 5 (Deadline keeper) | S | 07c-1 `done` | the items of 07c-1 that did not fit its two sessions (see the phase file) | A2's AX38 4c register clause; condition 7 (the 07c re-pin) |
+| [07c-2](phase-07c-2.md) | W_max re-derived under (C), one golden round | Seat 2 (Engine architect) | S | 07c-1 and 07c-1b `done` (and, through them, 05h, 07) | W_max raised from the (A) restore budget to the (C) background budget, pinned and equal on the three OSes; goldens updated once; Seat 1's "now" 2 (capped-class SE, §0) repaid; Phase 12 (ii) re-run | A6, A9 |
 
-Order 07c-1 → 07c-2 (forced: under (A), W_max is sized to the restore convention (H1-F1; 'restore watchdog' in the convening round's wording), so it cannot be raised until the solve
+Order 07c-1 → 07c-1b → 07c-2 (07c-1b is 07c-1's two-session remainder; forced: under (A), W_max is sized to the restore convention (H1-F1; 'restore watchdog' in the convening round's wording), so it cannot be raised until the solve
 is off the restore path; convening round, Map 07c).
 
 ## Where the original items went
