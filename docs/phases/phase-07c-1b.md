@@ -19,7 +19,13 @@ AX47–AX49 as decided by its loop), applied to the work that remains.
    `40-interrogator-G3-FM-D1-S3-check.md`): whether to write the AX47 (b)-style interim stream checks into
    [phase-07c-2](phase-07c-2.md) (conditional), [phase-08-3](phase-08-3.md) and [phase-09](phase-09.md) now
    (the decider's recommendation (i), with interrogator file 40's corrections 80, 86, 88, 90, 91, 92 and 93 applied
-   first), or leave Seat 3's debt row unrepaid. D1 (O8) stands either way (interrogator file 40 row 82).
+   first), or leave Seat 3's debt row unrepaid. D1 (O8) stands either way (interrogator file 40 row 82). The 08-3 / 09
+   lines fall in Seat 4's row (binaural / loudspeaker decoding), and Seat 4 was not convened for D1 (interrogator file
+   40, observation 98); if Maisara picks (i), Seat 4 is convened before the lines are applied.
+2. (phase-07c §2.1, carried verbatim from phase-07c-1) **Only if** this phase would land after the first public release
+   without the estimator parameters versioned in saved state: Seat 7's condition fails and the item returns to Maisara
+   (decider file 47 §4, strongest objection; phase-13 "Raise with Maisara" item 4). Otherwise none. It does not apply
+   now: no public release has happened.
 
 ## Goal
 
@@ -60,9 +66,11 @@ a range change, a formulation seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5
 - [ ] Condition 7, the 07c re-pin: the restore gate's growth-bound baselines, the ±5 % flutter window, `kSolveWarn`
       and its `solveRefMs` baselines re-derived from ≥ 3 in-window runs (one run PROVISIONAL, printed not asserted;
       never a red or out-of-window run as a baseline), and the macOS trigger (2 172 ms) re-derived, with a
-      CHANGELOG reason and a §6 row. (AX38 4c; D-Q5; phase-07c-1 A2, last sentence)
+      CHANGELOG reason and a §6 row. (AX38 4c; D-Q5; phase-07c-1's condition 7 criterion)
 - [ ] The AX38 4c macOS and Windows entries leave the register through `/fix-plan` under (c), or stay listed with
-      'closes at' phase-07d, on the runs of scope 1, at both gated builds on three OSes.
+      'closes at' phase-07d, on the runs of scope 1, at both gated builds on three OSes. (phase-07c-1 A2, the clause
+      "in AX38 4c's register form (the entries it closes removed through `/fix-plan`; entries that stay open name
+      phase-07d as 'closes at')")
 - [ ] Condition 12 (c): the finding is recorded with a board decision (ledger rows linked); no instance cap.
 - [ ] The E_model fingerprint test asserts the pinned hash on Linux, macOS and Windows and fails on a changed E_b
       (negative check).

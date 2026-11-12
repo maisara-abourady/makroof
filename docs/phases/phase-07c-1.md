@@ -212,7 +212,7 @@ umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-
       restore gate (AX38 4c) passes as in condition 9 (ISM + matching + the AX49 interim tail + mix; keyless:
       plus the stage-1 solve; the unchanged worst-of-10 / 14 × worst ≤ 30 s rule, headroom as measured), on
       the Release build, in AX38 4c's register form (the entries it closes removed through `/fix-plan`;
-      entries that stay open name phase-07d as 'closes at'); the solve time is in the staleness records.
+      entries that stay open name phase-07d as 'closes at') (the register closures moved to phase-07c-1b); the solve time is in the staleness records.
       (phase-07c A2)
 - [ ] The real-time path adopts each solved snapshot by atomic swap with an AQ4 crossfade, one step per
       solve, never mid-drag; the ISM update is never held behind the solve (tests); "settling" is shown
@@ -240,7 +240,7 @@ umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-
       to its stages; TSan `[pipeline]` with overlapping ISM and synthesis green; records (b)–(d), (f) and (g)
       printed on three OSes, none asserted; the AX38 (i) register entry G-1 removed through `/fix-plan`
       (removed 2026-11-12: closed (phase 07c-1)). (D-G1, A12)
-- [ ] Condition 7, the 07c re-pin: after conditions 9 and 12 land, the restore gate's growth-bound baselines,
+- [ ] Condition 7, the 07c re-pin (moved to phase-07c-1b, 2026-11-12, two-session split): after conditions 9 and 12 land, the restore gate's growth-bound baselines,
       the ±5 % flutter window, `kSolveWarn` and its `solveRefMs` baselines re-derived from ≥ 3 in-window runs
       (one run PROVISIONAL, printed not asserted; never a red or out-of-window run as a baseline), and the
       macOS trigger (2 172 ms) re-derived, with a CHANGELOG reason. (AX38 4c; D-Q5)
@@ -274,8 +274,9 @@ The original phase file has no risks section; the umbrella's §0 gives the ratio
   (phase-07c §10, clause 3; this sub-phase's share).
 - CLAUDE.md rules apply: one sub-phase per session; if it can't be finished in two sessions, split the remainder into
   `phase-07c-1b.md`.
-- Split 2026-11-12 (session 2 of 2): the 07c re-pin (A2's last sentence and the condition 7 criterion) and the
-  remaining items moved to [phase-07c-1b](phase-07c-1b.md).
+- Split 2026-11-12 (session 2 of 2): the 07c re-pin (the condition 7 criterion) and the AX38 4c register closures
+  (A2's clause "in AX38 4c's register form (the entries it closes removed through `/fix-plan`; entries that stay open
+  name phase-07d as 'closes at')") and the remaining items moved to [phase-07c-1b](phase-07c-1b.md).
 
 ## Notes from the split
 

@@ -2391,3 +2391,9 @@ Decision D1 = O8 (EDT asserted where the exact band IR's direct fraction d < 0.5
 sum 11 under every reading (file 40 row 82). Applied to AX47 (b), its evidence column, §6, phase-05d (plan commit below).
 Decided for Maisara (open to her veto): D1. NEEDS MAISARA: FM-D1-S3 (whether to write AX47 (b)-style interim stream checks
 into phase-07c-2 (conditional), phase-08-3 and phase-09 now, with file 40's corrections, or leave Seat 3's debt unrepaid).
+
+D1 plan diff check (interrogator, commit b8c3f5a): SURVIVES WITH CORRECTIONS. Rows P07C1-D1-DC-01 … 11, 17 faithful /
+CORRECT (decided texts, −18.27 / −19.27 dB, d = 0.5 / 0.217, Kuttruff §8.4, figures); DC-12 (moved criteria marked in place
+in phase-07c-1; 07c-1b citations), DC-13 (Seat 4 observation 98 in the 07c-1b Raise item), DC-14 (umbrella §2.1 Raise item
+carried into 07c-1b), DC-15 (AX47 phases-that-break column + 05d; 10 kept: phase-10-2 scope 3 and AX18's placeholder) —
+applied; DC-16 (07c-1 criteria green in CI) answered in the PR's criteria table.
