@@ -35,6 +35,11 @@ room calibration) and let the user switch between this mode and binaural.
 5. Plugin: `output_mode` parameter now switches `Kind`. The switch triggers an IR rebuild and the Phase 06
    crossfade, so it's smooth. The two modes' IRs are unrelated, so this switch uses the **equal-power**
    crossfade (AX18: equal-gain would dip ≈3 dB mid-fade on uncorrelated outputs).
+   The switch never re-solves, never waits for a synthesis and reuses the cached unit decays (Seat 4 M; AX49).
+   The AX49 provisional tail uses the same `tailSeedForOutput` seeds and the same decorrelation as the exact
+   tail; the AX44 / AX48 E_b test is extended to stereoSpeakers (E_b bit-identical to omni and binaural; a v2
+   state restored in stereoSpeakers uses the saved E_b bit-identically). (phase-07c-1 decision loop,
+   2026-11-12; decider file `docs/review/phase-07c-1/12-decider-decision-r3.md` §8)
 6. `render_cli --mode stereoSpeakers`, listening pack, goldens.
 
 ## Out of scope
@@ -56,6 +61,8 @@ Crosstalk cancellation, speaker calibration, multichannel output (PRD out of sco
 - [ ] Mono compatibility: summing L+R of a centre-emitter render shows no comb-filter notch deeper than
       6 dB below 2 kHz.
 - [ ] Mode switch during playback: the click detector (Phase 02) reports 0 events across 10 switches.
+- [ ] E_b bit-identical between stereoSpeakers, omni and binaural (AX44, AX48); a mode switch never re-solves
+      or waits for a synthesis (AX49).
 - [ ] All earlier tests and pluginval still pass.
 
 ## Listening / manual checklist (Maisara, Adam monitors via RME, sitting in the sweet spot)

@@ -31,6 +31,8 @@ Scope 8 (Room range) is read at the start of this sub-phase, before any preset i
      real car acoustics are far from a shoebox).
 4. Preset browser in the editor (dropdown grouped by category). Loading a preset replaces the scene
    (undoable) and sets parameters accordingly. The user can edit everything afterwards. (phase-12 scope 4)
+   Presets never carry E_b (AX48; phase-07c-1 decision loop, 2026-11-12, decider file
+   `docs/review/phase-07c-1/12-decider-decision-r3.md` §8).
 5. Document each preset's expected character and expected T30 range in `resources/presets/README.md`.
    (phase-12 scope 5)
 6. **Outdoor presets (AX37 (5.4), phase 05b):** each outdoor preset (`open_field`, `courtyard`) is checked

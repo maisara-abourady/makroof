@@ -41,6 +41,11 @@ All of the umbrella's ([phase-10](phase-10.md)); the one bearing most on this su
    Phase 10 AX that updates the specular and directional part without waiting for the diffuse solve) is
    designed together with [`phase-07c.md`](phase-07c.md) condition 4 (atomic swap with an AQ4 crossfade;
    the ISM update never held behind the diffuse solve), so it is not designed twice. (phase-10 scope 3)
+   **From phase-07c-1's loop** (2026-11-12; decider file `docs/review/phase-07c-1/12-decider-decision-r3.md` §8;
+   AX47, AX49): phase-07c-1's record (g) feeds the AX38 (v) split update; D5 restricted to edits within 5 %
+   (Seat 9) and D6 are recorded alternatives for T60-changing edits (AX49 "Recorded for Phase 10"; AX49 ships
+   Seat 3's D5 bridge on every T60 edit); Seat 1 rules whether automation-driven interim-to-final steps count
+   under AX47.
 4. **Parameter smoothing:** the 20 ms output-trim smoothing stays. Positions aren't smoothed per sample
    (they only drive IR rebuilds). Room-size changes go through the same path. Document that room-size
    automation at large rooms is stepwise (each step a full rebuild, AQ10; AX38 4c hand-off). (phase-10 scope 4)

@@ -2325,3 +2325,31 @@ Decided for Maisara (open to her veto): Q1, Q2, Q3, Q4, D-Q5 (no AMENDS), D-G1 a
 | DC31-1, DC31-2 | BUILD_PLAN L28 / L158 wording: "the contractor's review push" → PR #31 | CORRECT (interrogator diff check) | `docs/review/phase-05i-followup/1-plan-editor.md`, `2-interrogator-diff-check.md` |
 | DC31-3 | L158 cites answer 4 for the PR #31 vehicle | minor, optional, not applied | same |
 | DC31-4 | PASSES30S for Windows / macOS low-α on 43173536470 | a 07c-1 data point (conditions 9–10); not a (c) trigger under decider file 9's "on 05i's runs" reading | PR #31 follow-ups |
+
+## phase-07c-1 (decision loop, 2026-11-12; D-C1, D-C2, D-C3, D-C9; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Files under `docs/review/phase-07c-1/`: 1 (orchestrator, the decisions and code facts), 2 (decider convening: one table
+for the four matters, all nine seats convened), 3-seat1…9 (positions), 4 (researcher R1–R5, verdict NOT READY from
+documentation; R1/R2/R3/R5 close only with the condition 11 trace, R4 has no within-stream study), 5 (decider round 1),
+6-seat*-r2, 7 (interrogator round 1, P07C1-01…30), 8 (orchestrator: measured provisional cost K15, local condition 10/12
+records, TSan), 9 (decider round 2), 10-seat*-r3, 11 (interrogator round 2, P07C1-31…58), 12 (decider round 3, final),
+13 (interrogator final check, P07C1-59…86), 14 (Seat 3 settles row 59), 15 (plan-editor apply), 16 (interrogator diff
+check).
+
+| id | decision | convening | outcome | status |
+|---|---|---|---|---|
+| D-C1 | AX47 C5‴: interim-to-final step ≤ 1 dB per band over the tail window; classes (a) by construction and (b) the AX49 provisional (tested) in 07c-1; statistical sources only from 07c-2 after the AX47 ABX | all nine (2, 4, 8 NOT MY MATTER) | max 2, sum 10, tie with C3 broken by phase-07c-1 L40 / NFR-1 via Q9 and AQ9; file 13 SURVIVES WITH CORRECTIONS (rows 64, 74, 75, 79) | applied (AX47) |
+| D-C2 | AX48 B4-G′: edits / reset / prepare hold the previous E_b (B1′); keyless loads with no IrSet current run the stage-1 solve synchronously, served in class (1) | all nine | max 1, sum 13; SURVIVES WITH CORRECTIONS (row 82) | applied (AX48) |
+| D-C3 | AX48 A1′ + Π: state v2 saves `bandsDiffuse` with a five-part key (P, S, E_prec, E_model, Π); interim only, the solve always confirms | all nine | max 1, sum 11; SURVIVES WITH CORRECTIONS (row 79); row 47 closed | applied (AX48) |
+| D-C9 | AX49 D3*‴: provisional tail L_f = t_mix,e,max + 0.312·T60_max, built synchronously where no valid IrSet is current (exact tail where L_p ≥ L); D5 bridge on T60 edits; parallel emitters; long-T60 gate corner to phase-07d | all nine | max 2, sum 23; row 59 TENSION MISREAD settled by Seat 3 in its own words (file 14: D3*″'s edit path 3/3), so D3*‴ stands, no NEEDS MAISARA; rest SURVIVES WITH CORRECTIONS (rows 62, 63, 68, 69, 70, 85) | applied (AX49, phase-07d.md) |
+| FM-1 | AX18: same-scene interim steps equal-gain | — | SURVIVES WITH CORRECTIONS (row 83) | applied; AMENDS her decision of 2026-11-08 |
+| FM-2′ | restore gate counts the AX49 interim tail; prepare with an fs change builds it; long-T60 corner to 07d (condition 9's split clause) | — | SURVIVES WITH CORRECTIONS (rows 69, 73); 07d reading CORRECT (row 72) | applied; AMENDS her decision of 2026-11-10 |
+| FM-3′ | synchronous stage-1 solve at keyless loads only | — | SURVIVES (row 84) | applied; AMENDS her decision of 2026-11-10 |
+| FM-4′ | AX47 at 1 dB, not 0.5 dB | — | SURVIVES WITH CORRECTIONS (rows 74, 75) | applied |
+| P07C1-01…30 | interrogator round 1 on file 5 | — | D-C1, D-C2(B), D-C9 FALL (TENSION / PRD MISREADs); D-C3 one clause FALLS; AX18 missing AMENDS | all answered in file 9 |
+| P07C1-31…58 | interrogator round 2 on file 9 | — | D-C9 D3*′ FALLS (row 38: gated cube T60_max 50.5 s); D-C1 C5″ FALLS; FM-2, FM-4 FALL | all closed in file 12 / row 86 |
+| P07C1-59…86 | interrogator final check on file 12 | — | corrections 1–13 applied (10 and 11 as report notes); row 59 settled by file 14 | closed |
+| P07C1-PE-D1…D3 | plan-editor DECISIONS NEEDED (file 15) | — | D1: the AX47 ABX criterion is set in 07c-2's loop before the run (procedural deferral; L4's ≥ 12/16 recorded as precedent); D2: record (g) prints the ISM latency on T60 edits (Seat 3's own bridge condition, file 14); D3: the restore gate prints each gated scene's L_p (a record) | applied by the orchestrator; checked in file 16 |
+
+Decided for Maisara (open to her veto): AX47, AX48 (the "Decided" line with the synchronous tail synthesis included,
+file 13 correction 10), AX49, FM-1 (AMENDS 2026-11-08), FM-2′ and FM-3′ (AMENDS 2026-11-10), FM-4′. NEEDS MAISARA: none.

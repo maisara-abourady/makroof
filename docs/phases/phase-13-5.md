@@ -62,8 +62,18 @@ All of the umbrella's (phase-13 assumptions, shared: AQ10, AX5).
    compatibility notes, never a per-host code path (NFR-8). Until measured, the notes carry AX38 (i)'s
    interim sentence (no host named, no stall figure as a product promise, not in launch copy). (phase-13 scope 6;
    "scope 3" is phase-13 scope 3, in 13-4)
+   The condition 11 results also feed AX49's reversal (a hang, not-responding state or time limit at ≤ 8
+   instances sends AX49 back to the board, 07d's candidates first). (phase-07c-1 decision loop, 2026-11-12)
 4. Placeholder identity (`AX8`: company name, plugin/manufacturer codes, bundle ID) confirmed or changed
    **before** the first beta, since changing it later breaks users' projects. (phase-13 scope 7)
+5. **Saved state and wording (AX48, AX49; phase-07c-1 decision loop, 2026-11-12; decider file
+   `docs/review/phase-07c-1/12-decider-decision-r3.md` §8):**
+   - The board decides AX48's engine-mismatch policy, including whether a build id joins the key, before the
+     first post-release build that changes E_prec or E_model.
+   - After release, a fingerprint failure blocks the build until that decision exists; bumping the id alone
+     does not clear it (Seat 7).
+   - Compatibility note: a v1 build rejects v2 state.
+   - Wording: never "opens instantly"; no cross-machine bit-identity claim.
 
 ## Out of scope
 
