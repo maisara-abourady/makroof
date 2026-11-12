@@ -8,6 +8,8 @@
 
 ## Maisara's words
 > 2026-11-12: "do we have a session for this small follow up to run whether before or after 07c-1 it won't matter?"
+> 2026-11-12 (after the report): "what shall we do about these two follow ups?"
+> 2026-11-12 (on the recommendation: fix the BUILD_PLAN L28/L158 wording in PR #31 via /fix-plan; leave PASSES30S to 07c-1): "do that"
 
 The session request that came with her message (the same user turn, 2026-11-12), verbatim from "## What is wrong" on:
 
@@ -41,6 +43,7 @@ The items of the session's opening scope list, one for one.
 | O6 | **Pre-PR review**: `/review-phase-pr` run on the branch diff, fixes in | CLAUDE.md "When to open a PR" | the review's verdict quoted in the log |
 | O7 | **Pushed, PR opened**: commit (`phase-05i: …`, request step 5) pushed to `claude/clever-ride-j355sg`; PR open with what was done, criteria checklist with CI evidence, listening note (none: print-only change), contractor focus, follow-ups, golden changes, "Decided for Maisara" (none new); follow-up named: BUILD_PLAN L28/L158 wording "contractor's review push" → this follow-up PR, via /fix-plan | request step 5; CLAUDE.md "Git and PRs" | the PR link |
 | O8 | **CI green, GATE text right**: CI green on Linux, macOS, Windows; the Windows job's GATE line for `cube100_lowalpha0.05_s0.3` prints "LISTED defect"; Linux prints "register entry closed"; macOS still prints "LISTED defect" | request step 6 | the run id and the three quoted low-α GATE lines, here and in the PR |
+| O10 | **Plan wording corrected** (added 2026-11-12 on "do that"; scope widened: Out-of-scope plan text now includes this one wording fix) | her "do that" | `/fix-plan`: BUILD_PLAN L28 and L158 name PR #31 instead of "the contractor's review push"; interrogator diff check; ledger row; commit `plan: …` pushed to PR #31 (fingerprint-excluded, no CI run); steward re-clears |
 | O9 | **Steward clearance**: READY TO REPORT, then the report to Maisara (she decides on the merge) | request step 6; CLAUDE.md "Reporting" 3 | READY TO REPORT in the log |
 
 ## Scope
