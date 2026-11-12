@@ -125,7 +125,33 @@ struct BuildOptions
     // DiffuseLimits::fixedHistories), so a comparison can be made at the AX42 tolerance instead of the
     // shipping rule's SE. 0 (every product path) runs the AX41 joint rule.
     std::int64_t diffuseFixedHistories = 0;
+    // Phase-07c-1 (AX49): synthesise the two emitters' unit decays in parallel (one extra thread) instead of
+    // one after the other. Bit-identical to the serial build (each emitter's synthesis is a pure function of
+    // its own seed and stream; test "[staged]"). The plugin sets it; render_cli and the validation keep the
+    // serial default.
+    bool parallelEmitterSynthesis = false;
 };
+
+// Phase-07c-1 (AX48): per-emitter diffuse energies in the reference's units (DiffuseMatch::
+// bandsDiffuseReference), indexed by emitter channel. What the plugin state saves as bandsDiffuse and what a
+// held or saved level (B1', keyed restore) feeds back into a build.
+using EmitterBands = std::array<contract::BandArray, 2>;
+
+// Phase-07c-1 (AX49): the provisional tail's timing for one scene, all times from emission.
+//   L_f = t_mix,e,max + 0.312 T60_max (the fade start), L_p = L_f + 0.1 s (the provisional's end), L the
+//   exact tail length (tail::tailLengthS). provisional is false where L_p >= L: the exact tail is built in
+//   its place.
+struct ProvisionalTiming
+{
+    double mixMaxS = 0.0; // t_mix,e,max over the present emitters
+    double t60MaxS = 0.0; // the longest per-band T60 the exact tail is built with (air absorption included)
+    double fadeStartS = 0.0; // L_f
+    double endS = 0.0;       // L_p
+    double exactS = 0.0;     // L
+    bool provisional = false;
+};
+inline constexpr double kProvisionalT60Fraction = 0.312; // AX49: >= 18.7 dB of decay after t_mix,e,max
+inline constexpr double kProvisionalFadeS = 0.1;         // AX49: the fade, L_p = L_f + 0.1 s
 
 // AX22: the image-count cap N_cap = nu_r(i0) (Kuttruff Eq. 9.23) of the realised-k fallback, i0 the
 // largest integer >= 10 at which the AQ10 workload W2 meets 50 ms on the Linux CI runner (Phase 04
@@ -241,6 +267,36 @@ public:
     // only while it holds the gate (condition 12).
     void solve(diffuse::ThreadPool* pool = nullptr);
     RoomIR assemble(HybridDiagnostics* diagnostics = nullptr);
+
+    // ---- phase-07c-1 (AX48, AX49; the plugin's interim builds). Kind::Omni only; no-ops otherwise. ----
+    // AX48 key part P: a canonical hash of the DiffuseProblem after image-source planning (room, listener,
+    // per-emitter position, window, handover, T60, gain and specular target), bit for bit. 0 for other kinds.
+    std::uint64_t problemHash() const noexcept;
+    // AX48: use these per-emitter diffuse energies (reference units) instead of the solve: the saved E_b of a
+    // keyed restore, or the held E_b of an edit (B1'). assemble() then skips the solve; solve() may still run
+    // afterwards and replace the level (the plugin's interim-then-final on one plan). The same arithmetic as
+    // the solve's result, so a level equal to the solve's gives a bit-identical IR.
+    void useDiffuseLevel(const EmitterBands& bandsDiffuse);
+    // The per-emitter diffuse energies of the solve or of useDiffuseLevel() (absent emitters: zeros); nullopt
+    // before either ran (or for another kind, or a tailLevelAx16 build).
+    std::optional<EmitterBands> diffuseLevel() const;
+    // AX49 timing of this scene's provisional tail.
+    ProvisionalTiming provisionalTiming() const noexcept;
+    // AX49: the IR with the provisional tail (length L_p, normalised per band by sqrt(E_p,b / f_b), faded
+    // over the last 0.1 s), at the level of the solve or useDiffuseLevel(); where L_p >= L, exactly
+    // assemble(). Offline and render_cli never call it (condition 6). Calls solve() first if neither ran.
+    RoomIR assembleProvisional(HybridDiagnostics* diagnostics = nullptr);
+    // AX49 D5 bridge and AQ4 cache: assemble() over these unit decays (by emitter channel) instead of
+    // synthesising. When their T60s or length differ from this scene's (a T60-changing edit), each emitter's
+    // amplitude uses the ebar of the unit decay actually played (AX48), and the tail ends where they end.
+    void useUnitDecays(std::shared_ptr<const std::vector<tail::UnitDecay>> units);
+    // True when the unit decays given to useUnitDecays() are this scene's own (same rate, length and T60s):
+    // the IR is then the exact one (bit-identical to a fresh build).
+    bool unitDecaysExact() const noexcept;
+    // The unit decays (by emitter channel) the last assemble() or assembleProvisional() used or synthesised
+    // (the provisional ones after assembleProvisional(): tests measure them; never cached as exact); nullptr
+    // before. The plugin caches the exact ones (AQ4, AX49).
+    std::shared_ptr<const std::vector<tail::UnitDecay>> unitDecays() const;
 
     struct State;
 

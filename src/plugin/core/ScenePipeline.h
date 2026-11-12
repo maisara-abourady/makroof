@@ -43,9 +43,31 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace plugin {
+
+// Phase-07c-1 AX48: the five-part key of a saved diffuse level. P: canonical hash of the DiffuseProblem after
+// image-source planning; S: canonical hash of the effective scene without outputMode, hrtfId and tailSeed;
+// E_prec: hash of DiffuseLimits (W_max, n*_max, SE_target); E_model: sim::diffuse::kEstimatorModelId; Pi: the
+// platform tag (OS family + CPU architecture, compile-time).
+struct DiffuseKey
+{
+    std::uint64_t p = 0;
+    std::uint64_t s = 0;
+    std::uint64_t ePrec = 0;
+    std::uint64_t eModel = 0;
+    std::uint64_t platform = 0;
+    bool operator==(const DiffuseKey&) const = default;
+};
+
+// AX48: the per-emitter diffuse level the plugin state saves (bandsDiffuse, reference units) and its key.
+struct SavedDiffuse
+{
+    sim::EmitterBands bands{};
+    DiffuseKey key;
+};
 
 // The default scene, embedded from tests/scenes/valid/medium_room.json (scope 5; not a preset).
 const contract::SceneDescription& defaultScene();
@@ -57,6 +79,9 @@ public:
     static constexpr int kPartitionSize = 512;
     // Output trim smoothing (scope 3): a linear gain ramp over 20 ms.
     static constexpr double kTrimRampS = 0.020;
+    // Condition 6 render-log watch: >= this much audio processed at more than kHostRateFactor x real time.
+    static constexpr double kHostRateWindowS = 0.5;
+    static constexpr double kHostRateFactor = 2.0;
 
     // clock: nullptr = the steady clock (tests inject one for AX33).
     explicit ScenePipeline(BuilderClock* clock = nullptr);
@@ -96,7 +121,22 @@ public:
     // flag. Realtime with the engine prepared: makes the restore's decision now (EqualPower or a skip) and
     // restarts the builder. Before prepare(), offline or in the AX34 fallback: only stores; the decision
     // is the next prepare()'s (realtime) or process()'s (offline).
-    void restore(const contract::SceneDescription& base, const module3d::ParameterValues& values);
+    //
+    // Phase-07c-1 (AX48, AX49, condition 9): a realtime restore with no IrSet current, or the instance's
+    // first restore (project load), builds synchronously ISM + matching + the AX49 interim tail + mix, at the
+    // level of `saved` when all five key parts match (keyed), else after a synchronous stage-1 solve inside
+    // the AX38 gate (keyless, FM-3'); the builder then settles to the exact tail (one AQ4 equal-gain step). A
+    // later restore with an IrSet current runs everything in the background while the current IrSet plays.
+    void restore(const contract::SceneDescription& base, const module3d::ParameterValues& values,
+                 const std::optional<SavedDiffuse>& saved = std::nullopt);
+    // AX48: the solved diffuse level of the current scene and its key, for the plugin state (state v2);
+    // nullopt while the current scene is not solved yet (the state then saves none: a keyless reopen).
+    std::optional<SavedDiffuse> savedDiffuse() const;
+    // AX48 key parts of this build (E_prec, E_model, Pi; P and S zero) and the scene part S.
+    static DiffuseKey engineKey() noexcept;
+    static std::uint64_t sceneKey(const contract::SceneDescription& scene);
+    // Test hook (AX48 Pi-mismatch test): replaces this pipeline's platform tag.
+    void setPlatformTagForTest(std::uint64_t tag);
     // The base scene (non-parameter fields) and the current derived scene.
     contract::SceneDescription baseScene() const;
     contract::SceneDescription currentScene() const;
@@ -106,6 +146,31 @@ public:
     // allocation, lock or I/O. Offline: first builds and submits the scene if it changed (synchronous,
     // AQ4), then processes.
     void process(const float* const in[2], float* const out[2], int n) noexcept;
+
+    // ---- phase-07c-1 condition 4 / AX38 (iii), AX47, condition 6 ----
+    // True while an interim IrSet plays or an update is pending (the UI shows "settling"). Any thread.
+    bool settling() const noexcept { return interimPlaying_.load(std::memory_order_acquire) || hasWork(); }
+    struct Stats
+    {
+        std::uint64_t interimSubmits = 0; // interim IrSets submitted (provisional tail, held level or bridge)
+        std::uint64_t provisionalSubmits = 0; // of those, with the AX49 provisional tail
+        std::uint64_t finalSubmits = 0;       // final IrSets submitted (solved level, exact tail)
+        std::uint64_t solves = 0;             // diffuse solves run (any class)
+        std::uint64_t syncSolves = 0;         // of those, synchronous stage-1 solves (keyless loads, FM-3')
+        std::uint64_t keyedLoads = 0;         // synchronous loads at a saved level whose key matched
+        std::uint64_t keylessLoads = 0;       // synchronous loads that solved (no or mismatching saved level)
+        std::uint64_t discardedMidDrag =
+            0;                       // solves not adopted because the parameters moved (never mid-drag)
+        std::uint64_t steps = 0;     // interim -> final adoptions (one per solve)
+        double lastStepDb = 0.0;     // AX47: max |level step| over bands and emitters of the last one
+        double maxStepDb = 0.0;      // the largest since construction
+        std::uint64_t heldSteps = 0; // of the steps, after a B1' hold or the D5 bridge (recorded only)
+    };
+    Stats stats() const;
+    // Condition 6: the render log. A line is added (off the audio thread) when the host processes audio
+    // faster than real time without signalling offline while an interim plays: a bounce that would capture
+    // the interim, i.e. the host's offline signal is unreliable.
+    std::vector<std::string> renderLog() const;
 
     // ---- queries ----
     int latencySamples() const noexcept { return kPartitionSize + sim::kAlignPreRollSamples; }
@@ -160,14 +225,44 @@ private:
         Offline      // process() during a bounce
     };
 
-    // Takes stateMutex_ itself. Returns true when the generation was recorded as handled.
-    bool decide(Source source);
-    // Phase 05h, the solve seam (AX38, phase-07c condition 2): the ONE function through which restore,
-    // prepare, the builder and the offline process() reach the diffuse solve. Condition 12: plans outside
-    // the gate, enters it in the source's class around the solve alone (the gate's pool passed only
-    // there), then synthesises and assembles outside it. Throws sim::BuildCancelled when a builder
-    // was quiesced while waiting or solving (D6). Never called with stateMutex_ or the builder mutex held.
-    sim::RoomIR solveAndBuild(const contract::SceneDescription& scene, Source source);
+    // Takes stateMutex_ itself. Returns true when the generation was recorded as handled. `load`: a
+    // synchronous decision of a restore (a project load: AX48's keyed / keyless rule) rather than of a
+    // prepare (B1').
+    bool decide(Source source, bool load = false);
+    // A diffuse level and the problem it was solved for (solved = by this process's solve; saved and held
+    // levels are not).
+    struct Level
+    {
+        sim::EmitterBands bands{};
+        std::uint64_t p = 0;
+        std::uint64_t s = 0;
+        bool solved = false;
+    };
+    struct Built
+    {
+        std::shared_ptr<const sim::RoomIR> ir;
+        std::shared_ptr<const sim::conv::IrSet> irSet;
+        bool final = false;
+        bool provisional = false;
+        bool heldLevel = false; // B1' hold or D5 bridge: its settling step is recorded, not bounded (AX47)
+        Level level;
+        sim::HybridDiagnostics diag;
+        std::shared_ptr<const std::vector<sim::tail::UnitDecay>> units; // exact unit decays to cache
+    };
+    sim::StagedBuild planStage(const contract::SceneDescription& scene, Source source,
+                               const std::function<void(BuildStage)>& hook);
+    Level solveStage(sim::StagedBuild& build, Source source, const std::function<void(BuildStage)>& hook,
+                     std::uint64_t p, std::uint64_t s);
+    // Submits `b` (under stateMutex_). Returns true when the generation was recorded as handled.
+    bool commit(Source source, std::uint64_t gen, const contract::SceneDescription& scene, Built& b);
+    void watchHostRate() noexcept;
+    // Phase 05h, the solve seam (AX38, phase-07c condition 2), now in stages (condition 12): planStage()
+    // plans outside the gate; solveStage() is the ONE place restore, prepare, the builder and the offline
+    // process() reach the diffuse solve, inside the gate in the source's class (the gate's pool passed only
+    // there); synthesis and assembly run outside it. Phase-07c-1 condition 2: restore, prepare and reset()
+    // reach it only for the AX48 stage-1 solve at a keyless load with no IrSet current (FM-3'). Throws
+    // sim::BuildCancelled when a builder was quiesced while waiting or solving (D6). Never called with
+    // stateMutex_ or the builder mutex held.
     void quiesceBuilder();
     // Condition 10: abandon flag, gate notify, stop accepting; never waits.
     void cancelBuilder() noexcept;
@@ -203,6 +298,31 @@ private:
     std::optional<contract::SceneDescription> builtScene_;
     std::uint64_t builtGen_ = kNone;
     std::function<void()> afterSnapshot_;
+    // Phase-07c-1 (AX48, AX49; under stateMutex_).
+    std::optional<Level> held_;         // the level of the last final build (B1' holds it on edits)
+    std::optional<SavedDiffuse> saved_; // a restore's saved level, for its synchronous decision
+    struct Pending
+    {
+        contract::SceneDescription scene;
+        Level level;
+        sim::HybridDiagnostics diag;
+        bool held = false; // B1' hold or D5 bridge (AX47 scope: recorded, not bounded)
+    };
+    std::optional<Pending> pending_; // an interim of this scene plays; the builder settles it
+    bool lastFinal_ = false;         // the last submit was a final
+    std::shared_ptr<const std::vector<sim::tail::UnitDecay>> units_; // AQ4 / AX49 cache: exact unit decays
+    std::uint32_t unitsSeed_ = 0;
+    double unitsRate_ = 0.0;
+    bool loadedState_ = false; // a restore happened (the first one is a project load)
+    std::uint64_t platformTag_;
+    Stats stats_;
+    std::vector<std::string> renderLog_;
+    std::atomic<bool> interimPlaying_{false};
+    // Condition 6 host-rate watch (builder thread only, except the counter).
+    std::atomic<std::uint64_t> processedSamples_{0};
+    double rateWindowStart_ = -1.0;
+    std::uint64_t rateWindowSamples_ = 0;
+    bool rateLogged_ = false;
     std::function<void(BuildStage)> stageHook_;
 
     double sampleRate_ = 0.0;

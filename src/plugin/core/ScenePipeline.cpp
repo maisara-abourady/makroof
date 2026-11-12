@@ -4,10 +4,12 @@
 #include "contract/Validate.h"
 #include "module3d/SceneModel.h"
 #include "plugin/core/DefaultSceneJson.h"
+#include "sim/diffuse/DiffuseEstimator.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <exception>
 #include <stdexcept>
@@ -16,6 +18,8 @@
 namespace plugin {
 
 namespace {
+
+std::uint64_t platformTag() noexcept; // AX48 Pi (below)
 
 bool bitIdentical(const sim::RoomIR& a, const sim::RoomIR& b) noexcept
 {
@@ -73,6 +77,7 @@ sim::RoomIR ScenePipeline::buildIr(const contract::SceneDescription& scene, doub
 
 ScenePipeline::ScenePipeline(BuilderClock* clock)
     : base_(defaultScene())
+    , platformTag_(platformTag())
 {
     const auto defaults = module3d::defaultParameterValues();
     for (std::size_t i = 0; i < module3d::kNumParams; ++i)
@@ -87,7 +92,12 @@ ScenePipeline::ScenePipeline(BuilderClock* clock)
     clock_ = clock;
     snapTrim();
     builder_ = std::make_unique<IrBuilderThread>(
-        *clock_, [this] { return hasWork(); }, [this] { decide(Source::Builder); });
+        *clock_,
+        [this] {
+            watchHostRate(); // condition 6: the render-log watch, on the builder thread
+            return hasWork();
+        },
+        [this] { decide(Source::Builder); });
 }
 
 ScenePipeline::~ScenePipeline()
@@ -112,32 +122,118 @@ void ScenePipeline::restartBuilder()
     builder_->restart();
 }
 
-sim::RoomIR ScenePipeline::solveAndBuild(const contract::SceneDescription& scene, Source source)
+namespace {
+
+std::uint64_t fnv(const void* p, std::size_t n, std::uint64_t h = 0xcbf29ce484222325ull) noexcept
+{
+    const auto* c = static_cast<const unsigned char*>(p);
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        h ^= c[i];
+        h *= 0x100000001b3ull;
+    }
+    return h;
+}
+
+// AX48 Pi: OS family + CPU architecture, a compile-time constant.
+constexpr const char* kPlatformName =
+#if defined(_WIN32)
+    "windows-"
+#elif defined(__APPLE__)
+    "macos-"
+#elif defined(__linux__)
+    "linux-"
+#else
+    "other-"
+#endif
+#if defined(__aarch64__) || defined(_M_ARM64)
+    "arm64";
+#elif defined(__x86_64__) || defined(_M_X64)
+    "x64";
+#else
+    "other";
+#endif
+
+std::uint64_t platformTag() noexcept
+{
+    return fnv(kPlatformName, std::strlen(kPlatformName));
+}
+
+// The max |level step| in dB over bands and present emitters between two builds' tail amplitudes.
+double stepDb(const sim::HybridDiagnostics& from, const sim::HybridDiagnostics& to) noexcept
+{
+    double worst = 0.0;
+    const std::size_t n = std::min(from.emitters.size(), to.emitters.size());
+    for (std::size_t e = 0; e < n; ++e)
+        for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+        {
+            const double a = from.emitters[e].match.bandsAmplitude[b];
+            const double c = to.emitters[e].match.bandsAmplitude[b];
+            if (a > 0.0 && c > 0.0)
+                worst = std::max(worst, std::abs(20.0 * std::log10(c / a)));
+        }
+    return worst;
+}
+
+} // namespace
+
+DiffuseKey ScenePipeline::engineKey() noexcept
+{
+    DiffuseKey k;
+    const sim::diffuse::DiffuseLimits limits; // the shipping limits (W_max, n*_max, SE_target)
+    std::uint64_t h = fnv(&limits.wScene, sizeof limits.wScene);
+    h = fnv(&limits.nStarMax, sizeof limits.nStarMax, h);
+    h = fnv(&limits.seTargetDb, sizeof limits.seTargetDb, h);
+    k.ePrec = h;
+    k.eModel = sim::diffuse::kEstimatorModelId;
+    k.platform = platformTag();
+    return k;
+}
+
+std::uint64_t ScenePipeline::sceneKey(const contract::SceneDescription& scene)
+{
+    // AX48 S: the effective scene without outputMode, hrtfId and tailSeed (AX40, AX44), canonical JSON.
+    contract::SceneDescription s = scene;
+    s.render.outputMode = contract::OutputMode::binaural;
+    s.render.hrtfId = contract::kHrtfIdGenericV1;
+    s.render.tailSeed = 0;
+    const std::string json = contract::toJson(s);
+    return fnv(json.data(), json.size());
+}
+
+void ScenePipeline::setPlatformTagForTest(std::uint64_t tag)
+{
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    platformTag_ = tag;
+}
+
+sim::StagedBuild ScenePipeline::planStage(const contract::SceneDescription& scene, Source source,
+                                          const std::function<void(BuildStage)>& hook)
+{
+    // The offline path takes the gate only after quiesce() has returned (AX38 (i)).
+    assert(source != Source::Offline || !builder_->accepting());
+    sim::BuildOptions options;
+    options.sampleRate = sampleRate_;
+    options.kind = sim::BuildOptions::Kind::Omni; // Phase 07: the omni hybrid IR until 08/09
+    options.cancel = source == Source::Builder ? &builderAbandon_ : nullptr;
+    options.parallelEmitterSynthesis = true; // AX49: the two emitters in parallel (bit-identical to serial)
+    if (hook)
+        hook(BuildStage::Plan);
+    return sim::StagedBuild::plan(scene, options);
+}
+
+ScenePipeline::Level ScenePipeline::solveStage(sim::StagedBuild& build, Source source,
+                                               const std::function<void(BuildStage)>& hook, std::uint64_t p,
+                                               std::uint64_t s)
 {
     const bool builder = source == Source::Builder;
     const auto cls = builder ? DiffuseSolveGate::Class::Builder
                              : (source == Source::Offline ? DiffuseSolveGate::Class::Offline
                                                           : DiffuseSolveGate::Class::Synchronous);
-    // The offline path takes the gate only after quiesce() has returned (AX38 (i)).
-    assert(source != Source::Offline || !builder_->accepting());
     const std::atomic<bool>* abandon = builder ? &builderAbandon_ : nullptr;
-    sim::BuildOptions options;
-    options.sampleRate = sampleRate_;
-    options.kind = sim::BuildOptions::Kind::Omni; // Phase 07: the omni hybrid IR until 08/09
-    options.cancel = abandon;
-    // Phase-07c-1 condition 12 (D-G1; AX38 (i): the gate is "held only around the solve"): image-source
-    // planning, then the diffuse solve under the gate, then the unit-decay synthesis and the IR assembly,
-    // each outside it. The solve pool is passed only while the gate is held; the RAII Scope releases the gate
-    // on every exit, a BuildCancelled thrown inside the solve included.
-    // The test hook is copied once, before the gate: nothing under the gate takes stateMutex_ (AX38 (i)).
-    std::function<void(BuildStage)> hook;
-    {
-        std::lock_guard<std::mutex> lock(stateMutex_);
-        hook = stageHook_;
-    }
-    if (hook)
-        hook(BuildStage::Plan);
-    sim::StagedBuild build = sim::StagedBuild::plan(scene, options);
+    // Condition 12 (D-G1; AX38 (i): the gate is "held only around the solve"): the solve pool is passed only
+    // while the gate is held; the RAII Scope releases it on every exit, a BuildCancelled thrown inside the
+    // solve included. Nothing under the gate takes stateMutex_ (the hook was copied before).
     if (build.needsSolve())
     {
         DiffuseSolveGate::Scope gate(*gate_, cls, abandon);
@@ -147,9 +243,18 @@ sim::RoomIR ScenePipeline::solveAndBuild(const contract::SceneDescription& scene
             hook(BuildStage::Solve);
         build.solve(&gate_->pool());
     }
-    if (hook)
-        hook(BuildStage::Assemble);
-    return build.assemble();
+    {
+        std::lock_guard<std::mutex> lock(stateMutex_);
+        ++stats_.solves;
+        if (source == Source::Synchronous)
+            ++stats_.syncSolves;
+    }
+    Level level;
+    level.bands = build.diffuseLevel().value_or(sim::EmitterBands{});
+    level.p = p;
+    level.s = s;
+    level.solved = true;
+    return level;
 }
 
 void ScenePipeline::setStageHook(std::function<void(BuildStage)> hook)
@@ -189,7 +294,7 @@ bool ScenePipeline::hasWork() const noexcept
     return d != handled_.load(std::memory_order_acquire);
 }
 
-bool ScenePipeline::decide(Source source)
+bool ScenePipeline::decide(Source source, bool load)
 {
     // The generation is read BEFORE the snapshot: a change after it is a later generation.
     const std::uint64_t gen = dirty_.load(std::memory_order_acquire);
@@ -198,17 +303,35 @@ bool ScenePipeline::decide(Source source)
         const module3d::ParameterValues values = parameterValues();
         contract::SceneDescription scene;
         std::function<void()> hook;
-        std::shared_ptr<const sim::RoomIR> ir;
-        std::shared_ptr<const sim::conv::IrSet> irSet;
+        std::function<void(BuildStage)> stageHook;
+        Built b;
+        std::optional<Level> held;
+        std::optional<SavedDiffuse> saved;
+        std::optional<Pending> pending;
+        std::shared_ptr<const std::vector<sim::tail::UnitDecay>> units;
+        bool restoreBg = false;
+        std::uint64_t platform = 0;
         {
             std::lock_guard<std::mutex> lock(stateMutex_);
             scene = module3d::deriveScene(values, base_);
             hook = afterSnapshot_;
-            if (builtScene_ && *builtScene_ == scene && builtIrSet_) // AX5: same scene, same IR
+            stageHook = stageHook_; // copied once, before the gate: nothing under the gate takes stateMutex_
+            if (builtScene_ && *builtScene_ == scene && builtIrSet_) // AX5: same scene, same (final) IR
             {
-                ir = builtIr_;
-                irSet = builtIrSet_;
+                b.ir = builtIr_;
+                b.irSet = builtIrSet_;
+                b.final = true;
+                if (held_)
+                    b.level = *held_;
             }
+            held = held_;
+            if (source == Source::Synchronous)
+                saved = saved_;
+            pending = pending_;
+            if (units_ && unitsSeed_ == scene.render.tailSeed && unitsRate_ == sampleRate_)
+                units = units_;
+            restoreBg = restoreGen_.has_value() && gen >= *restoreGen_;
+            platform = platformTag_;
         }
         if (hook)
             hook();
@@ -217,55 +340,334 @@ bool ScenePipeline::decide(Source source)
             injectedFailures_.fetch_sub(1, std::memory_order_acq_rel);
             throw std::runtime_error("injected build failure (test hook)");
         }
-        if (!irSet)
-        {
-            auto built = std::make_shared<const sim::RoomIR>(solveAndBuild(scene, source));
-            // Condition 10: the IR-set build is a cancel point of the builder's decisions too.
-            irSet = engine_.makeIrSet(*built, source == Source::Builder ? &builderAbandon_ : nullptr);
-            ir = std::move(built);
-        }
+        if (b.irSet)
+            return commit(source, gen, scene, b);
 
-        std::lock_guard<std::mutex> lock(stateMutex_);
-        if (source == Source::Builder && !builder_->accepting())
-            return false; // quiesced while building: the result is discarded, not submitted
-        builtIr_ = ir;
-        builtIrSet_ = irSet;
-        builtScene_ = scene;
-        builtGen_ = gen;
+        const auto* abandon = source == Source::Builder ? &builderAbandon_ : nullptr;
+        sim::StagedBuild build = planStage(scene, source, stageHook);
+        const std::uint64_t p = build.problemHash();
+        const std::uint64_t s = sceneKey(scene);
+        // A level solved in this process for this very problem is final: a change of seed, output mode or
+        // HRTF never re-solves (AX48).
+        std::optional<Level> level;
+        if (held && held->solved && held->p == p && held->s == s)
+            level = held;
+        else if (pending && pending->level.solved && pending->level.p == p && pending->level.s == s)
+            level = pending->level;
 
-        const bool restoreDecision = restoreGen_.has_value() && gen >= *restoreGen_;
-        // Skip rule (D7): bit-identical to the last successful submit since prepare() or the last drop
-        // (offline entry / offline reset, condition 10).
-        if (lastIr_ && ((lastScene_ && *lastScene_ == scene) || bitIdentical(*ir, *lastIr_)))
+        // Builds the tail over the cached unit decays when they are this scene's (exact, AQ4), else
+        // synthesises the exact tail (in parallel per emitter, AX49). Final builds only.
+        const auto finishExact = [&](Level lv) {
+            build.useDiffuseLevel(
+                lv.bands); // the solve's own result, or the held / saved one: same arithmetic
+            if (stageHook)
+                stageHook(BuildStage::Assemble);
+            if (units)
+                build.useUnitDecays(units);
+            const bool cachedExact = units && build.unitDecaysExact();
+            if (units && !cachedExact)
+                build.useUnitDecays(
+                    nullptr); // not this scene's decays: synthesise (never a bridge in a final)
+            b.ir = std::make_shared<const sim::RoomIR>(build.assemble(&b.diag));
+            b.units = build.unitDecays();
+            b.level = lv;
+            b.final = lv.solved;
+        };
+
+        if (source == Source::Synchronous)
         {
-            handled_.store(gen, std::memory_order_release);
-            if (restoreDecision)
-                restoreGen_.reset();
-            return true;
+            // Condition 9 / AX49 / AX48: ISM + matching + the interim tail + mix, synchronously, where no
+            // IrSet valid at the current rate is current (prepare, project load). Keyed: the saved level;
+            // keyless: the stage-1 (A) solve inside the AX38 gate (FM-3'), the final in 07c-1.
+            if (!level)
+            {
+                DiffuseKey key = engineKey();
+                key.p = p;
+                key.s = s;
+                key.platform = platform;
+                if (load && saved && saved->key == key)
+                {
+                    level = Level{saved->bands, p, s, false};
+                    std::lock_guard<std::mutex> lock(stateMutex_);
+                    ++stats_.keyedLoads;
+                }
+                else if (!load && (held || pending))
+                {
+                    // prepare(): hold the previous E_b with the specular part recomputed (B1'); the builder
+                    // solves.
+                    level = held ? Level{held->bands, p, s, false} : Level{pending->level.bands, p, s, false};
+                    b.heldLevel = true;
+                }
+                else
+                {
+                    level = solveStage(build, source, stageHook, p, s);
+                    std::lock_guard<std::mutex> lock(stateMutex_);
+                    ++stats_.keylessLoads;
+                }
+            }
+            if (units)
+                build.useUnitDecays(units);
+            if (units && build.unitDecaysExact())
+                finishExact(*level); // this scene's exact unit decays are cached (AQ4): no provisional
+            else
+            {
+                build.useUnitDecays(nullptr);
+                build.useDiffuseLevel(level->bands);
+                if (stageHook)
+                    stageHook(BuildStage::Assemble);
+                const bool provisional = build.provisionalTiming().provisional;
+                b.ir = std::make_shared<const sim::RoomIR>(build.assembleProvisional(&b.diag));
+                b.provisional = provisional;
+                b.level = *level;
+                // Where L_p >= L the exact tail was built in its place (no handover, AX49).
+                b.final = level->solved && !provisional;
+                if (!provisional)
+                    b.units = build.unitDecays();
+            }
         }
-        const auto law = restoreDecision ? sim::conv::CrossfadeLaw::EqualPower
-                                         : sim::conv::CrossfadeLaw::EqualGain;
-        if (!irSet || !engine_.submitIrSet(irSet, law))
+        else if (source == Source::Offline)
         {
-            // Records nothing as handled (D7): the generation still differs from the handled one, so it is
-            // built again (by the builder after its AX33 slot, or by the next offline block).
-            return false;
+            // Condition 6: offline renders wait for the final solve and never use an interim (AX5, AX49).
+            if (!level)
+                level = solveStage(build, source, stageHook, p, s);
+            finishExact(*level);
         }
-        lastIr_ = ir;
-        lastIrSet_ = irSet;
-        lastScene_ = scene;
-        handled_.store(gen, std::memory_order_release);
-        if (restoreDecision)
-            restoreGen_.reset();
-        return true;
+        else
+        {
+            const bool continuation = pending && pending->scene == scene;
+            // B1': hold the previous E_b, the last final's, or before the first final the interim's that
+            // plays.
+            if (!held && pending)
+                held = pending->level;
+            if (!level && !continuation && !restoreBg && held)
+            {
+                // Condition 4: an edit. The ISM update is never held behind the diffuse solve: submit the new
+                // early part at once over the held level (B1', AX48) and the cached unit decays (AQ4; on a
+                // T60-changing edit the AX49 D5 bridge, the old decays at the ebar of the decay played), then
+                // solve. Without a cache (the exact tail not built yet), the AX49 provisional tail.
+                build.useDiffuseLevel(held->bands);
+                if (stageHook)
+                    stageHook(BuildStage::Assemble);
+                Built interim;
+                interim.level = Level{held->bands, p, s, false};
+                if (units)
+                {
+                    build.useUnitDecays(units);
+                    interim.ir = std::make_shared<const sim::RoomIR>(build.assemble(&interim.diag));
+                }
+                else
+                {
+                    interim.provisional = build.provisionalTiming().provisional;
+                    interim.ir = std::make_shared<const sim::RoomIR>(
+                        build.assembleProvisional(&interim.diag));
+                }
+                interim.final = false;
+                interim.heldLevel = true;
+                interim.irSet = engine_.makeIrSet(*interim.ir, abandon);
+                (void)commit(source, gen, scene,
+                             interim); // an interim never records the generation as handled
+                // Never mid-drag: a solve starts only once the parameters held still through the ISM update.
+                if (dirty_.load(std::memory_order_acquire) != gen)
+                {
+                    std::lock_guard<std::mutex> lock(stateMutex_);
+                    ++stats_.discardedMidDrag;
+                    return false;
+                }
+                build.useUnitDecays(nullptr);
+            }
+            // The solve: a continuation of a keyed load (the confirming solve, AX48), of a provisional load,
+            // an edit after its ISM update, or a background restore with an IrSet current.
+            if (!level)
+                level = solveStage(build, source, stageHook, p, s);
+            // Never mid-drag: a solved snapshot is adopted only if no change arrived while it was solved.
+            if (dirty_.load(std::memory_order_acquire) != gen)
+            {
+                std::lock_guard<std::mutex> lock(stateMutex_);
+                ++stats_.discardedMidDrag;
+                return false;
+            }
+            finishExact(*level);
+        }
+        b.irSet = engine_.makeIrSet(*b.ir, abandon); // condition 10: a cancel point of builder decisions
+        return commit(source, gen, scene, b);
     }
     catch (const std::exception&)
     {
-        // std::bad_alloc, a cancelled builder solve (sim::BuildCancelled: the builder was quiesced and its
+        // std::bad_alloc, a cancelled builder build (sim::BuildCancelled: the builder was quiesced and its
         // result would be discarded anyway) or an unexpected build failure: nothing is recorded as handled
         // and the current IR keeps playing; the generation is built again like a failed submit (D7).
         return false;
     }
+}
+
+bool ScenePipeline::commit(Source source, std::uint64_t gen, const contract::SceneDescription& scene,
+                           Built& b)
+{
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    if (source == Source::Builder && !builder_->accepting())
+        return false; // quiesced while building: the result is discarded, not submitted
+    if (b.final)
+    {
+        builtIr_ = b.ir;
+        builtIrSet_ = b.irSet;
+        builtScene_ = scene;
+        builtGen_ = gen;
+        if (b.units)
+        {
+            units_ = b.units;
+            unitsSeed_ = scene.render.tailSeed;
+            unitsRate_ = sampleRate_;
+        }
+    }
+    const bool restoreDecision = restoreGen_.has_value() && gen >= *restoreGen_;
+    const auto finishRecord = [&] {
+        if (b.final)
+        {
+            handled_.store(gen, std::memory_order_release);
+            held_ = b.level;
+            pending_.reset();
+            interimPlaying_.store(false, std::memory_order_release);
+        }
+        if (restoreDecision)
+            restoreGen_.reset();
+    };
+    // Skip rule (D7): the same scene already plays at least as final as this, or the IR is bit-identical to
+    // the last successful submit since prepare() or the last drop (offline entry / offline reset).
+    if (lastIr_
+        && ((lastScene_ && *lastScene_ == scene && (lastFinal_ || !b.final))
+            || bitIdentical(*b.ir, *lastIr_)))
+    {
+        if (b.final && pending_ && pending_->scene == scene)
+        {
+            ++stats_.steps; // the settling step was 0 (AX47 (a): a keyed level confirmed bit for bit)
+            stats_.lastStepDb = 0.0;
+        }
+        if (b.final)
+        {
+            lastFinal_ = true;
+            lastScene_ = scene;
+        }
+        finishRecord();
+        return b.final;
+    }
+    // AX18 / FM-1: the restore's first submit is equal-power; every other step, a same-scene settling step
+    // included, is equal-gain.
+    const auto law = restoreDecision ? sim::conv::CrossfadeLaw::EqualPower
+                                     : sim::conv::CrossfadeLaw::EqualGain;
+    if (!b.irSet || !engine_.submitIrSet(b.irSet, law))
+    {
+        // Records nothing as handled (D7): the generation still differs from the handled one, so it is built
+        // again (by the builder after its AX33 slot, or by the next offline block).
+        return false;
+    }
+    if (b.final && pending_ && pending_->scene == scene)
+    {
+        // AX47: the step from the interim to this final, measured on the deciding thread, never in the
+        // callback.
+        const double step = stepDb(pending_->diag, b.diag);
+        ++stats_.steps;
+        stats_.lastStepDb = step;
+        stats_.maxStepDb = std::max(stats_.maxStepDb, step);
+        if (pending_->held)
+            ++stats_.heldSteps;
+    }
+    lastIr_ = b.ir;
+    lastIrSet_ = b.irSet;
+    lastScene_ = scene;
+    lastFinal_ = b.final;
+    if (b.final)
+        ++stats_.finalSubmits;
+    else
+    {
+        ++stats_.interimSubmits;
+        if (b.provisional)
+            ++stats_.provisionalSubmits;
+        pending_ = Pending{scene, b.level, b.diag, b.heldLevel};
+        interimPlaying_.store(true, std::memory_order_release);
+    }
+    finishRecord();
+    return b.final;
+}
+
+ScenePipeline::Stats ScenePipeline::stats() const
+{
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    return stats_;
+}
+
+std::vector<std::string> ScenePipeline::renderLog() const
+{
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    return renderLog_;
+}
+
+std::optional<SavedDiffuse> ScenePipeline::savedDiffuse() const
+{
+    const auto values = parameterValues();
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    if (!held_ || !held_->solved)
+        return std::nullopt;
+    if (held_->s != sceneKey(module3d::deriveScene(values, base_)))
+        return std::nullopt; // the current scene is not solved yet
+    SavedDiffuse out;
+    out.bands = held_->bands;
+    out.key = engineKey();
+    out.key.p = held_->p;
+    out.key.s = held_->s;
+    out.key.platform = platformTag_;
+    return out;
+}
+
+void ScenePipeline::watchHostRate() noexcept
+{
+    // Condition 6 (builder thread): the host processes audio much faster than real time while an interim
+    // plays and offline was not signalled: a bounce would capture the interim. Recorded once per episode.
+    if (sampleRate_ <= 0.0)
+        return;
+    const double now = clock_->now();
+    const std::uint64_t samples = processedSamples_.load(std::memory_order_relaxed);
+    if (rateWindowStart_ < 0.0 || samples < rateWindowSamples_)
+    {
+        rateWindowStart_ = now;
+        rateWindowSamples_ = samples;
+        return;
+    }
+    const double wall = now - rateWindowStart_;
+    const double audio = static_cast<double>(samples - rateWindowSamples_) / sampleRate_;
+    if (audio < kHostRateWindowS)
+    {
+        if (wall > 4.0 * kHostRateWindowS)
+        {
+            rateWindowStart_ = now; // real time or slower: restart the window
+            rateWindowSamples_ = samples;
+            rateLogged_ = false;
+        }
+        return;
+    }
+    const bool fast = audio > kHostRateFactor * wall;
+    const bool offline = nonRealtime_.load(std::memory_order_acquire);
+    const bool interim = interimPlaying_.load(std::memory_order_acquire);
+    if (fast && !offline && interim && !rateLogged_)
+    {
+        char line[256];
+        std::snprintf(
+            line, sizeof line,
+            "render log: offline signal unreliable: the host processed %.2f s of audio in %.2f s of "
+            "wall clock without setNonRealtime(true) while the reverb was settling (condition 6)",
+            audio, wall);
+        try
+        {
+            std::lock_guard<std::mutex> lock(stateMutex_);
+            renderLog_.emplace_back(line);
+        }
+        catch (...)
+        {}
+        rateLogged_ = true;
+    }
+    if (!fast)
+        rateLogged_ = false;
+    rateWindowStart_ = now;
+    rateWindowSamples_ = samples;
 }
 
 // ---- host lifecycle ----
@@ -283,6 +685,11 @@ void ScenePipeline::prepare(double sampleRate, int maxBlock, bool nonRealtime)
         builtScene_.reset();
         builtGen_ = kNone;
         handled_.store(kNone, std::memory_order_release);
+        // The IRs are dropped: no interim plays. The held level and the unit-decay cache stay (the cache is
+        // keyed on the rate: at another rate it is not used and AX49's synchronous interim is built).
+        pending_.reset();
+        lastFinal_ = false;
+        interimPlaying_.store(false, std::memory_order_release);
     }
     nonRealtime_.store(nonRealtime, std::memory_order_release);
     maxBlock_ = std::max(1, maxBlock);
@@ -308,7 +715,14 @@ void ScenePipeline::prepare(double sampleRate, int maxBlock, bool nonRealtime)
     snapTrim();
     if (!nonRealtime)
     {
-        decide(Source::Synchronous); // the initial IR, installed at once at the first partition
+        // The initial IR, installed at once at the first partition. A restore stored before this prepare (the
+        // Logic order: setStateInformation, then prepareToPlay) makes it a project load (AX48's keyed rule).
+        bool load = false;
+        {
+            std::lock_guard<std::mutex> lock(stateMutex_);
+            load = restoreGen_.has_value();
+        }
+        decide(Source::Synchronous, load);
         restartBuilder();
     }
     // Offline: the next process() builds and submits (the only submitter during a bounce).
@@ -359,6 +773,9 @@ void ScenePipeline::dropForOffline()
         lastIr_.reset();
         lastIrSet_.reset();
         lastScene_.reset();
+        lastFinal_ = false;
+        pending_.reset();
+        interimPlaying_.store(false, std::memory_order_release);
         handled_.store(kNone, std::memory_order_release);
     }
     snapTrim();
@@ -388,12 +805,20 @@ void ScenePipeline::beginRestore()
     quiesceBuilder();
 }
 
-void ScenePipeline::restore(const contract::SceneDescription& base, const module3d::ParameterValues& values)
+void ScenePipeline::restore(const contract::SceneDescription& base, const module3d::ParameterValues& values,
+                            const std::optional<SavedDiffuse>& saved)
 {
     quiesceBuilder(); // also when the caller skipped beginRestore()
+    bool synchronous = false;
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
         base_ = module3d::SceneModel::sanitize(base);
+        saved_ = saved;
+        // AX48 / AX49: synchronous where no IrSet valid at the current rate is current (the engine keeps none
+        // across prepare) or at the instance's first restore (project load); otherwise (undo, preset recall
+        // during playback) everything runs in the background and the current IrSet plays.
+        synchronous = !loadedState_ || !lastIrSet_;
+        loadedState_ = true;
     }
     for (std::size_t i = 0; i < module3d::kNumParams; ++i)
         params_[i].store(static_cast<float>(values[i]), std::memory_order_relaxed);
@@ -404,7 +829,9 @@ void ScenePipeline::restore(const contract::SceneDescription& base, const module
     }
     if (active_.load(std::memory_order_acquire) && !nonRealtime_.load(std::memory_order_acquire))
     {
-        decide(Source::Synchronous); // the restore's decision: EqualPower, or a skip
+        if (synchronous)
+            decide(Source::Synchronous,
+                   true); // the restore's decision (interim or final): EqualPower, or a skip
         restartBuilder();
     }
     // Before prepare(), after release(), offline or in the AX34 fallback: stored only; the next prepare()
@@ -525,6 +952,8 @@ void ScenePipeline::process(const float* const in[2], float* const out[2], int n
         engine_.process(inChunk, outChunk, len);
         applyTrim(outChunk, len);
     }
+    processedSamples_.fetch_add(static_cast<std::uint64_t>(n),
+                                std::memory_order_relaxed); // condition 6 watch
 }
 
 // ---- inspection ----

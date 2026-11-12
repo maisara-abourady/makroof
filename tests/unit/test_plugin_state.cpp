@@ -8,8 +8,11 @@
 #include "plugin/PluginProcessor.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <functional>
+#include <thread>
 
 #include <cmath>
 #include <cstring>
@@ -115,6 +118,15 @@ void applyModifiedState(plugin::SpatialSceneProcessor& p)
                 s.room.surface(contract::SurfaceId::floor).bandsAbsorption[4] = 0.35;
             }));
     REQUIRE_FALSE(p.stateWarning());
+}
+
+// Phase-07c-1 (AX49): waits until the reverb has settled (the interim replaced by the final).
+void settle(plugin::SpatialSceneProcessor& p)
+{
+    const auto end = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+    while (p.pipeline().settling() && std::chrono::steady_clock::now() < end)
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    REQUIRE_FALSE(p.pipeline().settling());
 }
 
 juce::File stateDir()
@@ -229,6 +241,7 @@ TEST_CASE("State restored before prepareToPlay (the Logic order) is built in pre
     REQUIRE(b.pipeline().restorePending());
     prepare(b, false); // realtime: the synchronous build consumes the restore
     REQUIRE_FALSE(b.pipeline().restorePending());
+    settle(b); // phase-07c-1 (AX49): the interim is replaced by the final before the first block
     REQUIRE(render(b, in) == expected);
 }
 
@@ -254,18 +267,103 @@ TEST_CASE("State: the parameters win over the scene JSON; other fields come from
 TEST_CASE("Generate the state fixtures (run by hand when pluginStateVersion is bumped)",
           "[.generate-state-fixtures]")
 {
+    // Writes v<kPluginStateVersion>_*.bin only; older versions' fixtures stay as committed (they must keep
+    // loading). From v2 (AX48) each instance is prepared and settled first, so the state carries the saved
+    // diffuse level (DIFFUSE) with its key on the generating platform.
     juce::ScopedJuceInitialiser_GUI juceInitialiser;
+    const juce::String v = "v" + juce::String(plugin::SpatialSceneProcessor::kPluginStateVersion);
     {
         plugin::SpatialSceneProcessor p;
-        REQUIRE(stateDir()
-                    .getChildFile("v1_default.bin")
-                    .replaceWithData(stateOf(p).getData(), stateOf(p).getSize()));
+        prepare(p, false);
+        settle(p);
+        const auto s = stateOf(p);
+        REQUIRE(stateDir().getChildFile(v + "_default.bin").replaceWithData(s.getData(), s.getSize()));
     }
     {
         plugin::SpatialSceneProcessor p;
+        prepare(p, false);
         applyModifiedState(p);
+        settle(p);
         const auto s = stateOf(p);
-        REQUIRE(stateDir().getChildFile("v1_modified.bin").replaceWithData(s.getData(), s.getSize()));
+        REQUIRE(stateDir().getChildFile(v + "_modified.bin").replaceWithData(s.getData(), s.getSize()));
+    }
+}
+
+TEST_CASE("State v2 (AX48): the saved level travels; a v2 fixture loads keyed on its platform, keyless "
+          "elsewhere; v1 fixtures load keyless",
+          "[plugin][state][fixtures][ax48]")
+{
+    juce::ScopedJuceInitialiser_GUI juceInitialiser;
+    // In-process: the key-match state built here loads keyed (no synchronous solve).
+    juce::MemoryBlock block;
+    sim::EmitterBands bands{};
+    {
+        plugin::SpatialSceneProcessor a;
+        prepare(a, false);
+        applyModifiedState(a);
+        settle(a);
+        REQUIRE(a.pipeline().savedDiffuse().has_value());
+        bands = a.pipeline().savedDiffuse()->bands;
+        block = stateOf(a);
+        const auto xml = juce::AudioProcessor::getXmlFromBinary(block.getData(),
+                                                                static_cast<int>(block.getSize()));
+        REQUIRE(xml->getIntAttribute("pluginStateVersion") == 2);
+        REQUIRE(xml->getChildByName("DIFFUSE") != nullptr);
+    }
+    // (The other-outputMode case is the pipeline's test "[ax48]": output_mode is not applied in Phase 07.)
+    {
+        plugin::SpatialSceneProcessor b;
+        prepare(b, false);
+        settle(b);
+        const auto s0 = b.pipeline().stats();
+        restore(b, block);
+        REQUIRE_FALSE(b.stateWarning());
+        REQUIRE(b.pipeline().stats().keyedLoads == s0.keyedLoads + 1);
+        REQUIRE(b.pipeline().stats().syncSolves == s0.syncSolves);
+        settle(b);
+        REQUIRE(b.pipeline().savedDiffuse()->bands == bands); // bit-identical E_b (AX44)
+    }
+    // A malformed level is keyless, never a warning (the scene and parameters load).
+    {
+        auto xml = juce::AudioProcessor::getXmlFromBinary(block.getData(), static_cast<int>(block.getSize()));
+        xml->getChildByName("DIFFUSE")->setAttribute("p", "not-hex");
+        juce::MemoryBlock bad;
+        juce::AudioProcessor::copyXmlToBinary(*xml, bad);
+        plugin::SpatialSceneProcessor b;
+        prepare(b, false);
+        settle(b);
+        const auto s0 = b.pipeline().stats();
+        restore(b, bad);
+        REQUIRE_FALSE(b.stateWarning());
+        REQUIRE(b.pipeline().stats().keylessLoads == s0.keylessLoads + 1);
+        REQUIRE(b.pipeline().stats().syncSolves == s0.syncSolves + 1);
+    }
+    // Committed fixtures: v1 keyless; v2 keyed where its five-part key matches this build and platform,
+    // keyless (a synchronous stage-1 solve) otherwise. Either way the first IrSet carries a tail and the load
+    // settles.
+    for (const char* name : {"v1_modified.bin", "v2_modified.bin", "v2_default.bin"})
+    {
+        CAPTURE(name);
+        juce::MemoryBlock f;
+        REQUIRE(stateDir().getChildFile(name).loadFileAsData(f));
+        plugin::SpatialSceneProcessor b;
+        prepare(b, false);
+        settle(b);
+        const auto s0 = b.pipeline().stats();
+        restore(b, f);
+        REQUIRE_FALSE(b.stateWarning());
+        const auto s1 = b.pipeline().stats();
+        const bool keyed = s1.keyedLoads == s0.keyedLoads + 1;
+        if (std::string(name).rfind("v1", 0) == 0)
+            REQUIRE_FALSE(keyed);
+        if (keyed)
+            REQUIRE(s1.syncSolves == s0.syncSolves);
+        else if (std::string(name) == "v2_default.bin")
+            REQUIRE(s1.syncSolves <= s0.syncSolves + 1); // the default scene may already be solved in-process
+        else
+            REQUIRE(s1.syncSolves == s0.syncSolves + 1);
+        std::printf("state fixture %s: %s load\n", name, keyed ? "keyed" : "keyless (key mismatch or v1)");
+        settle(b);
     }
 }
 

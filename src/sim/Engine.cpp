@@ -10,7 +10,10 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
+#include <future>
 #include <limits>
+#include <numbers>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -164,8 +167,10 @@ EmitterPlan planEmitter(const contract::SceneDescription& scene, const contract:
 // estimated once per scene build for both emitters, AX44), in the matching's units. `match` keeps the
 // Phase 04 (AX16) statistics the AX22 decision and the diagnostics use (5.2); only the level, the
 // axis shares (5.3) and the new diffuse fields change.
-void switchTailLevel(tail::TailMatch& match, const EmitterPlan& plan, const diffuse::DiffuseEmitterResult& er,
-                     const diffuse::DiffuseResult& result, const contract::BandArray& bandEnergy)
+// The level part of the switch, shared by the solve and by a held or saved level (phase-07c-1, AX48): the
+// same arithmetic on the same doubles, so a saved level equal to the solve's gives the same IR bit for bit.
+void applyDiffuseLevel(tail::TailMatch& match, const EmitterPlan& plan,
+                       const contract::BandArray& bandsDiffuse, const contract::BandArray& bandEnergy)
 {
     auto& d = match.diffuse;
     d.computed = true;
@@ -173,13 +178,24 @@ void switchTailLevel(tail::TailMatch& match, const EmitterPlan& plan, const diff
     d.bandsSpecularEnergy = plan.specularMatch.bandsTargetEnergy;
     for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
     {
-        d.bandsDiffuseEnergy[b] = er.bandsDiffuse[b] * bandEnergy[b];
-        d.bandsDiffuseReference[b] = er.bandsDiffuse[b];
+        d.bandsDiffuseEnergy[b] = bandsDiffuse[b] * bandEnergy[b];
+        d.bandsDiffuseReference[b] = bandsDiffuse[b];
         match.bandsTargetEnergy[b] = d.bandsSpecularEnergy[b] + d.bandsDiffuseEnergy[b];
         match.bandsAmplitude[b] = match.bandsTargetEnergy[b] > 0.0 && match.bandsExpectedUnitEnergy[b] > 0.0
                                       ? std::sqrt(match.bandsTargetEnergy[b]
                                                   / match.bandsExpectedUnitEnergy[b])
                                       : 0.0;
+    }
+    match.bandsAxisShares = plan.specularMatch.bandsAxisShares; // (5.3): specular entries only
+}
+
+void switchTailLevel(tail::TailMatch& match, const EmitterPlan& plan, const diffuse::DiffuseEmitterResult& er,
+                     const diffuse::DiffuseResult& result, const contract::BandArray& bandEnergy)
+{
+    applyDiffuseLevel(match, plan, er.bandsDiffuse, bandEnergy);
+    auto& d = match.diffuse;
+    for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+    {
         d.bandsSeDb[b] = er.bandsSeDb[b];
         d.bandsPilotSeDb[b] = er.bandsPilotSeDb[b];
         d.bandsR[b] = er.bandsR[b];
@@ -188,7 +204,6 @@ void switchTailLevel(tail::TailMatch& match, const EmitterPlan& plan, const diff
         d.bandsVovUnion[b] = er.bandsVovUnion[b];
         d.bandsSlope[b] = er.bandsSlope[b];
     }
-    match.bandsAxisShares = plan.specularMatch.bandsAxisShares; // (5.3): specular entries only
     d.nStar = result.nStar;
     d.nNeed = result.nNeed;
     d.n = result.count.n;
@@ -251,7 +266,12 @@ struct StagedBuild::State
     std::vector<PerEmitter> perChannel;
     std::vector<EmitterPlan> plans;
     std::size_t length = 1;
+    std::size_t maxEarly = 1; // max(1, the longest early part)
     std::vector<char> planned;
+    // Phase-07c-1 (AX48, AX49).
+    std::optional<EmitterBands> level;                              // the solve's or the given level
+    std::shared_ptr<const std::vector<tail::UnitDecay>> givenUnits; // useUnitDecays()
+    std::shared_ptr<const std::vector<tail::UnitDecay>> usedUnits;  // what the last assemble() played
 };
 
 namespace {
@@ -329,6 +349,7 @@ void planHybrid(StagedBuild::State& st)
         if (!options.tailOnly && pe.present)
             pe.early = ism::renderImageSources(set.images, shift, filterbank);
         length = std::max({length, pe.early.size(), tailEnd});
+        st.maxEarly = std::max(st.maxEarly, pe.early.size());
         pe.diag.channel = emitter.channel;
         pe.diag.imageCount = set.images.size();
         pe.diag.scatteredCount = set.scattered.size();
@@ -337,19 +358,56 @@ void planHybrid(StagedBuild::State& st)
 }
 
 // Stage 2 of the hybrid build: the diffuse solve (the only stage the plugin runs under the AX38 gate).
+diffuse::DiffuseProblem diffuseProblem(const StagedBuild::State& st, std::vector<std::size_t>& channels);
+
 void solveHybrid(StagedBuild::State& st)
 {
-    const auto& scene = st.scene;
     const auto& options = st.options;
-    const tail::RoomDecay& decay = st.decay;
     const contract::BandArray& bandEnergy = st.bandEnergy;
     auto& perChannel = st.perChannel;
     auto& plans = st.plans;
-    const auto& planned = st.planned;
     // Phase 05h (AX37 (5.1)): the tail level from the propagated diffuse energy. One diffuse solve per
     // scene build, for the present emitters together (AX39: shared across output modes; AX44: one
     // listener-started set serves both emitters). Validation only: --tail-level ax16 keeps Phase 04's.
     if (!options.tailLevelAx16)
+    {
+        std::vector<std::size_t> channels;
+        const diffuse::DiffuseProblem problem = diffuseProblem(st, channels);
+        if (!channels.empty())
+        {
+            diffuse::DiffuseRunOptions run;
+            run.pool = options.diffusePool;
+            run.stop = options.cancel;
+            diffuse::DiffuseLimits limits;
+            if (options.diffuseFixedHistories > 0)
+                limits.fixedHistories = options.diffuseFixedHistories; // validation only
+            const diffuse::DiffuseResult result = diffuse::estimateDiffuse(problem, limits, run);
+            if (result.cancelled)
+                throw BuildCancelled();
+            EmitterBands level{};
+            for (std::size_t i = 0; i < channels.size(); ++i)
+            {
+                switchTailLevel(perChannel[channels[i]].match, plans[channels[i]], result.emitters[i], result,
+                                bandEnergy);
+                if (channels[i] < level.size())
+                    level[channels[i]] = result.emitters[i].bandsDiffuse;
+            }
+            st.level = level;
+        }
+    }
+}
+
+// The diffuse problem of the planned emitters (the solve's input; AX48's key part P hashes it). `channels`
+// receives the emitter channel of each problem emitter.
+diffuse::DiffuseProblem diffuseProblem(const StagedBuild::State& st, std::vector<std::size_t>& channels)
+{
+    const auto& scene = st.scene;
+    const tail::RoomDecay& decay = st.decay;
+    const contract::BandArray& bandEnergy = st.bandEnergy;
+    const auto& perChannel = st.perChannel;
+    const auto& plans = st.plans;
+    const auto& planned = st.planned;
+    channels.clear();
     {
         diffuse::DiffuseProblem problem;
         problem.room.dimensions = scene.room.geometry.dimensions;
@@ -361,7 +419,6 @@ void solveHybrid(StagedBuild::State& st)
         problem.room.bandsAirEnergyPerMetre =
             decay.bandsAirEnergyPerMetre; // AX4 (or the validation override)
         problem.listener = scene.listener.position;
-        std::vector<std::size_t> channels;
         for (std::size_t e = 0; e < perChannel.size(); ++e)
         {
             if (!planned[e])
@@ -384,22 +441,153 @@ void solveHybrid(StagedBuild::State& st)
             problem.emitters.push_back(d);
             channels.push_back(e);
         }
-        if (!channels.empty())
+        return problem;
+    }
+}
+
+// Phase-07c-1 (AX49): the unit decays of the present emitters for one seed, by channel (absent: empty), from
+// one generator; the two emitters in parallel when options.parallelEmitterSynthesis (bit-identical: make() is
+// a const, pure function of its seed and stream). `post` (may be empty) runs on each emitter's decay on the
+// thread that made it.
+template <typename Post>
+std::vector<tail::UnitDecay> synthesiseUnits(const StagedBuild::State& st,
+                                             const tail::BandNoiseGenerator& generator,
+                                             const tail::RoomDecay& decay, std::uint32_t seed,
+                                             const Post& post)
+{
+    const auto& options = st.options;
+    std::vector<tail::UnitDecay> units(st.perChannel.size());
+    std::vector<std::size_t> present;
+    for (std::size_t e = 0; e < st.perChannel.size(); ++e)
+        if (st.perChannel[e].present)
+            present.push_back(e);
+    const auto makeOne = [&](std::size_t e) {
+        tail::UnitDecay u = generator.make(decay, tail::tailSeedForOutput(seed, 0),
+                                           static_cast<std::uint32_t>(e), options.cancel);
+        post(u);
+        return u;
+    };
+    if (options.parallelEmitterSynthesis && present.size() >= 2)
+    {
+        // One extra thread for the second emitter; its exception (BuildCancelled, bad_alloc) reaches get().
+        // If the first throws, the future's destructor waits for the second (which stops at its next cancel
+        // point when the build was cancelled).
+        auto second = std::async(std::launch::async, [&] { return makeOne(present[1]); });
+        units[present[0]] = makeOne(present[0]);
+        units[present[1]] = second.get();
+        for (std::size_t i = 2; i < present.size(); ++i)
+            units[present[i]] = makeOne(present[i]);
+    }
+    else
+        for (const std::size_t e : present)
+            units[e] = makeOne(e);
+    return units;
+}
+
+bool sameDecay(const tail::UnitDecay& u, std::size_t length, const tail::RoomDecay& decay, double fs) noexcept
+{
+    if (u.length() != length || std::memcmp(&u.sampleRate, &fs, sizeof(double)) != 0)
+        return false;
+    return std::memcmp(u.bandsT60S.data(), decay.bandsT60S.data(), sizeof(double) * contract::kNumOctaveBands)
+           == 0;
+}
+
+// Stage 3 of the hybrid build: the IR assembly over given unit decays (by channel), one RoomIR. `exact` = the
+// decays are this scene's own (the amplitudes of the matching apply); otherwise (the AX49 D5 bridge, a
+// provisional tail normalised to the exact distribution is exact too) each band's amplitude uses the ebar of
+// the decay actually played (AX48). The tail ends where each decay ends.
+RoomIR mixHybrid(StagedBuild::State& st, const std::vector<tail::UnitDecay>& units, bool exact, bool measured)
+{
+    const auto& options = st.options;
+    const double fs = st.fs;
+    const double shift = st.shift;
+    const std::size_t offset = st.offset;
+    auto& perChannel = st.perChannel;
+    std::size_t length = std::max<std::size_t>(1, st.maxEarly);
+    for (std::size_t e = 0; e < perChannel.size(); ++e)
+        if (perChannel[e].present && e < units.size() && units[e].length() > offset)
+            length = std::max(length, units[e].length() - offset);
+
+    RoomIR ir;
+    ir.sampleRate = fs;
+    ir.numEmitters = st.numEmitters;
+    ir.numOutputs = 2;
+    ir.taps.assign(static_cast<std::size_t>(ir.numEmitters * ir.numOutputs),
+                   std::vector<float>(length, 0.0f));
+    for (std::size_t e = 0; e < perChannel.size(); ++e)
+    {
+        auto& pe = perChannel[e];
+        if (!pe.present)
+            continue;
+        const tail::UnitDecay& unit = units[e];
+        const std::size_t tailEnd = unit.length() > offset ? unit.length() - offset : 0;
+        contract::BandArray amplitude = pe.match.bandsAmplitude;
+        if (!exact)
+            for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+            {
+                const double ebar = tail::expectedUnitEnergyPer10ms(unit.bandsT60S[b], pe.mixing.mixS,
+                                                                    unit.lengthS);
+                amplitude[b] = ebar > 0.0 && pe.match.bandsTargetEnergy[b] > 0.0
+                                   ? std::sqrt(pe.match.bandsTargetEnergy[b] / ebar)
+                                   : 0.0;
+            }
+        auto& taps = ir.taps[ir.index(static_cast<int>(e), 0)];
+        for (std::size_t n = 0; n < length; ++n)
         {
-            diffuse::DiffuseRunOptions run;
-            run.pool = options.diffusePool;
-            run.stop = options.cancel;
-            diffuse::DiffuseLimits limits;
-            if (options.diffuseFixedHistories > 0)
-                limits.fixedHistories = options.diffuseFixedHistories; // validation only
-            const diffuse::DiffuseResult result = diffuse::estimateDiffuse(problem, limits, run);
-            if (result.cancelled)
-                throw BuildCancelled();
-            for (std::size_t i = 0; i < channels.size(); ++i)
-                switchTailLevel(perChannel[channels[i]].match, plans[channels[i]], result.emitters[i], result,
-                                bandEnergy);
+            if ((n & (kCancelCheckSamples - 1)) == 0)
+                throwIfCancelled(options.cancel); // condition 10: the IR assembly
+            const double t = static_cast<double>(n) / fs + shift;
+            const tail::CrossfadeWeights w = options.tailOnly ? tail::CrossfadeWeights{0.0, 1.0}
+                                                              : tail::crossfade(t, pe.mixing.mixS);
+            double v = n < pe.early.size() ? w.ism * pe.early[n] : 0.0;
+            if (w.tail > 0.0 && n < tailEnd)
+            {
+                double sum = 0.0;
+                for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+                    sum += amplitude[b] * unit.bands[b][n + offset];
+                v += w.tail * sum;
+            }
+            taps[n] = toFloatNoDenormal(v);
+        }
+        for (int o = 1; o < ir.numOutputs; ++o)
+            ir.taps[ir.index(static_cast<int>(e), o)] = taps;
+
+        if (measured)
+        {
+            // Measured check: the realisation's energy in the 10 ms centred on t_mix,e vs E_target.
+            const auto centre = static_cast<std::ptrdiff_t>(std::llround(pe.mixing.mixS * fs));
+            const auto half = static_cast<std::ptrdiff_t>(
+                std::llround(0.5 * tail::kMatchNormalisationS * fs));
+            for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+            {
+                double en = 0.0;
+                for (std::ptrdiff_t j = centre - half; j < centre + half; ++j)
+                    if (j >= 0 && j < static_cast<std::ptrdiff_t>(unit.length()))
+                        en += unit.bands[b][static_cast<std::size_t>(j)]
+                              * unit.bands[b][static_cast<std::size_t>(j)];
+                const double realised = amplitude[b] * amplitude[b] * en;
+                pe.diag.bandsRealisedOverTargetDb[b] =
+                    realised > 0.0 && pe.match.bandsTargetEnergy[b] > 0.0
+                        ? 10.0 * std::log10(realised / pe.match.bandsTargetEnergy[b])
+                        : std::numeric_limits<double>::quiet_NaN();
+            }
         }
     }
+    return ir;
+}
+
+void fillDiagnostics(StagedBuild::State& st, std::size_t length, HybridDiagnostics* diagnostics)
+{
+    if (diagnostics == nullptr)
+        return;
+    diagnostics->sampleRate = st.fs;
+    diagnostics->decay = st.decay;
+    diagnostics->tailLengthS = st.lengthS;
+    diagnostics->alignmentShiftS = st.shift;
+    diagnostics->irLength = length;
+    diagnostics->emitters.clear();
+    for (auto& pe : st.perChannel)
+        diagnostics->emitters.push_back(pe.diag);
 }
 
 // Stage 3 of the hybrid build: the unit-decay synthesis and the IR assembly, one RoomIR per seed.
@@ -407,106 +595,112 @@ std::vector<RoomIR> assembleHybrid(StagedBuild::State& st, HybridDiagnostics* di
 {
     const auto& options = st.options;
     const std::span<const std::uint32_t> seeds(st.seeds);
-    const double fs = st.fs;
-    const int numEmitters = st.numEmitters;
-    const ism::OctaveFilterbank& filterbank = *st.filterbank;
-    const double shift = st.shift;
-    const std::size_t offset = st.offset;
-    const tail::RoomDecay& decay = st.decay;
-    const double lengthS = st.lengthS;
-    const std::size_t tailEnd = st.tailEnd;
-    const bool cached = st.cached;
-    auto& perChannel = st.perChannel;
-    const auto& planned = st.planned;
-    const std::size_t length = st.length;
+    for (std::size_t e = 0; e < st.perChannel.size(); ++e)
+        if (st.planned[e])
+            st.perChannel[e].diag.match = st.perChannel[e].match;
+
+    // The decays to play: the phase-07c-1 given ones (cache or D5 bridge), the BuildOptions benchmark cache,
+    // or a fresh synthesis per seed.
+    std::shared_ptr<const std::vector<tail::UnitDecay>> given = st.givenUnits;
+    if (!given && st.cached)
+        given = std::shared_ptr<const std::vector<tail::UnitDecay>>(std::shared_ptr<void>{},
+                                                                    options.cachedUnitDecays);
     std::optional<tail::BandNoiseGenerator> generator;
     throwIfCancelled(options.cancel); // condition 10: before the synthesis constructor
-    if (!cached)
-        generator.emplace(filterbank, st.unitLength, options.cancel);
+    if (!given)
+        generator.emplace(*st.filterbank, st.unitLength, options.cancel);
 
-    for (std::size_t e = 0; e < perChannel.size(); ++e)
-        if (planned[e])
-            perChannel[e].diag.match = perChannel[e].match;
-
+    const auto noPost = [](tail::UnitDecay&) {};
     std::vector<RoomIR> irs;
     irs.reserve(seeds.size());
     for (std::size_t s = 0; s < seeds.size(); ++s)
     {
-        RoomIR ir;
-        ir.sampleRate = fs;
-        ir.numEmitters = numEmitters;
-        ir.numOutputs = 2;
-        ir.taps.assign(static_cast<std::size_t>(ir.numEmitters * ir.numOutputs),
-                       std::vector<float>(length, 0.0f));
-        for (std::size_t e = 0; e < perChannel.size(); ++e)
-        {
-            auto& pe = perChannel[e];
-            if (!pe.present)
-                continue;
-            // AX5: tailSeed (output index 0, both outputs the same) with the emitter channel as the
-            // PCG32 stream.
-            tail::UnitDecay generated;
-            if (!cached)
-                generated = generator->make(decay, tail::tailSeedForOutput(seeds[s], 0),
-                                            static_cast<std::uint32_t>(e), options.cancel);
-            const tail::UnitDecay& unit = cached ? (*options.cachedUnitDecays)[e] : generated;
-            auto& taps = ir.taps[ir.index(static_cast<int>(e), 0)];
-            for (std::size_t n = 0; n < length; ++n)
-            {
-                if ((n & (kCancelCheckSamples - 1)) == 0)
-                    throwIfCancelled(options.cancel); // condition 10: the IR assembly
-                const double t = static_cast<double>(n) / fs + shift;
-                const tail::CrossfadeWeights w = options.tailOnly ? tail::CrossfadeWeights{0.0, 1.0}
-                                                                  : tail::crossfade(t, pe.mixing.mixS);
-                double v = n < pe.early.size() ? w.ism * pe.early[n] : 0.0;
-                if (w.tail > 0.0 && n < tailEnd)
-                {
-                    double sum = 0.0;
-                    for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
-                        sum += pe.match.bandsAmplitude[b] * unit.bands[b][n + offset];
-                    v += w.tail * sum;
-                }
-                taps[n] = toFloatNoDenormal(v);
-            }
-            for (int o = 1; o < ir.numOutputs; ++o)
-                ir.taps[ir.index(static_cast<int>(e), o)] = taps;
+        std::shared_ptr<const std::vector<tail::UnitDecay>> units = given;
+        bool exact = true;
+        if (!units)
+            units = std::make_shared<const std::vector<tail::UnitDecay>>(
+                synthesiseUnits(st, *generator, st.decay, seeds[s], noPost));
+        else
+            for (std::size_t e = 0; e < st.perChannel.size(); ++e)
+                if (st.perChannel[e].present
+                    && (e >= units->size() || !sameDecay((*units)[e], st.unitLength, st.decay, st.fs)))
+                    exact = false;
+        if (!exact && units->size() < st.perChannel.size())
+            throw std::invalid_argument("useUnitDecays: one decay per emitter channel is needed");
+        irs.push_back(mixHybrid(st, *units, exact, s == 0));
+        if (s == 0)
+            st.usedUnits = units;
+    }
+    fillDiagnostics(st, irs.empty() ? 0 : irs.front().length(), diagnostics);
+    return irs;
+}
 
-            if (s == 0)
+// Phase-07c-1 (AX49): the timing of the provisional tail.
+ProvisionalTiming provisionalTimingOf(const StagedBuild::State& st) noexcept
+{
+    ProvisionalTiming t;
+    for (const auto& pe : st.perChannel)
+        if (pe.present)
+            t.mixMaxS = std::max(t.mixMaxS, pe.mixing.mixS);
+    t.t60MaxS = st.decay.maxT60S();
+    t.fadeStartS = t.mixMaxS + kProvisionalT60Fraction * t.t60MaxS;
+    t.endS = t.fadeStartS + kProvisionalFadeS;
+    t.exactS = st.lengthS;
+    t.provisional = t.endS < t.exactS;
+    return t;
+}
+
+// Phase-07c-1 (AX49): the provisional tail's unit decays and their IR. Same generator kind, seed and emitter
+// stream as the exact tail, length L_p; each band divided by sqrt(E_p,b / f_b) (E_p,b its realised energy
+// over [0, L_f), f_b the exact unit decay's expected energy fraction over [0, L_f)), never scaled up for the
+// energy past L_p, then faded to zero over [L_f, L_p) (raised cosine). Its energy distribution over [0, L_f)
+// is then the exact one's, so the matching's amplitudes (ebar of the exact decay) apply unchanged.
+RoomIR assembleProvisionalHybrid(StagedBuild::State& st, HybridDiagnostics* diagnostics)
+{
+    const auto& options = st.options;
+    const ProvisionalTiming timing = provisionalTimingOf(st);
+    const double fs = st.fs;
+    const std::size_t lp = tail::unitDecayLength(timing.endS, fs);
+    const std::size_t lf = std::min(lp, tail::unitDecayLength(timing.fadeStartS, fs));
+    for (std::size_t e = 0; e < st.perChannel.size(); ++e)
+        if (st.planned[e])
+            st.perChannel[e].diag.match = st.perChannel[e].match;
+    throwIfCancelled(options.cancel);
+    const tail::BandNoiseGenerator generator(*st.filterbank, lp, options.cancel);
+    const tail::RoomDecay& decay = st.decay;
+    const double lengthS = st.lengthS;
+    const auto post = [&](tail::UnitDecay& u) {
+        u.lengthS = lengthS; // the exact decay's L: its ebar is the one the amplitudes use
+        for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+        {
+            auto& band = u.bands[b];
+            double ep = 0.0;
+            for (std::size_t j = 0; j < lf; ++j)
+                ep += band[j] * band[j];
+            const double k = tail::kEnergyDecayPerT60 / decay.bandsT60S[b];
+            const double fb = (1.0 - std::exp(-k * timing.fadeStartS)) / (1.0 - std::exp(-k * lengthS));
+            const double scale = ep > 0.0 && fb > 0.0 ? 1.0 / std::sqrt(ep / fb) : 0.0;
+            const std::size_t fadeLen = lp > lf ? lp - lf : 0;
+            for (std::size_t j = 0; j < lp; ++j)
             {
-                // Measured check: the realisation's energy in the 10 ms centred on t_mix,e vs E_target.
-                const auto centre = static_cast<std::ptrdiff_t>(std::llround(pe.mixing.mixS * fs));
-                const auto half = static_cast<std::ptrdiff_t>(
-                    std::llround(0.5 * tail::kMatchNormalisationS * fs));
-                for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
-                {
-                    double en = 0.0;
-                    for (std::ptrdiff_t j = centre - half; j < centre + half; ++j)
-                        if (j >= 0 && j < static_cast<std::ptrdiff_t>(unit.length()))
-                            en += unit.bands[b][static_cast<std::size_t>(j)]
-                                  * unit.bands[b][static_cast<std::size_t>(j)];
-                    const double realised = pe.match.bandsAmplitude[b] * pe.match.bandsAmplitude[b] * en;
-                    pe.diag.bandsRealisedOverTargetDb[b] =
-                        realised > 0.0 && pe.match.bandsTargetEnergy[b] > 0.0
-                            ? 10.0 * std::log10(realised / pe.match.bandsTargetEnergy[b])
-                            : std::numeric_limits<double>::quiet_NaN();
-                }
+                double g = scale;
+                if (j >= lf)
+                    g *= 0.5
+                         * (1.0
+                            + std::cos(std::numbers::pi * static_cast<double>(j - lf + 1)
+                                       / static_cast<double>(fadeLen + 1)));
+                band[j] *= g;
             }
         }
-        irs.push_back(std::move(ir));
-    }
-
-    if (diagnostics != nullptr)
-    {
-        diagnostics->sampleRate = fs;
-        diagnostics->decay = decay;
-        diagnostics->tailLengthS = lengthS;
-        diagnostics->alignmentShiftS = shift;
-        diagnostics->irLength = length;
-        diagnostics->emitters.clear();
-        for (auto& pe : perChannel)
-            diagnostics->emitters.push_back(pe.diag);
-    }
-    return irs;
+    };
+    auto units = std::make_shared<const std::vector<tail::UnitDecay>>(
+        synthesiseUnits(st, generator, decay, st.seeds.front(), post));
+    // exact = true: the provisional is normalised to the exact distribution, so the matching's amplitudes
+    // hold.
+    RoomIR ir = mixHybrid(st, *units, true, true);
+    st.usedUnits = std::move(units); // the provisional decays (tests); never cached as exact by the plugin
+    fillDiagnostics(st, ir.length(), diagnostics);
+    return ir;
 }
 
 RoomIR buildOmni(const contract::SceneDescription& scene, const BuildOptions& options)
@@ -695,9 +889,141 @@ RoomIR StagedBuild::assemble(HybridDiagnostics* diagnostics)
 {
     if (!state_->hybrid)
         return std::move(state_->direct);
-    solve();
+    if (!state_->level)
+        solve(); // a no-op for a tailLevelAx16 build; skipped when useDiffuseLevel() gave the level
     SPATIAL_STAGE_GUARD(state_->options);
     return std::move(assembleHybrid(*state_, diagnostics).front());
+}
+
+namespace {
+
+// FNV-1a 64 over raw bytes (AX48's canonical hashes: bit for bit, so -0.0 != 0.0 and every rounding counts).
+struct Fnv1a
+{
+    std::uint64_t h = 0xcbf29ce484222325ull;
+    void bytes(const void* p, std::size_t n) noexcept
+    {
+        const auto* c = static_cast<const unsigned char*>(p);
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            h ^= c[i];
+            h *= 0x100000001b3ull;
+        }
+    }
+    void f64(double v) noexcept
+    {
+        std::uint64_t bits = 0;
+        std::memcpy(&bits, &v, sizeof bits);
+        bytes(&bits, sizeof bits);
+    }
+    void bands(const contract::BandArray& a) noexcept
+    {
+        for (const double v : a)
+            f64(v);
+    }
+    void vec(const contract::Vec3& v) noexcept
+    {
+        f64(v.x);
+        f64(v.y);
+        f64(v.z);
+    }
+};
+
+} // namespace
+
+std::uint64_t StagedBuild::problemHash() const noexcept
+{
+    if (!state_ || !state_->hybrid)
+        return 0;
+    std::vector<std::size_t> channels;
+    diffuse::DiffuseProblem problem;
+    try
+    {
+        problem = diffuseProblem(*state_, channels);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+    Fnv1a f;
+    f.vec(problem.room.dimensions);
+    for (const auto& a : problem.room.bandsAbsorption)
+        f.bands(a);
+    for (const double v : problem.room.scattering)
+        f.f64(v);
+    f.bands(problem.room.bandsAirEnergyPerMetre);
+    f.vec(problem.listener);
+    for (std::size_t i = 0; i < problem.emitters.size(); ++i)
+    {
+        const auto& e = problem.emitters[i];
+        const std::uint64_t ch = channels[i];
+        f.bytes(&ch, sizeof ch);
+        f.vec(e.position);
+        f.f64(e.windowStartS);
+        f.f64(e.mixS);
+        f.bands(e.bandsT60S);
+        f.f64(e.gainSquared);
+        f.bands(e.bandsSpecularTarget);
+    }
+    return f.h;
+}
+
+void StagedBuild::useDiffuseLevel(const EmitterBands& bandsDiffuse)
+{
+    if (!state_ || !state_->hybrid || state_->options.tailLevelAx16)
+        return;
+    auto& st = *state_;
+    for (std::size_t e = 0; e < st.perChannel.size() && e < bandsDiffuse.size(); ++e)
+        if (st.planned[e])
+            applyDiffuseLevel(st.perChannel[e].match, st.plans[e], bandsDiffuse[e], st.bandEnergy);
+    st.level = bandsDiffuse; // the solve stays pending: solve() may still run and replace this level
+}
+
+std::optional<EmitterBands> StagedBuild::diffuseLevel() const
+{
+    if (!state_)
+        return std::nullopt;
+    return state_->level;
+}
+
+ProvisionalTiming StagedBuild::provisionalTiming() const noexcept
+{
+    if (!state_ || !state_->hybrid)
+        return {};
+    return provisionalTimingOf(*state_);
+}
+
+RoomIR StagedBuild::assembleProvisional(HybridDiagnostics* diagnostics)
+{
+    if (!state_->hybrid || !provisionalTimingOf(*state_).provisional || state_->options.tailOnly)
+        return assemble(diagnostics);
+    if (!state_->level)
+        solve();
+    SPATIAL_STAGE_GUARD(state_->options);
+    return assembleProvisionalHybrid(*state_, diagnostics);
+}
+
+void StagedBuild::useUnitDecays(std::shared_ptr<const std::vector<tail::UnitDecay>> units)
+{
+    if (state_ && state_->hybrid)
+        state_->givenUnits = std::move(units);
+}
+
+bool StagedBuild::unitDecaysExact() const noexcept
+{
+    if (!state_ || !state_->hybrid || !state_->givenUnits)
+        return false;
+    const auto& units = *state_->givenUnits;
+    for (std::size_t e = 0; e < state_->perChannel.size(); ++e)
+        if (state_->perChannel[e].present
+            && (e >= units.size() || !sameDecay(units[e], state_->unitLength, state_->decay, state_->fs)))
+            return false;
+    return true;
+}
+
+std::shared_ptr<const std::vector<tail::UnitDecay>> StagedBuild::unitDecays() const
+{
+    return state_ ? state_->usedUnits : nullptr;
 }
 
 RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& options,

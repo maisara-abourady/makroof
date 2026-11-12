@@ -440,26 +440,64 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                             static_cast<long long>(work));
             }
         }
-        // Synchronous restore with the solve, 96 kHz, worst of 10 (AX38 4c), alone and contended.
+        // Phase-07c-1 condition 7 (AX38 4c re-scoped): the restore as AX48 / AX49 build it, 96 kHz, worst of
+        // 10, alone and contended: a project load (the instance's first restore, no IrSet of this scene
+        // current) into a fresh instance prepared on the default scene: ISM + matching + the AX49 interim
+        // tail + mix, plus the AX48 stage-1 solve (keyless: no saved E_b). The background settling to the
+        // exact tail is not in it (the instance is destroyed after the timed restore; its builder is
+        // cancelled, condition 10).
         const auto values = module3d::parameterValuesFromScene(sc);
-        const auto smallValues = module3d::defaultParameterValues();
-        plugin::ScenePipeline pipe;
-        pipe.prepare(96000.0, 512, false);
+        const auto load = [&](const std::optional<plugin::SavedDiffuse>& saved) {
+            plugin::ScenePipeline fresh;
+            fresh.prepare(96000.0, 512, false);
+            REQUIRE(pipeline_test::waitFor([&] { return !fresh.settling() && fresh.builderIdle(); }));
+            const auto t0 = Clock::now();
+            fresh.beginRestore();
+            fresh.restore(sc, values, saved);
+            return ms(t0, Clock::now());
+        };
         std::vector<double> restore;
         for (int i = 0; i < kRuns; ++i)
-        {
-            pipe.beginRestore();
-            pipe.restore(plugin::defaultScene(), smallValues);
-            const auto t0 = Clock::now();
-            pipe.beginRestore();
-            pipe.restore(sc, values);
-            restore.push_back(ms(t0, Clock::now()));
-        }
+            restore.push_back(load(std::nullopt));
         const auto rs = spread(restore);
-        std::printf(
-            "05h-records restore %-26s 96 kHz with the solve, %d runs: min %.0f median %.0f worst %.0f ms; "
-            "14 x worst %.2f s (30 s)\n",
-            key, kRuns, rs.min, rs.median, rs.max, 14.0 * rs.max / 1000.0);
+        {
+            auto planned = sim::StagedBuild::plan(sc, [] {
+                sim::BuildOptions o;
+                o.sampleRate = 96000.0;
+                o.kind = sim::BuildOptions::Kind::Omni;
+                return o;
+            }());
+            const auto t = planned.provisionalTiming();
+            std::printf(
+                "05h-records restore %-26s 96 kHz L_p %.2f s (L_f %.2f s, L %.2f s): %s (AX49 reversal 1 "
+                "reads L_p <= 3.82 s)\n",
+                key, t.endS, t.fadeStartS, t.exactS,
+                t.provisional ? "provisional interim tail" : "L_p >= L: the exact tail in its place (07d)");
+        }
+        std::printf("05h-records restore %-26s 96 kHz as AX48/AX49 build it (keyless load: stage-1 solve + "
+                    "interim tail), "
+                    "%d runs: min %.0f median %.0f worst %.0f ms; 14 x worst %.2f s (30 s)\n",
+                    key, kRuns, rs.min, rs.median, rs.max, 14.0 * rs.max / 1000.0);
+        {
+            // The keyed load (saved E_b whose five-part key matches): no synchronous solve. Printed, median
+            // of 3.
+            plugin::ScenePipeline src;
+            src.prepare(96000.0, 512, false);
+            src.beginRestore();
+            src.restore(sc, values);
+            REQUIRE(pipeline_test::waitFor([&] { return !src.settling() && src.builderIdle(); },
+                                           std::chrono::minutes(5)));
+            const auto saved = src.savedDiffuse();
+            REQUIRE(saved.has_value());
+            std::vector<double> keyed;
+            for (int i = 0; i < 3; ++i)
+                keyed.push_back(load(saved));
+            const auto ks = spread(keyed);
+            std::printf(
+                "05h-records restore %-26s 96 kHz keyed load (saved E_b, no solve), 3 runs: min %.0f median "
+                "%.0f worst %.0f ms\n",
+                key, ks.min, ks.median, ks.max);
+        }
         records[key].restore = rs;
         // AX38 4c blocking restore gate in the RG-1 form (decider files 64/66, interrogator 65/67; D-H1 (v)
         // amended for Maisara): on hosted runners the flutter scene's 14 x worst <= 30 s is asserted on every
@@ -494,16 +532,14 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
         }
         else
             std::printf("05h-records restore gate %-26s %s: reported set, not gated\n", key, kOsName);
-        // Contended: a second pipeline restores the same 100 m scene on another thread at the same time.
-        plugin::ScenePipeline other;
-        other.prepare(96000.0, 512, false);
+        // Contended: a second instance loads the same 100 m scene on another thread at the same time.
         std::vector<double> contended;
         for (int i = 0; i < 3; ++i)
         {
-            pipe.beginRestore();
-            pipe.restore(plugin::defaultScene(), smallValues);
-            other.beginRestore();
-            other.restore(plugin::defaultScene(), smallValues);
+            plugin::ScenePipeline pipe, other;
+            pipe.prepare(96000.0, 512, false);
+            other.prepare(96000.0, 512, false);
+            REQUIRE(pipeline_test::waitFor([&] { return !pipe.settling() && !other.settling(); }));
             std::thread t([&] {
                 other.beginRestore();
                 other.restore(sc, values);
@@ -724,6 +760,15 @@ TEST_CASE(
                     "stepping 1 m every 5 s "
                     "(%d rebuilds): %.1f s wall, ratio to real time %.2f x\n",
                     fs, steps, wall, wall / seconds);
+        // Phase-07c-1 O16 (AX38 4c, umbrella section 9): the same record after conditions 6 and 9 (offline
+        // waits for the final solve, the unit-decay synthesis in parallel per emitter, the AQ4 cache), the
+        // (C) W_max input of phase 07c-2 (D-H1 (iv), AX41). The pre-move figures:
+        // docs/review/phase-05h/31-orchestrator-local-records.md.
+        std::printf(
+            "07c1-records bounce (O16) 100 m cube %6.0f Hz: 3-minute offline room-size automation, %d "
+            "rebuilds: %.1f s wall, ratio to real time %.2f x; interim IrSets offline %llu (must be 0)\n",
+            fs, steps, wall, wall / seconds, static_cast<unsigned long long>(pipe.stats().interimSubmits));
+        REQUIRE(pipe.stats().interimSubmits == 0); // condition 6: offline never plays an interim
     }
     // (3) callback p99.9 at host buffer 64 with 1 / 4 / 8 concurrent builders rebuilding the 100 m cube.
     for (const int builders : {1, 4, 8})
@@ -1626,5 +1671,187 @@ TEST_CASE("records: condition 12 (d) quiesce with N concurrent syntheses and (f)
                 "(3 cancels at random points)\n",
                 key, fs, kOsName, n, n == 1 ? "" : "s", allMs, peakMb, rssBefore,
                 rssBefore == 0 ? " [RSS n/a]" : "", worstWait);
+        }
+}
+
+// Phase-07c-1 record (h) (AX49; condition 9): restores in sequence on one thread (a host loading a project's
+// instances one after another), keyed and keyless, at 1, 4 and 8 instances at T60_max 8 s; a T60_max sweep of
+// 2, 8, 12, 20, 35 and 50 s at one instance; 100 m cubes; 48 and 96 kHz. Printed: per-instance time until
+// audible (the restore's return: an IrSet with a tail is current) and the time from provisional to exact
+// (until the last instance settled); the ISM latency of a T60-changing edit under the AX49 D5 bridge. Any
+// 8-instance run over 5 s is flagged in print, never asserted. Its T60 sweep is an input to phase 07d.
+TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 / 4 / 8 instances, T60 sweep, "
+          "D5-bridge ISM latency",
+          "[.][benchmark][diffuse-records][record-h]")
+{
+    const auto cubeT60 = [](double t60) {
+        // Uniform alpha for the target Sabine-Eyring T60 of a 100 m cube without air: alpha = 1 - e^(-0.161 V
+        // / (S T60)); air absorption shortens the high bands, so T60_max (the 63 Hz band) is close to the
+        // target.
+        const double a = 1.0 - std::exp(-0.161 * 1.0e6 / (6.0e4 * t60));
+        std::array<contract::BandArray, 6> alpha{};
+        for (auto& f : alpha)
+            f.fill(std::max(0.01, a));
+        std::array<double, 6> s{};
+        s.fill(0.3);
+        auto sc = diffuse_test::scene({100.0, 100.0, 100.0}, alpha, s, {50.0, 30.0, 1.7},
+                                      {{45.0, 70.0, 2.0}, {55.0, 70.0, 2.0}});
+        return sc;
+    };
+    const auto settled = [](const plugin::ScenePipeline& p) { return !p.settling() && p.builderIdle(); };
+    const auto savedFor = [&](const contract::SceneDescription& sc) {
+        plugin::ScenePipeline src;
+        src.prepare(48000.0, 512, false);
+        src.beginRestore();
+        src.restore(sc, module3d::parameterValuesFromScene(sc));
+        REQUIRE(pipeline_test::waitFor([&] { return settled(src); }, std::chrono::minutes(5)));
+        return src.savedDiffuse();
+    };
+    struct Result
+    {
+        double audibleMaxMs = 0.0, audibleSumMs = 0.0, exactMs = 0.0;
+    };
+    const auto run = [&](const contract::SceneDescription& sc, double fs, int instances,
+                         const std::optional<plugin::SavedDiffuse>& saved) {
+        std::vector<std::unique_ptr<plugin::ScenePipeline>> pipes;
+        for (int i = 0; i < instances; ++i)
+        {
+            pipes.push_back(std::make_unique<plugin::ScenePipeline>());
+            pipes.back()->prepare(fs, 512, false);
+        }
+        for (auto& p : pipes)
+            REQUIRE(pipeline_test::waitFor([&] { return settled(*p); }));
+        Result r;
+        const auto values = module3d::parameterValuesFromScene(sc);
+        const auto t0 = Clock::now();
+        for (auto& p : pipes) // in sequence on one thread
+        {
+            const auto a = Clock::now();
+            p->beginRestore();
+            p->restore(sc, values, saved);
+            const double d = ms(a, Clock::now());
+            r.audibleMaxMs = std::max(r.audibleMaxMs, d);
+            r.audibleSumMs += d;
+        }
+        for (auto& p : pipes)
+            REQUIRE(pipeline_test::waitFor([&] { return settled(*p); }, std::chrono::minutes(10)));
+        r.exactMs = ms(t0, Clock::now());
+        return r;
+    };
+    const auto print = [](const char* what, double t60, double fs, int n, bool keyed, const Result& r,
+                          const sim::ProvisionalTiming& t) {
+        std::printf(
+            "07c1-records (h) %s T60 %4.0f s %6.0f Hz %d inst %-7s: until audible per instance max %.0f ms "
+            "(sum %.0f ms); provisional -> exact (all settled) %.0f ms; L_p %.2f s / L %.2f s%s%s\n",
+            what, t60, fs, n, keyed ? "keyed" : "keyless", r.audibleMaxMs, r.audibleSumMs, r.exactMs, t.endS,
+            t.exactS, t.provisional ? "" : " (exact in place)",
+            n == 8 && r.audibleSumMs > 5000.0 ? "  FLAG: 8-instance load over 5 s (AX49 reversal input)"
+                                              : "");
+    };
+    for (const double t60 : {2.0, 8.0, 12.0, 20.0, 35.0, 50.0})
+    {
+        const auto sc = cubeT60(t60);
+        const auto saved = savedFor(sc);
+        REQUIRE(saved.has_value());
+        for (const double fs : {48000.0, 96000.0})
+        {
+            sim::BuildOptions o;
+            o.sampleRate = fs;
+            o.kind = sim::BuildOptions::Kind::Omni;
+            const auto timing = sim::StagedBuild::plan(sc, o).provisionalTiming();
+            for (const int n : {1, 4, 8})
+            {
+                if (n > 1 && (t60 < 7.5 || t60 > 8.5))
+                    continue; // instances at the rated corner (T60_max 8 s); the sweep at one instance
+                print("load", t60, fs, n, false, run(sc, fs, n, std::nullopt), timing);
+                print("load", t60, fs, n, true, run(sc, fs, n, saved), timing);
+            }
+        }
+    }
+    // The D5 bridge: a T60-changing edit (room width) in a settled 100 m instance at T60 8 s; the ISM update
+    // is submitted over the cached unit decays before the solve: its latency, and the time to the exact tail.
+    for (const double fs : {48000.0, 96000.0})
+    {
+        const auto sc = cubeT60(8.0);
+        plugin::ScenePipeline p;
+        p.prepare(fs, 512, false);
+        p.beginRestore();
+        p.restore(sc, module3d::parameterValuesFromScene(sc));
+        REQUIRE(pipeline_test::waitFor([&] { return settled(p); }, std::chrono::minutes(5)));
+        std::vector<double> ism, exact;
+        for (int i = 0; i < 3; ++i)
+        {
+            const auto before = p.stats().interimSubmits;
+            const auto t0 = Clock::now();
+            p.setParameter(module3d::kRoomW, p.parameter(module3d::kRoomW) - 2.0f);
+            REQUIRE(pipeline_test::waitFor([&] { return p.stats().interimSubmits > before; }));
+            ism.push_back(ms(t0, Clock::now()));
+            REQUIRE(pipeline_test::waitFor([&] { return settled(p); }, std::chrono::minutes(5)));
+            exact.push_back(ms(t0, Clock::now()));
+        }
+        const auto si = spread(ism), se = spread(exact);
+        std::printf(
+            "07c1-records (h) D5 bridge T60 8 s %6.0f Hz: ISM latency of a T60-changing edit min %.0f median "
+            "%.0f max %.0f ms; to the exact tail median %.0f ms (3 edits)\n",
+            fs, si.min, si.median, si.max, se.median);
+    }
+}
+
+// Phase-07c-1 AX48 E_model fingerprint: the E_b of the fingerprint fixtures (the two gated 100 m cubes, the
+// flutter cube triggering the AX22 ISM fallback, and the low-alpha s = 1 cube, air-dominated in the upper
+// bands) hashed bit for bit, per platform, with DiffuseLimits and kEstimatorModelId. A change of E_b with the
+// limits unchanged must bump kEstimatorModelId (and is a step for every saved project: AX48's engine-mismatch
+// policy); this test fails otherwise. A platform without a pin prints PROVISIONAL (pinned from its first CI
+// run, with a CHANGELOG reason).
+TEST_CASE("records: AX48 E_model fingerprint of E_b on the fingerprint fixtures",
+          "[.][benchmark][ax48-fingerprint]")
+{
+    struct Pin
+    {
+        const char* os;
+        std::uint32_t modelId;
+        std::uint64_t hash;
+    };
+    // Pinned from CI (phase-07c-1); 0 = not pinned yet.
+    constexpr Pin kPins[] = {
+        {"Linux", 1, 0},
+        {"macOS", 1, 0},
+        {"Windows", 1, 0},
+    };
+    std::uint64_t h = 0xcbf29ce484222325ull;
+    const auto mix = [&](const void* p, std::size_t n) {
+        const auto* c = static_cast<const unsigned char*>(p);
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            h ^= c[i];
+            h *= 0x100000001b3ull;
+        }
+    };
+    for (const char* key :
+         {"cube100_flutter_fallback", "cube100_lowalpha0.05_s0.3", "cube100_lowalpha0.05_s1"})
+    {
+        sim::BuildOptions o;
+        o.sampleRate = 48000.0;
+        o.kind = sim::BuildOptions::Kind::Omni;
+        auto build = sim::StagedBuild::plan(cube(key), o);
+        build.solve();
+        const auto level = build.diffuseLevel();
+        REQUIRE(level.has_value());
+        mix(level->data(), sizeof(sim::EmitterBands));
+        std::printf("07c1-records ax48 fingerprint %-26s E_b[0] 1 kHz %.17g\n", key, (*level)[0][4]);
+    }
+    for (const auto& pin : kPins)
+        if (std::string(pin.os) == kOsName)
+        {
+            std::printf("07c1-records ax48 fingerprint os=%s modelId=%u hash=%016llx pinned=%016llx %s\n",
+                        kOsName, sim::diffuse::kEstimatorModelId, static_cast<unsigned long long>(h),
+                        static_cast<unsigned long long>(pin.hash),
+                        pin.hash == 0 ? "PROVISIONAL (no pin yet)" : "");
+            if (pin.hash != 0)
+            {
+                REQUIRE(sim::diffuse::kEstimatorModelId == pin.modelId);
+                REQUIRE(
+                    h == pin.hash); // E_b changed with DiffuseLimits unchanged: bump kEstimatorModelId (AX48)
+            }
         }
 }

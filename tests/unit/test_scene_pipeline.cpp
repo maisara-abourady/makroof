@@ -146,11 +146,15 @@ TEST_CASE("Pipeline: prepare builds synchronously; latency 544 at every supporte
         p.prepare(rate, 512, false);
         REQUIRE(p.latencySamples() == 544);
         REQUIRE_FALSE(p.unsupportedRateFallback());
-        REQUIRE(p.handledGeneration() == p.dirtyGeneration()); // built before prepare() returned
+        // Built before prepare() returned: the final, or the AX49 interim the builder then settles
+        // (phase-07c-1).
+        REQUIRE(p.lastSubmittedIrSet() != nullptr);
         Recorder rec{p};
         rec.run(2 * kP);
         REQUIRE(p.engine().convolver().currentIr() != nullptr); // installed at once
-        REQUIRE(p.engine().convolver().fadeCount() == 0);
+        REQUIRE(p.engine().convolver().fadeCount() <= 1);       // at most the one settling step
+        waitBuilt(p);
+        REQUIRE(p.handledGeneration() == p.dirtyGeneration());
     }
 }
 
@@ -292,6 +296,8 @@ TEST_CASE("Pipeline: the output trim follows a 20 ms linear ramp and snaps on re
     restoreScene(p, pipeline_test::loadScene("dead_booth.json"));
     ref.prepare(kRate, 256, false);
     p.prepare(kRate, 256, false);
+    waitBuilt(ref); // phase-07c-1: settled before the first block (the final replaces the interim at once)
+    waitBuilt(p);
     Recorder r0{ref}, r1{p};
     r0.run(8 * kP);
     r1.run(8 * kP);
@@ -327,14 +333,18 @@ TEST_CASE("Switch rule (D7), realtime: (a) restore of the current state, (b) Equ
     plugin::ScenePipeline p;
     restoreScene(p, booth);
     p.prepare(kRate, 256, false);
+    waitBuilt(p); // phase-07c-1 (AX49): the interim is settled before the first block
     Recorder rec{p};
     rec.run(4 * kP);
     std::vector<Segment> chain{{irOf(p.parameterValues(), p.baseScene()), -1, Law::EqualGain}};
     const auto& conv = p.engine().convolver();
 
     // (a) Restoring the current state starts no fade, leaves the output unchanged, clears the flag.
+    // Phase-07c-1 (AX48): with an IrSet current, a restore's decision is the builder's (the current IrSet
+    // plays meanwhile).
     const auto fades0 = conv.fadeCount();
     restoreScene(p, p.currentScene());
+    waitBuilt(p);
     REQUIRE_FALSE(p.restorePending());
     REQUIRE(p.handledGeneration() == p.dirtyGeneration());
     rec.run(kSettle);
@@ -361,6 +371,7 @@ TEST_CASE("Switch rule (D7), realtime: (a) restore of the current state, (b) Equ
     other.render.tailSeed += 1;
     other.room.surface(contract::SurfaceId::floor).bandsAbsorption.fill(0.3);
     restoreScene(p, other);
+    waitBuilt(p); // in the background (an IrSet is current): one EqualPower step, no interim
     REQUIRE_FALSE(p.restorePending());
     rec.run(kSettle);
     REQUIRE(conv.fadeCount() == fades0 + 2);
@@ -373,8 +384,9 @@ TEST_CASE("Switch rule (D7), realtime: (a) restore of the current state, (b) Equ
     REQUIRE(conv.fadeCount() == fades0 + 3);
     REQUIRE(residual(rec, chain) <= -100.0);
 
-    // (d) A change injected after the restore's scene snapshot is a later generation, built by the
-    // builder after the restore, with EqualGain.
+    // (d) A change injected after the restore's scene snapshot is a later generation. Phase-07c-1 condition
+    // 4: the restore's solved snapshot is not adopted (the parameters moved while it was solved); the builder
+    // adopts the later generation's, still as the restore's EqualPower step: one step.
     auto third = p.currentScene();
     third.render.tailSeed += 7;
     std::atomic<bool> injected{false};
@@ -384,15 +396,13 @@ TEST_CASE("Switch rule (D7), realtime: (a) restore of the current state, (b) Equ
     });
     p.beginRestore();
     p.restore(third, valuesOf(third));
+    waitBuilt(p);
     p.setAfterSnapshotHook({});
     REQUIRE(injected.load());
-    const auto restoredValues = valuesOf(third);
-    rec.run(kSettle); // the restore's EqualPower fade (taken before the builder's later request)
-    chain.push_back({irOf(restoredValues, third), conv.fadeStartSample(), Law::EqualPower});
-    waitBuilt(p);
+    REQUIRE(p.stats().discardedMidDrag >= 1);
     rec.run(kSettle);
-    chain.push_back({irOf(p.parameterValues(), p.baseScene()), conv.fadeStartSample(), Law::EqualGain});
-    REQUIRE(conv.fadeCount() == fades0 + 5);
+    chain.push_back({irOf(p.parameterValues(), p.baseScene()), conv.fadeStartSample(), Law::EqualPower});
+    REQUIRE(conv.fadeCount() == fades0 + 4);
     REQUIRE(residual(rec, chain) <= -100.0);
 
     // (f) setStateInformation -> prepareToPlay or reset -> a listener_y change crosses as EqualGain.
@@ -411,6 +421,7 @@ TEST_CASE("Switch rule (D7), realtime: (a) restore of the current state, (b) Equ
             p.prepare(kRate, 256, false);
         else
             p.reset();
+        waitBuilt(p); // phase-07c-1: the background restore (reset) or the AX49 interim (prepare) settles
         REQUIRE_FALSE(p.restorePending());
         rec.clear();
         rec.run(4 * kP);
@@ -546,6 +557,7 @@ TEST_CASE("Pipeline: no allocation or free on the audio thread while 50 changes 
     plugin::ScenePipeline p;
     restoreScene(p, pipeline_test::loadScene("dead_booth.json"));
     p.prepare(kRate, 256, false);
+    waitBuilt(p);
     std::atomic<bool> done{false};
     std::thread fire([&] {
         float y = 0.2f;
@@ -859,6 +871,7 @@ TEST_CASE("Condition 10: a realtime reset keeps the current IrSet; the output is
     plugin::ScenePipeline p;
     restoreScene(p, pipeline_test::loadScene("dead_booth.json"));
     p.prepare(kRate, 256, false);
+    waitBuilt(p);
     Recorder rec{p};
     rec.run(4 * kP + kSettle);
     const auto& conv = p.engine().convolver();
@@ -921,14 +934,29 @@ TEST_CASE("Condition 12 (a): the gate is held during the solve only, not during 
     waitBuilt(p); // a builder build (Builder class)
     p.setStageHook({});
     std::lock_guard<std::mutex> lock(m);
-    REQUIRE(seen.size() == 6);
+    // Phase-07c-1: a build is Plan, then (Solve when it solves), then Assemble; the edit's ISM update
+    // assembles before its solve (condition 4: Plan, Assemble, Solve, Assemble), and a settling build after
+    // the AX49 interim has no solve (Plan, Assemble). Whatever the sequence, the gate is held at the start of
+    // Solve and of nothing else, and every build starts with Plan.
+    REQUIRE(seen.size() >= 6);
+    REQUIRE(seen.front().first == Stage::Plan);
+    int solves = 0;
     for (std::size_t i = 0; i < seen.size(); ++i)
     {
         CAPTURE(i);
         const auto [stage, held] = seen[i];
-        REQUIRE(stage == static_cast<Stage>(i % 3)); // Plan, Solve, Assemble, in that order
         REQUIRE(held == (stage == Stage::Solve));
+        if (stage == Stage::Solve)
+        {
+            ++solves;
+            REQUIRE(i > 0);
+            REQUIRE(seen[i - 1].first != Stage::Solve);
+            REQUIRE(i + 1 < seen.size());
+            REQUIRE(seen[i + 1].first
+                    == Stage::Assemble); // the synthesis and assembly follow, outside the gate
+        }
     }
+    REQUIRE(solves == 2); // prepare's synchronous stage-1 solve and the builder's solve of the edit
     REQUIRE(otherEnteredDuringAssembly);
     REQUIRE_FALSE(p.gate().held());
 }
@@ -978,16 +1006,23 @@ TEST_CASE("Condition 12 (e): two pipelines plan and synthesise while a third sol
     std::atomic<int> concurrentBuilders{0}, maxConcurrent{0};
     for (auto& p : pipes)
         p->setStageHook([&](plugin::ScenePipeline::BuildStage stage) {
-            if (stage == plugin::ScenePipeline::BuildStage::Plan)
+            // Phase-07c-1: an edit's build assembles twice (its ISM update, then the final); the window
+            // counted is Plan to the first Assemble of each build, per builder thread.
+            thread_local bool inWindow = false;
+            if (stage == plugin::ScenePipeline::BuildStage::Plan && !inWindow)
             {
+                inWindow = true;
                 const int now = ++concurrentBuilders;
                 int m = maxConcurrent.load();
                 while (now > m && !maxConcurrent.compare_exchange_weak(m, now))
                 {}
                 std::this_thread::sleep_for(std::chrono::milliseconds(20)); // widen the overlap
             }
-            else if (stage == plugin::ScenePipeline::BuildStage::Assemble)
+            else if (stage == plugin::ScenePipeline::BuildStage::Assemble && inWindow)
+            {
+                inWindow = false;
                 --concurrentBuilders;
+            }
         });
     for (int round = 0; round < 3; ++round)
     {

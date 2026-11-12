@@ -40,7 +40,8 @@ add_executable(spatial_tests
                test_diffuse_reports.cpp
                test_diffuse_records.cpp
                ProcessMemory.h
-               test_host_trace.cpp)
+               test_host_trace.cpp
+               test_interim.cpp)
 
 # tests/support: the AllocationTracker replaces the global operator new / delete of this binary
 # (Phase 06, zero-allocation checks of the real-time convolver).
