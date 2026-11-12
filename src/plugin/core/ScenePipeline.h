@@ -70,7 +70,8 @@ public:
     float parameter(std::size_t index) const noexcept;
     module3d::ParameterValues parameterValues() const noexcept;
 
-    // ---- host lifecycle (non-audio thread, never concurrent with process() or each other) ----
+    // ---- host lifecycle (never concurrent with process() or each other; reset() and setNonRealtime() may
+    // arrive on the processing thread and never wait or build: phase-07c-1 condition 10) ----
     // Quiesces the builder, prepares the engine (drops its IRs, clears the handled record). At a rate
     // outside AX6 it enters the AX34 fallback (input delayed by latencySamples(), warning flag). Otherwise
     // realtime: builds and submits the current scene synchronously, then restarts the builder; offline:
@@ -167,7 +168,6 @@ private:
     // there), then synthesises and assembles outside it. Throws sim::BuildCancelled when a builder
     // was quiesced while waiting or solving (D6). Never called with stateMutex_ or the builder mutex held.
     sim::RoomIR solveAndBuild(const contract::SceneDescription& scene, Source source);
-    void stageHook(BuildStage stage);
     void quiesceBuilder();
     // Condition 10: abandon flag, gate notify, stop accepting; never waits.
     void cancelBuilder() noexcept;

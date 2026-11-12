@@ -2,7 +2,8 @@
 
 // The diffuse-solve gate (phase 05h, AX38 (i)): at most one diffuse solve runs at a time per process,
 // through a sleeping wait (mutex + condition variable, no spin), with a three-class service order:
-//   (1) synchronous host calls (prepare, restore, setNonRealtime, and reset() through its step 3) are
+//   (1) synchronous host calls (prepare, restore; reset() and setNonRealtime() never build since
+//       phase-07c-1 condition 10) are
 //       served first, FIFO among themselves, waiting at most for the one solve already running;
 //   (2) offline-render waiters and (3) builder-thread waiters take turns, one solve each, FIFO within
 //       the class (a real-time instance's builder waits about two solves while another instance

@@ -129,29 +129,27 @@ sim::RoomIR ScenePipeline::solveAndBuild(const contract::SceneDescription& scene
     // planning, then the diffuse solve under the gate, then the unit-decay synthesis and the IR assembly,
     // each outside it. The solve pool is passed only while the gate is held; the RAII Scope releases the gate
     // on every exit, a BuildCancelled thrown inside the solve included.
-    stageHook(BuildStage::Plan);
-    sim::StagedBuild build = sim::StagedBuild::plan(scene, options);
-    if (build.needsSolve())
-    {
-        DiffuseSolveGate::Scope gate(*gate_, cls, abandon);
-        if (!gate.entered())
-            throw sim::BuildCancelled();
-        stageHook(BuildStage::Solve);
-        build.solve(&gate_->pool());
-    }
-    stageHook(BuildStage::Assemble);
-    return build.assemble();
-}
-
-void ScenePipeline::stageHook(BuildStage stage)
-{
+    // The test hook is copied once, before the gate: nothing under the gate takes stateMutex_ (AX38 (i)).
     std::function<void(BuildStage)> hook;
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
         hook = stageHook_;
     }
     if (hook)
-        hook(stage);
+        hook(BuildStage::Plan);
+    sim::StagedBuild build = sim::StagedBuild::plan(scene, options);
+    if (build.needsSolve())
+    {
+        DiffuseSolveGate::Scope gate(*gate_, cls, abandon);
+        if (!gate.entered())
+            throw sim::BuildCancelled();
+        if (hook)
+            hook(BuildStage::Solve);
+        build.solve(&gate_->pool());
+    }
+    if (hook)
+        hook(BuildStage::Assemble);
+    return build.assemble();
 }
 
 void ScenePipeline::setStageHook(std::function<void(BuildStage)> hook)

@@ -20,3 +20,18 @@ work, not as a conflict.
 
 No clause of the final texts conflicts with ee15c56; nothing in ee15c56 pre-empts a decision the loop made (the code
 contains no interim level, no saved E_b, no provisional tail and no law change).
+
+## Addendum (interrogator file 18, rows F-23, F-25, F-29, F-30)
+
+- F-23: the condition 12 test hook is now copied once, before the gate, so nothing under the gate takes
+  `stateMutex_` (`ScenePipeline::solveAndBuild`).
+- F-25: `CrossfadingConvolver::reset()` no longer contains a `delete`: while a fade runs, `retiring_` is empty by
+  construction (a fade starts only when it is empty; it is set only when a fade ends), so a full release queue parks
+  the retired request there (asserted). Stale comments in `ScenePipeline.h` and `DiffuseSolveGate.h` corrected.
+- F-29: the plan's "SPSC ring" wording (condition 11, AX38 (i) half (2)) is amended through `/fix-plan` to the
+  multi-producer / single-consumer ring the code uses (reason above).
+- F-30: the bit-identity evidence is local: `render_cli` built from b4dd092 (a git worktree, preset `cli`) and from
+  the working tree that became ee15c56; `--mode omni` and `--mode omni-early --ir` for medium_room, club,
+  concert_hall_box, large_hall, dead_booth and stone_box, the default-mode stub, a 3-seed `--ensemble` (club,
+  `--tail-seed 1000`) and `--diagnostics` (club): every pair identical under `cmp` (this session, 2026-11-12). In
+  CI, the existing golden and render tests run on three OSes on ee15c56 and later (run 43213141559).
