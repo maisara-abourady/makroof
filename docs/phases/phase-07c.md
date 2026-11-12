@@ -43,7 +43,9 @@ corrected):** conditions 10 and 11 below. `reset()` and `setNonRealtime` may arr
 thread (specification and the pinned JUCE 8.0.17 wrapper; AU unspecified), where the project's path waits for
 the in-flight build (measured worst 2 664 ms) and may build synchronously (≈ 3.6 s): condition 10 is the
 remedy and the first step of this phase; condition 11 builds the instrument that measures the freeze /
-offline thread per host.
+offline thread per host. (AX38 (i)'s D-H3 (e) register entry and, with condition 12, register entry G-1: closed 2026-11-12
+(phase 07c-1), release rules lifted; records: Linux and macOS
+from 43215018040 (517e556), Windows from 43227272415 (2dfe187; every job green on three OSes).)
 
 ## 1. Settled — do not reopen
 

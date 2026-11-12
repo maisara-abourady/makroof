@@ -136,7 +136,9 @@ umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-
     abandoned build's ISM/synthesis may overlap the offline build: Seat 5). Closes AX38 (i)'s register
     entry (worst quiesce wait 2 664 ms, stale build ≈ 3.6 s, up to ≈ 6.3 s) and lifts its release rule (no
     build reaches a producer outside the team, beta included, while the entry is open). Never a per-host
-    code path (NFR-8). (phase-07c condition 10)
+    code path (NFR-8). **Closed 2026-11-12 (phase 07c-1):** records: Linux and macOS from 43215018040
+    (517e556), Windows from 43227272415 (2dfe187; every job green on three OSes); AX38 (i) carries the closure
+    note. (phase-07c condition 10)
 11. **The trace build and the per-host measurement** (D-H3 (e); AX38 (i), half (2)): a CMake option
     `SPATIAL_HOST_TRACE`, default OFF, excluded from release artefacts, guarded by `pytest tools/ci`: a
     preallocated bounded lock-free ring written from the host entry points (several producer threads, one
@@ -181,7 +183,12 @@ umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-
     only (moves > 0.25 m: binaural processing plus the specular part; Seat 1); the 3 s row (translational
     move > 1 m, specular plus scattering part) applies to none of these records — a reading, not a gate.
     FR-SIM-6's 'without audible artifacts' stays not measured here (Phase 10-3). **Closes** AX38 (i)'s register
-    entry G-1 and lifts its own release rule, through `/fix-plan`, when A12 passes. (D-G1)
+    entry G-1 and lifts its own release rule, through `/fix-plan`, when A12 passes. **Closed 2026-11-12
+    (phase 07c-1):** records: Linux and macOS from 43215018040 (517e556), Windows from 43227272415 (2dfe187;
+    every job green on three OSes); AX38 (i) carries the closure note. Record (c) re-taken: callback p99.9 at
+    host buffer 64 with 8 concurrent builders 1 178 / 4 245 / 1 137 µs Linux / macOS / Windows (05i run of
+    record 43031773338: 195 / 1 674 / 404 µs; period 1 333 µs) — a rise; under condition 12 (c) a finding for
+    the board, carried to phase-07c-1b (never an instance cap: PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5). (D-G1)
 
 ## Out of scope
 
@@ -225,14 +232,14 @@ umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-
 - [ ] Condition 10: the `[pipeline]` test shows `reset()` and `setNonRealtime(true)` never wait on the
       builder and never build; a realtime reset keeps the current IrSet (output never silent); the two-order
       test and the transient-memory record; TSan `[pipeline]` green; the AX38 (i) register entry removed
-      through `/fix-plan`. (phase-07c A10)
+      through `/fix-plan` (removed 2026-11-12: closed (phase 07c-1)). (phase-07c A10)
 - [ ] Condition 11: the `SPATIAL_HOST_TRACE` option builds, is OFF by default, is absent from release
       artefacts (`pytest tools/ci` guard) and leaves the realtime path allocation-, lock- and log-free
       (tracker test); the per-host run itself is a person's action and does not gate this phase. (phase-07c A11)
 - [ ] Condition 12: the `[pipeline]` test shows the gate held during the solve only; `buildRoomIR` bit-identical
       to its stages; TSan `[pipeline]` with overlapping ISM and synthesis green; records (b)–(d), (f) and (g)
-      printed on three OSes, none asserted; the AX38 (i) register entry G-1 removed through `/fix-plan`. (D-G1,
-      A12)
+      printed on three OSes, none asserted; the AX38 (i) register entry G-1 removed through `/fix-plan`
+      (removed 2026-11-12: closed (phase 07c-1)). (D-G1, A12)
 - [ ] Condition 7, the 07c re-pin: after conditions 9 and 12 land, the restore gate's growth-bound baselines,
       the ±5 % flutter window, `kSolveWarn` and its `solveRefMs` baselines re-derived from ≥ 3 in-window runs
       (one run PROVISIONAL, printed not asserted; never a red or out-of-window run as a baseline), and the

@@ -363,8 +363,34 @@ TEST_CASE(
                 for (const std::size_t b : {std::size_t{3}, std::size_t{4}})
                 {
                     const auto yEx = bandFiltered(irEx.taps[0], fb, b);
+                    const auto yPr = bandFiltered(irPr.taps[0], fb, b);
                     const double edtEx = edtS(yEx, fs);
-                    const double edtPr = edtS(bandFiltered(irPr.taps[0], fb, b), fs);
+                    const double edtPr = edtS(yPr, fs);
+                    {
+                        // Interrogator file 22 Q1/Q2: per-band missing-energy fraction eps of the provisional (whole
+                        // band IR, emitter 0) and the direct fraction d (energy within 5 ms of the peak / total).
+                        double eEx = 0.0, ePr = 0.0, peak = 0.0;
+                        std::size_t at = 0;
+                        for (std::size_t i = 0; i < yEx.size(); ++i)
+                        {
+                            eEx += yEx[i] * yEx[i];
+                            if (yEx[i] * yEx[i] > peak)
+                            {
+                                peak = yEx[i] * yEx[i];
+                                at = i;
+                            }
+                        }
+                        for (const double v : yPr)
+                            ePr += v * v;
+                        double direct = 0.0;
+                        const auto w = static_cast<std::size_t>(0.005 * fs);
+                        for (std::size_t i = at > w ? at - w : 0; i < std::min(yEx.size(), at + w); ++i)
+                            direct += yEx[i] * yEx[i];
+                        std::printf("07c1-records ax47(b) EDT case %s %.0f Hz seed %u band %zu: eps %.3e, direct "
+                                    "fraction d %.3f, EDT exact %.2f ms, provisional %.2f ms (%.2f %%)\n",
+                                    a4.name, fs, seed, b, 1.0 - ePr / eEx, direct / eEx, 1e3 * edtEx, 1e3 * edtPr,
+                                    100.0 * (edtPr / edtEx - 1.0));
+                    }
                     const double rel = std::abs(edtPr / edtEx - 1.0);
                     CAPTURE(b, edtEx, edtPr, rel);
                     REQUIRE(edtEx > 0.0);

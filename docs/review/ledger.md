@@ -2355,3 +2355,22 @@ check).
 | P07C1-F-01…30 | interrogator confirmation (file 18): D-C9 → AX49 SURVIVES WITH CORRECTIONS (row 59 closed by file 14); DC fixes confirmed; ee15c56 conforms (file 17) | — | F-23 (hook under the gate), F-25 (no free in reset; stale comments) fixed in code; F-29 (SPSC wording) to /fix-plan; F-20, F-21 fixed here; F-30 local evidence in file 17 | closed |
 Decided for Maisara (open to her veto): AX47, AX48 (the "Decided" line with the synchronous tail synthesis included,
 file 13 correction 10), AX49, FM-1 (AMENDS 2026-11-08), FM-2′ and FM-3′ (AMENDS 2026-11-10), FM-4′. NEEDS MAISARA: none.
+
+### phase-07c-1 session 2 (2026-11-12; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+G2 (steward): AX38 (i) register entries closed through `/fix-plan` on three-OS evidence (records files 19, 20).
+
+| id | item | verdict (interrogator diff check, G2) | status |
+|---|---|---|---|
+| P07C1-G2-01 | cond 10 worst setNonRealtime(true) 0.27/0.92, 2.22/2.50, 0.61/1.21 ms | CORRECT | closed |
+| P07C1-G2-02 | cond 12 (d) 8-build quiesce 160/577/344 ms | CORRECT | closed |
+| P07C1-G2-03 | cond 12 (b) class (1) queue | IMPRECISE → corrected to 153/78/94 ms over 3 runs (109/45/45 in the worst-call run) | closed (C1 applied) |
+| P07C1-G2-04 | "was" figures 2 664 ms / ≈3.6 / ≈6.3 s; 1 870 ms | CORRECT | closed |
+| P07C1-G2-05 | closure scope: (e) and G-1 only; half (2), interim sentence kept; boxes unticked | CORRECT | closed |
+| P07C1-G2-06 | AX38 (iv) stale "(AX38 (i) release rule)" pointer | corrected (C2): the 10 s line stays with phase-13 Raise item 3 | closed |
+| P07C1-G2-07 | 4c pointer to the 05i contended waits | corrected (C3): "was:" clause kept in the G-1 note | closed |
+| P07C1-G2-08 | condition 12 (c) p99.9 rise with 8 builders (1 178/4 245/1 137 µs vs 195/1 674/404 µs) | recorded (C4); a finding for the board, carried to phase-07c-1b | open (07c-1b) |
+| P07C1-G2-09 | run/commit attribution | corrected (C5) | closed |
+| P07C1-G2-10 | AMENDS markers kept; no threshold, AX/AQ value or golden changed | CORRECT | closed |
+
+Final status G2: SURVIVES WITH CORRECTIONS (C1–C5 applied). Files: 19, 20 (records), interrogator diff check (this row set).
