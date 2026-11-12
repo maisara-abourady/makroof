@@ -46,8 +46,8 @@ a range change, a formulation seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5
    first PROVISIONAL, printed not asserted; never a red or out-of-window run as a baseline); re-derive the macOS
    trigger (2 172 ms); a CHANGELOG reason, a §6 row, and the AX38 4c text through `/fix-plan`.
 2. **AX38 4c register entries** (macOS 33.40 s, Windows 36.73 s, low-α): on the runs of scope 1, close each under
-   4c (c), or name phase-07d per condition 9's split clause. First data: run 43242209571, Linux low-α 14 × worst
-   16.33 s, flutter 6.57 s, with the restore as AX48/AX49 build it.
+   4c (c), or name phase-07d per condition 9's split clause. First data: run 43242209571, with the low-α restore as
+   AX48/AX49 build it: 14 × worst 16.33 / 23.68 / 31.97 s (Linux / macOS / Windows); flutter cube 6.57 / 8.39 / 12.56 s.
 3. **Condition 12 (c) finding:** callback p99.9 at host buffer 64 with 8 concurrent builders 1 178 / 4 245 /
    1 137 µs (Linux / macOS / Windows) against 05i's 195 / 1 674 / 404 µs (run of record 43031773338; period
    1 333 µs). The rise goes to the board loop; never an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
@@ -62,6 +62,11 @@ a range change, a formulation seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5
 7. **AX47 "Measurement" mid-fade check (review M2).** AX47 says "Wet pink-noise and speech renders check that no
    mid-fade value exceeds the louder endpoint." 07c-1 records the realised settling step on the decays played (review
    fix M2) and tests the crossfade laws (M3), but has no wet pink-noise / speech render check; this phase adds it.
+8. **AX49 reversal trigger fired** (record (h), run 43242209571,
+   `docs/review/phase-07c-1/41-orchestrator-ci-records-43242209571.md`): an 8-instance Windows load at the rated corner (96 kHz, T60 8 s, 100 m cube, loaded in sequence) took keyless
+   9 511 ms, keyed 9 448 ms (macOS 7 846 / 8 780 ms, Linux 4 995 / 5 083 ms) against AX49's 5 s. Back to the board
+   with phase 07d's candidates first, per AX49 "Reversal"; the decision is taken in this phase's loop (or the loop
+   moves it to 07d) — never an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
 
 ## Out of scope
 
@@ -96,6 +101,8 @@ Follow-ups noted (review minors from 07c-1, not scope here):
 - [ ] AX47 mid-fade check (scope 7): a test renders wet pink noise and speech through a project load and its settling
       step (and an edit's interim and final) and asserts, per 10 ms window across each fade, that the output energy
       does not exceed the louder endpoint's (the two IRs rendered alone), on three OSes. (AX47 "Measurement"; review M2)
+- [ ] AX49 reversal (scope 8): the board's decision on the AX49 reversal recorded (AX row / ledger), applied via
+      `/fix-plan`; no instance cap. (AX49 "Reversal"; record (h), run 43242209571)
 
 ## Listening / manual checklist
 
