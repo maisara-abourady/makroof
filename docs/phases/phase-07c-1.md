@@ -139,7 +139,10 @@ umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-
     code path (NFR-8). (phase-07c condition 10)
 11. **The trace build and the per-host measurement** (D-H3 (e); AX38 (i), half (2)): a CMake option
     `SPATIAL_HOST_TRACE`, default OFF, excluded from release artefacts, guarded by `pytest tools/ci`: a
-    preallocated SPSC ring written from the host entry points and drained off-thread (nothing on the
+    preallocated bounded lock-free ring written from the host entry points (several producer threads, one
+    CAS per push, drop-and-count when full) and drained off-thread by one consumer (SPSC in the original
+    text; host entry points arrive on several threads, so the ring is multi-producer: phase-07c-1 review
+    files 17, 18 row F-29) (nothing on the
     realtime path allocates, locks or logs), logging entry id, native thread id, `isNonRealtime()`,
     transport state, block size and time per call. The instrument is this phase's deliverable; **the run is
     a person's action** on real machines with host licences (Maisara or the contractor; Seat 7's estimate
