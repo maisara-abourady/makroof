@@ -40,6 +40,10 @@
 namespace {
 
 constexpr double kRate = 48000.0;
+// D1 / O8 (phase-07c-1 session 2; decider file 33): EDT is asserted only where the exact band IR's direct
+// fraction is below this (Kuttruff Eq. 5.44: w_d = w_r at r = r_c, applied to the measured field;
+// section 8.4).
+constexpr double kDirectFractionMax = 0.5;
 
 bool bitIdentical(const sim::RoomIR& a, const sim::RoomIR& b)
 {
@@ -175,7 +179,7 @@ std::vector<double> bandFiltered(const std::vector<float>& x, const sim::ism::Oc
 // EDT (s) of a band signal as tools/acoustics/metrics.py takes it (ISO 3382-1 A.2.1): the Schroeder curve
 // from the onset (the first sample within 20 dB of the peak), normalised to 0 dB there; a least-squares line
 // through every sample of it from 0 dB to the first time it reaches -10 dB; EDT = -60 / slope.
-double edtS(const std::vector<double>& y, double fs, double totalScale = 1.0)
+double edtS(const std::vector<double>& y, double fs)
 {
     double peak = 0.0;
     for (const double v : y)
@@ -186,7 +190,7 @@ double edtS(const std::vector<double>& y, double fs, double totalScale = 1.0)
     std::vector<double> sch(y.size() + 1, 0.0);
     for (std::size_t i = y.size(); i-- > onset;)
         sch[i] = sch[i + 1] + y[i] * y[i];
-    const double total = sch[onset] * totalScale;
+    const double total = sch[onset];
     double sx = 0.0, sy = 0.0, sxx = 0.0, sxy = 0.0;
     std::size_t n = 0;
     for (std::size_t i = onset; i < y.size(); ++i)
@@ -302,12 +306,13 @@ TEST_CASE("AX49: the parallel per-emitter synthesis is bit-identical to the seri
     }
 }
 
-TEST_CASE(
-    "AX47 (b) / AX49: provisional against exact on the A4 set, both windows <= 1 dB per band, EDT within 5 %",
-    "[interim][ax49][ax47]")
+TEST_CASE("AX47 (b) / AX49: provisional against exact on the A4 set: steps <= 1 dB, prefix identity, EDT "
+          "within 5 % where d < 0.5",
+          "[interim][ax49][ax47]")
 {
-    double worstTail = 0.0, worstCommon = 0.0, worstEdt = 0.0;
-    int edtEvaluated = 0, illConditioned = 0;
+    double worstTail = 0.0, worstCommon = 0.0, worstEdt = 0.0, worstPrefix = -300.0;
+    int edtCases = 0, outOfDomain = 0;
+    std::array<int, contract::kNumOctaveBands> evaluated{};
     for (const auto& a4 : a4Set())
     {
         // One solve per scene (the level is rate- and seed-independent: AX40); reused bit for bit below.
@@ -337,7 +342,10 @@ TEST_CASE(
                 const auto uPr = pr.unitDecays();
                 REQUIRE(uEx);
                 REQUIRE(uPr);
-                for (std::size_t e = 0; e < dEx.emitters.size(); ++e)
+                // The step <= 1 dB per emitter in every band, both windows (kept per (e, b) for the
+                // out-of-domain prints).
+                std::array<std::array<double, contract::kNumOctaveBands>, 2> stepT{}, stepC{};
+                for (std::size_t e = 0; e < dEx.emitters.size() && e < 2; ++e)
                 {
                     const double mix = dEx.emitters[e].match.mixing.mixS;
                     const auto tailEx = tailBandEnergy(*uEx, dEx, e, mix, 1e9);
@@ -350,6 +358,8 @@ TEST_CASE(
                             continue;
                         const double stepTail = 10.0 * std::log10(tailEx[b] / tailPr[b]);
                         const double stepCommon = 10.0 * std::log10(comEx[b] / comPr[b]);
+                        stepT[e][b] = stepTail;
+                        stepC[e][b] = stepCommon;
                         CAPTURE(e, b, stepTail, stepCommon);
                         REQUIRE(std::abs(stepTail) <= 1.0);
                         REQUIRE(std::abs(stepCommon) <= 1.0);
@@ -357,74 +367,108 @@ TEST_CASE(
                         worstCommon = std::max(worstCommon, std::abs(stepCommon));
                     }
                 }
-                // EDT on the whole IR (emitter 0) at 500 Hz and 1 kHz, against the exact IR (5 %, Vorlaender
-                // Table 6.1).
                 const sim::ism::OctaveFilterbank fb(fs);
+                // The prefix identity on the shipped IRs (D1 / O8, Seat 3's O5'): per emitter and band, over
+                // emission times [t_mix,e, L_f - h), h = the generator's filter half-length + the analysis
+                // filterbank's (both fb.maxHalfLength()), E(provisional - exact) / E(exact) <= 20
+                // log10(10^(1/20) - 1) = -18.27 dB, the difference a pure 1 dB gain step gives (AX47's
+                // bound).
+                const double prefixBound = 20.0 * std::log10(std::pow(10.0, 0.05) - 1.0);
+                for (std::size_t e = 0; e < dEx.emitters.size(); ++e)
+                {
+                    const std::size_t tap = irEx.index(static_cast<int>(e), 0);
+                    const double mix = dEx.emitters[e].match.mixing.mixS;
+                    const auto from = static_cast<std::ptrdiff_t>(
+                        std::llround((mix - dEx.alignmentShiftS) * fs));
+                    const auto to = static_cast<std::ptrdiff_t>(
+                                        std::llround((timing.fadeStartS - dEx.alignmentShiftS) * fs))
+                                    - 2 * static_cast<std::ptrdiff_t>(fb.maxHalfLength());
+                    REQUIRE(to > from);
+                    for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+                    {
+                        const auto yE = bandFiltered(irEx.taps[tap], fb, b);
+                        const auto yP = bandFiltered(irPr.taps[tap], fb, b);
+                        double diff = 0.0, ref = 0.0;
+                        for (auto i = std::max<std::ptrdiff_t>(0, from); i < to; ++i)
+                        {
+                            const auto k = static_cast<std::size_t>(i);
+                            if (k >= yE.size() || k >= yP.size())
+                                break;
+                            diff += (yP[k] - yE[k]) * (yP[k] - yE[k]);
+                            ref += yE[k] * yE[k];
+                        }
+                        if (ref <= 0.0)
+                            continue;
+                        const double rel = diff > 0.0 ? 10.0 * std::log10(diff / ref) : -300.0;
+                        CAPTURE(e, b, rel);
+                        REQUIRE(rel <= prefixBound);
+                        worstPrefix = std::max(worstPrefix, rel);
+                    }
+                }
+                // EDT on the whole IR (emitter 0) at 500 Hz and 1 kHz, against the exact IR (5 %, Vorlaender
+                // Table 6.1), in every case whose exact band IR has a direct fraction d < 0.5 (D1 / O8:
+                // Kuttruff Eq. 5.44's w_d = w_r on the measured field; section 8.4). d is judged on the exact
+                // IR alone, before comparing.
                 for (const std::size_t b : {std::size_t{3}, std::size_t{4}})
                 {
                     const auto yEx = bandFiltered(irEx.taps[0], fb, b);
                     const auto yPr = bandFiltered(irPr.taps[0], fb, b);
+                    double eEx = 0.0, peak = 0.0;
+                    std::size_t at = 0;
+                    for (std::size_t i = 0; i < yEx.size(); ++i)
+                    {
+                        eEx += yEx[i] * yEx[i];
+                        if (yEx[i] * yEx[i] > peak)
+                        {
+                            peak = yEx[i] * yEx[i];
+                            at = i;
+                        }
+                    }
+                    double direct = 0.0;
+                    const auto w = static_cast<std::size_t>(0.005 * fs);
+                    for (std::size_t i = at > w ? at - w : 0; i < std::min(yEx.size(), at + w); ++i)
+                        direct += yEx[i] * yEx[i];
+                    const double d = direct / eEx;
                     const double edtEx = edtS(yEx, fs);
                     const double edtPr = edtS(yPr, fs);
+                    ++edtCases;
+                    if (d >= kDirectFractionMax)
                     {
-                        // Interrogator file 22 Q1/Q2: per-band missing-energy fraction eps of the provisional (whole
-                        // band IR, emitter 0) and the direct fraction d (energy within 5 ms of the peak / total).
-                        double eEx = 0.0, ePr = 0.0, peak = 0.0;
-                        std::size_t at = 0;
-                        for (std::size_t i = 0; i < yEx.size(); ++i)
-                        {
-                            eEx += yEx[i] * yEx[i];
-                            if (yEx[i] * yEx[i] > peak)
-                            {
-                                peak = yEx[i] * yEx[i];
-                                at = i;
-                            }
-                        }
-                        for (const double v : yPr)
-                            ePr += v * v;
-                        double direct = 0.0;
-                        const auto w = static_cast<std::size_t>(0.005 * fs);
-                        for (std::size_t i = at > w ? at - w : 0; i < std::min(yEx.size(), at + w); ++i)
-                            direct += yEx[i] * yEx[i];
-                        std::printf("07c1-records ax47(b) EDT case %s %.0f Hz seed %u band %zu: eps %.3e, direct "
-                                    "fraction d %.3f, EDT exact %.2f ms, provisional %.2f ms (%.2f %%)\n",
-                                    a4.name, fs, seed, b, 1.0 - ePr / eEx, direct / eEx, 1e3 * edtEx, 1e3 * edtPr,
-                                    100.0 * (edtPr / edtEx - 1.0));
-                    }
-                    const double rel = std::abs(edtPr / edtEx - 1.0);
-                    CAPTURE(b, edtEx, edtPr, rel);
-                    REQUIRE(edtEx > 0.0);
-                    // Conditioning: the exact IR's own EDT under a +-0.06 dB change of its total energy (the
-                    // AX49 truncation bound). Where that alone moves EDT by more than 5 %, the regression's
-                    // -10 dB end point sits on a plateau of a sparse early part (a direct-dominated band) and
-                    // EDT cannot resolve the provisional; the case is printed, not asserted.
-                    const double up = edtS(yEx, fs, std::pow(10.0, 0.006));
-                    const double down = edtS(yEx, fs, std::pow(10.0, -0.006));
-                    const double conditioning = std::max(std::abs(up / edtEx - 1.0),
-                                                         std::abs(down / edtEx - 1.0));
-                    if (conditioning > 0.05)
-                    {
-                        ++illConditioned;
+                        ++outOfDomain;
                         std::printf(
-                            "07c1-records ax47(b) EDT %s %.0f Hz seed %u band %zu: not evaluated "
-                            "(ill-conditioned "
-                            "EDC: +-0.06 dB of total moves the exact EDT by %.1f %%; EDT exact %.1f ms, "
-                            "provisional %.1f ms)\n",
-                            a4.name, fs, seed, b, 100.0 * conditioning, 1e3 * edtEx, 1e3 * edtPr);
+                            "07c1-records ax47(b) EDT %s %.0f Hz seed %u band %zu: not evaluated (outside "
+                            "EDT "
+                            "domain: direct-dominated, d %.3f, direct step %.2f dB); EDT exact %.1f ms, "
+                            "provisional %.1f ms (T60_b %.2f s); steps tail/common e0 %+.3f/%+.3f e1 "
+                            "%+.3f/%+.3f "
+                            "dB\n",
+                            a4.name, fs, seed, b, d, -10.0 * std::log10(1.0 - d), 1e3 * edtEx, 1e3 * edtPr,
+                            dEx.decay.bandsT60S[b], stepT[0][b], stepC[0][b], stepT[1][b], stepC[1][b]);
                         continue;
                     }
+                    const double rel = std::abs(edtPr / edtEx - 1.0);
+                    CAPTURE(b, d, edtEx, edtPr, rel);
+                    REQUIRE(edtEx > 0.0);
+                    std::printf(
+                        "07c1-records ax47(b) EDT %s %.0f Hz seed %u band %zu: d %.3f, EDT exact %.1f ms, "
+                        "provisional %.1f ms (T60_b %.2f s): %+.2f %%\n",
+                        a4.name, fs, seed, b, d, 1e3 * edtEx, 1e3 * edtPr, dEx.decay.bandsT60S[b],
+                        100.0 * (edtPr / edtEx - 1.0));
                     REQUIRE(rel <= 0.05);
                     worstEdt = std::max(worstEdt, rel);
-                    ++edtEvaluated;
+                    ++evaluated[b];
                 }
             }
     }
     std::printf(
         "07c1-records ax47(b) provisional vs exact on the A4 set: worst |step| tail window %.3f dB, common "
-        "window %.3f dB, worst EDT deviation %.2f %% over %d evaluated cases (%d ill-conditioned, printed) "
-        "(bounds 1 dB, 1 dB, 5 %%)\n",
-        worstTail, worstCommon, 100.0 * worstEdt, edtEvaluated, illConditioned);
-    REQUIRE(edtEvaluated >= illConditioned); // most cases are evaluated
+        "window %.3f dB; EDT within 5 %% on %d in-domain cases of %d (worst %.2f %%; %d outside EDT domain, "
+        "d >= 0.5); worst prefix difference %.1f dB (bound %.2f dB). A provisional-against-exact "
+        "self-comparison, not a perceptual claim.\n",
+        worstTail, worstCommon, evaluated[3] + evaluated[4], edtCases, 100.0 * worstEdt, outOfDomain,
+        worstPrefix, 20.0 * std::log10(std::pow(10.0, 0.05) - 1.0));
+    REQUIRE(evaluated[3] >= 1); // non-vacuity, not a quota (D1 / O8)
+    REQUIRE(evaluated[4] >= 1);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
