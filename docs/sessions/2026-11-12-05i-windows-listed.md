@@ -39,7 +39,7 @@ The items of the session's opening scope list, one for one.
 | O2 | **Windows entry listed**: `kGateRegister` Windows `cube100_lowalpha0.05_s0.3` has `listed = true`; the comment above the low-α rows says macOS and Windows are listed (Windows: OVER30S on 43031773338; 36.73 s on 42942694523, phase-05h file 53), Linux closed under AX38 4c (c) (05i files 9, 19); nothing else changed (`strict30s`, `absoluteAsserted`, baselines, `solveRefMs`) | request step 2; decider file 9 Q1; phase-05i §3.3 (ii) | `git diff origin/main -- tests/unit/test_diffuse_records.cpp` shows the comment and that one field only |
 | O3 | **Golden changelog entry**: `tests/golden/CHANGELOG.md` entry in the RG-1 form "2026-11-12 (05i follow-up, Q1)" with the reason and the bullet; no golden file changed | request step 3; CLAUDE.md "Tests and golden files" | the diff; `git diff --stat origin/main` lists no file under `tests/golden/` but CHANGELOG.md |
 | O4 | **Format and build clean**: `tools/ci/check_format.sh` clean; Release `spatial_tests` builds with `SPATIAL_WERROR=ON`, `SPATIAL_BUILD_PLUGIN=OFF` | request step 4 | command output (exit 0) |
-| O5 | **Plan status untouched**: no change to `docs/BUILD_PLAN.md` (no §0 status, no plan text) | request "Out of scope" | `git diff --stat origin/main` does not list `docs/BUILD_PLAN.md` |
+| O5 | **Plan status untouched** (restated 2026-11-12 with O10, on her "do that"; was: no change to `docs/BUILD_PLAN.md` at all): no §0 status change; BUILD_PLAN changed only at L28/L158 under O10 | request "Out of scope"; her "do that" | the word-diff of `docs/BUILD_PLAN.md` against origin/main shows only the two O10 wording edits (no status, no number) |
 | O6 | **Pre-PR review**: `/review-phase-pr` run on the branch diff, fixes in | CLAUDE.md "When to open a PR" | the review's verdict quoted in the log |
 | O7 | **Pushed, PR opened**: commit (`phase-05i: …`, request step 5) pushed to `claude/clever-ride-j355sg`; PR open with what was done, criteria checklist with CI evidence, listening note (none: print-only change), contractor focus, follow-ups, golden changes, "Decided for Maisara" (none new); follow-up named: BUILD_PLAN L28/L158 wording "contractor's review push" → this follow-up PR, via /fix-plan | request step 5; CLAUDE.md "Git and PRs" | the PR link |
 | O8 | **CI green, GATE text right**: CI green on Linux, macOS, Windows; the Windows job's GATE line for `cube100_lowalpha0.05_s0.3` prints "LISTED defect"; Linux prints "register entry closed"; macOS still prints "LISTED defect" | request step 6 | the run id and the three quoted low-α GATE lines, here and in the PR |
@@ -47,12 +47,12 @@ The items of the session's opening scope list, one for one.
 | O9 | **Steward clearance**: READY TO REPORT, then the report to Maisara (she decides on the merge) | request step 6; CLAUDE.md "Reporting" 3 | READY TO REPORT in the log |
 
 ## Scope
-- In: the one `listed` field and its comment, the CHANGELOG entry, the brief, the PR.
-- Out: any plan text (already right), any board loop (this applies a decided rule), any other test or code change, any
+- In: the one `listed` field and its comment, the CHANGELOG entry, the brief, the PR; and (added 2026-11-12, her "do that") the BUILD_PLAN L28/L158 wording naming PR #31, via `/fix-plan` (O10).
+- Out: any other plan text (already right), any board loop (this applies a decided rule), any other test or code change, any
   phase status. Order relative to 07c-1 does not matter; if 07c-1 lands first and rewrites `kGateRegister`, the same
   intent applies to its version (Windows low-α listed until 07c-1 conditions 9–10 close it).
-- Out, follow-up for the PR: BUILD_PLAN L28/L158 say the Windows flag returns to true "in the contractor's review push"
-  of PR #30; that wording should name this follow-up PR instead, via `/fix-plan` (plan text is out of scope here).
+- Out, follow-up for 07c-1: the PASSES30S readings on run 43173536470 (Windows / macOS low-α), DC31-4. (The L28/L158
+  wording, first listed here as a follow-up, moved In on 2026-11-12 under O10.)
 
 ## Constraints and settled decisions
 - Decider file 9 Q1 (answer 4), interrogator file 10 SURVIVES: an entry closes under (c) only if it passed 30 s on every
@@ -75,6 +75,7 @@ The items of the session's opening scope list, one for one.
 | 2 | 2026-11-12 | BRIEF OK | none | G1, G2, G3, G4 |
 | 3 | 2026-11-12 | CONTINUE (pre-PR clearance given: O1–O6 MET on e6fc12b) | G5 PR + CI run of record with the three low-α GATE lines (O7, O8) | none |
 | 4 | 2026-11-12 | READY TO REPORT | none | G5 (PR #31; CI 43173536470 green, three low-α GATE lines checked in job logs) |
+| 5 | 2026-11-12 | CONTINUE | G6 O5 criterion and Scope "Out" contradict O10's BUILD_PLAN edit (blocking); G7 steward log rounds 5–6 | none (O10 MET) |
 
 ## Evidence log
 - O4 (2026-11-12, local): `tools/ci/check_format.sh` → "clang-format: 105 files clean", exit 0. `SPATIAL_WERROR=ON cmake --preset release -DSPATIAL_BUILD_PLUGIN=OFF` + `cmake --build --preset release --target spatial_tests` → "[180/180] Linking CXX executable tests/unit/spatial_tests", exit 0; CMakeCache `SPATIAL_WERROR:BOOL=ON`.
