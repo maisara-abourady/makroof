@@ -5,7 +5,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <numbers>
 #include <vector>
 
@@ -290,5 +293,40 @@ TEST_CASE("energy entries: an image's band energy is a_b^2 times the band filter
                    WithinRel(image.bandsAmplitude[b] * image.bandsAmplitude[b] * g[b], 1e-12));
         CHECK_THAT(entries[1].bandsEnergy[b], WithinRel(0.01 * g[b], 1e-12));
         CHECK(entries[1].timeS == image.arrivalTimeS);
+    }
+}
+
+// Phase-07c-1 decision loop (K15; Seats 1, 3, 9: the AX49 provisional tail): the cost of the unit-decay
+// synthesis (constructor + make, one emitter) at a prefix length L_p = 0.31 T60_max + 0.1 s (the EDT-within-5
+// % bound for a truncated exponential, plus the fade) against the full length, for T60_max = 2, 8 and 12 s at
+// 48 and 96 kHz. A record (printed, never asserted).
+TEST_CASE("records: provisional-tail synthesis cost at L_p = 0.31 T60 + 0.1 s vs the full tail",
+          "[.][benchmark][provisional-cost]")
+{
+    using Clock = std::chrono::steady_clock;
+    for (const double fs : {48000.0, 96000.0})
+    {
+        const sim::ism::OctaveFilterbank filterbank(fs);
+        for (const double t60 : {2.0, 8.0, 12.0})
+        {
+            sim::tail::RoomDecay decay;
+            decay.bandsT60S.fill(t60);
+            const double full = sim::tail::tailLengthS(decay);
+            const double prefix = std::min(full, 0.31 * t60 + 0.1);
+            double msFull = 0.0, msPrefix = 0.0;
+            for (const double len : {full, prefix})
+            {
+                const auto t0 = Clock::now();
+                const sim::tail::BandNoiseGenerator gen(filterbank, sim::tail::unitDecayLength(len, fs));
+                const auto unit = gen.make(decay, 1u, 0u);
+                const double msTaken = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
+                (len == full ? msFull : msPrefix) = msTaken;
+                REQUIRE(unit.length() > 0);
+            }
+            std::printf(
+                "07c1-records provisional cost %6.0f Hz, T60 %4.1f s: full tail %.2f s -> %.0f ms; prefix "
+                "L_p %.2f s -> %.0f ms (one emitter: constructor + make)\n",
+                fs, t60, full, msFull, prefix, msPrefix);
+        }
     }
 }

@@ -12,6 +12,8 @@
 //                                   submits (offline bounce, reset sequence with the builder quiesced:
 //                                   Phase 07); builds the IrSet there and hands it over
 //   reset()                         non-real-time; back to the state right after prepare() (Phase 07)
+//   resetKeepIr()                   non-real-time; clears history and pending output, keeps the IR
+//                                   (the plugin's realtime reset, phase-07c-1 condition 10)
 //
 // Until the first IR arrives the output is silence. An IR submitted before processing starts is
 // installed at once; every later change, including a first IR that arrives mid-stream, crossfades
@@ -47,6 +49,13 @@ public:
     // dropped IRs are freed on the calling thread); input history, pending output and sample counter
     // cleared; buffers reused, not reallocated. (fadeCount() keeps counting since prepare().)
     void reset() noexcept;
+    // Phase-07c-1 condition 10 (D-H3 (e), Seat 3's (e-k)): the realtime reset. Not concurrent with
+    // process(); MAY run concurrently with a submit from another thread (it never touches the mailbox
+    // or frees a retired request a submitter could be freeing). A no-op when unprepared. Clears the
+    // input history, the pending output and the sample counter, but KEEPS the current IrSet (a running
+    // fade ends on its target, which becomes current), so the output is never silent after a reset and
+    // the next submit arrives as an ordinary AQ4 / AX31 crossfade.
+    void resetKeepIr() noexcept;
     bool isPrepared() const noexcept { return sampleRate_ > 0.0; }
 
     // Audio thread. in[c] / out[c] hold n samples, c = 0, 1; in and out may be the same buffers.
@@ -72,7 +81,9 @@ public:
     bool submitIrSet(std::shared_ptr<const conv::IrSet> irSet,
                      conv::CrossfadeLaw law = conv::CrossfadeLaw::EqualGain);
     // Non-audio thread. nullptr when the IR doesn't fit or has a non-finite tap (as submitRoomIR).
-    std::shared_ptr<const conv::IrSet> makeIrSet(const RoomIR& ir) const;
+    // `cancel` (phase-07c-1 condition 10): throws sim::BuildCancelled when set during the build.
+    std::shared_ptr<const conv::IrSet> makeIrSet(const RoomIR& ir,
+                                                 const std::atomic<bool>* cancel = nullptr) const;
 
     // Non-audio thread: frees IRs the audio thread has retired; returns how many.
     std::size_t releaseRetired() { return convolver_.releaseRetired(); }

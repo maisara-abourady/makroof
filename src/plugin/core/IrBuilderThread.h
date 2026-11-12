@@ -63,6 +63,9 @@ public:
 
     // Non-audio thread. Stops accepting work and waits until no `decide` is running.
     void quiesce();
+    // Any thread (phase-07c-1 condition 10): stops accepting work WITHOUT waiting; a running `decide`
+    // finishes (or is cancelled by its owner) and no new one starts until restart().
+    void stopAccepting();
     // Non-audio thread. Accepts work again.
     void restart();
     // Non-audio thread. Wakes the builder (it would notice the work within kIdlePollS anyway).

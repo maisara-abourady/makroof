@@ -20,6 +20,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 option(SPATIAL_WERROR "Treat compiler warnings as errors (CI sets this ON)" OFF)
 option(SPATIAL_BUILD_PLUGIN "Build the JUCE plugin and the tests that depend on it" ON)
 option(SPATIAL_BUILD_TESTS "Build the Catch2 unit tests" ON)
+# Phase-07c-1 condition 11: the host-trace diagnostic build (src/plugin/core/HostTrace.h). Never ON in a
+# release artefact (tools/ci/test_host_trace.py checks the presets and the workflows).
+option(SPATIAL_HOST_TRACE "Diagnostic build: log every host entry point of the plugin (never released)" OFF)
 option(SPATIAL_USE_CCACHE "Use ccache as the compiler launcher when it is available" ON)
 set(SPATIAL_SANITIZER "" CACHE STRING "Sanitizers to enable: empty, 'address,undefined' or 'thread'")
 

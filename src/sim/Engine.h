@@ -10,6 +10,7 @@
 // AX21: the hybrid IR is specular-only before its handover; the AX16 scattered entries only set the
 // tail level (a known deficit, fix planned on Phase 05 evidence, BUILD_PLAN §5 B11).
 #include "contract/SceneDescription.h"
+#include "sim/Cancel.h"
 #include "sim/ism/ImageSources.h"
 #include "sim/tail/Decay.h"
 #include "sim/tail/NoiseTail.h"
@@ -18,6 +19,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -28,15 +30,6 @@ namespace sim {
 namespace diffuse {
 class ThreadPool;
 }
-
-// Thrown by buildRoomIR when BuildOptions::cancel was set while the diffuse solve ran (AX39 D6): the
-// caller asked for the build to stop; nothing was produced.
-struct BuildCancelled : std::runtime_error
-{
-    BuildCancelled()
-        : std::runtime_error("room IR build cancelled")
-    {}
-};
 
 // Supported sample rates (AX6). buildRoomIR() rejects anything else.
 inline constexpr double kSupportedSampleRatesHz[] = {44100.0, 48000.0, 88200.0, 96000.0};
@@ -115,8 +108,10 @@ struct BuildOptions
     // diffuse-solve gate owns (src/plugin/core/DiffuseSolveGate.h), so no pool thread outlives the
     // last plugin instance.
     diffuse::ThreadPool* diffusePool = nullptr;
-    // Phase 05h (AX39 D6): checked between blocks of the diffuse solve; when it becomes true the build
-    // stops and buildRoomIR throws BuildCancelled (the builder was quiesced; its result is discarded).
+    // Phase 05h (AX39 D6), phase-07c-1 condition 10: checked at the build's cancel points (sim/Cancel.h:
+    // image-source planning per emitter, between blocks of the diffuse solve, the unit-decay synthesis,
+    // the IR assembly); when it becomes true the build stops and buildRoomIR throws BuildCancelled (the
+    // caller discards the result).
     const std::atomic<bool>* cancel = nullptr;
     // Kind::Omni, validation only (render_cli --tail-level ax16; the phase-05h listening pack): match
     // the tail level on the specular + AX16 scattered entries as Phase 04 did and skip the diffuse
@@ -220,6 +215,39 @@ struct HybridDiagnostics
 // sample); the other two pairs are a single 0. Positions, materials and gains are ignored.
 RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& options,
                    HybridDiagnostics* diagnostics = nullptr);
+
+// Phase-07c-1 condition 12 (D-G1; AX38 (i) register entry G-1): buildRoomIR as three stages, so a caller can
+// hold the AX38 diffuse-solve gate around the solve alone. buildRoomIR(scene, options, diagnostics) is
+// exactly
+//   auto b = StagedBuild::plan(scene, options); b.solve(); return b.assemble(diagnostics);
+// and the two are bit-identical on every platform (AX5; test "[staged]"). Each stage runs under its own
+// FTZ/DAZ guard (AX37 (5.1) (i)) and checks options.cancel at its cancel points (sim/Cancel.h).
+//   plan()      image-source planning, matching and the early parts (Kind::Omni); the whole IR for the
+//               other kinds. Throws std::invalid_argument for an unsupported sample rate.
+//   solve()     the diffuse solve (Kind::Omni without tailLevelAx16; a no-op otherwise, see needsSolve()).
+//               Uses options.diffusePool. The only stage the plugin runs under the AX38 gate.
+//   assemble()  the unit-decay synthesis and the IR assembly. Calls solve() first if it has not run.
+// A StagedBuild is used from one thread at a time; the stages may run on different threads in order.
+class StagedBuild
+{
+public:
+    static StagedBuild plan(const contract::SceneDescription& scene, const BuildOptions& options);
+    StagedBuild(StagedBuild&&) noexcept;
+    StagedBuild& operator=(StagedBuild&&) noexcept;
+    ~StagedBuild();
+
+    bool needsSolve() const noexcept;
+    // `pool` (if not nullptr) replaces options.diffusePool for this solve: the plugin passes the gate's pool
+    // only while it holds the gate (condition 12).
+    void solve(diffuse::ThreadPool* pool = nullptr);
+    RoomIR assemble(HybridDiagnostics* diagnostics = nullptr);
+
+    struct State;
+
+private:
+    explicit StagedBuild(std::unique_ptr<State> state);
+    std::unique_ptr<State> state_;
+};
 
 // Kind::Omni only (validation, AX11 ensembles): the hybrid IR of `scene` for each tail seed in
 // tailSeeds, element k equal to buildRoomIR with render.tailSeed = tailSeeds[k]. The seed-independent

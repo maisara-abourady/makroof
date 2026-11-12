@@ -6,6 +6,7 @@
 // low-alpha restore's growth bound are asserted in "[diffuse-records]"; everything else is printed.
 #include "DiffuseTestUtil.h"
 #include "PipelineTestUtil.h"
+#include "ProcessMemory.h"
 
 #include "contract/Json.h"
 #include "module3d/ParameterMap.h"
@@ -1459,4 +1460,171 @@ TEST_CASE("records: K-e12 restore with a room edit in flight at the gated 100 m 
                         inFlight[static_cast<std::size_t>(i)] ? "yes" : "no",
                         waits[static_cast<std::size_t>(i)]);
     }
+}
+
+// Phase-07c-1 condition 10 (D-H3 (e); AX38 (i) register entry): the enter-offline path cancels and never
+// waits. Records, never CHECKs: the host call (setNonRealtime(true)), the cancel unwind (from the call until
+// the abandoned decision has left its last cancel point), the first offline block (it waits for that unwind,
+// then builds) and the AX38 (i) transient-memory record (the PROCESS resident-set delta, sampled every 2 ms,
+// while an abandoned build's ISM / synthesis may still overlap the offline build), at the low-alpha 100 m
+// cube, 48 and 96 kHz, with the cancel landing at several points of the build (ISM, solve, synthesis,
+// assembly).
+TEST_CASE("records: condition 10 enter-offline cancel latency and transient memory at the 100 m cube",
+          "[.][benchmark][records-07c1-cond10]")
+{
+    const char* key = "cube100_lowalpha0.05_s0.3";
+    const auto sc = cube(key);
+    const auto values = module3d::parameterValuesFromScene(sc);
+    const float w = static_cast<float>(sc.room.geometry.dimensions.x);
+    for (const double fs : {48000.0, 96000.0})
+    {
+        // The uncancelled rebuild time of a room-size edit sets where the cancels land.
+        double rebuildMs = 0.0;
+        {
+            plugin::ScenePipeline pipe;
+            pipe.beginRestore();
+            pipe.restore(sc, values);
+            pipe.prepare(fs, 512, false);
+            const auto t0 = Clock::now();
+            pipe.setParameter(module3d::kRoomW, w - 1.0f);
+            while (!pipe.builderIdle())
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            rebuildMs = ms(t0, Clock::now());
+        }
+        double worstCall = 0.0, worstUnwind = 0.0, worstFirstBlock = 0.0, worstDeltaMb = 0.0;
+        for (const double frac : {0.02, 0.1, 0.3, 0.6, 0.9})
+        {
+            plugin::ScenePipeline pipe;
+            pipe.beginRestore();
+            pipe.restore(sc, values);
+            pipe.prepare(fs, 512, false);
+            const long rssBefore = test_memory::currentRssKb();
+            std::atomic<long> rssMax{rssBefore};
+            std::atomic<bool> sampling{true};
+            std::thread sampler([&] {
+                while (sampling.load())
+                {
+                    const long r = test_memory::currentRssKb();
+                    long m = rssMax.load();
+                    while (r > m && !rssMax.compare_exchange_weak(m, r))
+                    {}
+                    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                }
+            });
+            pipe.setParameter(module3d::kRoomW, w - 2.0f);
+            std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(frac * rebuildMs));
+            const bool wasBusy = pipe.builderBusy();
+            const auto t0 = Clock::now();
+            pipe.setNonRealtime(true);
+            const double callMs = ms(t0, Clock::now());
+            while (pipe.builderBusy())
+                std::this_thread::sleep_for(std::chrono::microseconds(200));
+            const double unwindMs = ms(t0, Clock::now());
+            // The first offline block (on the next host block: here, right after the unwind was observed).
+            std::vector<float> l(512, 0.0f), r(512, 0.0f);
+            const float* const in[2] = {l.data(), r.data()};
+            float* const out[2] = {l.data(), r.data()};
+            const auto tb = Clock::now();
+            pipe.process(in, out, 512);
+            const double firstBlockMs = ms(tb, Clock::now());
+            sampling.store(false);
+            sampler.join();
+            const double deltaMb = (rssMax.load() - rssBefore) / 1024.0;
+            std::printf(
+                "07c1-records cond10 %-26s %6.0f Hz, %s: cancel at %.0f %% of a %.0f ms rebuild (builder "
+                "%s): setNonRealtime(true) %.2f ms, cancel unwind %.1f ms, first offline block %.0f ms; "
+                "transient RSS delta %.0f MB (process, RSS before %ld kB)%s\n",
+                key, fs, kOsName, 100.0 * frac, rebuildMs, wasBusy ? "busy" : "idle", callMs, unwindMs,
+                firstBlockMs, deltaMb, rssBefore, rssBefore == 0 ? "  [RSS n/a]" : "");
+            worstCall = std::max(worstCall, callMs);
+            worstUnwind = std::max(worstUnwind, unwindMs);
+            worstFirstBlock = std::max(worstFirstBlock, firstBlockMs);
+            worstDeltaMb = std::max(worstDeltaMb, deltaMb);
+        }
+        std::printf(
+            "07c1-records cond10 %-26s %6.0f Hz, %s: WORST setNonRealtime(true) %.2f ms (was: the in-flight "
+            "build, AX38 (i) entry 2 664 ms), cancel unwind %.1f ms, first offline block %.0f ms, transient "
+            "RSS delta %.0f MB\n",
+            key, fs, kOsName, worstCall, worstUnwind, worstFirstBlock, worstDeltaMb);
+    }
+}
+
+// Phase-07c-1 condition 12 (D-G1), records (d) and (f), never CHECKs: with the gate around the solve only,
+// several builds (ISM planning and unit-decay synthesis) now run at once. (d) the worst quiesce() wait of one
+// pipeline (a restore's beginRestore()) while N - 1 others synthesise, the cancel landing at a random point
+// of its own rebuild; (f) the AX38 (i) transient-memory record as the PROCESS peak resident-set delta
+// (sampled every 2 ms) with 4 and 8 concurrent builds of the 100 m low-alpha cube, at 48 and 96 kHz. A breach
+// of the memory budget goes to Phase 13's memory budget (scope 1), never to an instance cap (PRD FR-3D-5,
+// FR-3D-6, FR-SIM-7, A5), a W_max cut or a range change (D-H1 (v)(d)).
+TEST_CASE("records: condition 12 (d) quiesce with N concurrent syntheses and (f) process memory with 4 / 8 "
+          "concurrent builds at 100 m",
+          "[.][benchmark][records-07c1-cond12]")
+{
+    const char* key = "cube100_lowalpha0.05_s0.3";
+    const auto sc = cube(key);
+    const auto values = module3d::parameterValuesFromScene(sc);
+    const float w = static_cast<float>(sc.room.geometry.dimensions.x);
+    std::mt19937_64 rng(0x07C12);
+    for (const double fs : {48000.0, 96000.0})
+        for (const int n : {1, 4, 8})
+        {
+            std::vector<std::unique_ptr<plugin::ScenePipeline>> pipes;
+            for (int i = 0; i < n; ++i)
+            {
+                pipes.push_back(std::make_unique<plugin::ScenePipeline>());
+                pipes.back()->beginRestore();
+                pipes.back()->restore(sc, values);
+                pipes.back()->prepare(fs, 512, false);
+            }
+            const auto allIdle = [&] {
+                for (auto& p : pipes)
+                    if (!p->builderIdle())
+                        return false;
+                return true;
+            };
+            const long rssBefore = test_memory::currentRssKb();
+            std::atomic<long> rssMax{rssBefore};
+            std::atomic<bool> sampling{true};
+            std::thread sampler([&] {
+                while (sampling.load())
+                {
+                    const long r = test_memory::currentRssKb();
+                    long m = rssMax.load();
+                    while (r > m && !rssMax.compare_exchange_weak(m, r))
+                    {}
+                    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                }
+            });
+            // (f): every instance rebuilds at once (a room-size edit), uncancelled.
+            const auto t0 = Clock::now();
+            for (auto& p : pipes)
+                p->setParameter(module3d::kRoomW, w - 1.0f);
+            while (!allIdle())
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            const double allMs = ms(t0, Clock::now());
+            const double peakMb = (rssMax.load() - rssBefore) / 1024.0;
+            // (d): again, and pipeline 0 is quiesced at a random point of its rebuild.
+            std::uniform_real_distribution<double> u(0.0, allMs / std::max(1, n) + 1.0);
+            double worstWait = 0.0;
+            for (int run = 0; run < 3; ++run)
+            {
+                for (auto& p : pipes)
+                    p->setParameter(module3d::kRoomW, w - 2.0f - static_cast<float>(run));
+                std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(u(rng)));
+                const auto q0 = Clock::now();
+                pipes[0]->beginRestore();
+                worstWait = std::max(worstWait, ms(q0, Clock::now()));
+                pipes[0]->restore(sc, values);
+                while (!allIdle())
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            sampling.store(false);
+            sampler.join();
+            std::printf(
+                "07c1-records cond12 %-26s %6.0f Hz, %s, %d concurrent build%s: all rebuilt in %.0f ms; "
+                "(f) process peak RSS delta %.0f MB (RSS before %ld kB)%s; (d) worst quiesce wait %.0f ms "
+                "(3 cancels at random points)\n",
+                key, fs, kOsName, n, n == 1 ? "" : "s", allMs, peakMb, rssBefore,
+                rssBefore == 0 ? " [RSS n/a]" : "", worstWait);
+        }
 }

@@ -212,50 +212,102 @@ void switchTailLevel(tail::TailMatch& match, const EmitterPlan& plan, const diff
     match.approximate = er.approximate;
 }
 
-// The hybrid omni IR for each tail seed in `seeds` (one RoomIR per seed). Everything that doesn't
-// depend on the seed (mixing times, image lists, matching, the early part, the band filters'
-// spectra) is computed once. Diagnostics describe the first seed.
-std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, const BuildOptions& options,
-                                    std::span<const std::uint32_t> seeds, HybridDiagnostics* diagnostics)
+// The per-emitter working state of the hybrid omni build (Phase 04/05h).
+struct PerEmitter
 {
-    const double fs = options.sampleRate;
-    const int numEmitters = static_cast<int>(contract::limits::kEmitterCount);
-    const ism::OctaveFilterbank filterbank(fs);
-    const contract::BandArray bandEnergy = tail::bandImpulseEnergies(filterbank);
-    const double shift = alignmentShiftS(scene, fs);
+    bool present = false;
+    tail::MixingTime mixing;
+    tail::TailMatch match;
+    std::vector<double> early;
+    HybridEmitterDiagnostics diag;
+};
+
+} // namespace
+
+// Phase-07c-1 condition 12 (D-G1): the hybrid omni build as three stages over one state. Everything that
+// doesn't depend on the seed (mixing times, image lists, matching, the early part, the band filters'
+// spectra) is computed once for all seeds; diagnostics describe the first seed.
+struct StagedBuild::State
+{
+    contract::SceneDescription scene;
+    BuildOptions options;
+    std::vector<std::uint32_t> seeds;
+    bool hybrid = false; // Kind::Omni; otherwise `direct` is the whole IR
+    RoomIR direct;
+    bool solveDone = false;
+
+    double fs = 0.0;
+    int numEmitters = 0;
+    std::optional<ism::OctaveFilterbank> filterbank;
+    contract::BandArray bandEnergy{};
+    double shift = 0.0;
+    std::size_t offset = 0;
+    tail::RoomDecay decay;
+    double lengthS = 0.0;
+    std::size_t unitLength = 0;
+    std::size_t tailEnd = 0;
+    std::size_t cap = 0;
+    bool cached = false;
+    std::vector<PerEmitter> perChannel;
+    std::vector<EmitterPlan> plans;
+    std::size_t length = 1;
+    std::vector<char> planned;
+};
+
+namespace {
+
+// AX37 (5.1) (i): FTZ/DAZ on for each stage, through a scoped guard that restores the caller's mode on every
+// exit, including a throw, so the IR never depends on the host's mode (every stage runs in the same mode, so
+// the composed stages equal the one-shot build bit for bit).
+#define SPATIAL_STAGE_GUARD(options)                                                                         \
+    std::optional<conv::ScopedFlushDenormals> stageGuard_;                                                   \
+    if ((options).ftzGuard)                                                                                  \
+    stageGuard_.emplace()
+
+// Stage 1 of the hybrid build: decay, image-source planning, matching, the early parts.
+void planHybrid(StagedBuild::State& st)
+{
+    const auto& scene = st.scene;
+    const auto& options = st.options;
+    st.fs = options.sampleRate;
+    const double fs = st.fs;
+    st.numEmitters = static_cast<int>(contract::limits::kEmitterCount);
+    const int numEmitters = st.numEmitters;
+    st.filterbank.emplace(fs);
+    const ism::OctaveFilterbank& filterbank = *st.filterbank;
+    st.bandEnergy = tail::bandImpulseEnergies(filterbank);
+    const contract::BandArray& bandEnergy = st.bandEnergy;
+    st.shift = alignmentShiftS(scene, fs);
+    const double shift = st.shift;
     // Sample n of the IR is emission time n / fs + shift; sample j of the unit decay is emission
     // time j / fs. The tail is placed at j = n + offset, i.e. within half a sample of its emission
     // time (a level error < 0.01 dB), so the unit decay stays independent of positions (Phase 10).
-    const auto offset = static_cast<std::size_t>(std::max(0.0, std::round(shift * fs)));
-    const tail::RoomDecay decay = roomDecay(scene, options);
-    const double lengthS = tail::tailLengthS(decay);
-    const std::size_t unitLength = tail::unitDecayLength(lengthS, fs);
-    const std::size_t tailEnd = unitLength > offset ? unitLength - offset : 0;
-    const std::size_t cap = options.imageCountCapOverride > 0 ? options.imageCountCapOverride
-                                                              : imageCountCap();
+    st.offset = static_cast<std::size_t>(std::max(0.0, std::round(shift * fs)));
+    st.decay = roomDecay(scene, options);
+    const tail::RoomDecay& decay = st.decay;
+    st.lengthS = tail::tailLengthS(decay);
+    const double lengthS = st.lengthS;
+    st.unitLength = tail::unitDecayLength(lengthS, fs);
+    st.tailEnd = st.unitLength > st.offset ? st.unitLength - st.offset : 0;
+    const std::size_t tailEnd = st.tailEnd;
+    st.cap = options.imageCountCapOverride > 0 ? options.imageCountCapOverride : imageCountCap();
+    const std::size_t cap = st.cap;
     // The band filters' spectra are only needed when noise is generated (not for a cached rebuild).
-    const bool cached = options.cachedUnitDecays != nullptr
-                        && options.cachedUnitDecays->size() == static_cast<std::size_t>(numEmitters)
-                        && options.cachedUnitDecays->front().length() == unitLength;
-    std::optional<tail::BandNoiseGenerator> generator;
-    if (!cached)
-        generator.emplace(filterbank, unitLength);
+    st.cached = options.cachedUnitDecays != nullptr
+                && options.cachedUnitDecays->size() == static_cast<std::size_t>(numEmitters)
+                && options.cachedUnitDecays->front().length() == st.unitLength;
 
-    struct PerEmitter
-    {
-        bool present = false;
-        tail::MixingTime mixing;
-        tail::TailMatch match;
-        std::vector<double> early;
-        HybridEmitterDiagnostics diag;
-    };
-    std::vector<PerEmitter> perChannel(static_cast<std::size_t>(numEmitters));
-    std::vector<EmitterPlan> plans(static_cast<std::size_t>(numEmitters));
-    std::size_t length = 1;
+    st.perChannel.assign(static_cast<std::size_t>(numEmitters), PerEmitter{});
+    st.plans.assign(static_cast<std::size_t>(numEmitters), EmitterPlan{});
+    auto& perChannel = st.perChannel;
+    auto& plans = st.plans;
+    std::size_t& length = st.length;
+    length = 1;
     // Phase 05h: every emitter is planned (the diffuse solve is one per scene for both emitters, AX39 /
     // AX41, so a validation build of one channel matches the full build bit for bit); only the
     // present ones are rendered.
-    std::vector<char> planned(static_cast<std::size_t>(numEmitters), 0);
+    st.planned.assign(static_cast<std::size_t>(numEmitters), 0);
+    auto& planned = st.planned;
     for (const auto& emitter : scene.emitters)
     {
         if (emitter.channel < 0 || emitter.channel >= numEmitters)
@@ -263,6 +315,7 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
         auto& pe = perChannel[static_cast<std::size_t>(emitter.channel)];
         pe.present = options.onlyEmitterChannel < 0 || emitter.channel == options.onlyEmitterChannel;
         planned[static_cast<std::size_t>(emitter.channel)] = 1;
+        throwIfCancelled(options.cancel); // condition 10: image-source planning, per emitter
         EmitterPlan plan = planEmitter(scene, emitter, options, decay, lengthS, bandEnergy, cap);
         pe.mixing = plan.mixing;
         pe.match = plan.match;
@@ -281,7 +334,18 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
         pe.diag.scatteredCount = set.scattered.size();
         plans[static_cast<std::size_t>(emitter.channel)] = std::move(plan);
     }
+}
 
+// Stage 2 of the hybrid build: the diffuse solve (the only stage the plugin runs under the AX38 gate).
+void solveHybrid(StagedBuild::State& st)
+{
+    const auto& scene = st.scene;
+    const auto& options = st.options;
+    const tail::RoomDecay& decay = st.decay;
+    const contract::BandArray& bandEnergy = st.bandEnergy;
+    auto& perChannel = st.perChannel;
+    auto& plans = st.plans;
+    const auto& planned = st.planned;
     // Phase 05h (AX37 (5.1)): the tail level from the propagated diffuse energy. One diffuse solve per
     // scene build, for the present emitters together (AX39: shared across output modes; AX44: one
     // listener-started set serves both emitters). Validation only: --tail-level ax16 keeps Phase 04's.
@@ -336,6 +400,30 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
                                 bandEnergy);
         }
     }
+}
+
+// Stage 3 of the hybrid build: the unit-decay synthesis and the IR assembly, one RoomIR per seed.
+std::vector<RoomIR> assembleHybrid(StagedBuild::State& st, HybridDiagnostics* diagnostics)
+{
+    const auto& options = st.options;
+    const std::span<const std::uint32_t> seeds(st.seeds);
+    const double fs = st.fs;
+    const int numEmitters = st.numEmitters;
+    const ism::OctaveFilterbank& filterbank = *st.filterbank;
+    const double shift = st.shift;
+    const std::size_t offset = st.offset;
+    const tail::RoomDecay& decay = st.decay;
+    const double lengthS = st.lengthS;
+    const std::size_t tailEnd = st.tailEnd;
+    const bool cached = st.cached;
+    auto& perChannel = st.perChannel;
+    const auto& planned = st.planned;
+    const std::size_t length = st.length;
+    std::optional<tail::BandNoiseGenerator> generator;
+    throwIfCancelled(options.cancel); // condition 10: before the synthesis constructor
+    if (!cached)
+        generator.emplace(filterbank, st.unitLength, options.cancel);
+
     for (std::size_t e = 0; e < perChannel.size(); ++e)
         if (planned[e])
             perChannel[e].diag.match = perChannel[e].match;
@@ -360,11 +448,13 @@ std::vector<RoomIR> buildHybridOmni(const contract::SceneDescription& scene, con
             tail::UnitDecay generated;
             if (!cached)
                 generated = generator->make(decay, tail::tailSeedForOutput(seeds[s], 0),
-                                            static_cast<std::uint32_t>(e));
+                                            static_cast<std::uint32_t>(e), options.cancel);
             const tail::UnitDecay& unit = cached ? (*options.cachedUnitDecays)[e] : generated;
             auto& taps = ir.taps[ir.index(static_cast<int>(e), 0)];
             for (std::size_t n = 0; n < length; ++n)
             {
+                if ((n & (kCancelCheckSamples - 1)) == 0)
+                    throwIfCancelled(options.cancel); // condition 10: the IR assembly
                 const double t = static_cast<double>(n) / fs + shift;
                 const tail::CrossfadeWeights w = options.tailOnly ? tail::CrossfadeWeights{0.0, 1.0}
                                                                   : tail::crossfade(t, pe.mixing.mixS);
@@ -462,7 +552,14 @@ std::vector<RoomIR> buildRoomIREnsemble(const contract::SceneDescription& scene,
                                     + " Hz (supported: 44100, 48000, 88200, 96000)");
     if (options.kind != BuildOptions::Kind::Omni)
         throw std::invalid_argument("buildRoomIREnsemble: only Kind::Omni has a seeded tail");
-    return buildHybridOmni(scene, options, tailSeeds, nullptr);
+    auto st = std::make_unique<StagedBuild::State>();
+    st->scene = scene;
+    st->options = options;
+    st->seeds.assign(tailSeeds.begin(), tailSeeds.end());
+    planHybrid(*st);
+    if (!options.tailLevelAx16)
+        solveHybrid(*st);
+    return assembleHybrid(*st, nullptr);
 }
 
 std::size_t imageCountCap() noexcept
@@ -514,28 +611,37 @@ std::vector<ism::ImageSourceSet> imageSourcesByChannel(const contract::SceneDesc
     return sets;
 }
 
-RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& options,
-                   HybridDiagnostics* diagnostics)
+StagedBuild::StagedBuild(std::unique_ptr<State> state)
+    : state_(std::move(state))
+{}
+StagedBuild::StagedBuild(StagedBuild&&) noexcept = default;
+StagedBuild& StagedBuild::operator=(StagedBuild&&) noexcept = default;
+StagedBuild::~StagedBuild() = default;
+
+StagedBuild StagedBuild::plan(const contract::SceneDescription& scene, const BuildOptions& options)
 {
-    // AX37 (5.1) (i): FTZ/DAZ on for the whole build, through a scoped guard that restores the
-    // caller's mode on every exit, including a throw, so the IR never depends on the host's mode.
-    std::optional<conv::ScopedFlushDenormals> flushDenormals;
-    if (options.ftzGuard)
-        flushDenormals.emplace();
+    SPATIAL_STAGE_GUARD(options);
     if (!isSupportedSampleRate(options.sampleRate))
         throw std::invalid_argument("unsupported sample rate " + std::to_string(options.sampleRate)
                                     + " Hz (supported: 44100, 48000, 88200, 96000)");
-
+    auto st = std::make_unique<State>();
+    st->scene = scene;
+    st->options = options;
     if (options.kind == BuildOptions::Kind::Omni)
     {
-        const std::uint32_t seed = scene.render.tailSeed;
-        return std::move(
-            buildHybridOmni(scene, options, std::span<const std::uint32_t>(&seed, 1), diagnostics).front());
+        st->hybrid = true;
+        st->seeds.assign(1, scene.render.tailSeed);
+        planHybrid(*st);
+        return StagedBuild(std::move(st));
     }
+    st->solveDone = true;
     if (options.kind == BuildOptions::Kind::OmniEarly)
-        return buildOmni(scene, options);
+    {
+        st->direct = buildOmni(scene, options);
+        return StagedBuild(std::move(st));
+    }
 
-    RoomIR ir;
+    RoomIR& ir = st->direct;
     ir.sampleRate = options.sampleRate;
     ir.numEmitters = static_cast<int>(contract::limits::kEmitterCount);
     ir.numOutputs = 2;
@@ -552,7 +658,55 @@ RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& 
             continue; // impossible for a validated scene
         ir.taps[ir.index(emitter.channel, output)][0] = 1.0f;
     }
-    return ir;
+    return StagedBuild(std::move(st));
+}
+
+bool StagedBuild::needsSolve() const noexcept
+{
+    return state_ && state_->hybrid && !state_->solveDone && !state_->options.tailLevelAx16;
+}
+
+void StagedBuild::solve(diffuse::ThreadPool* pool)
+{
+    if (!needsSolve())
+    {
+        if (state_)
+            state_->solveDone = true;
+        return;
+    }
+    SPATIAL_STAGE_GUARD(state_->options);
+    diffuse::ThreadPool* const planned = state_->options.diffusePool;
+    if (pool != nullptr)
+        state_->options.diffusePool = pool;
+    try
+    {
+        solveHybrid(*state_);
+    }
+    catch (...)
+    {
+        state_->options.diffusePool = planned;
+        throw;
+    }
+    state_->options.diffusePool = planned;
+    state_->solveDone = true;
+}
+
+RoomIR StagedBuild::assemble(HybridDiagnostics* diagnostics)
+{
+    if (!state_->hybrid)
+        return std::move(state_->direct);
+    solve();
+    SPATIAL_STAGE_GUARD(state_->options);
+    return std::move(assembleHybrid(*state_, diagnostics).front());
+}
+
+RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& options,
+                   HybridDiagnostics* diagnostics)
+{
+    // Phase-07c-1 condition 12: the composition of the three stages (one-shot callers: render_cli, tests).
+    StagedBuild build = StagedBuild::plan(scene, options);
+    build.solve();
+    return build.assemble(diagnostics);
 }
 
 } // namespace sim

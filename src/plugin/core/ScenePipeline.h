@@ -13,8 +13,11 @@
 //   - The scene is a pure function of (parameters, base scene): module3d::deriveScene().
 //   - The engine (sim::RealtimeEngine, the only way to the convolver): process() on the audio thread;
 //     submits from the builder thread (realtime) or, with the builder quiesced, from the host thread
-//     (prepare, reset, restore) or the processing thread during an offline bounce; prepare()/reset() only
-//     with the builder quiesced (no submit in flight) and not concurrently with process().
+//     (prepare, restore) or the processing thread during an offline bounce; prepare() only with the
+//     builder quiesced (no submit in flight); the realtime reset's resetKeepIr() may overlap a builder
+//     submit; the offline drop (setNonRealtime(true), offline reset()) runs under stateMutex_ after the
+//     builder stopped accepting, so no submit reaches the engine during it (phase-07c-1 condition 10).
+//     None of them concurrently with process().
 //   - The decision state (last handled generation, last submitted IR, restore flag): under stateMutex_,
 //     taken by the builder, the host-thread calls and the offline process(). The realtime process()
 //     never takes a lock or allocates.
@@ -73,11 +76,13 @@ public:
     // realtime: builds and submits the current scene synchronously, then restarts the builder; offline:
     // leaves the build to the next process() (the only submitter during a bounce).
     void prepare(double sampleRate, int maxBlock, bool nonRealtime);
-    // The reset sequence (scope 3): quiesce, engine reset, resubmit the current scene, snap the trim,
-    // restart the builder in realtime mode.
+    // Phase-07c-1 condition 10: never waits on the builder and never builds (it may arrive on the VST3
+    // processing thread). Realtime: clears the convolver's history, pending output and counter, keeps the
+    // current IrSet (the output is never silent) and snaps the trim. Offline: as setNonRealtime(true).
     void reset();
-    // Entering non-realtime mode runs the reset sequence (the builder stays quiesced); leaving it
-    // restarts the builder.
+    // Entering non-realtime mode (condition 10): cancels the builder (no wait), drops the IRs; the next
+    // process() waits for the cancelled build to unwind and builds before its block (X11, NFR-6). Leaving
+    // it restarts the builder.
     void setNonRealtime(bool nonRealtime);
     // Quiesces the builder (host releaseResources()); it stays stopped until the next prepare().
     void release();
@@ -121,10 +126,22 @@ public:
     std::shared_ptr<const sim::conv::IrSet> lastSubmittedIrSet() const;
     // Called on the deciding thread right after a decision's scene snapshot (test hook for D7 (d)).
     void setAfterSnapshotHook(std::function<void()> hook);
+    // Condition 12 test hook: called on the deciding thread at the start of each build stage (Plan: before
+    // image-source planning; Solve: inside the AX38 gate, before the diffuse solve; Assemble: after the gate,
+    // before the unit-decay synthesis and the assembly). Nothing on the real-time path.
+    enum class BuildStage
+    {
+        Plan,
+        Solve,
+        Assemble
+    };
+    void setStageHook(std::function<void(BuildStage)> hook);
     // Test hook: the next `count` decisions fail as a build failure would (nothing recorded).
     void injectBuildFailures(int count) noexcept;
     // True when the builder has nothing to do (for tests that wait for it).
     bool builderIdle() const;
+    // True while a builder decision runs (tests and records: the condition 10 cancel latency).
+    bool builderBusy() const;
     // The builder's current trim gain target and value (tests).
     float trimGain() const noexcept { return trimGain_; }
 
@@ -139,20 +156,24 @@ private:
     {
         Builder,     // the background builder (realtime)
         Synchronous, // prepare / restore on the host thread
-        ResetStep3,  // the reset sequence: always submits
         Offline      // process() during a bounce
     };
 
     // Takes stateMutex_ itself. Returns true when the generation was recorded as handled.
     bool decide(Source source);
     // Phase 05h, the solve seam (AX38, phase-07c condition 2): the ONE function through which restore,
-    // prepare, reset() and the offline process() reach the diffuse solve. Enters the gate in the
-    // source's class, builds with the gate's pool, leaves. Throws sim::BuildCancelled when a builder
+    // prepare, the builder and the offline process() reach the diffuse solve. Condition 12: plans outside
+    // the gate, enters it in the source's class around the solve alone (the gate's pool passed only
+    // there), then synthesises and assembles outside it. Throws sim::BuildCancelled when a builder
     // was quiesced while waiting or solving (D6). Never called with stateMutex_ or the builder mutex held.
     sim::RoomIR solveAndBuild(const contract::SceneDescription& scene, Source source);
+    void stageHook(BuildStage stage);
     void quiesceBuilder();
+    // Condition 10: abandon flag, gate notify, stop accepting; never waits.
+    void cancelBuilder() noexcept;
+    // Condition 10: cancelBuilder() then drop the engine's IRs and the D7 record (offline entry / reset).
+    void dropForOffline();
     void restartBuilder();
-    void resetSequence(bool restartBuilder);
     bool hasWork() const noexcept;
     void snapTrim() noexcept;
     void applyTrim(float* const out[2], int n) noexcept;
@@ -182,6 +203,7 @@ private:
     std::optional<contract::SceneDescription> builtScene_;
     std::uint64_t builtGen_ = kNone;
     std::function<void()> afterSnapshot_;
+    std::function<void(BuildStage)> stageHook_;
 
     double sampleRate_ = 0.0;
     int maxBlock_ = 0;

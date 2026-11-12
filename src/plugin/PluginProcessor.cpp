@@ -8,6 +8,15 @@
 #include <cstring>
 #include <string>
 
+#if SPATIAL_HOST_TRACE
+// Phase-07c-1 condition 11: one record per host entry point (diagnostic build only).
+#define SPATIAL_TRACE(entry, block, argument)                                                                \
+    const trace::Scope traceScope_(trace_.get(), trace::Entry::entry, juce::AudioProcessor::isNonRealtime(), \
+                                   transport(), (block), (argument))
+#else
+#define SPATIAL_TRACE(entry, block, argument) static_cast<void>(0)
+#endif
+
 namespace plugin {
 
 namespace {
@@ -108,6 +117,18 @@ SpatialSceneProcessor::SpatialSceneProcessor(BuilderClock* clock)
             p->sendValueChangedMessageToListeners(p->getValue());
     }
     setLatencySamples(pipeline_.latencySamples());
+#if SPATIAL_HOST_TRACE
+    // One trace file per instance, in $SPATIAL_HOST_TRACE_DIR or the temporary directory (opened here, off
+    // the audio thread).
+    auto dir = juce::SystemStats::getEnvironmentVariable("SPATIAL_HOST_TRACE_DIR", {});
+    const juce::File folder = dir.isNotEmpty() ? juce::File(dir)
+                                               : juce::File::getSpecialLocation(juce::File::tempDirectory);
+    const auto name = "SpatialScene-trace-" + juce::String(juce::Time::currentTimeMillis()) + "-"
+                      + juce::String::toHexString(
+                          static_cast<juce::pointer_sized_int>(reinterpret_cast<std::uintptr_t>(this)))
+                      + ".txt";
+    trace_ = std::make_unique<trace::Logger>(folder.getChildFile(name).getFullPathName().toStdString());
+#endif
 }
 
 SpatialSceneProcessor::~SpatialSceneProcessor()
@@ -125,6 +146,7 @@ bool SpatialSceneProcessor::isBusesLayoutSupported(const BusesLayout& layouts) c
 
 void SpatialSceneProcessor::prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock)
 {
+    SPATIAL_TRACE(PrepareToPlay, maximumExpectedSamplesPerBlock, 0);
     const int maxBlock = std::max(1, maximumExpectedSamplesPerBlock);
     for (auto& s : doubleScratch_)
         s.assign(static_cast<std::size_t>(maxBlock), 0.0f);
@@ -135,16 +157,19 @@ void SpatialSceneProcessor::prepareToPlay(double sampleRate, int maximumExpected
 
 void SpatialSceneProcessor::releaseResources()
 {
+    SPATIAL_TRACE(ReleaseResources, 0, 0);
     pipeline_.release();
 }
 
 void SpatialSceneProcessor::reset()
 {
+    SPATIAL_TRACE(Reset, 0, 0);
     pipeline_.reset();
 }
 
 void SpatialSceneProcessor::setNonRealtime(bool isNonRealtime) noexcept
 {
+    SPATIAL_TRACE(SetNonRealtime, 0, isNonRealtime ? 1 : 0);
     juce::AudioProcessor::setNonRealtime(isNonRealtime);
     try
     {
@@ -163,6 +188,7 @@ void SpatialSceneProcessor::clearExtraChannels(juce::AudioBuffer<SampleType>& bu
 
 void SpatialSceneProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& /*midiMessages*/)
 {
+    SPATIAL_TRACE(ProcessBlock, buffer.getNumSamples(), 0);
     juce::ScopedNoDenormals noDenormals;
     clearExtraChannels(buffer);
     if (buffer.getNumChannels() < 2)
@@ -178,6 +204,7 @@ void SpatialSceneProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
 void SpatialSceneProcessor::processBlock(juce::AudioBuffer<double>& buffer,
                                          juce::MidiBuffer& /*midiMessages*/)
 {
+    SPATIAL_TRACE(ProcessBlock, buffer.getNumSamples(), 1);
     juce::ScopedNoDenormals noDenormals;
     clearExtraChannels(buffer);
     if (buffer.getNumChannels() < 2 || doubleScratch_[0].empty())
@@ -209,6 +236,17 @@ void SpatialSceneProcessor::processBlock(juce::AudioBuffer<double>& buffer,
     }
 }
 
+#if SPATIAL_HOST_TRACE
+trace::Transport SpatialSceneProcessor::transport() const noexcept
+{
+    // AudioPlayHead::getPosition() fills a value object: no allocation, no lock (JUCE 8).
+    if (auto* head = getPlayHead())
+        if (const auto pos = head->getPosition())
+            return pos->getIsPlaying() ? trace::Transport::Playing : trace::Transport::Stopped;
+    return trace::Transport::Unknown;
+}
+#endif
+
 juce::AudioProcessorEditor* SpatialSceneProcessor::createEditor()
 {
     // The generic editor is enough until Phase 11.
@@ -235,6 +273,7 @@ void SpatialSceneProcessor::setAllParameters(const module3d::ParameterValues& va
 
 void SpatialSceneProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
+    SPATIAL_TRACE(GetState, 0, 0);
     juce::XmlElement root(kStateTag);
     root.setAttribute(kVersionAttribute, kPluginStateVersion);
     const std::string json = contract::toJson(pipeline_.currentScene()); // the full scene contract JSON
@@ -247,6 +286,7 @@ void SpatialSceneProcessor::getStateInformation(juce::MemoryBlock& destData)
 
 void SpatialSceneProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
+    SPATIAL_TRACE(SetState, 0, sizeInBytes);
     pipeline_.beginRestore(); // no half-restored scene is built while the parameters change
 
     bool ok = false;
