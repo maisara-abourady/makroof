@@ -449,11 +449,13 @@ TEST_CASE("AX47 (b) / AX49: provisional against exact on the A4 set: steps <= 1 
                     const double rel = std::abs(edtPr / edtEx - 1.0);
                     CAPTURE(b, d, edtEx, edtPr, rel);
                     REQUIRE(edtEx > 0.0);
+                    // D1 / O8 (decider file 35): d < 0.217 (ISO 3382-2's d_min ~ 1.9 r_c in diffuse-field
+                    // terms) is printed for Phase 10's ruling on the constant; nothing is asserted on it.
                     std::printf(
-                        "07c1-records ax47(b) EDT %s %.0f Hz seed %u band %zu: d %.3f, EDT exact %.1f ms, "
-                        "provisional %.1f ms (T60_b %.2f s): %+.2f %%\n",
-                        a4.name, fs, seed, b, d, 1e3 * edtEx, 1e3 * edtPr, dEx.decay.bandsT60S[b],
-                        100.0 * (edtPr / edtEx - 1.0));
+                        "07c1-records ax47(b) EDT %s %.0f Hz seed %u band %zu: d %.3f (d < 0.217: %s), EDT "
+                        "exact %.1f ms, provisional %.1f ms (T60_b %.2f s): %+.2f %%\n",
+                        a4.name, fs, seed, b, d, d < 0.217 ? "yes" : "no", 1e3 * edtEx, 1e3 * edtPr,
+                        dEx.decay.bandsT60S[b], 100.0 * (edtPr / edtEx - 1.0));
                     REQUIRE(rel <= 0.05);
                     worstEdt = std::max(worstEdt, rel);
                     ++evaluated[b];
@@ -462,7 +464,8 @@ TEST_CASE("AX47 (b) / AX49: provisional against exact on the A4 set: steps <= 1 
     }
     std::printf(
         "07c1-records ax47(b) provisional vs exact on the A4 set: worst |step| tail window %.3f dB, common "
-        "window %.3f dB; EDT within 5 %% on %d in-domain cases of %d (worst %.2f %%; %d outside EDT domain, "
+        "window %.3f dB; EDT within 5 %% on %d cases with d < 0.5 of %d (worst %.2f %%; %d outside EDT "
+        "domain, "
         "d >= 0.5); worst prefix difference %.1f dB (bound %.2f dB). A provisional-against-exact "
         "self-comparison, not a perceptual claim.\n",
         worstTail, worstCommon, evaluated[3] + evaluated[4], edtCases, 100.0 * worstEdt, outOfDomain,
