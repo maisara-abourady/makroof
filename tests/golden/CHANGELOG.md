@@ -173,3 +173,9 @@ Reason: phase 05i, decider files 5/9 (Q1), interrogator files 6/10 (SURVIVES): t
 Reason: phase 05i, DECISION D-Q5 (decider file 9, Seat 5 file 8, interrogator file 10: SURVIVES): the AX38 4c restore gate's per-scene solve-median bound. `kSolveWarn` 1.20 x the scene's in-window solve baseline per OS (`solveRefMs`: Linux 80.9 / 131.2 ms and macOS 83.7 / 102.7 ms from run 43007183782; Windows 90.4 / 144.4 ms from runs 42964823518 and 43007183782; low-alpha / flutter), PROVISIONAL (n = 1-2), printed as `SOLVE` in the scene's `warnings=`, never asserted; re-derived from >= 3 in-window runs at the 07c re-pin.
 
 - `(records-test constants)`: solve-median baselines (in-window runs 42964823518 Windows, 43007183782 all OSes) and `kSolveWarn` 1.20, PROVISIONAL (no golden file changed)
+
+## 2026-11-12 (05i follow-up, Q1)
+
+Reason: phase 05i, decider file 9 (Q1, answer 4), interrogator file 10 (SURVIVES): an AX38 4c restore-gate register entry closes under rule (c) only if it passed 30 s on every 05i run. The 05i Q1 entry of 2026-11-11 said Linux and Windows close; on the run of record 43031773338 (docs/review/phase-05i/19) Windows printed OVER30S (46.63 s, slow runner, flutterDev +48.9 %), so under decider file 9's rule it stays listed (Linux passed both runs, 27.61 / 27.40 s, and stays closed). Constants in tests/unit/test_diffuse_records.cpp (not a golden): `listed` true for the Windows low-alpha entry, which changes only the printed text; no assertion, baseline or `solveRefMs` changes. Owed to the contractor's review push of PR #30 (interrogator file 22, P05I-120), applied here as a follow-up.
+
+- `(records-test constants)`: the Windows low-alpha entry listed again (AX38 4c (c) 'otherwise' branch, phase-05i §3.3 (ii)); print only (no golden file changed)

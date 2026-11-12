@@ -110,12 +110,13 @@ constexpr GateEntry kGateRegister[] = {
     {"cube100_flutter_fallback", "Linux", 10.59, 0.0, 0.0, 0.0, false, false, true, 131.2, 1},
     {"cube100_flutter_fallback", "macOS", 7.59, 0.0, 0.0, 0.0, false, false, true, 102.7, 1},
     {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true, 144.4, 2},
-    // The gated low-alpha cube. macOS is listed (recorded 33.40 s, local / file 1; remedy phase-07c
-    // conditions 9-10). Linux (30.27 s local / file 1) and Windows (36.73 s on CI run 42942694523's slow
-    // runner, file 53) closed under AX38 4c (c) on phase 05i's runs (docs/review/phase-05i/9): print only.
+    // The gated low-alpha cube. macOS and Windows are listed (remedy phase-07c conditions 9-10): macOS
+    // recorded 33.40 s (local / file 1); Windows recorded 36.73 s on CI run 42942694523's slow runner
+    // (phase-05h file 53) and printed OVER30S on 05i's run of record 43031773338. Linux (30.27 s local /
+    // file 1) closed under AX38 4c (c) on phase 05i's runs (docs/review/phase-05i/9, 19): print only.
     {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1},
     {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false, 83.7, 1},
-    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, false, false, 90.4, 2},
+    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, true, false, 90.4, 2},
 };
 const GateEntry* gateRegisterEntry(const std::string& scene)
 {

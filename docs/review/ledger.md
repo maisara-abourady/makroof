@@ -2315,3 +2315,13 @@ Decided for Maisara (open to her veto): Q1, Q2, Q3, Q4, D-Q5 (no AMENDS), D-G1 a
 2026-11-10, "I accept the board's answer by definition"). NEEDS MAISARA: none.
 | P05I-Q1-ROR | Q1 on the run of record 43031773338 (decider file 9's drop rule): Linux closed; Windows stays listed (46.63 s OVER30S, slow runner), its records-test flag back to true in the contractor's review push; macOS listed | none | — | — | file 9 | file 22 (diff check) faithful; minor wording P05I-114 applied | applied (70ed68b and the §0 commit) | closed (code item owed to the review push) |
 | P05I-S0 | §0 rows 05i (`done`) and 05h | — | — | — | — | file 22 faithful; P05I-122, -125, -126 applied | applied | closed |
+
+## phase-05i follow-up — Windows low-α `listed` flag restored; plan wording names PR #31 (2026-11-12; /fix-plan, no board loop; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+| id | item | outcome | evidence |
+|---|---|---|---|
+| P05I-120 | the Windows low-α records-test `listed` flag owed to PR #30's contractor review push (decider file 9 answer 4) | **closed**: set to true in PR #31 (commit 6d38d4e); PR #30 merged before any review push | CI run 43173536470 (all jobs green; Windows "LISTED defect", macOS "LISTED defect", Linux "register entry closed"); brief `docs/sessions/2026-11-12-05i-windows-listed.md` |
+| P05I-Q1-ROR | ledger row's "owed to the review push" | superseded by P05I-120 above | — |
+| DC31-1, DC31-2 | BUILD_PLAN L28 / L158 wording: "the contractor's review push" → PR #31 | CORRECT (interrogator diff check) | `docs/review/phase-05i-followup/1-plan-editor.md`, `2-interrogator-diff-check.md` |
+| DC31-3 | L158 cites answer 4 for the PR #31 vehicle | minor, optional, not applied | same |
+| DC31-4 | PASSES30S for Windows / macOS low-α on 43173536470 | a 07c-1 data point (conditions 9–10); not a (c) trigger under decider file 9's "on 05i's runs" reading | PR #31 follow-ups |
