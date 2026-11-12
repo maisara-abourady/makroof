@@ -1,6 +1,7 @@
 # Phase 07d — Restore gate at the long-T60 corner (condition 9's split)
 
-Size: **S–M** (remainder, if needed: `07d-b`) · Depends on: 07c-1 `done` · Created 2026-11-12 under phase-07c-1
+Size: **S–M** (remainder, if needed: `07d-b`) · Depends on: 07c-1 and [07c-1b](phase-07c-1b.md) `done` (07c-1b closes or
+names 07d for the AX38 4c entries on the re-pinned gate) · Created 2026-11-12 under phase-07c-1
 condition 9's split clause ("If this phase's loop finds condition 9 does not fit here, a `phase-07d.md` of size S–M
 is created") by the phase-07c-1 decision loop (FM-2′; AX49 "Long-T60 corner") · Lead subject matter: not named by
 the loop; Seats 5 and 7 are convened on the inputs below (AX49 future-debt register) · Read first, in this order:

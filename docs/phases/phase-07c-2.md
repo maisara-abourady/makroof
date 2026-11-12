@@ -1,7 +1,8 @@
 # Phase 07c-2 — W_max re-derived under (C), one golden round
 
-Size: **S** (remainder, if needed: `07c-2b`) · Depends on: 07c-1 `done` (and, through it, 05h, 07 `done`) · Part
-of: [phase-07c](phase-07c.md) · Lead subject matter: Seat 2 (Engine architect), "simulator compute and recompute
+Size: **S** (remainder, if needed: `07c-2b`) · Depends on: 07c-1 and [07c-1b](phase-07c-1b.md) `done` (and, through
+them, 05h, 07 `done`; 07c-1b because condition 3's re-pin starts from its condition 7 re-pin) · Part of:
+[phase-07c](phase-07c.md) · Lead subject matter: Seat 2 (Engine architect), "simulator compute and recompute
 time" · Read first, in this order: `CLAUDE.md`; this file in full [and the umbrella, `docs/phases/phase-07c.md`, and
 `docs/phases/phase-07c-1.md`]; `docs/BUILD_PLAN.md` §2 **AQ4, AQ10 (amended 2026-11-10 and 2026-11-12), AX5, AX18, AX33, AX38,
 AX41, AX44, AX47, AX48, AX49**; `docs/phases/phase-05h.md` (§3 D-H1, §4 scope 2, the solve seam); `docs/phases/phase-07.md` (state
@@ -77,7 +78,8 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
   not chosen. **W_max re-derivation (condition 3) has a prerequisite:** the (C) W_max is pinned only after the AX38 4c
   record "offline-bounce time of a 3-minute room-size automation at 100 m, with its ratio to real time" is in this
   phase's packet (Seat 8; D-H1 (iv), AX41).
-- Conditions 2, 4–7 and 9–11 and the decisions D-C1–D-C3: [phase-07c-1](phase-07c-1.md).
+- Conditions 2, 4–7 and 9–11 and the decisions D-C1–D-C3: [phase-07c-1](phase-07c-1.md) (condition 7's re-pin:
+  [phase-07c-1b](phase-07c-1b.md)).
 
 ## Acceptance criteria — automated
 

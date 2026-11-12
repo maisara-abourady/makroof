@@ -2374,3 +2374,20 @@ G2 (steward): AX38 (i) register entries closed through `/fix-plan` on three-OS e
 | P07C1-G2-10 | AMENDS markers kept; no threshold, AX/AQ value or golden changed | CORRECT | closed |
 
 Final status G2: SURVIVES WITH CORRECTIONS (C1–C5 applied). Files: 19, 20 (records), interrogator diff check (this row set).
+
+G3 (steward): AX47 (b)'s EDT clause (decision D1). Files 21–40. Convening: Seats 1, 2, 3, 5, 7, 9 (4, 6, 8 not required);
+researcher R1/R2 (file 32: K7/K3/K5 READY, K8 NOT READY).
+
+| id | item | verdict / outcome | status |
+|---|---|---|---|
+| P07C1-G3-01 … 14 | options O1–O5 (file 22) | O1 CONDITIONS VIOLATED; O2–O5 several valid → loop | closed |
+| P07C1-G3-15 … 38 | decision O8 (file 33) vs file 34 | TENSION MISREAD / PRD MISREAD (presentation; winner unchanged) | closed by files 35, 37 |
+| P07C1-G3-39 … 62 | file 35 vs file 36 | TENSION MISREAD (debt register: phantom Phase 10 repayment, undo costs) | closed by file 37 |
+| P07C1-G3-63 … 79 | file 37 vs file 38 | TENSION MISREAD (Seat 3 row: 07c-2 / 08-09 repayment not created) | after 3 rounds → FM-D1-S3 |
+| P07C1-G3-80 … 98 | FM-D1-S3 (file 39) vs file 40 | PRD MISREAD (option (iii) unshown; (ii) on an invented cell); 88 CONDITIONS VIOLATED (08-3/09 negative control under the 2×2 coherence mix) | **NEEDS MAISARA case (a)**, carried to phase-07c-1b |
+
+Decision D1 = O8 (EDT asserted where the exact band IR's direct fraction d < 0.5; layout 4 outside EDT's domain; prefix check
+≤ −18.27 dB on the shipped IRs; probe and floor dropped; d < 0.217 printed; phase-05d scope item 7 rules the constant): max 1,
+sum 11 under every reading (file 40 row 82). Applied to AX47 (b), its evidence column, §6, phase-05d (plan commit below).
+Decided for Maisara (open to her veto): D1. NEEDS MAISARA: FM-D1-S3 (whether to write AX47 (b)-style interim stream checks
+into phase-07c-2 (conditional), phase-08-3 and phase-09 now, with file 40's corrections, or leave Seat 3's debt unrepaid).

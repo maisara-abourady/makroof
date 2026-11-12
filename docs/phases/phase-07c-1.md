@@ -274,6 +274,8 @@ The original phase file has no risks section; the umbrella's §0 gives the ratio
   (phase-07c §10, clause 3; this sub-phase's share).
 - CLAUDE.md rules apply: one sub-phase per session; if it can't be finished in two sessions, split the remainder into
   `phase-07c-1b.md`.
+- Split 2026-11-12 (session 2 of 2): the 07c re-pin (A2's last sentence and the condition 7 criterion) and the
+  remaining items moved to [phase-07c-1b](phase-07c-1b.md).
 
 ## Notes from the split
 
