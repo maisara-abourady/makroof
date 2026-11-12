@@ -138,7 +138,7 @@ umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-
     build reaches a producer outside the team, beta included, while the entry is open). Never a per-host
     code path (NFR-8). **Closed 2026-11-12 (phase 07c-1):** records: Linux and macOS from 43215018040
     (517e556), Windows from 43227272415 (2dfe187; every job green on three OSes); AX38 (i) carries the closure
-    note. (phase-07c condition 10)
+    note. Re-taken on the head code: run 43291051799 (file 44). (phase-07c condition 10)
 11. **The trace build and the per-host measurement** (D-H3 (e); AX38 (i), half (2)): a CMake option
     `SPATIAL_HOST_TRACE`, default OFF, excluded from release artefacts, guarded by `pytest tools/ci`: a
     preallocated bounded lock-free ring written from the host entry points (several producer threads, one
