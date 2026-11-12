@@ -76,6 +76,7 @@ The items of the session's opening scope list, one for one.
 | 3 | 2026-11-12 | CONTINUE (pre-PR clearance given: O1–O6 MET on e6fc12b) | G5 PR + CI run of record with the three low-α GATE lines (O7, O8) | none |
 | 4 | 2026-11-12 | READY TO REPORT | none | G5 (PR #31; CI 43173536470 green, three low-α GATE lines checked in job logs) |
 | 5 | 2026-11-12 | CONTINUE | G6 O5 criterion and Scope "Out" contradict O10's BUILD_PLAN edit (blocking); G7 steward log rounds 5–6 | none (O10 MET) |
+| 6 | 2026-11-12 | READY TO REPORT | none | G6 (O5 and Scope restated, 3022194), G7 |
 
 ## Evidence log
 - O4 (2026-11-12, local): `tools/ci/check_format.sh` → "clang-format: 105 files clean", exit 0. `SPATIAL_WERROR=ON cmake --preset release -DSPATIAL_BUILD_PLUGIN=OFF` + `cmake --build --preset release --target spatial_tests` → "[180/180] Linking CXX executable tests/unit/spatial_tests", exit 0; CMakeCache `SPATIAL_WERROR:BOOL=ON`.
