@@ -1089,3 +1089,51 @@ TEST_CASE("AX18 / FM-1 on the AX49 path: a project load crosses EqualPower to th
         REQUIRE(residual(rec, wrong) > -60.0); // the null tells the laws apart
     }
 }
+
+// Phase-07c-1 condition 10 (steward round 6): the builder's commit compares IRs, measures the AX47 step and
+// releases old IRs outside stateMutex_, so setNonRealtime(true) and reset() never wait for that work. The
+// builder is parked in commit() after the comparison (BuildStage::Commit, outside the lock); both host calls
+// must return while it is parked.
+TEST_CASE("Condition 10: setNonRealtime(true) and reset() do not wait for a builder commit's comparison and "
+          "releases",
+          "[pipeline][reset-nowait]")
+{
+    using Stage = plugin::ScenePipeline::BuildStage;
+    for (const bool viaReset : {false, true})
+    {
+        CAPTURE(viaReset);
+        plugin::ScenePipeline p;
+        restoreScene(p, pipeline_test::loadScene("club.json"));
+        p.prepare(kRate, 256, viaReset); // reset() takes the offline drop path (stateMutex_) when offline
+        if (viaReset)
+            p.setNonRealtime(false); // realtime while the builder works; offline again below
+        waitBuilt(p);
+        std::atomic<bool> parked{false}, release{false};
+        const auto testThread = std::this_thread::get_id();
+        p.setStageHook([&](Stage stage) {
+            if (stage != Stage::Commit || std::this_thread::get_id() == testThread || parked.exchange(true))
+                return;
+            while (!release.load())
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        });
+        p.setParameter(module3d::kListenerY, p.parameter(module3d::kListenerY) + 0.5f);
+        REQUIRE(pipeline_test::waitFor([&] { return parked.load(); }));
+        std::atomic<bool> returned{false};
+        std::thread host([&] {
+            if (viaReset)
+            {
+                p.setNonRealtime(true); // enter offline (drop under stateMutex_) ...
+                p.reset();              // ... and an offline reset (the same drop)
+            }
+            else
+                p.setNonRealtime(true);
+            returned.store(true);
+        });
+        // The host calls return while the builder is still parked inside commit() (no wait on its work).
+        const bool ok = pipeline_test::waitFor([&] { return returned.load(); }, std::chrono::seconds(5));
+        release.store(true);
+        host.join();
+        p.setStageHook({});
+        REQUIRE(ok);
+    }
+}

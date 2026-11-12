@@ -559,18 +559,53 @@ bool ScenePipeline::decide(Source source, bool load)
 bool ScenePipeline::commit(Source source, std::uint64_t gen, const contract::SceneDescription& scene,
                            Built& b)
 {
+    // Phase-07c-1 condition 10 (steward round 6): stateMutex_ is held for pointer swaps and counters only.
+    // The D7 bit-identity comparison, the AX47 step measurement and every release of a previous IR, IrSet,
+    // unit-decay cache or interim record run outside it, so a host call that takes the lock
+    // (setNonRealtime(true), an offline reset(), restore(), the queries) never waits for builder work. The
+    // deciding thread is the only committer; a drop in between (offline entry) is detected by the lastIr_
+    // pointer changing.
+    std::shared_ptr<const sim::RoomIR> last;
+    std::optional<Pending> pend;
+    std::function<void(BuildStage)> hook;
+    {
+        std::lock_guard<std::mutex> lock(stateMutex_);
+        last = lastIr_;
+        if (pending_ && pending_->scene == scene)
+            pend = pending_;
+        hook = stageHook_;
+    }
+    const bool identical = last && bitIdentical(*b.ir, *last);
+    double step =
+        -1.0; // AX47: the step from the interim to this final (measured here, never in the callback)
+    if (b.final && pend)
+        // A provisional interim: the realised step over [t_mix,e, L_f) on the decays played (review M2);
+        // otherwise (held level, bridge) the amplitude step on the same decays.
+        step = !pend->realised.empty() && b.units
+                   ? realisedStepDb(pend->realised, realisedTailEnergy(*b.units, b.diag, pend->windowEndS))
+                   : stepDb(pend->diag, b.diag);
+    pend.reset();
+    if (hook)
+        hook(BuildStage::Commit); // test hook: outside stateMutex_
+
+    // Released after the lock (declared before it, so destroyed after it).
+    std::shared_ptr<const sim::RoomIR> oldIr, oldBuiltIr;
+    std::shared_ptr<const sim::conv::IrSet> oldIrSet, oldBuiltIrSet;
+    std::shared_ptr<const std::vector<sim::tail::UnitDecay>> oldUnits;
+    std::optional<Pending> oldPending;
     std::lock_guard<std::mutex> lock(stateMutex_);
     if (source == Source::Builder && !builder_->accepting())
         return false; // quiesced while building: the result is discarded, not submitted
+    const bool sameLast = lastIr_ == last;
     if (b.final)
     {
-        builtIr_ = b.ir;
-        builtIrSet_ = b.irSet;
+        oldBuiltIr = std::exchange(builtIr_, b.ir);
+        oldBuiltIrSet = std::exchange(builtIrSet_, b.irSet);
         builtScene_ = scene;
         builtGen_ = gen;
         if (b.units)
         {
-            units_ = b.units;
+            oldUnits = std::exchange(units_, b.units);
             unitsSeed_ = scene.render.tailSeed;
             unitsRate_ = sampleRate_;
         }
@@ -581,19 +616,20 @@ bool ScenePipeline::commit(Source source, std::uint64_t gen, const contract::Sce
         {
             handled_.store(gen, std::memory_order_release);
             held_ = b.level;
+            oldPending = std::move(pending_);
             pending_.reset();
             interimPlaying_.store(false, std::memory_order_release);
         }
         if (restoreDecision)
             restoreGen_.reset();
     };
+    const bool settling = b.final && pending_ && pending_->scene == scene;
     // Skip rule (D7): the same scene already plays at least as final as this, or the IR is bit-identical to
     // the last successful submit since prepare() or the last drop (offline entry / offline reset).
     if (lastIr_
-        && ((lastScene_ && *lastScene_ == scene && (lastFinal_ || !b.final))
-            || bitIdentical(*b.ir, *lastIr_)))
+        && ((lastScene_ && *lastScene_ == scene && (lastFinal_ || !b.final)) || (sameLast && identical)))
     {
-        if (b.final && pending_ && pending_->scene == scene)
+        if (settling)
         {
             ++stats_.steps; // the settling step was 0 (AX47 (a): a keyed level confirmed bit for bit)
             stats_.lastStepDb = 0.0;
@@ -616,24 +652,16 @@ bool ScenePipeline::commit(Source source, std::uint64_t gen, const contract::Sce
         // again (by the builder after its AX33 slot, or by the next offline block).
         return false;
     }
-    if (b.final && pending_ && pending_->scene == scene)
+    if (settling && step >= 0.0)
     {
-        // AX47: the step from the interim to this final, measured on the deciding thread, never in the
-        // callback.
-        // A provisional interim: the realised step over [t_mix,e, L_f) on the decays played (review M2);
-        // otherwise (held level, bridge) the amplitude step on the same decays.
-        const double step = !pending_->realised.empty() && b.units
-                                ? realisedStepDb(pending_->realised,
-                                                 realisedTailEnergy(*b.units, b.diag, pending_->windowEndS))
-                                : stepDb(pending_->diag, b.diag);
         ++stats_.steps;
         stats_.lastStepDb = step;
         stats_.maxStepDb = std::max(stats_.maxStepDb, step);
         if (pending_->held)
             ++stats_.heldSteps;
     }
-    lastIr_ = b.ir;
-    lastIrSet_ = b.irSet;
+    oldIr = std::exchange(lastIr_, b.ir);
+    oldIrSet = std::exchange(lastIrSet_, b.irSet);
     lastScene_ = scene;
     lastFinal_ = b.final;
     if (b.final)
@@ -643,7 +671,9 @@ bool ScenePipeline::commit(Source source, std::uint64_t gen, const contract::Sce
         ++stats_.interimSubmits;
         if (b.provisional)
             ++stats_.provisionalSubmits;
-        pending_ = Pending{scene, b.level, b.diag, b.heldLevel, b.realised, b.windowEndS};
+        oldPending = std::move(pending_);
+        pending_ = Pending{scene,       b.level, std::move(b.diag), b.heldLevel, std::move(b.realised),
+                           b.windowEndS};
         interimPlaying_.store(true, std::memory_order_release);
     }
     finishRecord();
@@ -830,16 +860,23 @@ void ScenePipeline::dropForOffline()
         snapTrim(); // AX34: nothing to drop
         return;
     }
+    // The previous IR and IrSet (and the interim record) are released after the lock (steward round 6).
+    std::shared_ptr<const sim::RoomIR> oldIr;
+    std::shared_ptr<const sim::conv::IrSet> oldIrSet;
+    std::optional<Pending> oldPending;
     {
         // A builder submit runs under stateMutex_ and checks accepting() first, so after stopAccepting()
         // no builder submit can reach the engine once this lock is taken: the drop never races a submit
-        // (it waits at most for one submit already inside its critical section, never for a build).
+        // (it waits at most for one commit's pointer swaps, never for a build or a comparison).
         std::lock_guard<std::mutex> lock(stateMutex_);
         engine_.reset(); // drop every IR (the offline render starts exact from the first block)
+        oldIr = std::move(lastIr_);
+        oldIrSet = std::move(lastIrSet_);
         lastIr_.reset();
         lastIrSet_.reset();
         lastScene_.reset();
         lastFinal_ = false;
+        oldPending = std::move(pending_);
         pending_.reset();
         interimPlaying_.store(false, std::memory_order_release);
         handled_.store(kNone, std::memory_order_release);

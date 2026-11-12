@@ -201,7 +201,10 @@ public:
     {
         Plan,
         Solve,
-        Assemble
+        Assemble,
+        // Phase-07c-1 condition 10 (steward round 6): in commit(), after the D7 comparison and the AX47 step
+        // measurement and before stateMutex_ is taken (tests park the builder here).
+        Commit
     };
     void setStageHook(std::function<void(BuildStage)> hook);
     // Test hook: the next `count` decisions fail as a build failure would (nothing recorded).
