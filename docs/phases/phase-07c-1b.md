@@ -86,6 +86,10 @@ Follow-ups noted (review minors from 07c-1, not scope here):
 - `settling()` does not include a running crossfade (AX38 (iii) wording).
 - HostTrace: `transport()` is read outside `processBlock`, and the ring's push is a CAS retry loop (diagnostic build
   only, `SPATIAL_HOST_TRACE`).
+- Condition 10 (interrogator note on the head-code diff check, ledger P07C1-H-DC): the offline drop
+  (`setNonRealtime(true)`, an offline `reset()`) releases the dropped IRs on the calling thread, which a host may make
+  the processing thread (VST3 permits it; Apple's AU `reset()` contract: 'does not allocate or free'). Moving the
+  release to the builder thread is open; the realtime `reset()` (`resetKeepIr`) frees nothing.
 
 ## Acceptance criteria — automated
 
