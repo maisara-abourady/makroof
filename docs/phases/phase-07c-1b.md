@@ -58,10 +58,16 @@ a range change, a formulation seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5
    stage-1 diffuse solve synchronously, as before 07c-1; AQ10 and AX48 name "a load" and do not name instance
    insertion. The board loop reads whether instance insertion is a load (the embedded default scene's first build)
    under AX48 FM-3′, or the code changes; until then the pipeline counts these solves separately
-   (`Stats::insertSolves`, commit after f07958c) and record (h) prints them apart.
+   (`Stats::insertSolves`, commit after f07958c); record (h) times restores only (instance prepares are outside its
+   window), so its figures are not skewed; `insertSolves` is not yet printed — this phase prints it beside record (h).
 7. **AX47 "Measurement" mid-fade check (review M2).** AX47 says "Wet pink-noise and speech renders check that no
    mid-fade value exceeds the louder endpoint." 07c-1 records the realised settling step on the decays played (review
-   fix M2) and tests the crossfade laws (M3), but has no wet pink-noise / speech render check; this phase adds it.
+   fix M2) and tests the crossfade laws (M3), but has no wet pink-noise / speech render check; this phase adds it for
+   each AX47 step (equal-gain, AX18 FM-1: the settling step of a project load and an edit's interim → final) and each
+   fade from silence; the load's equal-power fade over another scene's IrSet (AX18) is recorded, not asserted against
+   the louder endpoint (the cross term of two correlated wet renders can exceed it, Vorländer §4.3 Eq. 4.15). The loop
+   states the analysis window relative to the 30 ms AQ4 ramp (the bound holds per window only while the fade gain is
+   nearly constant across it).
 8. **AX49 reversal trigger fired** (record (h), run 43242209571,
    `docs/review/phase-07c-1/41-orchestrator-ci-records-43242209571.md`): an 8-instance Windows load at the rated corner (96 kHz, T60 8 s, 100 m cube, loaded in sequence) took keyless
    9 511 ms, keyed 9 448 ms (macOS 7 846 / 8 780 ms, Linux 4 995 / 5 083 ms) against AX49's 5 s. Back to the board
@@ -99,8 +105,8 @@ Follow-ups noted (review minors from 07c-1, not scope here):
 - [ ] Instance insertion (scope 6): the reading of whether instance insertion is a load under AX48 FM-3′ recorded
       (the AX48 text through `/fix-plan` if it changes), and a test asserting the decided behaviour. (review M1)
 - [ ] AX47 mid-fade check (scope 7): a test renders wet pink noise and speech through a project load and its settling
-      step (and an edit's interim and final) and asserts, per analysis window (its length set in this phase's loop before the run, interrogator-checked) across each fade, that the output energy
-      does not exceed the louder endpoint's (the two IRs rendered alone), on three OSes. (AX47 "Measurement"; review M2)
+      step (and an edit's interim and final) and asserts, per analysis window (its length set in this phase's loop before the run, interrogator-checked; the loop states the analysis window relative to the 30 ms AQ4 ramp (the bound holds per window only while the fade gain is nearly constant across it)) across each AX47 step (equal-gain, AX18 FM-1: the settling step of a project load and an edit's interim → final) and each fade from silence, that the output energy
+      does not exceed the louder endpoint's (the two IRs rendered alone), on three OSes; the load's equal-power fade over another scene's IrSet (AX18) is recorded, not asserted against the louder endpoint (the cross term of two correlated wet renders can exceed it, Vorländer §4.3 Eq. 4.15). (AX47 "Measurement"; review M2; DC-08, DC-09)
 - [ ] AX49 reversal (scope 8): the board's decision on the AX49 reversal recorded (AX row / ledger), applied via
       `/fix-plan`; no instance cap. (AX49 "Reversal"; record (h), run 43242209571)
 

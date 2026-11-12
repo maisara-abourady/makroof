@@ -2397,3 +2397,9 @@ CORRECT (decided texts, −18.27 / −19.27 dB, d = 0.5 / 0.217, Kuttruff §8.4,
 in phase-07c-1; 07c-1b citations), DC-13 (Seat 4 observation 98 in the 07c-1b Raise item), DC-14 (umbrella §2.1 Raise item
 carried into 07c-1b), DC-15 (AX47 phases-that-break column + 05d; 10 kept: phase-10-2 scope 3 and AX18's placeholder) —
 applied; DC-16 (07c-1 criteria green in CI) answered in the PR's criteria table.
+
+Steward round-5 G4 diff check (interrogator; plan commits d41700c, 8790106, f780c37): SURVIVES WITH CORRECTIONS. Rows
+P07C1-S5-DC-01 … 06 CORRECT / consistent (record (h) figures, restore figures, AX49 rated corner: T60_max ≤ 8.34 s, record (h)
+≈ 7.95 s), DC-05 NOT CHECKABLE (the 5 s line is a product line); DC-07 (record (h) does not print insertSolves → 07c-1b prints
+it), DC-08 major (mid-fade bound asserted only on AX47 equal-gain steps and fades from silence; the equal-power load fade over
+another scene recorded), DC-09 (window relative to the 30 ms AQ4 ramp), DC-10, DC-11 — applied.

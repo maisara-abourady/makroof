@@ -280,7 +280,8 @@ The original phase file has no risks section; the umbrella's §0 gives the ratio
   (A2's clause "in AX38 4c's register form (the entries it closes removed through `/fix-plan`; entries that stay open
   name phase-07d as 'closes at')") and the remaining items moved to [phase-07c-1b](phase-07c-1b.md).
   A2's synchronous solve at a fresh instance's first prepare (counted in `Stats::insertSolves`) moved to
-  phase-07c-1b scope 6 (review M1).
+  phase-07c-1b scope 6 (review M1). AX47 'Measurement' mid-fade renders (part of A4 via D-C1's ruling) moved to
+  phase-07c-1b scope 7 (review M2).
 
 ## Notes from the split
 
