@@ -1,6 +1,6 @@
 # Phase 05d — Second measured dataset (Arni, dEchorate)
 
-Size: **M** · Depends on: 05, 05e · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ1, AQ8, AQ9, AX4, AX11, AX17) and §3 (F2), `docs/phases/phase-05.md` (Data, scope 2–4, scope 6 "Paired comparisons"), PRD NFR-1, NFR-8, FR-3D-3, Q9
+Size: **M** · Depends on: 05, 05e; 07c-1 for scope item 7 only (it reads AX47 (b) and may change `tests/unit/test_interim.cpp` through /fix-plan) · Read first: `CLAUDE.md`, `docs/BUILD_PLAN.md` §2 (AQ1, AQ8, AQ9, AX4, AX11, AX17, AX47) and §3 (F2), `docs/phases/phase-05.md` (Data, scope 2–4, scope 6 "Paired comparisons"), PRD NFR-1, NFR-8, FR-3D-3, Q9
 
 Created by decider report 15 (`docs/review/phase-04-consult/15-decider-second-dataset.md`), accepted by
 Maisara with its Challenge 1, 2026-11-05. Run after 05 and before 05b, but 05b does **not** depend on
@@ -15,7 +15,9 @@ its challenges, 2026-11-05, and are written below in its wording. The session do
 The last *(open)* item (scope 5, mean |d̄|) and the follow-ups B1, B3 and B4 were settled by
 decider report 17 (`docs/review/phase-04-consult/20-decider-05d-followups.md`), accepted by Maisara,
 2026-11-05, with the corrections of interrogator check 19
-(`docs/review/phase-04-consult/19-interrogator-05d-check.md`). This phase has no open items.
+(`docs/review/phase-04-consult/19-interrogator-05d-check.md`). This phase has no open items except scope item 7's
+ruling on the AX47 (b) d constant (D1, phase-07c-1 G3, 2026-11-12), which this session's decision loop settles. (The
+D1–D7 / B items settled on 2026-11-05 stay settled; item 7 is new.)
 
 ## Raise with Maisara (she does not track these herself)
 
@@ -298,6 +300,19 @@ Use these labels verbatim in the report and the beta decision (decider report 15
    (±2 % T30/EDT, ±0.2 dB C80) against the baseline simulation; sim–meas errors are recorded and
    reported, never gating. If the projected nightly runtime is too long, the run moves outside CI under
    phase-05's 24 h rule, with K unchanged.
+7. **AX47 (b) direct-fraction constant** (D1, phase-07c-1 G3; decider files 35, 37, 39). Reported, not gated; tools
+   only. For every measured position used in scope 3 (Arni, dEchorate) and every BRAS position in the nightly scenes, at
+   500 Hz and 1 kHz, print the direct fraction d_dir of the measured IR (energy within ±5 ms of the band peak over the
+   band's total, as AX47 (b) defines d, the total taken to the Phase 05 scope 3 truncation point, with the same
+   `metrics.lundeby` noise-energy compensation as that band's EDC (untruncated noise would inflate the total and push
+   d_dir toward 'in domain'); named d_dir here to keep it apart from the matched-pair d), the measured EDT and the
+   sim–meas EDT error in jnd (5 %, Vorländer Table 6.1). Table it by bin: d_dir < 0.217, 0.217 ≤ d_dir < 0.5,
+   d_dir ≥ 0.5, with the count, mean and SE of the error per bin and room. The session raises the AX47 (b) constant
+   (0.5 or 0.217) as a decision-loop item on that table; a change goes through /fix-plan with a §6 row and touches
+   AX47 (b) and `tests/unit/test_interim.cpp` only. The AX47 (b) prefix check is a provisional-against-exact test and
+   is never applied to a measured IR here or in the nightly baseline. **If this phase ends blocked on data access**,
+   item 7 still runs on the BRAS nightly positions (already downloaded by checksum, no new download), and the ruling
+   is made on BRAS alone, labelled 'BRAS only'. The status reads `blocked (reason); item 7 done on BRAS`.
 
 ## Out of scope
 

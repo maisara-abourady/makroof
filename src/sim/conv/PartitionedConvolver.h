@@ -18,6 +18,7 @@
 #include "sim/Engine.h"
 #include "sim/conv/Fft.h"
 
+#include <atomic>
 #include <cstddef>
 #include <memory>
 #include <vector>
@@ -39,11 +40,14 @@ class IrSet
 public:
     // Built OFF the audio thread. Throws std::invalid_argument for an unsupported partition size, a
     // matrix with no inputs or outputs, taps of different lengths, or a non-finite (NaN, +-Inf) tap
-    // (phase 06b scope 4).
-    static std::shared_ptr<const IrSet> create(const RoomIR& ir, int partitionSize);
+    // (phase 06b scope 4). `cancel` (phase-07c-1 condition 10): checked every 128 partitions; when set,
+    // throws sim::BuildCancelled. nullptr = never cancelled.
+    static std::shared_ptr<const IrSet> create(const RoomIR& ir, int partitionSize,
+                                               const std::atomic<bool>* cancel = nullptr);
     static std::shared_ptr<const IrSet> create(int numInputs, int numOutputs,
                                                const std::vector<std::vector<float>>& taps, int partitionSize,
-                                               double sampleRate = 0.0);
+                                               double sampleRate = 0.0,
+                                               const std::atomic<bool>* cancel = nullptr);
 
     int numInputs() const noexcept { return numInputs_; }
     int numOutputs() const noexcept { return numOutputs_; }

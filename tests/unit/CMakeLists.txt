@@ -38,7 +38,10 @@ add_executable(spatial_tests
                test_diffuse_gate.cpp
                test_diffuse_agreement.cpp
                test_diffuse_reports.cpp
-               test_diffuse_records.cpp)
+               test_diffuse_records.cpp
+               ProcessMemory.h
+               test_host_trace.cpp
+               test_interim.cpp)
 
 # tests/support: the AllocationTracker replaces the global operator new / delete of this binary
 # (Phase 06, zero-allocation checks of the real-time convolver).
@@ -56,6 +59,10 @@ target_link_libraries(spatial_tests
                               spatial::module3d
                               spatial::plugin_core
                               spatial::warnings)
+# ProcessMemory.h (phase-07c-1 records): GetProcessMemoryInfo on Windows.
+if(WIN32)
+    target_link_libraries(spatial_tests PRIVATE psapi)
+endif()
 
 if(SPATIAL_BUILD_PLUGIN)
     # The plugin tests link the plugin's shared-code target, so they exercise the same AudioProcessor

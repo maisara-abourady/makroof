@@ -10,6 +10,8 @@ configure_file(DefaultSceneJson.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/plug
 add_library(spatial_plugin_core STATIC
             DiffuseSolveGate.h
             DiffuseSolveGate.cpp
+            HostTrace.h
+            HostTrace.cpp
             IrBuilderThread.h
             IrBuilderThread.cpp
             ScenePipeline.h

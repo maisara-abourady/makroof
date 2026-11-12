@@ -12,7 +12,12 @@
 //   - State (FR-LIC-1, NFR-6): XML with pluginStateVersion, the full scene contract JSON and the APVTS
 //     state. On restore the APVTS values win for every field that has a parameter; the scene JSON gives
 //     every other field. Invalid or corrupt state falls back to the default scene and sets a warning flag.
+//     State v2 (phase-07c-1, AX48) adds the solved diffuse level per emitter and its five-part key (DIFFUSE);
+//     a load whose key matches plays it at once, any mismatch or a v1 state loads keyless.
 //   - Output: the omni room IR (mono preview, the same signal on both outputs) until Phase 08.
+#if SPATIAL_HOST_TRACE
+#include "plugin/core/HostTrace.h"
+#endif
 #include "plugin/core/ScenePipeline.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -29,7 +34,7 @@ class SpatialSceneProcessor final : public juce::AudioProcessor
 public:
     // The plugin state format version. Every phase that bumps it adds a fixture tests/state/v<N>_*.bin,
     // and the old fixtures must keep loading (migrateState()).
-    static constexpr int kPluginStateVersion = 1;
+    static constexpr int kPluginStateVersion = 2; // 2: AX48 saved diffuse level (phase-07c-1)
 
     SpatialSceneProcessor();
     // Tests only: an injected builder clock.
@@ -91,6 +96,11 @@ private:
     std::vector<std::unique_ptr<ParameterForwarder>> forwarders_;
     std::atomic<bool> stateWarning_{false};
     std::vector<float> doubleScratch_[2]; // the double-precision path's float buffers (maxBlock)
+#if SPATIAL_HOST_TRACE
+    // Phase-07c-1 condition 11: the diagnostic host trace (never in a release artefact).
+    std::unique_ptr<trace::Logger> trace_;
+    trace::Transport transport() const noexcept;
+#endif
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialSceneProcessor)
 };

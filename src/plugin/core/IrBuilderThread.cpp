@@ -49,6 +49,15 @@ void IrBuilderThread::quiesce()
     cv_.wait(lock, [this] { return !busy_; });
 }
 
+void IrBuilderThread::stopAccepting()
+{
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        accepting_ = false;
+    }
+    cv_.notify_all();
+}
+
 void IrBuilderThread::restart()
 {
     {

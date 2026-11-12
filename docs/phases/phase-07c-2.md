@@ -1,10 +1,11 @@
 # Phase 07c-2 — W_max re-derived under (C), one golden round
 
-Size: **S** (remainder, if needed: `07c-2b`) · Depends on: 07c-1 `done` (and, through it, 05h, 07 `done`) · Part
-of: [phase-07c](phase-07c.md) · Lead subject matter: Seat 2 (Engine architect), "simulator compute and recompute
+Size: **S** (remainder, if needed: `07c-2b`) · Depends on: 07c-1 and [07c-1b](phase-07c-1b.md) `done` (and, through
+them, 05h, 07 `done`; 07c-1b because condition 3's re-pin starts from its condition 7 re-pin) · Part of:
+[phase-07c](phase-07c.md) · Lead subject matter: Seat 2 (Engine architect), "simulator compute and recompute
 time" · Read first, in this order: `CLAUDE.md`; this file in full [and the umbrella, `docs/phases/phase-07c.md`, and
-`docs/phases/phase-07c-1.md`]; `docs/BUILD_PLAN.md` §2 **AQ4, AQ10 (amended 2026-11-10), AX5, AX18, AX33, AX38,
-AX41, AX44**; `docs/phases/phase-05h.md` (§3 D-H1, §4 scope 2, the solve seam); `docs/phases/phase-07.md` (state
+`docs/phases/phase-07c-1.md`]; `docs/BUILD_PLAN.md` §2 **AQ4, AQ10 (amended 2026-11-10 and 2026-11-12), AX5, AX18, AX33, AX38,
+AX41, AX44, AX47, AX48, AX49**; `docs/phases/phase-05h.md` (§3 D-H1, §4 scope 2, the solve seam); `docs/phases/phase-07.md` (state
 restore, reset sequence, offline path); `docs/review/phase-05b2/47-decider-board-answers-C1-Q2a-final.md` §4 and
 `51-decider-addendum-J1.md`; `49-interrogator-board-answers-C1-Q2.md`; ledger P05B2-C1Q2-01…14; PRD NFR-2, NFR-3,
 NFR-6, FR-SIM-6.
@@ -51,6 +52,22 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
 8. **Follow-on checks.** The Phase 12 (ii) preset check (no preset default raises U) is re-run under this
    phase's W_max (Seat 6 (e)). Phase 08 goldens in capped rooms carry a tolerance derived from the
    achieved SE, unless this phase lands before they are frozen (Seat 4). (phase-07c condition 8)
+9. **Interim-step items from 07c-1's loop** (phase-07c-1 decision loop, 2026-11-12; decider file
+   `docs/review/phase-07c-1/12-decider-decision-r3.md` §8, interrogator file 13 correction 7):
+   - **The ABX runs first:** the AX47 self-ABX (16 trials, capped layout-4 scene, noise and speech) and the
+     AX49 listening item L4 (blind held-chord ABX, provisional against exact tail, T60 8 s, fully wet,
+     16 trials, ≥ 12/16 = detected) are run in this phase. This phase's loop sets the AX47 ABX's detection
+     criterion and step sizes before the run (AX47 reversal; a per-size 12/16 rule over several sizes raises
+     the family-wise false-detection rate, interrogator file 16 row P07C1-DC-06). AX47's reversal (bound 0.5 dB) and AX49's reversal
+     (L4 detects the cut) follow from their results.
+   - **Class (c) decision, bound by AX47:** whether a statistical source (a stage-1 estimate that is not the
+     final) is admitted, decided by this phase's loop under AX47 ("From 07c-2"; Seat 1's p95 reading is the
+     recorded input). **Admission waits for the AX47 ABX result** (the bound it is held to, 1 dB or 0.5 dB,
+     is the ABX's outcome).
+   - **The load fallback:** the load source when stage 1 is inadmissible, decided in the same loop; it meets
+     AX47 and conditions 5 and 9 and never gives an early-only first IrSet for a scene with a tail.
+   - **The W_max raise changes E_prec** (AX48), so v2 states saved before the raise load keyless.
+   - **Seat 2's prefix check:** verify Seat 2's prefix claim (`pathCount`, `pilotStops`).
 
 ## Out of scope
 
@@ -61,7 +78,8 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
   not chosen. **W_max re-derivation (condition 3) has a prerequisite:** the (C) W_max is pinned only after the AX38 4c
   record "offline-bounce time of a 3-minute room-size automation at 100 m, with its ratio to real time" is in this
   phase's packet (Seat 8; D-H1 (iv), AX41).
-- Conditions 2, 4–7 and 9–11 and the decisions D-C1–D-C3: [phase-07c-1](phase-07c-1.md).
+- Conditions 2, 4–7 and 9–11 and the decisions D-C1–D-C3: [phase-07c-1](phase-07c-1.md) (condition 7's re-pin:
+  [phase-07c-1b](phase-07c-1b.md)).
 
 ## Acceptance criteria — automated
 
@@ -74,6 +92,7 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
 
 - [ ] Load a project with a large room: the room is heard at once at the interim level, shows "settling",
       and moves to the final level without a click or an obvious jump. (phase-07c L1)
+- [ ] The AX47 self-ABX and the AX49 L4 ABX (scope 9), run before the class (c) decision. (AX47, AX49)
 
 ## Contractor review focus
 

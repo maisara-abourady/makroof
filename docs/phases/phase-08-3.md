@@ -35,6 +35,11 @@ Phase 06 convolver (headphone rendering, `outputMode = binaural`).
    - E_b and t_mix,e are read only via `TailMatch` (AX37 (5.3)), from the one diffuse solve per scene
      (AX39); E_b is bit-identical between omni and binaural and between the ears (AX44, Seat 4).
      (phase-08 scope 5, E_b and t_mix,e)
+   - **AX49 provisional tail and AX48 saved E_b** (phase-07c-1 decision loop, 2026-11-12; decider file
+     `docs/review/phase-07c-1/12-decider-decision-r3.md` §8): the provisional tail uses the same
+     `tailSeedForOutput` seeds and the same per-mode decorrelation as the exact tail; a v2 state restored in
+     binaural uses the saved E_b bit-identically (AX48 tests); a mode switch never re-solves, never waits for a
+     synthesis and reuses the cached unit decays (Seat 4 M; AX49).
 6. The plugin sends `outputMode` through, so `binaural` now uses this path. `stereoSpeakers`
    keeps using omni until Phase 09. (phase-08 scope 6, sentences 2–3; sentence 1 in 08-2) No UI
    code or string table knows which head shipped: any About/credits text reads the header's attribution
@@ -61,6 +66,8 @@ gate and the goldens are 08-4.
 - [ ] T30 of each ear's BRIR within ±5% of the omni IR's T30 (250 Hz–4 kHz). (phase-08 AC8)
 - [ ] **E_b parity (AX44):** E_b is bit-identical between omni and binaural and between the ears.
       (phase-08 AC11)
+- [ ] **Interim tail per mode (AX48, AX49):** the binaural provisional tail uses the exact tail's
+      `tailSeedForOutput` seeds and decorrelation; a mode switch never re-solves or waits for a synthesis.
 - [ ] All earlier tests still pass. (phase-08 AC12, sentence 1; shared, umbrella) pluginval passes.
       (phase-08 AC12, sentence 2)
 

@@ -1,5 +1,7 @@
 #include "sim/conv/PartitionedConvolver.h"
 
+#include "sim/Cancel.h"
+
 #include "sim/conv/Denormals.h"
 
 #include <algorithm>
@@ -25,18 +27,19 @@ std::size_t partitionCount(std::size_t length, int partitionSize) noexcept
 
 // ---- IrSet ----
 
-std::shared_ptr<const IrSet> IrSet::create(const RoomIR& ir, int partitionSize)
+std::shared_ptr<const IrSet> IrSet::create(const RoomIR& ir, int partitionSize,
+                                           const std::atomic<bool>* cancel)
 {
     if (ir.taps.size() != static_cast<std::size_t>(ir.numEmitters) * static_cast<std::size_t>(ir.numOutputs))
         throw std::invalid_argument("IrSet::create: RoomIR has " + std::to_string(ir.taps.size())
                                     + " taps for " + std::to_string(ir.numEmitters) + " x "
                                     + std::to_string(ir.numOutputs) + " paths");
-    return create(ir.numEmitters, ir.numOutputs, ir.taps, partitionSize, ir.sampleRate);
+    return create(ir.numEmitters, ir.numOutputs, ir.taps, partitionSize, ir.sampleRate, cancel);
 }
 
 std::shared_ptr<const IrSet> IrSet::create(int numInputs, int numOutputs,
                                            const std::vector<std::vector<float>>& taps, int partitionSize,
-                                           double sampleRate)
+                                           double sampleRate, const std::atomic<bool>* cancel)
 {
     if (!isSupportedPartitionSize(partitionSize))
         throw std::invalid_argument("IrSet::create: partition size must be 128, 256 or 512, got "
@@ -79,6 +82,8 @@ std::shared_ptr<const IrSet> IrSet::create(int numInputs, int numOutputs,
         const auto& h = taps[path];
         for (std::size_t k = 0; k < set->numPartitions_; ++k)
         {
+            if ((k & 127) == 0)
+                throwIfCancelled(cancel); // phase-07c-1 condition 10: the IR-set build
             std::fill(block.get(), block.get() + twoP, 0.0f);
             const std::size_t begin = k * p;
             const std::size_t end = std::min(length, begin + p);

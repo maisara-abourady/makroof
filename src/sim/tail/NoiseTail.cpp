@@ -1,5 +1,6 @@
 #include "sim/tail/NoiseTail.h"
 
+#include "sim/Cancel.h"
 #include "sim/Fft.h"
 #include "sim/Rng.h"
 
@@ -74,7 +75,8 @@ std::size_t unitDecayLength(double lengthS, double sampleRate) noexcept
     return std::max<std::size_t>(1, static_cast<std::size_t>(std::ceil(lengthS * sampleRate)));
 }
 
-BandNoiseGenerator::BandNoiseGenerator(const ism::OctaveFilterbank& filterbank, std::size_t length)
+BandNoiseGenerator::BandNoiseGenerator(const ism::OctaveFilterbank& filterbank, std::size_t length,
+                                       const std::atomic<bool>* cancel)
     : sampleRate_(filterbank.sampleRate())
     , length_(length)
     , half_(filterbank.maxHalfLength())
@@ -89,6 +91,7 @@ BandNoiseGenerator::BandNoiseGenerator(const ism::OctaveFilterbank& filterbank, 
     std::vector<double> pPrev, pA, pB;
     for (std::size_t bandA = 0; bandA < contract::kNumOctaveBands; bandA += 2)
     {
+        throwIfCancelled(cancel);         // condition 10: between the band-pair transforms
         const std::size_t k1 = bandA + 1; // upper edge of band bandA + 1 (7 = none)
         const bool pair = k1 < ism::OctaveFilterbank::kNumCrossovers;
         lowpassSpectra(filterbank, bandA, pair ? k1 : bandA, fft_, work, pA, pB);
@@ -105,8 +108,8 @@ BandNoiseGenerator::BandNoiseGenerator(const ism::OctaveFilterbank& filterbank, 
     }
 }
 
-UnitDecay BandNoiseGenerator::make(const RoomDecay& decay, std::uint32_t seed,
-                                   std::uint32_t emitterStream) const
+UnitDecay BandNoiseGenerator::make(const RoomDecay& decay, std::uint32_t seed, std::uint32_t emitterStream,
+                                   const std::atomic<bool>* cancel) const
 {
     UnitDecay unit;
     unit.sampleRate = sampleRate_;
@@ -120,16 +123,23 @@ UnitDecay BandNoiseGenerator::make(const RoomDecay& decay, std::uint32_t seed,
     std::vector<Complex> spectrum(n, Complex(0.0, 0.0));
     GaussianSource gauss(Pcg32(seed, emitterStream));
     for (std::size_t i = 0; i < length + 2 * h; ++i)
+    {
+        if ((i & (kCancelCheckSamples - 1)) == 0)
+            throwIfCancelled(cancel); // condition 10: every 2^16 samples
         spectrum[i] = Complex(gauss.next(), 0.0);
+    }
+    throwIfCancelled(cancel);
     fft_.forward(spectrum);
 
     std::vector<Complex> work(n);
     for (std::size_t bandA = 0; bandA < contract::kNumOctaveBands; bandA += 2)
     {
         // Two real band signals from one inverse transform: IFFT(X B_a + i X B_b) = y_a + i y_b.
+        throwIfCancelled(cancel); // condition 10: between the band-pair transforms
         for (std::size_t k = 0; k < n; ++k)
             work[k] = spectrum[k] * Complex(bandSpectrum_[bandA][k], bandSpectrum_[bandA + 1][k]);
         fft_.inverse(work);
+        throwIfCancelled(cancel);
         const double scale = 1.0 / static_cast<double>(n);
         for (std::size_t pair = 0; pair < 2; ++pair)
         {
@@ -140,6 +150,8 @@ UnitDecay BandNoiseGenerator::make(const RoomDecay& decay, std::uint32_t seed,
             double energy = 0.0;
             for (std::size_t j = 0; j < length; ++j)
             {
+                if ((j & (kCancelCheckSamples - 1)) == 0)
+                    throwIfCancelled(cancel); // condition 10: every 2^16 samples
                 const Complex v = work[h + j] * scale;
                 const double sample = (pair == 0 ? v.real() : v.imag())
                                       * std::exp(-rate * static_cast<double>(j));

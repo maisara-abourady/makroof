@@ -190,6 +190,8 @@ TEST_CASE(
             restoreScene(b, y);
             restoreScene(a, x);
         }
+        // Phase-07c-1 (AX49): a first restore plays an interim; the builder settles to the final.
+        REQUIRE(pipeline_test::waitFor([&] { return !a.settling() && !b.settling(); }));
         REQUIRE(bitIdentical(*a.lastSubmittedIr(), refX));
         REQUIRE(bitIdentical(*b.lastSubmittedIr(), refY));
     }
@@ -201,6 +203,7 @@ TEST_CASE(
     std::thread t([&] { restoreScene(rt, x); });
     processBlocks(off, 2);
     t.join();
+    REQUIRE(pipeline_test::waitFor([&] { return !rt.settling(); }));
     REQUIRE(bitIdentical(*rt.lastSubmittedIr(), refX));
     REQUIRE(bitIdentical(*off.lastSubmittedIr(), refY));
 }
@@ -217,7 +220,9 @@ TEST_CASE(
     rt.prepare(kRate, 256, false);
     REQUIRE(pipeline_test::waitFor([&] { return rt.builderIdle(); }));
     solver.prepare(kRate, 256, false);
+    REQUIRE(pipeline_test::waitFor([&] { return !solver.settling(); }));
     const auto before = rt.gate().solvesCompleted();
+    const auto solverBefore = solver.stats().solves;
     std::atomic<bool> done{false};
     std::thread t([&] {
         const auto big = slowScene();
@@ -233,8 +238,11 @@ TEST_CASE(
     t.join();
     REQUIRE(allocs == 0);
     REQUIRE(frees == 0);
-    // Only the solver's builds entered the gate (3 restores; reset() reused its last build).
-    REQUIRE(rt.gate().solvesCompleted() == before + 3);
+    // Only the solver's builds entered the gate (phase-07c-1: its restores' solves, synchronous or in the
+    // background; reset() never builds, condition 10).
+    REQUIRE(pipeline_test::waitFor([&] { return !solver.settling(); }));
+    REQUIRE(rt.gate().solvesCompleted() - before == solver.stats().solves - solverBefore);
+    REQUIRE(solver.stats().solves - solverBefore >= 1);
     REQUIRE(pipeline_test::waitFor([&] { return rt.builderIdle(); }));
     // D-H3 (e) (AX38 (i) register entry): Synchronous-class entries from a thread that had run a real-time
     // process() are counted (debug builds), never asserted; here none is expected (the solver's thread never

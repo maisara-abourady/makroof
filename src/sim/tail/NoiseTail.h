@@ -19,6 +19,7 @@
 #include "sim/tail/MixingTime.h"
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -68,12 +69,17 @@ std::size_t unitDecayLength(double lengthS, double sampleRate) noexcept;
 class BandNoiseGenerator
 {
 public:
-    BandNoiseGenerator(const ism::OctaveFilterbank& filterbank, std::size_t length);
+    // `cancel` (phase-07c-1 condition 10): checked between the band-pair transforms; when set, the
+    // constructor and make() throw sim::BuildCancelled. nullptr = never cancelled.
+    BandNoiseGenerator(const ism::OctaveFilterbank& filterbank, std::size_t length,
+                       const std::atomic<bool>* cancel = nullptr);
 
     std::size_t length() const noexcept { return length_; }
     // Size of the synthesis transform (AX38 4c's runner-independent work pin, RG-1).
     std::size_t fftSize() const noexcept { return fft_.size(); }
-    UnitDecay make(const RoomDecay& decay, std::uint32_t seed, std::uint32_t emitterStream) const;
+    // Also checks `cancel` every sim::kCancelCheckSamples samples of its sample loops.
+    UnitDecay make(const RoomDecay& decay, std::uint32_t seed, std::uint32_t emitterStream,
+                   const std::atomic<bool>* cancel = nullptr) const;
 
 private:
     double sampleRate_;

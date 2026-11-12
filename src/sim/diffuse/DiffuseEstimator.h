@@ -48,7 +48,11 @@ inline constexpr std::int64_t kNStarMax =
     1024; // AX41 n*_max, pinned by D-H1 (iv) (W1 diffuse share <= 14 ms)
 inline constexpr std::int64_t kWMaxPerEmitterProvisional =
     3'050'000; // AX41 W_max per emitter, pinned by D-H1 (iv) (the name predates the pin)
-inline constexpr double kSeTargetDb = 0.083;     // AX42 target SE
+inline constexpr double kSeTargetDb = 0.083; // AX42 target SE
+// AX48 key part E_model: the estimator-version id. Bump it with every D5-golden regeneration and whenever the
+// E_b of a fingerprint fixture changes with DiffuseLimits unchanged (test "[ax48-fingerprint]" fails
+// otherwise).
+inline constexpr std::uint32_t kEstimatorModelId = 1;
 inline constexpr double kBothNearM = 0.70;       // AX44
 inline constexpr double kApproximateSeDb = 0.33; // AX44 U, capped branch
 inline constexpr double kVovLimit = 0.1;         // AX41 / AX44

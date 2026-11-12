@@ -5,8 +5,23 @@
 #include "module3d/ParameterMap.h"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <optional>
 #include <string>
+#include <tuple>
+
+#if SPATIAL_HOST_TRACE
+// Phase-07c-1 condition 11: one record per host entry point (diagnostic build only).
+#define SPATIAL_TRACE(entry, block, argument)                                                                \
+    const trace::Scope traceScope_(trace_.get(), trace::Entry::entry, juce::AudioProcessor::isNonRealtime(), \
+                                   transport(), (block), (argument))
+#else
+#define SPATIAL_TRACE(entry, block, argument) static_cast<void>(0)
+#endif
 
 namespace plugin {
 
@@ -16,6 +31,10 @@ const juce::Identifier kStateTag{"SpatialSceneState"};
 const juce::Identifier kParamsTag{"PARAMS"};
 constexpr const char* kSceneTag = "Scene";
 constexpr const char* kVersionAttribute = "pluginStateVersion";
+// State v2 (phase-07c-1, AX48): the solved diffuse level per emitter (bandsDiffuse, reference units, IEEE-754
+// bits in hex) and its five-part key.
+constexpr const char* kDiffuseTag = "DIFFUSE";
+constexpr const char* kEmitterTag = "EMITTER";
 
 juce::String toJuce(std::string_view s)
 {
@@ -56,6 +75,89 @@ juce::AudioProcessorValueTreeState::ParameterLayout makeLayout()
 }
 
 // Brings a state of any known version to the current layout. Version 1 is the current one.
+juce::String hex64(std::uint64_t v)
+{
+    char buf[17];
+    std::snprintf(buf, sizeof buf, "%016llx", static_cast<unsigned long long>(v));
+    return juce::String(buf);
+}
+
+bool parseHex64(const juce::String& text, std::uint64_t& out)
+{
+    const auto t = text.trim();
+    if (t.length() != 16 || !t.containsOnly("0123456789abcdefABCDEF"))
+        return false;
+    out = static_cast<std::uint64_t>(t.getHexValue64());
+    return true;
+}
+
+void writeDiffuse(juce::XmlElement& root, const SavedDiffuse& saved)
+{
+    auto* el = root.createNewChildElement(kDiffuseTag);
+    el->setAttribute("p", hex64(saved.key.p));
+    el->setAttribute("s", hex64(saved.key.s));
+    el->setAttribute("ePrec", hex64(saved.key.ePrec));
+    el->setAttribute("eModel", hex64(saved.key.eModel));
+    el->setAttribute("platform", hex64(saved.key.platform));
+    for (std::size_t e = 0; e < saved.bands.size(); ++e)
+    {
+        auto* em = el->createNewChildElement(kEmitterTag);
+        em->setAttribute("channel", static_cast<int>(e));
+        juce::StringArray words;
+        for (const double v : saved.bands[e])
+        {
+            std::uint64_t bits = 0;
+            std::memcpy(&bits, &v, sizeof bits);
+            words.add(hex64(bits));
+        }
+        em->setAttribute("bandsDiffuse", words.joinIntoString(" "));
+    }
+}
+
+// Any malformed part: nullopt (the load is then keyless, AX48).
+std::optional<SavedDiffuse> readDiffuse(const juce::XmlElement& root)
+{
+    const auto* el = root.getChildByName(kDiffuseTag);
+    if (el == nullptr)
+        return std::nullopt;
+    SavedDiffuse saved;
+    if (!parseHex64(el->getStringAttribute("p"), saved.key.p)
+        || !parseHex64(el->getStringAttribute("s"), saved.key.s)
+        || !parseHex64(el->getStringAttribute("ePrec"), saved.key.ePrec)
+        || !parseHex64(el->getStringAttribute("eModel"), saved.key.eModel)
+        || !parseHex64(el->getStringAttribute("platform"), saved.key.platform))
+        return std::nullopt;
+    std::array<bool, std::tuple_size_v<sim::EmitterBands>> seen{};
+    for (const auto* em : el->getChildWithTagNameIterator(kEmitterTag))
+    {
+        const int channel = em->getIntAttribute("channel", -1);
+        if (channel < 0 || channel >= static_cast<int>(saved.bands.size())
+            || seen[static_cast<std::size_t>(channel)])
+            return std::nullopt;
+        juce::StringArray words;
+        words.addTokens(em->getStringAttribute("bandsDiffuse"), " ", "");
+        words.removeEmptyStrings();
+        if (words.size() != static_cast<int>(contract::kNumOctaveBands))
+            return std::nullopt;
+        for (int b = 0; b < words.size(); ++b)
+        {
+            std::uint64_t bits = 0;
+            if (!parseHex64(words[b], bits))
+                return std::nullopt;
+            double v = 0.0;
+            std::memcpy(&v, &bits, sizeof v);
+            if (!std::isfinite(v) || v < 0.0)
+                return std::nullopt;
+            saved.bands[static_cast<std::size_t>(channel)][static_cast<std::size_t>(b)] = v;
+        }
+        seen[static_cast<std::size_t>(channel)] = true;
+    }
+    for (const bool s : seen)
+        if (!s)
+            return std::nullopt;
+    return saved;
+}
+
 bool migrateState(int version, juce::XmlElement& /*state*/)
 {
     const auto& known = SpatialSceneProcessor::knownStateVersions();
@@ -82,7 +184,7 @@ struct SpatialSceneProcessor::ParameterForwarder final : juce::AudioProcessorVal
 
 const std::vector<int>& SpatialSceneProcessor::knownStateVersions()
 {
-    static const std::vector<int> versions{1};
+    static const std::vector<int> versions{1, 2}; // 2: AX48 (phase-07c-1), the saved diffuse level
     return versions;
 }
 
@@ -108,6 +210,18 @@ SpatialSceneProcessor::SpatialSceneProcessor(BuilderClock* clock)
             p->sendValueChangedMessageToListeners(p->getValue());
     }
     setLatencySamples(pipeline_.latencySamples());
+#if SPATIAL_HOST_TRACE
+    // One trace file per instance, in $SPATIAL_HOST_TRACE_DIR or the temporary directory (opened here, off
+    // the audio thread).
+    auto dir = juce::SystemStats::getEnvironmentVariable("SPATIAL_HOST_TRACE_DIR", {});
+    const juce::File folder = dir.isNotEmpty() ? juce::File(dir)
+                                               : juce::File::getSpecialLocation(juce::File::tempDirectory);
+    const auto name = "SpatialScene-trace-" + juce::String(juce::Time::currentTimeMillis()) + "-"
+                      + juce::String::toHexString(
+                          static_cast<juce::pointer_sized_int>(reinterpret_cast<std::uintptr_t>(this)))
+                      + ".txt";
+    trace_ = std::make_unique<trace::Logger>(folder.getChildFile(name).getFullPathName().toStdString());
+#endif
 }
 
 SpatialSceneProcessor::~SpatialSceneProcessor()
@@ -125,6 +239,7 @@ bool SpatialSceneProcessor::isBusesLayoutSupported(const BusesLayout& layouts) c
 
 void SpatialSceneProcessor::prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock)
 {
+    SPATIAL_TRACE(PrepareToPlay, maximumExpectedSamplesPerBlock, 0);
     const int maxBlock = std::max(1, maximumExpectedSamplesPerBlock);
     for (auto& s : doubleScratch_)
         s.assign(static_cast<std::size_t>(maxBlock), 0.0f);
@@ -135,16 +250,19 @@ void SpatialSceneProcessor::prepareToPlay(double sampleRate, int maximumExpected
 
 void SpatialSceneProcessor::releaseResources()
 {
+    SPATIAL_TRACE(ReleaseResources, 0, 0);
     pipeline_.release();
 }
 
 void SpatialSceneProcessor::reset()
 {
+    SPATIAL_TRACE(Reset, 0, 0);
     pipeline_.reset();
 }
 
 void SpatialSceneProcessor::setNonRealtime(bool isNonRealtime) noexcept
 {
+    SPATIAL_TRACE(SetNonRealtime, 0, isNonRealtime ? 1 : 0);
     juce::AudioProcessor::setNonRealtime(isNonRealtime);
     try
     {
@@ -163,6 +281,7 @@ void SpatialSceneProcessor::clearExtraChannels(juce::AudioBuffer<SampleType>& bu
 
 void SpatialSceneProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& /*midiMessages*/)
 {
+    SPATIAL_TRACE(ProcessBlock, buffer.getNumSamples(), 0);
     juce::ScopedNoDenormals noDenormals;
     clearExtraChannels(buffer);
     if (buffer.getNumChannels() < 2)
@@ -178,6 +297,7 @@ void SpatialSceneProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
 void SpatialSceneProcessor::processBlock(juce::AudioBuffer<double>& buffer,
                                          juce::MidiBuffer& /*midiMessages*/)
 {
+    SPATIAL_TRACE(ProcessBlock, buffer.getNumSamples(), 1);
     juce::ScopedNoDenormals noDenormals;
     clearExtraChannels(buffer);
     if (buffer.getNumChannels() < 2 || doubleScratch_[0].empty())
@@ -209,6 +329,17 @@ void SpatialSceneProcessor::processBlock(juce::AudioBuffer<double>& buffer,
     }
 }
 
+#if SPATIAL_HOST_TRACE
+trace::Transport SpatialSceneProcessor::transport() const noexcept
+{
+    // AudioPlayHead::getPosition() fills a value object: no allocation, no lock (JUCE 8).
+    if (auto* head = getPlayHead())
+        if (const auto pos = head->getPosition())
+            return pos->getIsPlaying() ? trace::Transport::Playing : trace::Transport::Stopped;
+    return trace::Transport::Unknown;
+}
+#endif
+
 juce::AudioProcessorEditor* SpatialSceneProcessor::createEditor()
 {
     // The generic editor is enough until Phase 11.
@@ -235,6 +366,7 @@ void SpatialSceneProcessor::setAllParameters(const module3d::ParameterValues& va
 
 void SpatialSceneProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
+    SPATIAL_TRACE(GetState, 0, 0);
     juce::XmlElement root(kStateTag);
     root.setAttribute(kVersionAttribute, kPluginStateVersion);
     const std::string json = contract::toJson(pipeline_.currentScene()); // the full scene contract JSON
@@ -242,16 +374,22 @@ void SpatialSceneProcessor::getStateInformation(juce::MemoryBlock& destData)
         juce::String::fromUTF8(json.data(), static_cast<int>(json.size())));
     if (auto params = apvts_.copyState().createXml())
         root.addChildElement(params.release());
+    // AX48 (state v2): the solved diffuse level of the current scene, when it is solved (no tail waveform or
+    // IR).
+    if (const auto saved = pipeline_.savedDiffuse())
+        writeDiffuse(root, *saved);
     copyXmlToBinary(root, destData);
 }
 
 void SpatialSceneProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
+    SPATIAL_TRACE(SetState, 0, sizeInBytes);
     pipeline_.beginRestore(); // no half-restored scene is built while the parameters change
 
     bool ok = false;
     contract::SceneDescription base = defaultScene();
     module3d::ParameterValues values = module3d::defaultParameterValues();
+    std::optional<SavedDiffuse> saved;
     std::unique_ptr<juce::XmlElement> xml;
     if (data != nullptr && sizeInBytes > 0)
         xml = getXmlFromBinary(data, sizeInBytes);
@@ -273,6 +411,8 @@ void SpatialSceneProcessor::setStateInformation(const void* data, int sizeInByte
                     apvts_.replaceState(tree);
                     values = readParameters(); // the parameters win over the scene JSON
                     ok = true;
+                    if (xml->getIntAttribute(kVersionAttribute, -1) >= 2)
+                        saved = readDiffuse(*xml); // v1, or no / a malformed level: keyless (AX48)
                 }
             }
         }
@@ -281,7 +421,7 @@ void SpatialSceneProcessor::setStateInformation(const void* data, int sizeInByte
         setAllParameters(values); // the defaults
     stateWarning_.store(!ok, std::memory_order_release);
     values = readParameters();
-    pipeline_.restore(base, values);
+    pipeline_.restore(base, values, saved);
 }
 
 } // namespace plugin

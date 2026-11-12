@@ -42,6 +42,13 @@ void RealtimeEngine::reset() noexcept
     convolver_.resetAndDropIrs();
 }
 
+void RealtimeEngine::resetKeepIr() noexcept
+{
+    if (sampleRate_ <= 0.0)
+        return;
+    convolver_.reset();
+}
+
 void RealtimeEngine::process(const float* const in[2], float* const out[2], int n) noexcept
 {
     if (sampleRate_ <= 0.0) // not prepared (or prepare() threw)
@@ -54,7 +61,8 @@ void RealtimeEngine::process(const float* const in[2], float* const out[2], int 
     convolver_.process(in, out, n);
 }
 
-std::shared_ptr<const conv::IrSet> RealtimeEngine::makeIrSet(const RoomIR& ir) const
+std::shared_ptr<const conv::IrSet> RealtimeEngine::makeIrSet(const RoomIR& ir,
+                                                             const std::atomic<bool>* cancel) const
 {
     if (ir.numEmitters != kNumChannels || ir.numOutputs != kNumChannels || ir.sampleRate != sampleRate_
         || ir.length() > maxIrLengthSamples(sampleRate_)
@@ -64,7 +72,7 @@ std::shared_ptr<const conv::IrSet> RealtimeEngine::makeIrSet(const RoomIR& ir) c
     {
         // Phase 06b scope 4: non-finite taps are refused like an IR
         // that doesn't fit, so submitRoomIR() returns false and the current IR keeps playing.
-        return conv::IrSet::create(ir, partitionSize_);
+        return conv::IrSet::create(ir, partitionSize_, cancel);
     }
     catch (const std::invalid_argument&)
     {

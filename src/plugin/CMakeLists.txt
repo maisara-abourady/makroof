@@ -38,6 +38,11 @@ target_compile_definitions(SpatialScene PUBLIC
                            JUCE_VST3_CAN_REPLACE_VST2=0
                            # JUCE_DISPLAY_SPLASH_SCREEN stays at the JUCE default (licence check in Phase 13).
                            )
+# Phase-07c-1 condition 11: the trace hooks exist only in the diagnostic build (OFF by default; never in a
+# release artefact, tools/ci/test_host_trace.py).
+if(SPATIAL_HOST_TRACE)
+    target_compile_definitions(SpatialScene PUBLIC SPATIAL_HOST_TRACE=1)
+endif()
 
 # JUCE modules are linked PRIVATE on purpose: their sources are compiled once, into this shared-code
 # target. The format wrappers (and spatial_tests) re-export this target's include directories instead of

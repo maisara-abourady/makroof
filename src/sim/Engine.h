@@ -10,6 +10,7 @@
 // AX21: the hybrid IR is specular-only before its handover; the AX16 scattered entries only set the
 // tail level (a known deficit, fix planned on Phase 05 evidence, BUILD_PLAN §5 B11).
 #include "contract/SceneDescription.h"
+#include "sim/Cancel.h"
 #include "sim/ism/ImageSources.h"
 #include "sim/tail/Decay.h"
 #include "sim/tail/NoiseTail.h"
@@ -18,6 +19,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -28,15 +30,6 @@ namespace sim {
 namespace diffuse {
 class ThreadPool;
 }
-
-// Thrown by buildRoomIR when BuildOptions::cancel was set while the diffuse solve ran (AX39 D6): the
-// caller asked for the build to stop; nothing was produced.
-struct BuildCancelled : std::runtime_error
-{
-    BuildCancelled()
-        : std::runtime_error("room IR build cancelled")
-    {}
-};
 
 // Supported sample rates (AX6). buildRoomIR() rejects anything else.
 inline constexpr double kSupportedSampleRatesHz[] = {44100.0, 48000.0, 88200.0, 96000.0};
@@ -115,8 +108,10 @@ struct BuildOptions
     // diffuse-solve gate owns (src/plugin/core/DiffuseSolveGate.h), so no pool thread outlives the
     // last plugin instance.
     diffuse::ThreadPool* diffusePool = nullptr;
-    // Phase 05h (AX39 D6): checked between blocks of the diffuse solve; when it becomes true the build
-    // stops and buildRoomIR throws BuildCancelled (the builder was quiesced; its result is discarded).
+    // Phase 05h (AX39 D6), phase-07c-1 condition 10: checked at the build's cancel points (sim/Cancel.h:
+    // image-source planning per emitter, between blocks of the diffuse solve, the unit-decay synthesis,
+    // the IR assembly); when it becomes true the build stops and buildRoomIR throws BuildCancelled (the
+    // caller discards the result).
     const std::atomic<bool>* cancel = nullptr;
     // Kind::Omni, validation only (render_cli --tail-level ax16; the phase-05h listening pack): match
     // the tail level on the specular + AX16 scattered entries as Phase 04 did and skip the diffuse
@@ -130,7 +125,33 @@ struct BuildOptions
     // DiffuseLimits::fixedHistories), so a comparison can be made at the AX42 tolerance instead of the
     // shipping rule's SE. 0 (every product path) runs the AX41 joint rule.
     std::int64_t diffuseFixedHistories = 0;
+    // Phase-07c-1 (AX49): synthesise the two emitters' unit decays in parallel (one extra thread) instead of
+    // one after the other. Bit-identical to the serial build (each emitter's synthesis is a pure function of
+    // its own seed and stream; test "[staged]"). The plugin sets it; render_cli and the validation keep the
+    // serial default.
+    bool parallelEmitterSynthesis = false;
 };
+
+// Phase-07c-1 (AX48): per-emitter diffuse energies in the reference's units (DiffuseMatch::
+// bandsDiffuseReference), indexed by emitter channel. What the plugin state saves as bandsDiffuse and what a
+// held or saved level (B1', keyed restore) feeds back into a build.
+using EmitterBands = std::array<contract::BandArray, 2>;
+
+// Phase-07c-1 (AX49): the provisional tail's timing for one scene, all times from emission.
+//   L_f = t_mix,e,max + 0.312 T60_max (the fade start), L_p = L_f + 0.1 s (the provisional's end), L the
+//   exact tail length (tail::tailLengthS). provisional is false where L_p >= L: the exact tail is built in
+//   its place.
+struct ProvisionalTiming
+{
+    double mixMaxS = 0.0; // t_mix,e,max over the present emitters
+    double t60MaxS = 0.0; // the longest per-band T60 the exact tail is built with (air absorption included)
+    double fadeStartS = 0.0; // L_f
+    double endS = 0.0;       // L_p
+    double exactS = 0.0;     // L
+    bool provisional = false;
+};
+inline constexpr double kProvisionalT60Fraction = 0.312; // AX49: >= 18.7 dB of decay after t_mix,e,max
+inline constexpr double kProvisionalFadeS = 0.1;         // AX49: the fade, L_p = L_f + 0.1 s
 
 // AX22: the image-count cap N_cap = nu_r(i0) (Kuttruff Eq. 9.23) of the realised-k fallback, i0 the
 // largest integer >= 10 at which the AQ10 workload W2 meets 50 ms on the Linux CI runner (Phase 04
@@ -220,6 +241,69 @@ struct HybridDiagnostics
 // sample); the other two pairs are a single 0. Positions, materials and gains are ignored.
 RoomIR buildRoomIR(const contract::SceneDescription& scene, const BuildOptions& options,
                    HybridDiagnostics* diagnostics = nullptr);
+
+// Phase-07c-1 condition 12 (D-G1; AX38 (i) register entry G-1): buildRoomIR as three stages, so a caller can
+// hold the AX38 diffuse-solve gate around the solve alone. buildRoomIR(scene, options, diagnostics) is
+// exactly
+//   auto b = StagedBuild::plan(scene, options); b.solve(); return b.assemble(diagnostics);
+// and the two are bit-identical on every platform (AX5; test "[staged]"). Each stage runs under its own
+// FTZ/DAZ guard (AX37 (5.1) (i)) and checks options.cancel at its cancel points (sim/Cancel.h).
+//   plan()      image-source planning, matching and the early parts (Kind::Omni); the whole IR for the
+//               other kinds. Throws std::invalid_argument for an unsupported sample rate.
+//   solve()     the diffuse solve (Kind::Omni without tailLevelAx16; a no-op otherwise, see needsSolve()).
+//               Uses options.diffusePool. The only stage the plugin runs under the AX38 gate.
+//   assemble()  the unit-decay synthesis and the IR assembly. Calls solve() first if it has not run.
+// A StagedBuild is used from one thread at a time; the stages may run on different threads in order.
+class StagedBuild
+{
+public:
+    static StagedBuild plan(const contract::SceneDescription& scene, const BuildOptions& options);
+    StagedBuild(StagedBuild&&) noexcept;
+    StagedBuild& operator=(StagedBuild&&) noexcept;
+    ~StagedBuild();
+
+    bool needsSolve() const noexcept;
+    // `pool` (if not nullptr) replaces options.diffusePool for this solve: the plugin passes the gate's pool
+    // only while it holds the gate (condition 12).
+    void solve(diffuse::ThreadPool* pool = nullptr);
+    RoomIR assemble(HybridDiagnostics* diagnostics = nullptr);
+
+    // ---- phase-07c-1 (AX48, AX49; the plugin's interim builds). Kind::Omni only; no-ops otherwise. ----
+    // AX48 key part P: a canonical hash of the DiffuseProblem after image-source planning (room, listener,
+    // per-emitter position, window, handover, T60, gain and specular target), bit for bit. 0 for other kinds.
+    std::uint64_t problemHash() const noexcept;
+    // AX48: use these per-emitter diffuse energies (reference units) instead of the solve: the saved E_b of a
+    // keyed restore, or the held E_b of an edit (B1'). assemble() then skips the solve; solve() may still run
+    // afterwards and replace the level (the plugin's interim-then-final on one plan). The same arithmetic as
+    // the solve's result, so a level equal to the solve's gives a bit-identical IR.
+    void useDiffuseLevel(const EmitterBands& bandsDiffuse);
+    // The per-emitter diffuse energies of the solve or of useDiffuseLevel() (absent emitters: zeros); nullopt
+    // before either ran (or for another kind, or a tailLevelAx16 build).
+    std::optional<EmitterBands> diffuseLevel() const;
+    // AX49 timing of this scene's provisional tail.
+    ProvisionalTiming provisionalTiming() const noexcept;
+    // AX49: the IR with the provisional tail (length L_p, normalised per band by sqrt(E_p,b / f_b), faded
+    // over the last 0.1 s), at the level of the solve or useDiffuseLevel(); where L_p >= L, exactly
+    // assemble(). Offline and render_cli never call it (condition 6). Calls solve() first if neither ran.
+    RoomIR assembleProvisional(HybridDiagnostics* diagnostics = nullptr);
+    // AX49 D5 bridge and AQ4 cache: assemble() over these unit decays (by emitter channel) instead of
+    // synthesising. When their T60s or length differ from this scene's (a T60-changing edit), each emitter's
+    // amplitude uses the ebar of the unit decay actually played (AX48), and the tail ends where they end.
+    void useUnitDecays(std::shared_ptr<const std::vector<tail::UnitDecay>> units);
+    // True when the unit decays given to useUnitDecays() are this scene's own (same rate, length and T60s):
+    // the IR is then the exact one (bit-identical to a fresh build).
+    bool unitDecaysExact() const noexcept;
+    // The unit decays (by emitter channel) the last assemble() or assembleProvisional() used or synthesised
+    // (the provisional ones after assembleProvisional(): tests measure them; never cached as exact); nullptr
+    // before. The plugin caches the exact ones (AQ4, AX49).
+    std::shared_ptr<const std::vector<tail::UnitDecay>> unitDecays() const;
+
+    struct State;
+
+private:
+    explicit StagedBuild(std::unique_ptr<State> state);
+    std::unique_ptr<State> state_;
+};
 
 // Kind::Omni only (validation, AX11 ensembles): the hybrid IR of `scene` for each tail seed in
 // tailSeeds, element k equal to buildRoomIR with render.tailSeed = tailSeeds[k]. The seed-independent

@@ -3,6 +3,7 @@
 #include "sim/conv/Denormals.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstring>
 #include <numbers>
@@ -151,11 +152,13 @@ void CrossfadingConvolver::reset() noexcept
         Request* old = current_;
         current_ = next_;
         next_ = nullptr;
+        // Never frees here (phase-07c-1 condition 10: reset() may run on a host's processing thread). A fade
+        // is only ever started while retiring_ is empty (process() step 4), and retiring_ is only set when a
+        // fade ends, so while next_ is set retiring_ is empty: a full release queue parks `old` there and
+        // the next process() or submit hands it on.
+        assert(retiring_ == nullptr);
         if (old != nullptr && !pushRetired(old))
-        {
-            delete retiring_; // not the audio thread: reset() is not concurrent with process()
             retiring_ = old;
-        }
     }
     fdl_.reset();
     const auto p = static_cast<std::size_t>(partitionSize_);

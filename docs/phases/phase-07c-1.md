@@ -4,7 +4,7 @@ Size: **M** (remainder, if needed: `07c-1b`) · Depends on: 05h, 07 `done` · Pa
 Lead subject matter: Seat 5 (Deadline keeper), "anything on or beside the audio thread: real-time safety; lock-free
 hand-off; threading topology; host conformance (pluginval, auval, state, …); offline equals real-time" · Read first,
 in this order: `CLAUDE.md`; this file in full [and the umbrella, `docs/phases/phase-07c.md`]; `docs/BUILD_PLAN.md`
-§2 **AQ4, AQ10 (amended 2026-11-10), AX5, AX18, AX33, AX38, AX41, AX44**; `docs/phases/phase-05h.md` (§3 D-H1, §4
+§2 **AQ4, AQ10 (amended 2026-11-10 and 2026-11-12), AX5, AX18, AX33, AX38, AX41, AX44, AX47, AX48, AX49**; `docs/phases/phase-05h.md` (§3 D-H1, §4
 scope 2, the solve seam); `docs/phases/phase-07.md` (state restore, reset sequence, offline path);
 `docs/review/phase-05b2/47-decider-board-answers-C1-Q2a-final.md` §4 and `51-decider-addendum-J1.md`;
 `49-interrogator-board-answers-C1-Q2.md`; ledger P05B2-C1Q2-01…14; PRD NFR-2, NFR-3, NFR-6, FR-SIM-6.
@@ -53,7 +53,10 @@ ordering, not the decider's) (phase-07c §4 note):
 
 ### Conditions (conditions 2, 4–7: decider file 47 §4 (iii); condition 9: D-H1 (v) / H1-F2, decider file 19; conditions 10 and 11: D-H3 (e) / H3-F5, decider files 20, 25, 27; condition 12: D-G1, phase 05i, decider file 13)
 
-The diffuse solve moves off the synchronous restore, prepare and `reset()` (phase-07c §5 lead sentence, umbrella).
+The diffuse solve moves off the synchronous restore, prepare and `reset()`, except the stage-1 solve at keyless
+loads (AX48, FM-3′); the unit-decay synthesis (condition 9) likewise, except the AX49 interim tail where no valid
+IrSet is current (FM-2′). (phase-07c §5 lead sentence,
+umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-07c-1/12-decider-decision-r3.md` §8)
 
 2. **Seam:** phase 05h already invokes the solve through one function from restore, prepare and `reset()`
    (Seat 5; phase-05h scope 2); this phase moves that one call off the synchronous path. (phase-07c condition 2)
@@ -76,12 +79,13 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()` (phas
 6. **Offline.** Offline renders, bounces and `render_cli` always wait for the final solve and stay
    bit-identical. Where the host's offline signal is unreliable, the render log records it (Seats 1 (ii),
    2, 4, 5, 6 (e), 8 (i), 9). (phase-07c condition 6)
-7. **Gates re-scoped after the move.** The restore gate (AX38 4c) measures restore without the solve and
-   the synthesis (condition 9); the solve time moves to the staleness records (AX38 (iv)) (Seat 5 (5)). E_b
+7. **Gates re-scoped after the move.** The restore gate (AX38 4c) measures the restore as AX48/AX49 build it:
+   ISM + matching + the AX49 interim tail + mix, plus the stage-1 solve on keyless restores (condition 9); the solve time moves to the staleness records (AX38 (iv)) (Seat 5 (5)). E_b
    stays shared across modes and ears (Seat 4; AX39, AX44). (phase-07c condition 7)
 
    **The 07c re-pin** (AX38 4c; phase-05i §3.3 (v); D-Q5, decider file `docs/review/phase-05i/9-decider-r2.md`):
-   after conditions 9 and 12 land (the gate then measures restore without the solve and the synthesis), the
+   after conditions 9 and 12 land (the gate then measures the restore as AX48/AX49 build it: ISM + matching +
+   the AX49 interim tail + mix, plus the stage-1 solve on keyless restores), the
    restore gate's growth-bound baselines, the ±5 % flutter window, the solve bound k (`kSolveWarn`) and its
    `solveRefMs` baselines are re-derived from ≥ 3 in-window runs: one run PROVISIONAL, printed not asserted;
    never a red or out-of-window run as a baseline; a CHANGELOG reason. The macOS trigger (2 172 ms) is
@@ -91,18 +95,31 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()` (phas
    constructor spectra 0.96 s + `make` × 2 emitters 2.18 s = 3.14 of 3.29 s at 100 m / 96 kHz, flat in room
    size for T60_max ≥ 8 s, ≈ 2.5× from 48 to 96 kHz) moves off the synchronous restore, prepare and `reset()`
    with the same interim / settling rules as the diffuse solve (the interim tail while the synthesis is
-   pending is decided in this phase's loop beside D-C2; never silence where a tail existed in the saved
-   state); after both moves the restore gate measures ISM + matching + mix (≈ 0.15 s at 96 kHz) and passes a
-   worst-of-10 rule with 10–20× headroom. Closes the AX38 4c register entries: the macOS entry (33.40 s;
+   pending is AX49, decided in this phase's loop beside D-C2; never silence where a tail existed in the saved
+   state); after both moves the restore gate measures ISM + matching + the AX49 interim tail + mix (keyless:
+   plus the AX48 stage-1 solve) under the unchanged worst-of-10 / 14 × worst ≤ 30 s rule, with headroom as
+   measured (record (h)). Where the interim is the full tail (L_p ≥ L), an entry that still fails stays in the
+   register with 'closes at' phase-07d (this condition's split clause; FM-2′). Closes the AX38 4c register entries: the macOS entry (33.40 s;
    closes here, or at 07d, or at Phase 13's release-machine re-check if the runner is shown to be the cause)
    and the Windows entry (36.73 s; remedy phase-07c conditions 9 (or 07d) and 10, or Phase 13's release-machine re-check; listed since run 42942694523, its OVER30S on 05i's
    run of record on a slow runner); the Linux entry already closed in phase 05i under (c). If this phase's
    loop finds condition 9 does not fit here, a `phase-07d.md` of size S–M is created (CLAUDE.md split rule)
-   and the register's macOS 'closes at' names 07d. Alternatives recorded, not chosen: a cheaper generator (output-changing; a
+   and the register's macOS 'closes at' names 07d. **Applied 2026-11-12** (phase-07c-1 decision loop, FM-2′;
+   decider file 12 §8, interrogator file 13 row P07C1-72): the gated low-α cube (T60_max 50.5 s) is at the
+   long-T60 corner, so [phase-07d](phase-07d.md) is created and §0 lists it; the macOS 'closes at' and the
+   Windows remedy name 07d. Alternatives recorded, not chosen: a cheaper generator (output-changing; a
    golden round; AQ10's "not optimised before Phase 13" to be read by the board); caching the constructor
    spectra per (fs, length) (bit-identical, ≈ 4 of 14 FFTs, [Hyp] 20–25 %, not enough alone). Its packet
    repeats the file 7 split timer (`[probe-restore-split]`, both gated scenes) on one named local box before
    sizing the interim rules (RG-1, Seat 5 (vi)). (phase-07c condition 9)
+
+   **Record (h)** (AX49; phase-07c-1 decision loop, 2026-11-12; the letter continues condition 12's records):
+   restores in sequence on one thread, keyed and keyless, at 1, 4 and 8 instances; 100 m; 48 and 96 kHz; three
+   OSes; a T60_max sweep of 2, 8, 12, 20, 35 and 50 s. Printed: per-instance time until audible, and the time
+   from provisional to exact; the ISM latency on T60-changing edits under the AX49 D5 bridge (Seat 3's bridge
+   condition, review file 14; taken after condition 9 lands, unlike condition 12's record (g)). Any 8-instance
+   run over 5 s is flagged in print, not asserted. Its T60 sweep is an input to [phase-07d](phase-07d.md). The
+   restore gate also prints each gated scene's L_p (AX49 reversal 1; interrogator file 16 row P07C1-DC-07).
 10. **The `reset()` half** (D-H3 (e) / H3-F5; decider files 20 and 25 "DECISION D-H3 (e)", file 27;
     interrogator files 22, 26, 28; AX38 (i)'s register entry and remedy): **the first step of this phase,
     with its own TSan `[pipeline]` round.** Design = Seat 3's (e-k) + Seat 2's (e-e): `reset()` and
@@ -119,10 +136,15 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()` (phas
     abandoned build's ISM/synthesis may overlap the offline build: Seat 5). Closes AX38 (i)'s register
     entry (worst quiesce wait 2 664 ms, stale build ≈ 3.6 s, up to ≈ 6.3 s) and lifts its release rule (no
     build reaches a producer outside the team, beta included, while the entry is open). Never a per-host
-    code path (NFR-8). (phase-07c condition 10)
+    code path (NFR-8). **Closed 2026-11-12 (phase 07c-1):** records: Linux and macOS from 43215018040
+    (517e556), Windows from 43227272415 (2dfe187; every job green on three OSes); AX38 (i) carries the closure
+    note. Re-taken on the head code: run 43291051799 (file 44). (phase-07c condition 10)
 11. **The trace build and the per-host measurement** (D-H3 (e); AX38 (i), half (2)): a CMake option
     `SPATIAL_HOST_TRACE`, default OFF, excluded from release artefacts, guarded by `pytest tools/ci`: a
-    preallocated SPSC ring written from the host entry points and drained off-thread (nothing on the
+    preallocated bounded lock-free ring written from the host entry points (several producer threads, one
+    CAS per push, drop-and-count when full) and drained off-thread by one consumer (SPSC in the original
+    text; host entry points arrive on several threads, so the ring is multi-producer: phase-07c-1 review
+    files 17, 18 row F-29) (nothing on the
     realtime path allocates, locks or logs), logging entry id, native thread id, `isNonRealtime()`,
     transport state, block size and time per call. The instrument is this phase's deliverable; **the run is
     a person's action** on real machines with host licences (Maisara or the contractor; Seat 7's estimate
@@ -161,7 +183,12 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()` (phas
     only (moves > 0.25 m: binaural processing plus the specular part; Seat 1); the 3 s row (translational
     move > 1 m, specular plus scattering part) applies to none of these records — a reading, not a gate.
     FR-SIM-6's 'without audible artifacts' stays not measured here (Phase 10-3). **Closes** AX38 (i)'s register
-    entry G-1 and lifts its own release rule, through `/fix-plan`, when A12 passes. (D-G1)
+    entry G-1 and lifts its own release rule, through `/fix-plan`, when A12 passes. **Closed 2026-11-12
+    (phase 07c-1):** records: Linux and macOS from 43215018040 (517e556), Windows from 43227272415 (2dfe187;
+    every job green on three OSes); AX38 (i) carries the closure note. Record (c) re-taken: callback p99.9 at
+    host buffer 64 with 8 concurrent builders 1 178 / 4 245 / 1 137 µs Linux / macOS / Windows (05i run of
+    record 43031773338: 195 / 1 674 / 404 µs; period 1 333 µs) — a rise; under condition 12 (c) a finding for
+    the board, carried to phase-07c-1b (never an instance cap: PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5). (D-G1)
 
 ## Out of scope
 
@@ -178,35 +205,44 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()` (phas
 ## Acceptance criteria — automated
 
 - [ ] D-C1–D-C3 recorded as AX rows (ledger rows linked) before the first code commit; the researcher's
-      answers recorded. (phase-07c A1)
-- [ ] Restore, prepare and `reset()` never run the diffuse solve synchronously; the restore gate (AX38 4c)
-      passes measuring restore without the solve and, under condition 9, without the unit-decay synthesis,
-      on the Release build, in AX38 4c's register form (the entries it closes removed through `/fix-plan`);
-      the solve time is in the staleness records. (phase-07c A2)
+      answers recorded. (phase-07c A1) Recorded 2026-11-12: AX47–AX49 and the AX18 amendment (D-C1, D-C2, D-C3,
+      D-C9; `docs/review/phase-07c-1/`).
+- [ ] Restore, prepare and `reset()` never run the diffuse solve synchronously, except the AX48 stage-1 (A)
+      solve at a restore with no IrSet current and no saved E_b whose five-part key matches (FM-3′) (the
+      fresh-instance first prepare, which still solves synchronously as before 07c-1 and is counted in
+      `Stats::insertSolves`, moved to phase-07c-1b scope 6, review M1); the
+      restore gate (AX38 4c) passes as in condition 9 (ISM + matching + the AX49 interim tail + mix; keyless:
+      plus the stage-1 solve; the unchanged worst-of-10 / 14 × worst ≤ 30 s rule, headroom as measured), on
+      the Release build, in AX38 4c's register form (the entries it closes removed through `/fix-plan`;
+      entries that stay open name phase-07d as 'closes at') (the register closures moved to phase-07c-1b); the solve time is in the staleness records.
+      (phase-07c A2)
 - [ ] The real-time path adopts each solved snapshot by atomic swap with an AQ4 crossfade, one step per
       solve, never mid-drag; the ISM update is never held behind the solve (tests); "settling" is shown
       while an update is pending (AX38 (iii)). (phase-07c A3)
 - [ ] The interim level is never silence and never the AX16 level in the cases of condition 5 (test on
-      layouts 4/5 and the absorbing-floor cube); the provisional-to-final step stays within D-C1's ruling.
-      (phase-07c A4)
+      layouts 4/5, the absorbing-floor cube and BRAS CR3, the AX16 −1.18 dB case: Seat 9); the
+      provisional-to-final step stays within D-C1's ruling: the AX47 (a)/(b) tests and the AX49 acceptance
+      (AX49 "Acceptance"). (phase-07c A4)
 - [ ] Offline renders, bounces and `render_cli` wait for the final solve and are bit-identical run to run
       (AX5); an unreliable host offline signal is recorded in the render log. (phase-07c A5)
-- [ ] If E_b is saved in state: the state-version AX applied, old state fixtures still load (Phase 07 rule).
-      (phase-07c A7)
-- [ ] E_b bit-identical between modes and ears (AX44); allocation tracker, TSan `[conv],[pipeline]`,
-      pluginval strictness 10 and auval pass. (phase-07c A8)
+- [ ] State v2 per AX48 (`pluginStateVersion` 2, per-emitter `bandsDiffuse`, five-part key): the state-version
+      AX applied, old state fixtures still load (Phase 07 rule). (phase-07c A7)
+- [ ] E_b bit-identical between modes and ears (AX44); a v2 state restored in the other `outputMode` uses
+      the saved E_b bit-identically; a keyless restore's first IrSet carries a tail; a Π mismatch is keyless
+      (AX48); allocation tracker, TSan `[conv],[pipeline]`, pluginval strictness 10 and auval pass.
+      (phase-07c A8)
 - [ ] Condition 10: the `[pipeline]` test shows `reset()` and `setNonRealtime(true)` never wait on the
       builder and never build; a realtime reset keeps the current IrSet (output never silent); the two-order
       test and the transient-memory record; TSan `[pipeline]` green; the AX38 (i) register entry removed
-      through `/fix-plan`. (phase-07c A10)
+      through `/fix-plan` (removed 2026-11-12: closed (phase 07c-1)). (phase-07c A10)
 - [ ] Condition 11: the `SPATIAL_HOST_TRACE` option builds, is OFF by default, is absent from release
       artefacts (`pytest tools/ci` guard) and leaves the realtime path allocation-, lock- and log-free
       (tracker test); the per-host run itself is a person's action and does not gate this phase. (phase-07c A11)
 - [ ] Condition 12: the `[pipeline]` test shows the gate held during the solve only; `buildRoomIR` bit-identical
       to its stages; TSan `[pipeline]` with overlapping ISM and synthesis green; records (b)–(d), (f) and (g)
-      printed on three OSes, none asserted; the AX38 (i) register entry G-1 removed through `/fix-plan`. (D-G1,
-      A12)
-- [ ] Condition 7, the 07c re-pin: after conditions 9 and 12 land, the restore gate's growth-bound baselines,
+      printed on three OSes, none asserted; the AX38 (i) register entry G-1 removed through `/fix-plan`
+      (removed 2026-11-12: closed (phase 07c-1)). (D-G1, A12)
+- [ ] Condition 7, the 07c re-pin (moved to phase-07c-1b, 2026-11-12, two-session split): after conditions 9 and 12 land, the restore gate's growth-bound baselines,
       the ±5 % flutter window, `kSolveWarn` and its `solveRefMs` baselines re-derived from ≥ 3 in-window runs
       (one run PROVISIONAL, printed not asserted; never a red or out-of-window run as a baseline), and the
       macOS trigger (2 172 ms) re-derived, with a CHANGELOG reason. (AX38 4c; D-Q5)
@@ -216,15 +252,18 @@ The diffuse solve moves off the synchronous restore, prepare and `reset()` (phas
 - [ ] Drag a source in a large room: the early part follows at once; the tail level updates after the drag.
       (phase-07c L2)
 - [ ] Bounce the same project twice: the bounces are identical and match playback after settling. (phase-07c L3)
+- [ ] Reopen a saved 100 m project and play at once: the tail is there from the start; no level jump when it
+      settles. Blind held-chord ABX as in AX49 (provisional against exact tail, T60 8 s, fully wet, 16 trials,
+      ≥ 12/16 = detected), run with the AX47 ABX in [phase-07c-2](phase-07c-2.md). (L4; AX49)
 
 ## Contractor review focus
 
 - Threading of the moved solve (no real-time wait, no lock on the audio thread, the AX38 gate's classes
   after the move; the gate's scope, solve only, and the stage split, condition 12) (phase-07c F1; D-G1)
 - the atomic swap and crossfade (phase-07c F2)
-- the interim-level rule (phase-07c F3)
+- the interim-level rule (phase-07c F3; AX47–AX49)
 - offline determinism (phase-07c F4)
-- the saved-state format if E_b is stored (phase-07c F5)
+- the saved-state format (phase-07c F5; AX47–AX49: state v2 and its five-part key, AX48)
 
 ## Risks
 
@@ -237,6 +276,12 @@ The original phase file has no risks section; the umbrella's §0 gives the ratio
   (phase-07c §10, clause 3; this sub-phase's share).
 - CLAUDE.md rules apply: one sub-phase per session; if it can't be finished in two sessions, split the remainder into
   `phase-07c-1b.md`.
+- Split 2026-11-12 (session 2 of 2): the 07c re-pin (the condition 7 criterion) and the AX38 4c register closures
+  (A2's clause "in AX38 4c's register form (the entries it closes removed through `/fix-plan`; entries that stay open
+  name phase-07d as 'closes at')") and the remaining items moved to [phase-07c-1b](phase-07c-1b.md).
+  A2's synchronous solve at a fresh instance's first prepare (counted in `Stats::insertSolves`) moved to
+  phase-07c-1b scope 6 (review M1). AX47 'Measurement' mid-fade renders (part of A4 via D-C1's ruling) moved to
+  phase-07c-1b scope 7 (review M2).
 
 ## Notes from the split
 

@@ -61,7 +61,9 @@ performance budget, per instance (CPU and memory), on the optimised code that ev
    concurrent builds at 100 m, 48 and 96 kHz once the gate is narrowed; on a breach of the budget the open remedy is
    a limit on concurrently running builds sized from that record, which comes back to the board; never an instance cap (PRD FR-3D-5,
    FR-3D-6, FR-SIM-7, A5), a W_max cut or a range change (D-H1 (v)(d)) (D-G1,
-   `docs/review/phase-05i/13-decider-DG1.md`). Input since phase 05b: AX38's working ceiling for the diffuse computation (≤ 1 GB
+   `docs/review/phase-05i/13-decider-DG1.md`). Memory finding from phase-07c-1's loop (review file
+   `docs/review/phase-07c-1/8-orchestrator-provisional-cost.md` record (f), process peak delta; decider file 12 §8):
+   2.25 GB at 8 instances × 96 kHz; it goes to this memory budget, never an instance cap. Input since phase 05b: AX38's working ceiling for the diffuse computation (≤ 1 GB
    transient per solve, one solve per process; ≤ 128 MB additional resident per instance) and its records.
    (phase-13 scope 1; "13b" is `13-1b` in this split)
 2. **End treatment at the 12 s cap** (Phase 07 D3). Answer first: (Q1) audibility threshold of a

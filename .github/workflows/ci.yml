@@ -425,7 +425,7 @@ jobs:
             {
               echo "### Records, ${{ matrix.name }} (AX38 4c / (iv), K-e12, restore gate)"
               echo '```'
-              grep -E "^(05h|05i)-records|^agree-full (gated|summary)|^agree-full pooled bias band [0-9] \[(CHECK, additive|record, per reference room)" build/benchmark.log || echo "(no record lines)"
+              grep -E "^(05h|05i|07c1)-records|^agree-full (gated|summary)|^agree-full pooled bias band [0-9] \[(CHECK, additive|record, per reference room)" build/benchmark.log || echo "(no record lines)"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -559,13 +559,48 @@ jobs:
           TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
         run: build/tsan/tests/unit/spatial_tests "[conv],[pipeline],[diffuse]"
 
+  # Phase-07c-1 condition 11 (A11): the SPATIAL_HOST_TRACE diagnostic build. Built and tested here only (the
+  # plugin's no-allocation test and the trace tests with the hooks compiled in); its binaries are never
+  # uploaded and never a release artefact (tools/ci/test_host_trace.py). The per-host run is a person's action.
+  host-trace:
+    name: host trace build (linux)
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config \
+            libasound2-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev \
+            libfreetype-dev libfontconfig1-dev libgl1-mesa-dev xvfb
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1.2.24
+        with:
+          key: host-trace
+          max-size: 500M
+      - name: Cache FetchContent (host trace)
+        uses: actions/cache@v6.1.0
+        with:
+          path: build/debug/_deps
+          key: deps-linux-debug-${{ hashFiles('CMakeLists.txt', 'cmake/**', 'CMakePresets.json') }}
+      - name: Configure (debug, SPATIAL_HOST_TRACE=ON)
+        run: cmake --preset debug -DSPATIAL_HOST_TRACE=ON
+      - name: Build
+        run: cmake --build --preset debug --target spatial_tests SpatialScene_VST3
+      - name: Test (the plugin's no-allocation test with the trace hooks, the trace tests)
+        env:
+          SPATIAL_HOST_TRACE_DIR: ${{ runner.temp }}
+        run: xvfb-run -a build/debug/tests/unit/spatial_tests "[plugin][alloc],[host-trace]"
+
   # One check that sums the run up (a good candidate for the only required status check). Green when
   # every job passed, or when the gate skipped them all; red otherwise. Only a fully green run records
   # the pass marker, so a cancelled, failed or partly skipped run never lets a later run skip.
   ci-ok:
     name: ci ok
     if: always()
-    needs: [changes, format, contract-tools, python, open-field-validation, tail-gates, build, asan, tsan]
+    needs: [changes, format, contract-tools, python, open-field-validation, tail-gates, build, asan, tsan, host-trace]
     runs-on: ubuntu-24.04
     steps:
       - name: Check job results

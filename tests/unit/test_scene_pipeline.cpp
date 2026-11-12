@@ -1,7 +1,8 @@
 // Phase 07 scope 3: the plugin's scene -> IR -> engine pipeline (JUCE-free): RealtimeEngine::reset(),
 // the reset sequence, the synchronous and offline paths, the switch rule and crossfade law (decider D7,
 // tests (a)-(f), realtime and offline, -100 dB nulls against the analytic crossfade), no lost update
-// (FR-3D-10), the latency peak, the output trim smoother, and a TSan stress test.
+// (FR-3D-10), the latency peak, the output trim smoother, and a TSan stress test. Phase-07c-1 condition 10:
+// reset() / setNonRealtime(true) never wait or build, the realtime reset keeps the IrSet, the two orders.
 #include "PipelineTestUtil.h"
 
 #include "AllocationTracker.h"
@@ -15,8 +16,11 @@
 #include <cstdio>
 #include <memory>
 
+#include <array>
 #include <atomic>
+#include <condition_variable>
 #include <cstring>
+#include <mutex>
 #include <random>
 #include <thread>
 
@@ -142,11 +146,15 @@ TEST_CASE("Pipeline: prepare builds synchronously; latency 544 at every supporte
         p.prepare(rate, 512, false);
         REQUIRE(p.latencySamples() == 544);
         REQUIRE_FALSE(p.unsupportedRateFallback());
-        REQUIRE(p.handledGeneration() == p.dirtyGeneration()); // built before prepare() returned
+        // Built before prepare() returned: the final, or the AX49 interim the builder then settles
+        // (phase-07c-1).
+        REQUIRE(p.lastSubmittedIrSet() != nullptr);
         Recorder rec{p};
         rec.run(2 * kP);
         REQUIRE(p.engine().convolver().currentIr() != nullptr); // installed at once
-        REQUIRE(p.engine().convolver().fadeCount() == 0);
+        REQUIRE(p.engine().convolver().fadeCount() <= 1);       // at most the one settling step
+        waitBuilt(p);
+        REQUIRE(p.handledGeneration() == p.dirtyGeneration());
     }
 }
 
@@ -288,6 +296,8 @@ TEST_CASE("Pipeline: the output trim follows a 20 ms linear ramp and snaps on re
     restoreScene(p, pipeline_test::loadScene("dead_booth.json"));
     ref.prepare(kRate, 256, false);
     p.prepare(kRate, 256, false);
+    waitBuilt(ref); // phase-07c-1: settled before the first block (the final replaces the interim at once)
+    waitBuilt(p);
     Recorder r0{ref}, r1{p};
     r0.run(8 * kP);
     r1.run(8 * kP);
@@ -323,14 +333,18 @@ TEST_CASE("Switch rule (D7), realtime: (a) restore of the current state, (b) Equ
     plugin::ScenePipeline p;
     restoreScene(p, booth);
     p.prepare(kRate, 256, false);
+    waitBuilt(p); // phase-07c-1 (AX49): the interim is settled before the first block
     Recorder rec{p};
     rec.run(4 * kP);
     std::vector<Segment> chain{{irOf(p.parameterValues(), p.baseScene()), -1, Law::EqualGain}};
     const auto& conv = p.engine().convolver();
 
     // (a) Restoring the current state starts no fade, leaves the output unchanged, clears the flag.
+    // Phase-07c-1 (AX48): with an IrSet current, a restore's decision is the builder's (the current IrSet
+    // plays meanwhile).
     const auto fades0 = conv.fadeCount();
     restoreScene(p, p.currentScene());
+    waitBuilt(p);
     REQUIRE_FALSE(p.restorePending());
     REQUIRE(p.handledGeneration() == p.dirtyGeneration());
     rec.run(kSettle);
@@ -357,6 +371,7 @@ TEST_CASE("Switch rule (D7), realtime: (a) restore of the current state, (b) Equ
     other.render.tailSeed += 1;
     other.room.surface(contract::SurfaceId::floor).bandsAbsorption.fill(0.3);
     restoreScene(p, other);
+    waitBuilt(p); // in the background (an IrSet is current): one EqualPower step, no interim
     REQUIRE_FALSE(p.restorePending());
     rec.run(kSettle);
     REQUIRE(conv.fadeCount() == fades0 + 2);
@@ -369,8 +384,9 @@ TEST_CASE("Switch rule (D7), realtime: (a) restore of the current state, (b) Equ
     REQUIRE(conv.fadeCount() == fades0 + 3);
     REQUIRE(residual(rec, chain) <= -100.0);
 
-    // (d) A change injected after the restore's scene snapshot is a later generation, built by the
-    // builder after the restore, with EqualGain.
+    // (d) A change injected after the restore's scene snapshot is a later generation. Phase-07c-1 condition
+    // 4: the restore's solved snapshot is not adopted (the parameters moved while it was solved); the builder
+    // adopts the later generation's, still as the restore's EqualPower step: one step.
     auto third = p.currentScene();
     third.render.tailSeed += 7;
     std::atomic<bool> injected{false};
@@ -380,32 +396,45 @@ TEST_CASE("Switch rule (D7), realtime: (a) restore of the current state, (b) Equ
     });
     p.beginRestore();
     p.restore(third, valuesOf(third));
+    waitBuilt(p);
     p.setAfterSnapshotHook({});
     REQUIRE(injected.load());
-    const auto restoredValues = valuesOf(third);
-    rec.run(kSettle); // the restore's EqualPower fade (taken before the builder's later request)
-    chain.push_back({irOf(restoredValues, third), conv.fadeStartSample(), Law::EqualPower});
-    waitBuilt(p);
+    REQUIRE(p.stats().discardedMidDrag >= 1);
     rec.run(kSettle);
-    chain.push_back({irOf(p.parameterValues(), p.baseScene()), conv.fadeStartSample(), Law::EqualGain});
-    REQUIRE(conv.fadeCount() == fades0 + 5);
+    chain.push_back({irOf(p.parameterValues(), p.baseScene()), conv.fadeStartSample(), Law::EqualPower});
+    REQUIRE(conv.fadeCount() == fades0 + 4);
     REQUIRE(residual(rec, chain) <= -100.0);
 
     // (f) setStateInformation -> prepareToPlay or reset -> a listener_y change crosses as EqualGain.
+    // Phase-07c-1 condition 10: a realtime reset keeps the current IrSet (never silent), so the restore's
+    // request, still in the mailbox when reset() arrives, crosses as an ordinary EqualPower fade from the
+    // previous IR instead of being installed at once (prepare() still drops and installs at once).
     for (const bool viaPrepare : {true, false})
     {
         CAPTURE(viaPrepare);
+        const auto before = irOf(p.parameterValues(), p.baseScene());
         auto fourth = p.currentScene();
         fourth.render.tailSeed += 3;
         restoreScene(p, fourth);
+        const auto fadesBefore = p.engine().convolver().fadeCount();
         if (viaPrepare)
             p.prepare(kRate, 256, false);
         else
             p.reset();
+        waitBuilt(p); // phase-07c-1: the background restore (reset) or the AX49 interim (prepare) settles
         REQUIRE_FALSE(p.restorePending());
         rec.clear();
         rec.run(4 * kP);
-        std::vector<Segment> c{{irOf(p.parameterValues(), p.baseScene()), -1, Law::EqualGain}};
+        std::vector<Segment> c;
+        if (viaPrepare)
+            c.push_back({irOf(p.parameterValues(), p.baseScene()), -1, Law::EqualGain});
+        else
+        {
+            REQUIRE(p.engine().convolver().fadeCount() == fadesBefore + 1); // kept IR, then one fade
+            c.push_back({before, -1, Law::EqualGain});
+            c.push_back({irOf(p.parameterValues(), p.baseScene()), p.engine().convolver().fadeStartSample(),
+                         Law::EqualPower});
+        }
         p.setParameter(module3d::kListenerY, viaPrepare ? 0.3f : 0.7f);
         waitBuilt(p);
         rec.run(kSettle);
@@ -487,8 +516,9 @@ TEST_CASE("Switch rule (D7), offline: (d) restore + change in one block = one Eq
 
     // Second bounce on A after a reset (state0 restored first).
     restoreScene(a, state0);
-    a.reset(); // (f): the reset's decision consumes the restore flag
-    REQUIRE_FALSE(a.restorePending());
+    a.reset(); // (f) condition 10: an offline reset only drops; the next process() makes the decision
+    REQUIRE(a.restorePending());
+    REQUIRE_FALSE(a.handledGeneration().has_value());
     Bounce b2{Recorder{a}, {}};
     runScript(a, b2, state1);
     REQUIRE(b2.rec.out[0] == b1.rec.out[0]);
@@ -510,7 +540,8 @@ TEST_CASE("Pipeline: leaving non-realtime mode restarts the builder", "[pipeline
     restoreScene(p, pipeline_test::loadScene("dead_booth.json"));
     p.prepare(kRate, 256, false);
     p.setNonRealtime(true);
-    REQUIRE(p.handledGeneration() == p.dirtyGeneration()); // entering ran the reset sequence
+    // Condition 10: entering cancels and drops (no wait, no build); the next process() builds.
+    REQUIRE_FALSE(p.handledGeneration().has_value());
     p.setParameter(module3d::kListenerY, 0.6f);
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     REQUIRE(p.handledGeneration() != p.dirtyGeneration()); // quiesced: nothing built without process()
@@ -526,6 +557,7 @@ TEST_CASE("Pipeline: no allocation or free on the audio thread while 50 changes 
     plugin::ScenePipeline p;
     restoreScene(p, pipeline_test::loadScene("dead_booth.json"));
     p.prepare(kRate, 256, false);
+    waitBuilt(p);
     std::atomic<bool> done{false};
     std::thread fire([&] {
         float y = 0.2f;
@@ -681,5 +713,427 @@ TEST_CASE("benchmark: Phase 07 full rebuild (default and maximum room) and memor
                         static_cast<double>(after - before) / (1024.0 * 1024.0));
         else
             std::printf("phase-07 memory per instance: RSS not measured on this OS\n");
+    }
+}
+
+// ---- Phase-07c-1 condition 10 (D-H3 (e): Seat 3's (e-k) + Seat 2's (e-e)) ----
+
+namespace {
+
+// Holds the builder inside a decision (after its scene snapshot) until released, and records whether any
+// decision ran on the host thread under test.
+struct BlockedBuilder
+{
+    std::mutex m;
+    std::condition_variable cv;
+    bool released = false;
+    std::atomic<int> builderDecisions{0};
+    std::atomic<int> hostDecisions{0};
+    std::thread::id host;
+
+    void install(plugin::ScenePipeline& p)
+    {
+        p.setAfterSnapshotHook([this] {
+            if (std::this_thread::get_id() == host)
+            {
+                ++hostDecisions; // a decision (a build or a skip) on the host thread: condition 10 forbids it
+                return;
+            }
+            ++builderDecisions;
+            std::unique_lock<std::mutex> lock(m);
+            cv.wait(lock, [this] { return released; });
+        });
+    }
+    void release()
+    {
+        {
+            std::lock_guard<std::mutex> lock(m);
+            released = true;
+        }
+        cv.notify_all();
+    }
+};
+
+enum class HostCall
+{
+    RealtimeReset,
+    EnterOffline,
+    ResetThenEnterOffline,
+    EnterOfflineThenReset
+};
+
+// Runs `call` on a host thread while the builder is blocked mid-decision. Returns the call's duration in
+// seconds, or a negative value if it had not returned 2 s after the builder was blocked (it waited on the
+// builder; the builder is released then, so the test fails instead of hanging).
+double timedHostCall(plugin::ScenePipeline& p, BlockedBuilder& bb, HostCall call)
+{
+    std::atomic<bool> done{false};
+    double seconds = -1.0;
+    std::thread host([&] {
+        const auto t0 = std::chrono::steady_clock::now();
+        switch (call)
+        {
+        case HostCall::RealtimeReset:
+            p.reset();
+            break;
+        case HostCall::EnterOffline:
+            p.setNonRealtime(true);
+            break;
+        case HostCall::ResetThenEnterOffline:
+            p.reset();
+            p.setNonRealtime(true);
+            break;
+        case HostCall::EnterOfflineThenReset:
+            p.setNonRealtime(true);
+            p.reset();
+            break;
+        }
+        seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        done.store(true);
+    });
+    bb.host = host.get_id(); // read by the hook only for decisions that start after this point
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!done.load() && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    const bool returned = done.load();
+    bb.release();
+    host.join();
+    return returned ? seconds : -1.0;
+}
+
+std::vector<float> offlineBounce(plugin::ScenePipeline& p, int blocks)
+{
+    Recorder rec{p};
+    rec.seed = 77;
+    rec.run(static_cast<std::size_t>(blocks) * 256, 256);
+    return rec.out[0];
+}
+
+} // namespace
+
+TEST_CASE("Condition 10: reset() and setNonRealtime(true) never wait on the builder and never build; the two "
+          "orders bounce bit-identically",
+          "[pipeline][offline][reset-nowait]")
+{
+    const auto booth = pipeline_test::loadScene("dead_booth.json");
+    // Reference: a fresh offline instance bounces the changed scene.
+    std::vector<float> reference;
+    {
+        plugin::ScenePipeline fresh;
+        restoreScene(fresh, booth);
+        fresh.setParameter(module3d::kListenerY, 0.6f);
+        fresh.prepare(kRate, 256, true);
+        reference = offlineBounce(fresh, 40);
+    }
+
+    for (const HostCall call : {HostCall::RealtimeReset, HostCall::EnterOffline,
+                                HostCall::ResetThenEnterOffline, HostCall::EnterOfflineThenReset})
+    {
+        CAPTURE(static_cast<int>(call));
+        plugin::ScenePipeline p;
+        restoreScene(p, booth);
+        p.prepare(kRate, 256, false);
+        {
+            Recorder warm{p};
+            warm.run(4 * kP);
+        }
+        BlockedBuilder bb;
+        bb.host = std::thread::id{}; // no host thread yet
+        bb.install(p);
+        p.setParameter(module3d::kListenerY, 0.6f); // the builder starts a decision and blocks in the hook
+        REQUIRE(pipeline_test::waitFor([&] { return bb.builderDecisions.load() >= 1; }));
+
+        const double seconds = timedHostCall(p, bb, call);
+        INFO("host call took " << seconds << " s while the builder was blocked mid-decision");
+        REQUIRE(seconds >= 0.0); // returned while the builder was still blocked: it never waited on it
+        REQUIRE(seconds < 0.5);  // and did no build of its own (a dead_booth build alone is longer on CI)
+        REQUIRE(bb.hostDecisions.load() == 0); // never decided (built or skipped) on the host thread
+        p.setAfterSnapshotHook({});
+
+        if (call == HostCall::RealtimeReset)
+        {
+            // The in-flight decision is of the current generation and is not cancelled: it lands as an
+            // ordinary AQ4 update.
+            waitBuilt(p);
+            continue;
+        }
+        // Offline: nothing was built; the next process() waits for the cancelled decision and builds.
+        REQUIRE_FALSE(p.handledGeneration().has_value());
+        const auto bounce = offlineBounce(p, 40);
+        REQUIRE(p.handledGeneration() == p.dirtyGeneration());
+        REQUIRE(bounce == reference); // both orders, bit-identical to a fresh offline bounce (AX5)
+    }
+}
+
+TEST_CASE("Condition 10: a realtime reset keeps the current IrSet; the output is never silent",
+          "[pipeline][reset-nowait]")
+{
+    plugin::ScenePipeline p;
+    restoreScene(p, pipeline_test::loadScene("dead_booth.json"));
+    p.prepare(kRate, 256, false);
+    waitBuilt(p);
+    Recorder rec{p};
+    rec.run(4 * kP + kSettle);
+    const auto& conv = p.engine().convolver();
+    const auto fades = conv.fadeCount();
+    const auto* before = conv.currentIr();
+    REQUIRE(before != nullptr);
+
+    p.reset();
+    REQUIRE(conv.currentIr() == before);        // kept, not dropped
+    REQUIRE(p.lastSubmittedIrSet() != nullptr); // the D7 record still describes what plays
+    rec.clear();
+    rec.run(4 * kP);
+    REQUIRE(conv.fadeCount() == fades); // nothing to switch: the same IR plays on
+    // Output after the reported latency is the convolution with the kept IR from sample 0 of the cleared
+    // history (the -100 dB null), so it is not silence.
+    const std::vector<Segment> chain{{irOf(p.parameterValues(), p.baseScene()), -1, Law::EqualGain}};
+    REQUIRE(residual(rec, chain) <= -100.0);
+    double energy = 0.0;
+    for (std::size_t i = static_cast<std::size_t>(p.latencySamples()); i < rec.out[0].size(); ++i)
+        energy += static_cast<double>(rec.out[0][i]) * rec.out[0][i];
+    REQUIRE(energy > 0.0);
+
+    // A fade running at the reset ends on its target, which keeps playing.
+    p.setParameter(module3d::kListenerY, 0.6f);
+    waitBuilt(p);
+    rec.run(kP + 64); // the request is taken at the next boundary: the fade starts
+    REQUIRE(conv.isFading());
+    p.reset();
+    REQUIRE_FALSE(conv.isFading());
+    REQUIRE(conv.currentIr() == p.lastSubmittedIrSet().get());
+}
+
+// ---- Phase-07c-1 condition 12 (D-G1): the AX38 gate around the diffuse solve only ----
+
+TEST_CASE("Condition 12 (a): the gate is held during the solve only, not during planning or the synthesis",
+          "[pipeline][gate-scope]")
+{
+    plugin::ScenePipeline p;
+    restoreScene(p, pipeline_test::loadScene("dead_booth.json"));
+    using Stage = plugin::ScenePipeline::BuildStage;
+    std::mutex m;
+    std::vector<std::pair<Stage, bool>> seen; // (stage, gate held at its start)
+    bool otherEnteredDuringAssembly = false;
+    p.setStageHook([&](Stage stage) {
+        const bool held = p.gate().held();
+        bool entered = false;
+        if (stage == Stage::Assemble)
+        {
+            // Another solve can take the gate while this build synthesises (it is not held here).
+            plugin::DiffuseSolveGate::Scope other(p.gate(), plugin::DiffuseSolveGate::Class::Synchronous);
+            entered = other.entered();
+        }
+        std::lock_guard<std::mutex> lock(m);
+        seen.emplace_back(stage, held);
+        if (stage == Stage::Assemble)
+            otherEnteredDuringAssembly = entered;
+    });
+    p.prepare(kRate, 256, false); // a synchronous build (Synchronous class)
+    p.setParameter(module3d::kListenerY, 0.6f);
+    waitBuilt(p); // a builder build (Builder class)
+    p.setStageHook({});
+    std::lock_guard<std::mutex> lock(m);
+    // Phase-07c-1: a build is Plan, then (Solve when it solves), then Assemble; the edit's ISM update
+    // assembles before its solve (condition 4: Plan, Assemble, Solve, Assemble), and a settling build after
+    // the AX49 interim has no solve (Plan, Assemble). Whatever the sequence, the gate is held at the start of
+    // Solve and of nothing else, and every build starts with Plan.
+    REQUIRE(seen.size() >= 6);
+    REQUIRE(seen.front().first == Stage::Plan);
+    int solves = 0;
+    for (std::size_t i = 0; i < seen.size(); ++i)
+    {
+        CAPTURE(i);
+        const auto [stage, held] = seen[i];
+        REQUIRE(held == (stage == Stage::Solve));
+        if (stage == Stage::Solve)
+        {
+            ++solves;
+            REQUIRE(i > 0);
+            REQUIRE(seen[i - 1].first != Stage::Solve);
+            REQUIRE(i + 1 < seen.size());
+            REQUIRE(seen[i + 1].first
+                    == Stage::Assemble); // the synthesis and assembly follow, outside the gate
+        }
+    }
+    REQUIRE(solves == 2); // prepare's synchronous stage-1 solve and the builder's solve of the edit
+    REQUIRE(otherEnteredDuringAssembly);
+    REQUIRE_FALSE(p.gate().held());
+}
+
+TEST_CASE(
+    "Condition 12: buildRoomIR is bit-identical to its stages, also with the stages on different threads",
+    "[pipeline][staged]")
+{
+    for (const char* file : {"dead_booth.json", "medium_room.json", "club.json"})
+    {
+        CAPTURE(file);
+        const auto scene = pipeline_test::loadScene(file);
+        sim::BuildOptions options;
+        options.sampleRate = kRate;
+        options.kind = sim::BuildOptions::Kind::Omni;
+        const sim::RoomIR whole = sim::buildRoomIR(scene, options);
+        auto build = sim::StagedBuild::plan(scene, options);
+        REQUIRE(build.needsSolve());
+        std::thread([&] { build.solve(); }).join(); // the solve on another thread, as the gate's holder
+        REQUIRE_FALSE(build.needsSolve());
+        sim::RoomIR staged;
+        std::thread([&] { staged = build.assemble(); }).join();
+        REQUIRE(pipeline_test::sameIr(staged, whole));
+    }
+    // Kinds without a solve: plan() builds the IR; solve() is a no-op.
+    const auto scene = pipeline_test::loadScene("medium_room.json");
+    sim::BuildOptions early;
+    early.sampleRate = kRate;
+    early.kind = sim::BuildOptions::Kind::OmniEarly;
+    auto build = sim::StagedBuild::plan(scene, early);
+    REQUIRE_FALSE(build.needsSolve());
+    build.solve();
+    REQUIRE(pipeline_test::sameIr(build.assemble(), sim::buildRoomIR(scene, early)));
+}
+
+TEST_CASE("Condition 12 (e): two pipelines plan and synthesise while a third solves (TSan)",
+          "[pipeline][gate-scope]")
+{
+    const auto club = pipeline_test::loadScene("club.json");
+    std::array<std::unique_ptr<plugin::ScenePipeline>, 3> pipes;
+    for (auto& p : pipes)
+    {
+        p = std::make_unique<plugin::ScenePipeline>();
+        restoreScene(*p, club);
+        p->prepare(kRate, 256, false);
+    }
+    std::atomic<int> concurrentBuilders{0}, maxConcurrent{0};
+    for (auto& p : pipes)
+        p->setStageHook([&](plugin::ScenePipeline::BuildStage stage) {
+            // Phase-07c-1: an edit's build assembles twice (its ISM update, then the final); the window
+            // counted is Plan to the first Assemble of each build, per builder thread.
+            thread_local bool inWindow = false;
+            if (stage == plugin::ScenePipeline::BuildStage::Plan && !inWindow)
+            {
+                inWindow = true;
+                const int now = ++concurrentBuilders;
+                int m = maxConcurrent.load();
+                while (now > m && !maxConcurrent.compare_exchange_weak(m, now))
+                {}
+                std::this_thread::sleep_for(std::chrono::milliseconds(20)); // widen the overlap
+            }
+            else if (stage == plugin::ScenePipeline::BuildStage::Assemble && inWindow)
+            {
+                inWindow = false;
+                --concurrentBuilders;
+            }
+        });
+    for (int round = 0; round < 3; ++round)
+    {
+        for (std::size_t i = 0; i < pipes.size(); ++i)
+            pipes[i]->setParameter(module3d::kListenerY,
+                                   0.3f + 0.1f * static_cast<float>(static_cast<std::size_t>(round) + i));
+        for (auto& p : pipes)
+            waitBuilt(*p);
+    }
+    for (auto& p : pipes)
+        p->setStageHook({});
+    // Builds overlapped outside the gate (with the gate around the whole build they never could).
+    REQUIRE(maxConcurrent.load() >= 2);
+    REQUIRE_FALSE(pipes[0]->gate().held());
+}
+
+// Phase-07c-1 review M3 (AX18, FM-1): the crossfade laws of the AX49 path. A project load over the IrSet that
+// plays crosses as the restore's EqualPower step to the interim; the same-scene settling step to the exact IR
+// is EqualGain. The builder's settling build is held at its Assemble stage until the interim's fade has been
+// recorded.
+TEST_CASE("AX18 / FM-1 on the AX49 path: a project load crosses EqualPower to the interim, the settling step "
+          "EqualGain",
+          "[pipeline][switch-rule][interim]")
+{
+    using Stage = plugin::ScenePipeline::BuildStage;
+    plugin::ScenePipeline p;
+    p.prepare(kRate, 256, false);
+    waitBuilt(p);
+    Recorder rec{p};
+    rec.run(4 * kP);
+    std::vector<Segment> chain{{*p.lastSubmittedIr(), -1, Law::EqualGain}};
+    const auto& conv = p.engine().convolver();
+    const auto testThread = std::this_thread::get_id();
+    std::atomic<bool> release{false}, held{false};
+    p.setStageHook([&](Stage stage) {
+        if (stage != Stage::Assemble || std::this_thread::get_id() == testThread)
+            return; // only the builder's settling build is held
+        held.store(true);
+        while (!release.load())
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    });
+    const auto s0 = p.stats();
+    restoreScene(p, pipeline_test::loadScene("club.json")); // the first restore: a project load (synchronous)
+    REQUIRE(p.stats().provisionalSubmits == s0.provisionalSubmits + 1);
+    const auto interim = p.lastSubmittedIr();
+    REQUIRE(pipeline_test::waitFor([&] { return held.load(); }));
+    const auto fades0 = conv.fadeCount();
+    rec.run(kSettle);
+    REQUIRE(conv.fadeCount() == fades0 + 1);
+    chain.push_back({*interim, conv.fadeStartSample(), Law::EqualPower});
+    release.store(true);
+    waitBuilt(p);
+    p.setStageHook({});
+    rec.run(kSettle);
+    REQUIRE(conv.fadeCount() == fades0 + 2);
+    chain.push_back({irOf(p.parameterValues(), p.baseScene()), conv.fadeStartSample(), Law::EqualGain});
+    REQUIRE(pipeline_test::sameIr(*p.lastSubmittedIr(), chain.back().ir)); // the final is the exact IR (AX5)
+    REQUIRE(residual(rec, chain) <= -100.0);
+    for (const std::size_t k : {std::size_t{1}, std::size_t{2}})
+    {
+        CAPTURE(k);
+        auto wrong = chain;
+        wrong[k].law = wrong[k].law == Law::EqualGain ? Law::EqualPower : Law::EqualGain;
+        REQUIRE(residual(rec, wrong) > -60.0); // the null tells the laws apart
+    }
+}
+
+// Phase-07c-1 condition 10 (steward round 6): the builder's commit compares IRs, measures the AX47 step and
+// releases old IRs outside stateMutex_, so setNonRealtime(true) and reset() never wait for that work. The
+// builder is parked in commit() after the comparison (BuildStage::Commit, outside the lock); both host calls
+// must return while it is parked.
+TEST_CASE("Condition 10: setNonRealtime(true) and reset() do not wait for a builder commit's comparison and "
+          "releases",
+          "[pipeline][reset-nowait]")
+{
+    using Stage = plugin::ScenePipeline::BuildStage;
+    for (const bool viaReset : {false, true})
+    {
+        CAPTURE(viaReset);
+        plugin::ScenePipeline p;
+        restoreScene(p, pipeline_test::loadScene("club.json"));
+        p.prepare(kRate, 256, viaReset); // reset() takes the offline drop path (stateMutex_) when offline
+        if (viaReset)
+            p.setNonRealtime(false); // realtime while the builder works; offline again below
+        waitBuilt(p);
+        std::atomic<bool> parked{false}, release{false};
+        const auto testThread = std::this_thread::get_id();
+        p.setStageHook([&](Stage stage) {
+            if (stage != Stage::Commit || std::this_thread::get_id() == testThread || parked.exchange(true))
+                return;
+            while (!release.load())
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        });
+        p.setParameter(module3d::kListenerY, p.parameter(module3d::kListenerY) + 0.5f);
+        REQUIRE(pipeline_test::waitFor([&] { return parked.load(); }));
+        std::atomic<bool> returned{false};
+        std::thread host([&] {
+            if (viaReset)
+            {
+                p.setNonRealtime(true); // enter offline (drop under stateMutex_) ...
+                p.reset();              // ... and an offline reset (the same drop)
+            }
+            else
+                p.setNonRealtime(true);
+            returned.store(true);
+        });
+        // The host calls return while the builder is still parked inside commit() (no wait on its work).
+        const bool ok = pipeline_test::waitFor([&] { return returned.load(); }, std::chrono::seconds(5));
+        release.store(true);
+        host.join();
+        p.setStageHook({});
+        REQUIRE(ok);
     }
 }
