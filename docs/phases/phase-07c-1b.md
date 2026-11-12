@@ -54,12 +54,27 @@ a range change, a formulation seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5
 4. **AX48 E_model fingerprint:** pin the per-platform hashes (Linux `22f009efe0004e82` from run 43242209571; macOS
    and Windows from CI) so the fingerprint test fails on any change.
 5. **FM-D1-S3:** apply Maisara's answer (Raise item 1) through `/fix-plan`.
+6. **Instance insertion (review M1).** A fresh instance's first prepare (no restore, no held or saved level) runs the
+   stage-1 diffuse solve synchronously, as before 07c-1; AQ10 and AX48 name "a load" and do not name instance
+   insertion. The board loop reads whether instance insertion is a load (the embedded default scene's first build)
+   under AX48 FM-3′, or the code changes; until then the pipeline counts these solves separately
+   (`Stats::insertSolves`, commit after f07958c) and record (h) prints them apart.
+7. **AX47 "Measurement" mid-fade check (review M2).** AX47 says "Wet pink-noise and speech renders check that no
+   mid-fade value exceeds the louder endpoint." 07c-1 records the realised settling step on the decays played (review
+   fix M2) and tests the crossfade laws (M3), but has no wet pink-noise / speech render check; this phase adds it.
 
 ## Out of scope
 
 - Everything phase-07c-1 delivered (conditions 2, 4–6, 9–12; D-C1–D-C3; AX47–AX49 as written).
 - The long-T60 corner's candidates: [phase-07d](phase-07d.md). Conditions 1, 3 and 8, the AX47 / L4 ABX runs and the
   class (c) and load-fallback decisions: [phase-07c-2](phase-07c-2.md).
+
+Follow-ups noted (review minors from 07c-1, not scope here):
+
+- `renderLog()` is not surfaced by the PluginProcessor (A5 holds at pipeline level).
+- `settling()` does not include a running crossfade (AX38 (iii) wording).
+- HostTrace: `transport()` is read outside `processBlock`, and the ring's push is a CAS retry loop (diagnostic build
+  only, `SPATIAL_HOST_TRACE`).
 
 ## Acceptance criteria — automated
 
@@ -76,6 +91,11 @@ a range change, a formulation seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5
       (negative check).
 - [ ] FM-D1-S3: Maisara's answer recorded in BUILD_PLAN §6; if she chooses (i), the corrected lines are in
       phase-07c-2, phase-08-3 and phase-09 through `/fix-plan`.
+- [ ] Instance insertion (scope 6): the reading of whether instance insertion is a load under AX48 FM-3′ recorded
+      (the AX48 text through `/fix-plan` if it changes), and a test asserting the decided behaviour. (review M1)
+- [ ] AX47 mid-fade check (scope 7): a test renders wet pink noise and speech through a project load and its settling
+      step (and an edit's interim and final) and asserts, per 10 ms window across each fade, that the output energy
+      does not exceed the louder endpoint's (the two IRs rendered alone), on three OSes. (AX47 "Measurement"; review M2)
 
 ## Listening / manual checklist
 
