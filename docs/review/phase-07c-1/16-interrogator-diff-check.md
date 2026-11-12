@@ -1,0 +1,61 @@
+# 16 — Interrogator, diff check of the plan edits (phase 07c-1)
+
+Saved verbatim by the orchestrator from the agent's report, 2026-11-12. Target: commit d23b59d (plan edits, files 12–15). All findings applied in the following commit.
+
+**Interrogator, document mode: diff check of the phase-07c-1 /fix-plan step 5 changes (2026-11-12)**
+
+Corpus revision: `c1b171fe649f07cbeb952ef1f75d89bfaa414d0d`. All 13 corpus files are present.
+
+**Method.** I have no shell, so I could not run `git diff`. I worked out the changed passages from the plan-editor's report (file 15: its Applied list and diff stat) and the ledger rows P07C1-PE-D1…D3. I then read each passage in place and checked it against file 12 §7–§9, file 9 §7 (the AX48 base), file 13 corrections 1–13, file 14 and the corpus.
+
+**Verdict.** Most of the diff is faithful and correct. I found one major issue and seven minor ones. Two of the minor ones are a correction that was dropped and an orchestrator edit that is only half carried through.
+
+## Per changed passage
+
+| passage | verdict |
+|---|---|
+| BUILD_PLAN §0, row 07d | faithful. Correction 13 is met: the row and `phase-07d.md` exist before the register cites them. |
+| AX18, FM-1 block | faithful and CORRECT. Correction 9 applied. 1 − e^(−13.82·0.312) = 1 − 0.01341 = 0.98659, so "≥ 0.986" holds. ρ = √f_w ≥ 0.9933. The mid-fade change is 10·log10(1.993) = +2.99 dB for equal-power and 10·log10(0.9967) = −0.01 dB for equal-gain (Vorländer §4.3, Eq. 4.15 cross term). The AMENDS line is present. |
+| AX38 (i), the class-(1) note | faithful. It is worded as a clarification, which matches file 13 row 81. |
+| AX38 4c: remedy text, FM-2′ note, macOS "closes at 07d", Windows remedy naming 07d | faithful. Corrections 4 and 5 are applied: "isolated restore", "among the rated options only (D4 … unrated)", "registered defect, not a pass". The arithmetic checks: at the gated cube L_f = 1.118 + 0.312·50.5 = 16.87 s, which is more than L = 12 s, so the interim there is the full tail. |
+| AQ10, the 2026-11-12 amendment | faithful. Both exceptions, the gate content and both AMENDS lines are there. |
+| AX47 | faithful. Corrections 1, 6, 7 and 8 are applied. There is one minor imprecision, in row DC-03. The orchestrator's edit to the reversal is checked in row DC-06. |
+| AX48 | faithful to the file 9 base plus file 12 changes 1–5: five-part key with Π, the keyed-load clause, gate priority, the build-id question, the Π-mismatch test. "Governed by AX47 and 07c-2's loop" is file 12 §4's own wording. |
+| AX49 | faithful. Corrections 2, 3, 4 and 12 are applied. Correction 11 is missing (row DC-05). The orchestrator's edits (g) and reversal 1 are checked in rows DC-01 and DC-07. |
+| §6, the six rows | faithful. |
+| phase-07c-1: read-first list, conditions 7 and 9, record (h), A1, A2, A4, A7, A8, L4, F3/F5 | faithful. There is one wording slip in the L56 lead sentence (row DC-08). |
+| phase-07c-2, scope 9 and its acceptance line | faithful. Correction 7 is applied: admission waits for the ABX. The AX47 criterion deferral is not carried here (row DC-06). |
+| `phase-07d.md` (new) | faithful in scope, candidates, inputs, P1 and register. It has two minor glosses (rows DC-09 and DC-10). |
+| phase-08-3 and phase-09 | faithful to file 12 §8. |
+| phase-10-2, phase-12-2, phase-13-1, phase-13-5 | faithful. The 2.25 GB figure is file 8 (f), as file 13 row 69 says. |
+| ledger, phase-07c-1 section | mostly faithful. Rows DC-05, DC-11 and DC-12 need changes. |
+
+## Ledger
+
+| id | kind | item | verdict | evidence | severity | question | status |
+|---|---|---|---|---|---|---|---|
+| P07C1-DC-01 | FACT (plan consistency) | AX49 (orchestrator edit D2): "record (g) prints the ISM latency on T60 edits (Seat 3's bridge condition, file 14)" | **INCONSISTENT / UNFAITHFUL in effect** | phase-07c-1 condition 12 (L152–153) defines record (g) and says "records (b) and (g) are taken between the two", that is after condition 12 and before condition 9's synthesis move. At that point the AX49 D5 bridge does not exist yet, so (g) would time the pre-bridge path. Condition 12 (g) does not mention the print at all. File 14 makes the print part of the condition for Seat 3's 1/1 (items 1–4). **Fix:** in phase-07c-1, have record (g) re-taken after condition 9 lands, printing the ISM latency on T60-changing edits under the D5 bridge, or put that print in record (h). Name the same record in AX49. | major (it carries the S3 1/1 cell of the chosen D3*‴) | Which record, taken after condition 9, prints the bridged ISM latency? | open |
+| P07C1-DC-02 | NUMBER | AX47 (b) "≤ +0.06 dB (δ ≥ −1)"; "1 − f_b ≤ 0.0136"; truncation loss ≤ 0.06 dB; decay ≥ 18.72 dB | CORRECT | Vorländer §6.4.1 Eq. 6.4. 1 − f_b = (e^(−a) − e^(−b))/(1 − e^(−b)) ≤ e^(−a) ≤ e^(−13.82·0.312) = 0.0134 ≤ 0.0136. −10·log10(1 − 0.0136) = +0.0595 dB. 10·log10(0.9866) = −0.059 dB. 60 × 0.312 = 18.72 dB. | none | — | — |
+| P07C1-DC-03 | NUMBER | AX47 (b) "≥ −0.5 dB unless δ ≥ 9; ≥ −1 dB unless δ ≥ 19" | IMPRECISE (−0.5 dB threshold rounded up) | The −0.5 dB point is δ = (10^0.05 − 1)/0.0136 = 0.1220/0.0136 = **8.97**, so for 8.97 ≤ δ < 9 the stated bound is false by < 0.003 dB. The −1 dB point is δ = 0.2589/0.0136 = 19.04, so "19" is on the safe side. File 13 correction 1 carries the same rounding, so this is my own slip. **Fix:** "unless δ ≥ 8.9" (or "≈ 9"). Nothing in A4 asserts the δ threshold itself. | minor | — | open |
+| P07C1-DC-04 | NUMBER | AX49 rationale: "L_p ≈ 3.7 s ≤ 3.82 s at T60 8 s / 100 m at the gated geometry (t_dir 0.118 s)"; "≤ 334 ms per emitter at 96 kHz" | CORRECT (code fact K20 plus measurement K15′; the corpus does not cover t_mix) | t_mix = 0.118 + √(10⁶) ms = 1.118 s, L_f = 1.118 + 2.496 = 3.614 s, L_p = 3.714 s. The 334 ms per emitter is file 8 L18. The K20 formula is a code fact from `MixingTime.h` and is NOT CHECKABLE against the corpus: no corpus file gives a mixing-time formula. | none | — | — |
+| P07C1-DC-05 | NUMBER (debt) | Correction 11: the S5/S7 D3* cells hold "at T60_max ≲ 8.3 s" | **UNFAITHFUL (correction dropped)** | File 15 held it for the PR and the ledger. The plan-editor's draft row had "[S5/S7 cells hold at T60_max ≲ 8.3 s]", but the ledger D-C9 row only says "rows 62…". AX49's reversal 3 says "at the rated corner" and never defines it. Working: (3.82 − 1.218)/0.312 = 8.34 s; L is reached at (12 − 1.218)/0.312 = 34.6 s. **Fix:** add the label to the ledger D-C9 row, and define "the rated corner" in AX49 (96 kHz, T60_max ≲ 8.3 s at the gated geometry; file 13 row 62). | minor | — | open |
+| P07C1-DC-06 | DECISION (orchestrator edit D1) | AX47 reversal: "its detection criterion and step sizes are set in phase 07c-2's loop before the run, L4's ≥ 12/16 being the recorded precedent" | faithful; CONSEQUENCE | File 12 §7 set no criterion, so this deferral changes no decided text. For reference, P(X ≥ 12 \| n = 16, p = 0.5) = 2517/65536 = 0.038, one-sided. The deferral is written only in AX47. phase-07c-2 scope 9 and its acceptance line do not say that the loop sets the criterion and step sizes before the run. **Fix:** add that clause to phase-07c-2 scope 9. CONSEQUENCE: with several step sizes tested, a per-size 12/16 rule raises the family-wise false-detection rate, which is why the loop has to fix the rule in advance. | minor | — | open |
+| P07C1-DC-07 | FACT (orchestrator edit D3) | AX49 reversal 1: "the restore gate prints each gated scene's L_p, so this trigger can be read" | CORRECT as stated; carried only in AX49 | Printing L_p does make the trigger readable. It does not show that the trigger can fire: at the low-α cube L_p = 16.97 s ≥ L, and whether the flutter scene has a tail is still unknown (file 13 row 71). The phase that builds the gate (phase-07c-1 condition 9 / A2) does not list the print. **Fix:** add "prints each gated scene's L_p" to condition 9 or A2. | minor | Does the flutter scene carry a tail (Q2 of file 13, still open)? | open |
+| P07C1-DC-08 | FACT | phase-07c-1 L56: "The diffuse solve moves off …, except the stage-1 solve … and the AX49 interim tail" | IMPRECISE (wrong subject) | The interim tail is an exception to condition 9's move of the unit-decay synthesis, not to the diffuse solve. AQ10's amendment states it correctly: "the unit-decay synthesis leaves them except the AX49 interim tail". **Fix:** "…except the stage-1 solve at keyless loads (AX48, FM-3′); the unit-decay synthesis (condition 9) likewise, except the AX49 interim tail where no valid IrSet is current (FM-2′)." | minor | — | open |
+| P07C1-DC-09 | FACT | phase-07d scope 2: the K23 gloss "the output equals the exact render for lags up to L_f" | IMPRECISE | File 12 K23 consequence reads "equals the exact render (within K18′)" and is marked [Inf]. The gloss drops the normalisation step and the [Inf] mark. **Fix:** "…for lags up to L_f, within the normalisation step (K18′) [Inf]". | minor | — | open |
+| P07C1-DC-10 | FACT (seat record) | phase-07d scope 2: "D4 in unit-decay form (Seat 4 rating; Seat 5's cell at ≈ 147 MB is unrated…)" | INCONSISTENT (with file 13 row 63) | Row 63: Seat 4 already rated D4 "as A3" (1); the unrated cell is Seat 5's. "Seat 4 rating" is file 12 §8 wording that correction 12 superseded. **Fix:** "(Seat 4 rated it as A3, 1; Seat 5's cell at ≈ 147 MB is unrated, row 63)". | minor | — | open |
+| P07C1-DC-11 | process (ledger) | Ledger D-C9 "convening: all nine" | IMPRECISE | Seat 2 answered NOT MY MATTER on D-C9 at 0/0 (file 12 §6 map; plan-editor draft). The D-C1 row states its NOT MY MATTER seats; this row does not. **Fix:** "all nine (2 NOT MY MATTER)". | minor | — | open |
+| P07C1-DC-12 | process (ledger) | Ledger P07C1-PE-D1…D3 status "applied by the orchestrator; checked in file 16" | IMPRECISE (it states this check's outcome before the check) | This report finds DC-01 (major), DC-06 and DC-07 against those three edits. **Fix:** set the status to "file 16: D1 and D3 SURVIVE WITH CORRECTIONS (DC-06, DC-07); D2 INCONSISTENT (DC-01)" once they are fixed, or to "pending" until then. | minor | — | open |
+| P07C1-DC-13 | FACT | AX49 "≥ 18.7 dB of decay after its onset in every band"; normalisation f_b; acceptance list; L4; D1 "matched tail energy is zero" | CORRECT / faithful | T60_b ≤ T60_max and t_mix,e ≤ t_mix,e,max give a decay of at least 60·0.312·T60_max/T60_b ≥ 18.72 dB (Vorländer §6.4.1 Eq. 6.4). Correction 2 applied. | none | — | — |
+| P07C1-DC-14 | FACT | AX47 "G and C80 then move by ≤ 1 dB" | CORRECT | Vorländer §6.4.2 Eq. 6.5 and §6.4.3 Eq. 6.7: scaling the tail energy by a factor in [1, 10^(x/10)] moves the G integral, and each C80 integral, by at most x dB. The jnd is 1 dB (Table 6.1, 500–1000 Hz). | none | — | — |
+
+**SOFTWARE items, not rated:** state v2, hex IEEE-754 storage, the Π compile-time tag, `decide()` under `stateMutex_`, the TSan and pluginval gates, the §0 row bookkeeping, `07d-b` naming.
+
+## Questions (most severe first)
+
+1. **DC-01.** Which record, taken after condition 9 lands, prints the ISM latency on T60-changing edits under the D5 bridge? Condition 12's record (g) is taken before condition 9 lands.
+2. **DC-05.** Is AX49's "rated corner" 96 kHz with T60_max ≲ 8.3 s at the gated geometry? If so, state it in AX49 and in the ledger D-C9 row.
+3. **DC-07.** Does the flutter gated scene carry a tail with L_p ≤ 3.82 s? If not, reversal 1 has no scene it can fire on.
+4. **DC-03.** Should the −0.5 dB threshold read δ ≥ 8.97 rather than 9?
+
+Files read: `/home/user/makroof/docs/BUILD_PLAN.md` (L36, L116, L139, L159, L168–170, L510–515), `/home/user/makroof/docs/phases/phase-07c-1.md`, `/home/user/makroof/docs/phases/phase-07c-2.md`, `/home/user/makroof/docs/phases/phase-07d.md`, `/home/user/makroof/docs/phases/phase-08-3.md`, `/home/user/makroof/docs/phases/phase-09.md`, `/home/user/makroof/docs/phases/phase-10-2.md`, `/home/user/makroof/docs/phases/phase-13-1.md`, `/home/user/makroof/docs/phases/phase-13-5.md`, `/home/user/makroof/docs/review/ledger.md` (L2329–2356), `/home/user/makroof/docs/review/phase-07c-1/{9,12,13,14,15}-*.md`, `/home/user/makroof/docs/corpus/vorlaender-auralization.md` (§4.3 Eq. 4.15, §6.4 notation, Table 6.1).

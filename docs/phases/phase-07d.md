@@ -37,9 +37,9 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
    - the constructor-spectra cache (bit-identical);
    - parallel band-pair synthesis (bit-identical);
    - a capped interim length on the K23 shared-history fact (both crossfade states read one input history, so
-     the output equals the exact render for lags up to L_f); convene Seats 1, 3, 5, 6, 7 and 9; Seat 9's
+     the output equals the exact render for lags up to L_f, within the normalisation step (K18′) [Inf]); convene Seats 1, 3, 5, 6, 7 and 9; Seat 9's
      L_p ≥ 0.31·T60 condition and Seat 1's depth ruling are re-rated;
-   - D4 in unit-decay form (Seat 4 rating; Seat 5's cell at ≈ 147 MB is unrated, interrogator file 13 row
+   - D4 in unit-decay form (Seat 4 rated it as A3, 1; Seat 5's cell at ≈ 147 MB is unrated, interrogator file 13 row
      P07C1-63);
    - the cheaper generator (output-changing; a golden round; AQ10's "not optimised before Phase 13" read by the
      board).

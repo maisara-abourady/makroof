@@ -55,7 +55,9 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
    `docs/review/phase-07c-1/12-decider-decision-r3.md` §8, interrogator file 13 correction 7):
    - **The ABX runs first:** the AX47 self-ABX (16 trials, capped layout-4 scene, noise and speech) and the
      AX49 listening item L4 (blind held-chord ABX, provisional against exact tail, T60 8 s, fully wet,
-     16 trials, ≥ 12/16 = detected) are run in this phase. AX47's reversal (bound 0.5 dB) and AX49's reversal
+     16 trials, ≥ 12/16 = detected) are run in this phase. This phase's loop sets the AX47 ABX's detection
+     criterion and step sizes before the run (AX47 reversal; a per-size 12/16 rule over several sizes raises
+     the family-wise false-detection rate, interrogator file 16 row P07C1-DC-06). AX47's reversal (bound 0.5 dB) and AX49's reversal
      (L4 detects the cut) follow from their results.
    - **Class (c) decision, bound by AX47:** whether a statistical source (a stage-1 estimate that is not the
      final) is admitted, decided by this phase's loop under AX47 ("From 07c-2"; Seat 1's p95 reading is the

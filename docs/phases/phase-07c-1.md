@@ -54,7 +54,8 @@ ordering, not the decider's) (phase-07c §4 note):
 ### Conditions (conditions 2, 4–7: decider file 47 §4 (iii); condition 9: D-H1 (v) / H1-F2, decider file 19; conditions 10 and 11: D-H3 (e) / H3-F5, decider files 20, 25, 27; condition 12: D-G1, phase 05i, decider file 13)
 
 The diffuse solve moves off the synchronous restore, prepare and `reset()`, except the stage-1 solve at keyless
-loads (AX48, FM-3′) and the AX49 interim tail where no valid IrSet is current (FM-2′). (phase-07c §5 lead sentence,
+loads (AX48, FM-3′); the unit-decay synthesis (condition 9) likewise, except the AX49 interim tail where no valid
+IrSet is current (FM-2′). (phase-07c §5 lead sentence,
 umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-07c-1/12-decider-decision-r3.md` §8)
 
 2. **Seam:** phase 05h already invokes the solve through one function from restore, prepare and `reset()`
@@ -115,8 +116,10 @@ umbrella; exceptions: phase-07c-1 decision loop, 2026-11-12, `docs/review/phase-
    **Record (h)** (AX49; phase-07c-1 decision loop, 2026-11-12; the letter continues condition 12's records):
    restores in sequence on one thread, keyed and keyless, at 1, 4 and 8 instances; 100 m; 48 and 96 kHz; three
    OSes; a T60_max sweep of 2, 8, 12, 20, 35 and 50 s. Printed: per-instance time until audible, and the time
-   from provisional to exact. Any 8-instance run over 5 s is flagged in print, not asserted. Its T60 sweep is
-   an input to [phase-07d](phase-07d.md).
+   from provisional to exact; the ISM latency on T60-changing edits under the AX49 D5 bridge (Seat 3's bridge
+   condition, review file 14; taken after condition 9 lands, unlike condition 12's record (g)). Any 8-instance
+   run over 5 s is flagged in print, not asserted. Its T60 sweep is an input to [phase-07d](phase-07d.md). The
+   restore gate also prints each gated scene's L_p (AX49 reversal 1; interrogator file 16 row P07C1-DC-07).
 10. **The `reset()` half** (D-H3 (e) / H3-F5; decider files 20 and 25 "DECISION D-H3 (e)", file 27;
     interrogator files 22, 26, 28; AX38 (i)'s register entry and remedy): **the first step of this phase,
     with its own TSan `[pipeline]` round.** Design = Seat 3's (e-k) + Seat 2's (e-e): `reset()` and
