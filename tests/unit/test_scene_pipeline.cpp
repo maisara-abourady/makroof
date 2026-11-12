@@ -1038,3 +1038,54 @@ TEST_CASE("Condition 12 (e): two pipelines plan and synthesise while a third sol
     REQUIRE(maxConcurrent.load() >= 2);
     REQUIRE_FALSE(pipes[0]->gate().held());
 }
+
+// Phase-07c-1 review M3 (AX18, FM-1): the crossfade laws of the AX49 path. A project load over the IrSet that
+// plays crosses as the restore's EqualPower step to the interim; the same-scene settling step to the exact IR
+// is EqualGain. The builder's settling build is held at its Assemble stage until the interim's fade has been
+// recorded.
+TEST_CASE("AX18 / FM-1 on the AX49 path: a project load crosses EqualPower to the interim, the settling step "
+          "EqualGain",
+          "[pipeline][switch-rule][interim]")
+{
+    using Stage = plugin::ScenePipeline::BuildStage;
+    plugin::ScenePipeline p;
+    p.prepare(kRate, 256, false);
+    waitBuilt(p);
+    Recorder rec{p};
+    rec.run(4 * kP);
+    std::vector<Segment> chain{{*p.lastSubmittedIr(), -1, Law::EqualGain}};
+    const auto& conv = p.engine().convolver();
+    const auto testThread = std::this_thread::get_id();
+    std::atomic<bool> release{false}, held{false};
+    p.setStageHook([&](Stage stage) {
+        if (stage != Stage::Assemble || std::this_thread::get_id() == testThread)
+            return; // only the builder's settling build is held
+        held.store(true);
+        while (!release.load())
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    });
+    const auto s0 = p.stats();
+    restoreScene(p, pipeline_test::loadScene("club.json")); // the first restore: a project load (synchronous)
+    REQUIRE(p.stats().provisionalSubmits == s0.provisionalSubmits + 1);
+    const auto interim = p.lastSubmittedIr();
+    REQUIRE(pipeline_test::waitFor([&] { return held.load(); }));
+    const auto fades0 = conv.fadeCount();
+    rec.run(kSettle);
+    REQUIRE(conv.fadeCount() == fades0 + 1);
+    chain.push_back({*interim, conv.fadeStartSample(), Law::EqualPower});
+    release.store(true);
+    waitBuilt(p);
+    p.setStageHook({});
+    rec.run(kSettle);
+    REQUIRE(conv.fadeCount() == fades0 + 2);
+    chain.push_back({irOf(p.parameterValues(), p.baseScene()), conv.fadeStartSample(), Law::EqualGain});
+    REQUIRE(pipeline_test::sameIr(*p.lastSubmittedIr(), chain.back().ir)); // the final is the exact IR (AX5)
+    REQUIRE(residual(rec, chain) <= -100.0);
+    for (const std::size_t k : {std::size_t{1}, std::size_t{2}})
+    {
+        CAPTURE(k);
+        auto wrong = chain;
+        wrong[k].law = wrong[k].law == Law::EqualGain ? Law::EqualPower : Law::EqualGain;
+        REQUIRE(residual(rec, wrong) > -60.0); // the null tells the laws apart
+    }
+}

@@ -175,6 +175,48 @@ double stepDb(const sim::HybridDiagnostics& from, const sim::HybridDiagnostics& 
     return worst;
 }
 
+// AX47 measurement (review M2): the realised tail energy per present emitter and band over emission times
+// [t_mix,e, endS), A_b^2 sum w_tail^2 u_b^2 on the unit decays actually played (the construction's band
+// split).
+std::vector<contract::BandArray> realisedTailEnergy(const std::vector<sim::tail::UnitDecay>& units,
+                                                    const sim::HybridDiagnostics& d, double endS)
+{
+    std::vector<contract::BandArray> out(d.emitters.size());
+    const double fs = d.sampleRate;
+    const auto offset = static_cast<std::size_t>(std::max(0.0, std::round(d.alignmentShiftS * fs)));
+    for (std::size_t e = 0; e < d.emitters.size() && e < units.size(); ++e)
+    {
+        const auto& u = units[e];
+        const double mix = d.emitters[e].match.mixing.mixS;
+        const auto from = static_cast<std::size_t>(std::max(0.0, std::ceil(mix * fs)));
+        const auto to = std::min(u.length(), static_cast<std::size_t>(std::max(0.0, endS * fs)));
+        for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+        {
+            const double a = d.emitters[e].match.bandsAmplitude[b];
+            double sum = 0.0;
+            for (std::size_t j = std::max(from, offset); j < to; ++j)
+            {
+                const double w =
+                    sim::tail::crossfade(static_cast<double>(j - offset) / fs + d.alignmentShiftS, mix).tail;
+                sum += w * w * u.bands[b][j] * u.bands[b][j];
+            }
+            out[e][b] = a * a * sum;
+        }
+    }
+    return out;
+}
+
+double realisedStepDb(const std::vector<contract::BandArray>& from,
+                      const std::vector<contract::BandArray>& to) noexcept
+{
+    double worst = 0.0;
+    for (std::size_t e = 0; e < std::min(from.size(), to.size()); ++e)
+        for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+            if (from[e][b] > 0.0 && to[e][b] > 0.0)
+                worst = std::max(worst, std::abs(10.0 * std::log10(to[e][b] / from[e][b])));
+    return worst;
+}
+
 } // namespace
 
 DiffuseKey ScenePipeline::engineKey() noexcept
@@ -402,7 +444,10 @@ bool ScenePipeline::decide(Source source, bool load)
                 {
                     level = solveStage(build, source, stageHook, p, s);
                     std::lock_guard<std::mutex> lock(stateMutex_);
-                    ++stats_.keylessLoads;
+                    if (load)
+                        ++stats_.keylessLoads;
+                    else
+                        ++stats_.insertSolves; // a fresh instance's first prepare (review M1; phase-07c-1b)
                 }
             }
             if (units)
@@ -418,6 +463,11 @@ bool ScenePipeline::decide(Source source, bool load)
                 const bool provisional = build.provisionalTiming().provisional;
                 b.ir = std::make_shared<const sim::RoomIR>(build.assembleProvisional(&b.diag));
                 b.provisional = provisional;
+                if (provisional && build.unitDecays())
+                {
+                    b.windowEndS = build.provisionalTiming().fadeStartS;
+                    b.realised = realisedTailEnergy(*build.unitDecays(), b.diag, b.windowEndS);
+                }
                 b.level = *level;
                 // Where L_p >= L the exact tail was built in its place (no handover, AX49).
                 b.final = level->solved && !provisional;
@@ -460,6 +510,12 @@ bool ScenePipeline::decide(Source source, bool load)
                     interim.provisional = build.provisionalTiming().provisional;
                     interim.ir = std::make_shared<const sim::RoomIR>(
                         build.assembleProvisional(&interim.diag));
+                    if (interim.provisional && build.unitDecays())
+                    {
+                        interim.windowEndS = build.provisionalTiming().fadeStartS;
+                        interim.realised = realisedTailEnergy(*build.unitDecays(), interim.diag,
+                                                              interim.windowEndS);
+                    }
                 }
                 interim.final = false;
                 interim.heldLevel = true;
@@ -564,7 +620,12 @@ bool ScenePipeline::commit(Source source, std::uint64_t gen, const contract::Sce
     {
         // AX47: the step from the interim to this final, measured on the deciding thread, never in the
         // callback.
-        const double step = stepDb(pending_->diag, b.diag);
+        // A provisional interim: the realised step over [t_mix,e, L_f) on the decays played (review M2);
+        // otherwise (held level, bridge) the amplitude step on the same decays.
+        const double step = !pending_->realised.empty() && b.units
+                                ? realisedStepDb(pending_->realised,
+                                                 realisedTailEnergy(*b.units, b.diag, pending_->windowEndS))
+                                : stepDb(pending_->diag, b.diag);
         ++stats_.steps;
         stats_.lastStepDb = step;
         stats_.maxStepDb = std::max(stats_.maxStepDb, step);
@@ -582,7 +643,7 @@ bool ScenePipeline::commit(Source source, std::uint64_t gen, const contract::Sce
         ++stats_.interimSubmits;
         if (b.provisional)
             ++stats_.provisionalSubmits;
-        pending_ = Pending{scene, b.level, b.diag, b.heldLevel};
+        pending_ = Pending{scene, b.level, b.diag, b.heldLevel, b.realised, b.windowEndS};
         interimPlaying_.store(true, std::memory_order_release);
     }
     finishRecord();

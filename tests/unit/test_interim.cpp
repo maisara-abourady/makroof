@@ -118,7 +118,8 @@ std::vector<A4Scene> a4Set()
         auto parsed = contract::fromJson(
             contract_fixtures::read(contract_fixtures::scenesDir() / "validation" / "bras_cr3_ls1_mp2.json"));
         REQUIRE(parsed.ok());
-        set.push_back({"bras_cr3_ls1_mp2", *parsed.scene, false});
+        set.push_back(
+            {"bras_cr3_ls1_mp2", *parsed.scene, true}); // AX16 row: −1.18 dB at 2 kHz (review minor 4)
     }
     return set;
 }
@@ -505,7 +506,13 @@ TEST_CASE("Condition 9 / AX49: a project load plays a tail at once and settles t
     REQUIRE(done.steps == before.steps + 1);               // one step
     REQUIRE(done.finalSubmits == before.finalSubmits + 1); // to the final
     REQUIRE(done.solves == after.solves);                  // the stage-1 solve was the final (07c-1)
-    REQUIRE(done.lastStepDb == 0.0);                       // same level: the provisional is normalised (AX49)
+    // AX47 (a): the level is the stage-1 solve's (the final in 07c-1); AX47 (b): the realised provisional ->
+    // exact step over [t_mix,e, L_f) on the decays played (review M2) stays within 1 dB (expected <= ~0.06
+    // dB).
+    REQUIRE(done.lastStepDb > 0.0);
+    REQUIRE(done.lastStepDb <= 1.0);
+    std::printf("07c1-records cond9 club load: realised provisional -> exact step %.4f dB\n",
+                done.lastStepDb);
     REQUIRE(bitIdentical(*p.lastSubmittedIr(), plugin::ScenePipeline::buildIr(p.currentScene(), kRate)));
 }
 
@@ -577,7 +584,9 @@ TEST_CASE("AX48: a keyed load plays the saved E_b; the confirming solve is bit-i
     const auto s1 = b.stats();
     REQUIRE(s1.solves == s0.solves + 1); // the background solve always runs
     REQUIRE(s1.steps == s0.steps + 1);
-    REQUIRE(s1.lastStepDb == 0.0); // AX47 (a): step 0 within AX5's scope
+    // AX47 (a): the keyed level is the final's bit for bit (the IR and E_b checks below); the realised step
+    // is the AX49 provisional's against its exact tail, AX47 (b) (review M2).
+    REQUIRE(s1.lastStepDb <= 1.0);
     REQUIRE(bitIdentical(*b.lastSubmittedIr(), *a.lastSubmittedIr()));
     REQUIRE(b.savedDiffuse()->bands == saved->bands);
 }
@@ -757,7 +766,8 @@ TEST_CASE(
         REQUIRE(tailEnergy(*interim, build.provisionalTiming().mixMaxS) > 0.0); // never silence
         waitSettled(p);
         REQUIRE(p.stats().steps == s0.steps + 1);
-        REQUIRE(p.stats().lastStepDb == 0.0); // AX47 (a): the stage-1 solve is the final in 07c-1
+        REQUIRE(p.stats().lastStepDb
+                <= 1.0); // AX47 (a) level = final; (b) the realised provisional step (M2)
         // Never the AX16 level: the level played is the diffuse solve's, and where AX16 is known to be > 1 dB
         // off it differs from AX16's by more than 1 dB in some band.
         sim::HybridDiagnostics dSolve, dAx16;
@@ -778,7 +788,7 @@ TEST_CASE(
             }
         }
         std::printf(
-            "07c1-records cond5 %-22s interim = stage-1 solve (step 0); AX16 level would be off by up to "
+            "07c1-records cond5 %-22s interim level = the stage-1 solve; AX16 level would be off by up to "
             "%.2f dB\n",
             a4.name, worst);
         if (a4.ax16KnownOff)

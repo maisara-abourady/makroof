@@ -159,6 +159,8 @@ public:
         std::uint64_t syncSolves = 0;         // of those, synchronous stage-1 solves (keyless loads, FM-3')
         std::uint64_t keyedLoads = 0;         // synchronous loads at a saved level whose key matched
         std::uint64_t keylessLoads = 0;       // synchronous loads that solved (no or mismatching saved level)
+        std::uint64_t insertSolves = 0; // synchronous solves at a fresh instance's first prepare (no restore,
+                                        // no held level: the pre-07c-1 behaviour; reading in phase-07c-1b)
         std::uint64_t discardedMidDrag =
             0;                       // solves not adopted because the parameters moved (never mid-drag)
         std::uint64_t steps = 0;     // interim -> final adoptions (one per solve)
@@ -248,6 +250,11 @@ private:
         Level level;
         sim::HybridDiagnostics diag;
         std::shared_ptr<const std::vector<sim::tail::UnitDecay>> units; // exact unit decays to cache
+        // AX47 measurement (review M2): the realised tail energy per emitter and band over [t_mix,e,
+        // windowEndS) of a provisional interim (windowEndS = L_f), so the settling step is measured on the
+        // decays played.
+        std::vector<contract::BandArray> realised;
+        double windowEndS = 0.0;
     };
     sim::StagedBuild planStage(const contract::SceneDescription& scene, Source source,
                                const std::function<void(BuildStage)>& hook);
@@ -307,6 +314,8 @@ private:
         Level level;
         sim::HybridDiagnostics diag;
         bool held = false; // B1' hold or D5 bridge (AX47 scope: recorded, not bounded)
+        std::vector<contract::BandArray> realised; // see Built::realised
+        double windowEndS = 0.0;
     };
     std::optional<Pending> pending_; // an interim of this scene plays; the builder settles it
     bool lastFinal_ = false;         // the last submit was a final
