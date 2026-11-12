@@ -106,6 +106,7 @@ TEST_CASE("Host trace: several producer threads and the drain thread (TSan); eve
             ++lines;
     }
     REQUIRE(sawDroppedLine);
+    in.close(); // Windows refuses to remove a file that is still open
     REQUIRE(lines + dropped == static_cast<std::uint64_t>(kThreads * kPerThread));
     std::filesystem::remove(path);
 }
