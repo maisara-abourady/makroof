@@ -67,3 +67,27 @@ python tools/ci/repin_gate.py \
   constexpr double kMacGrowthTriggerMs = 1703.0;
   constexpr int kMacGrowthTriggerS2Runs = 3;
 ```
+
+## Addendum (2026-11-13): re-run after the G9 flag (`solveExitMet`, commit 5753896)
+
+Same command and the same nine logs (run 43389296112 logs re-downloaded through the job-logs URL: build (linux) 131765177649,
+build (macos) 131765177268, build (windows) 131765177289). Exit code 0. The six printed initializers equal the six `S2Pin{…}` in
+`tests/unit/test_diffuse_records.cpp` character for character (sorted `diff`: identical); trigger unchanged.
+
+```
+## macOS trigger: kMacGrowthTriggerMs = floor(1.15 x mean of 3 macOS low-alpha medians) = 1703 ms
+  no S2 run exceeds the computed trigger
+  runs above the trigger in force (2172 ms): none
+
+## Constants for tests/unit/test_diffuse_records.cpp (the S2Pin of each kGateRegister entry)
+  // {ratioRef, ratioMaxOverMin, flutterRefMs, baselineMedianMs, solveRefMs, solveK, runs, solveExitMet}
+  // solveExitMet: the OS's G9 exit (true: solve basis S2-PINNED; false: S2-PROVISIONAL)
+  cube100_flutter_fallback   Linux    {0.0000, 0.0000, 552.3, 552.3, 130.8, 1.2225, 3, true}
+  cube100_lowalpha0.05_s0.3  Linux    {2.3963, 1.3681, 552.3, 1282.7, 80.7, 1.2225, 3, true}
+  cube100_flutter_fallback   macOS    {0.0000, 0.0000, 475.3, 475.3, 110.6, 1.1127, 3, false}
+  cube100_lowalpha0.05_s0.3  macOS    {3.1203, 1.1618, 475.3, 1481.0, 78.1, 1.1127, 3, false}
+  cube100_flutter_fallback   Windows  {0.0000, 0.0000, 496.3, 496.3, 106.0, 1.0846, 3, true}
+  cube100_lowalpha0.05_s0.3  Windows  {2.5297, 1.0530, 496.3, 1258.3, 66.2, 1.0846, 3, true}
+  constexpr double kMacGrowthTriggerMs = 1703.0;
+  constexpr int kMacGrowthTriggerS2Runs = 3;
+```
