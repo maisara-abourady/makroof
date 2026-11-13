@@ -179,8 +179,8 @@ review takes it up, else the first code commit of 07c-2 or 07d, whichever starts
 
 ### T7 (now)
 Two insertions with the same body:
-- (a) `docs/phases/phase-07c-2.md`: a new last bullet of `## Scope`, after "   - **Seat 2's prefix check:** verify Seat 2's prefix claim (`pathCount`, `pilotStops`)." and before `## Out of scope`, starting "- ". The bracket reads "phase-07d scope 9".
-- (b) `docs/phases/phase-07d.md`: scope item "9. " after item 8 and before `## Out of scope`. The bracket reads "phase-07c-2's Scope".
+- (a) `docs/phases/phase-07c-2.md`: a new scope item "10. " after "   - **Seat 2's prefix check:** verify Seat 2's prefix claim (`pathCount`, `pilotStops`)." and before `## Out of scope`. The bracket reads "phase-07d scope 9".
+- (b) `docs/phases/phase-07d.md`: scope item "9. " after item 8 and before `## Out of scope`. The bracket reads "phase-07c-2 scope 10".
 
 Body:
 
@@ -194,7 +194,7 @@ records it as done with the commit."
 ### T8 (carrier)
 Append a §6 row:
 
-"| 2026-11-13 | **Phase 07c-1b: AX38 4c:** macOS low-α entry re-listed under (a) after closure (run 43427854710, hosted macOS runner,
+"| <carrier commit date> (decided 2026-11-13) | **Phase 07c-1b: AX38 4c:** macOS low-α entry re-listed under (a) after closure (run 43427854710, hosted macOS runner,
 100 m / 96 kHz, L = 12 s, 2 emitters: 14 × worst 30.50 s; recorded value 33.40 s); `listed` true, print only | /fix-plan (plan-editor),
 decider files 28/28b/32, interrogator files 29/31/33 |"
 
@@ -234,15 +234,16 @@ decider files 28/28b/32, interrogator files 29/31/33 |"
 
 ## Decided for Maisara
 "P07C1B-R1 — the macOS 100 m low-absorption restore check went back on the defect list after one CI run's restore check read 30.50 s (14
-× its slowest restore, 2.18 s; the limit is 30 s) — on a shared hosted Mac CI runner, 100 m room at 96 kHz, not the load time of one
+× its slowest restore, 2.18 s; the limit is 30 s) — on a shared hosted Mac CI runner (run 43427854710), 100 m room at 96 kHz, 12 s exact tail, 2 emitters, not the load time of one
 plugin. Nothing that is tested changes; the fix stays in phase 07d. The one slow macOS reading counts as evidence for the existing macOS
 defect, not a new one. Rests on NFR-4 (macOS is a target platform) and the NFR preamble ("Accuracy is the top priority; CPU load and
 latency may be high, but the plugin must stay usable in a DAW session."); NFR-6 not engaged. Options: keep it closed (the macOS record
 misstated); flag only at the review push (fails if none comes); text now, flag later (text and code disagree); chosen: text and flag
 together. Seat 5 gives most (a lag until the review push, or the first code commit of 07c-2 or 07d, whichever comes first) and gets back
 an honest register and 07d's re-test. `AMENDS her decision of 2026-11-10: "I accept the board's answer by definition."` (the AX38 4c
-register state under (a)'s own provision; no rule changes). Does not amend her decision of 2026-11-12 ("do that": the 05i flag's own
-follow-up PR #31); if she wants that vehicle here, a dedicated follow-up PR replaces the next-phase commit."
+register state under (a)'s own provision; no rule changes). Does not amend her decisions of 2026-11-12 (her request for a session for the 05i flag, "do we have a session for this small follow
+up…", which became follow-up PR #31; and "do that", which put the BUILD_PLAN wording fix in #31 and left the PASSES30S readings to the
+next phase, 07c-1); if she wants a dedicated vehicle here, a follow-up PR as #31 replaces the next-phase commit."
 
 ## Summary
 
@@ -250,3 +251,6 @@ follow-up PR #31); if she wants that vehicle here, a dedicated follow-up PR repl
 |---|---|---|---|---|---|---|---|
 | P07C1B-R1 (1) | macOS low-α re-listed under (a), this entry only, recorded 33.40 s, run 43427854710; text + flag in one carrier commit (review push if taken up, else the first code commit of 07c-2 or 07d) | revised | S5 0/1 | 1 | medium | NFR-4, preamble, NFR-6 (role stated) | 07d runs re-close it under (c) |
 | P07C1B-R1 (2) | one MACTRIGGER is a print; a pair joins X-d− under stage, budget and code-identity conditions | stands | 0/1 | 4 | medium | NFR-4, preamble | a pair attributed to another stage |
+
+
+**Orchestrator's application (2026-11-13, no new decision; interrogator file 33):** K1 (Decided line: run id, 12 s tail, 2 emitters; her 2026-11-12 words quoted as recorded, brief L10–12), K2 (T8 dated by the carrier commit), K3 (T7(a) as scope item 10) applied above.
