@@ -45,7 +45,7 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
    load mark, and Table 15.1's 700 ms / 3 s rows (Seats 1 (i), 3 (5), 5). It is not kept at (A). It stays a
    pinned work count, the same on every platform (AX41), re-derived from the C++ cost, never a time cap;
    AX41 and the AQ10 amendment are updated through `/fix-plan`. The W_max raise changes the work: the solve
-   bound's baselines (`solveRefMs`) are re-pinned with the new work and k (`kSolveWarn`) re-derived (D-Q5).
+   bound's baselines (`solveRefMs`) are re-pinned with the new work and k (G7) re-derived (D-Q5).
    Whether the per-evaluation solve time (`nsPerEval` on the GATE line) stays invariant across 07c's moves is
    checked here; if it moves, Seats 2 and 3 are convened (the re-pin above is unconditional) (D-Q5
    future-debt register, decider file `docs/review/phase-05i/9-decider-r2.md`). (phase-07c condition 3)

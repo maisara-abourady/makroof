@@ -101,7 +101,8 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
 - [ ] The macOS (d) defect (runs 42, 44) closed on scope 7's closure evidence through `/fix-plan`, or left open with
       its evidence stated; no closure by recalibration. (AX38 4c X-d−)
 - [ ] The growth re-pin (scope 8): reference and baselines from ≥ 6 green runs with a CHANGELOG reason and a §6 row;
-      the in-window absolute leg asserted on Linux and Windows, or not added (max(r/r̄) ≥ 1.07) with the GROWTH print
+      the in-window absolute leg asserted on Linux and Windows (an OS whose ratios over the current pin's runs have
+      max/min > 1.10 is print-only), or not added (max(r/r̄) ≥ 1.07) with the GROWTH print
       kept; in-window runs per OS counted and dormancy stated. (AX38 4c, FM-GROWTH)
 
 ## Listening / manual checklist
