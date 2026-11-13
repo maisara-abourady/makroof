@@ -68,61 +68,85 @@ constexpr const char* kOsName = "macOS";
 #else
 constexpr const char* kOsName = "Linux";
 #endif
+// Phase-07c-1b FM-GROWTH (AX38 4c G1-G14; docs/review/phase-07c-1b/11 plan item 9 as corrected by 12 rows
+// 09-15): the S2 pin of one register entry on one OS. Every value comes from tools/ci/repin_gate.py run on the
+// GATE and stage-split lines of >= 3 green S2 CI runs (never a red run; out-of-window runs count, G12), pasted
+// as constants with a CHANGELOG reason (tests/golden/CHANGELOG.md, not a golden). All zero with runs = 0 until
+// then: the ratio check prints PROVISIONAL (S2 pin pending) and asserts nothing, and the prints fall back to the
+// RG-1 references below. "S2" names the current pin (S2 at 07c-1b; re-pinned at 07c-2 and 07d, G13).
+struct S2Pin
+{
+    double ratioRef;         // r-bar: mean low-alpha / flutter median-of-10 ratio (low-alpha entry; 0 on flutter)
+    double ratioMaxOverMin;  // max / min of the S2 ratios on this OS; > kRatioBound: the OS is print-only (G5)
+    double flutterRefMs;     // F-bar: mean flutter restore median, the runner-speed reference (G5, G12)
+    double baselineMedianMs; // mean restore median of this scene (G10-G12; GROWTH WARNING on low-alpha)
+    double solveRefMs;       // mean solve median of this scene (G7)
+    double solveK;           // k of this OS: the largest max / mean of its S2 solve medians (G7, PROVISIONAL)
+    int runs;                // n: green S2 runs behind the pin; below kPinRuns nothing is asserted
+};
 struct GateEntry
 {
     const char* scene;
     const char* os;
     double recorded14xS; // 14 x (worst restore + worst solve), s: the register's recorded value (printed)
-    // DECISION RG-1 (docs/review/phase-05h/64, 66; interrogator 65, 67): on GitHub-hosted runners the gate
-    // asserts what is runner-independent and prints what is not. baselineMedianMs = the mean of the
-    // in-window runs on file (Linux 2043/2092, Windows 2000/2056; macOS 1849/1887/1715, print only);
+    // DECISION RG-1 (docs/review/phase-05h/64, 66; interrogator 65, 67), kept as the print fallback until the
+    // S2 pin (G4a-c: "at RG-1 the in-window mean ...; from 07c-1b the S2 mean"): baselineMedianMs = the mean of
+    // the in-window runs on file (Linux 2043/2092, Windows 2000/2056; macOS 1849/1887/1715, print only);
     // baselineRatio = the mean low-alpha / flutter restore-median ratio of the measured runs on file;
-    // flutterRefMs = the mean flutter restore median of those runs (the runner-speed reference);
-    // absoluteAsserted = the in-window growth bound is a REQUIRE (x64), else a print (macOS until Phase 13).
+    // flutterRefMs = the mean flutter restore median of those runs (the runner-speed reference).
     // Runs: 42909003931, 42924781618, 42935789745, 42949252041 (Windows also 42942694523; macOS the last
-    // three). Re-pinned only when the restore path changes: one run PROVISIONAL, >= 3 runs with a CHANGELOG
-    // reason (tests/golden/CHANGELOG.md, not a golden).
+    // three).
     double baselineMedianMs;
     double baselineRatio;
     double flutterRefMs;
-    bool absoluteAsserted;
+    // FM-GROWTH G1/G5: true on Linux and Windows (the same-run ratio may be asserted once pinned), false on
+    // macOS (print-only until Phase 13). The RG-1 in-window absolute REQUIRE is gone (G5: it returns only at
+    // the 07d re-pin).
+    bool ratioAssertable;
     bool listed;       // in the AX38 4c defect register (plan text); false once closed under (c): print only
     bool strict30s;    // the strict 14 x worst <= 30 s REQUIRE: the flutter scene only (interrogator file 69
                        // item 2: an entry leaving the register under section 5 (c) never re-arms it on the
                        // low-alpha scene)
     double solveRefMs; // phase-05i Q5 (docs/review/phase-05i/9, Seat 5 file 8): the scene's solve-median
                        // baseline, the mean of the in-window runs only (phase-05i 3.3 (v)): Linux and macOS
-                       // run 43007183782; Windows runs 42964823518 and 43007183782
-    int solveRefRuns;  // runs behind solveRefMs; below 3 the bound prints PROVISIONAL
+                       // run 43007183782; Windows runs 42964823518 and 43007183782 (fallback until S2)
+    int solveRefRuns;  // runs behind solveRefMs (RG-1 fallback)
+    S2Pin s2;          // FM-GROWTH: the S2 pin (repin_gate.py); runs = 0 until >= 3 green S2 runs
 };
-// RG-1 constants (provenance: docs/review/phase-05h/56 table, 64, 66).
-constexpr double kGrowth = 1.10;    // median-of-10 restore <= kGrowth x baselineMedianMs, in-window, x64
-constexpr double kGuardPct = 5.0;   // the run's flutter median within +-5 % of flutterRefMs (Seat 7 r2)
-constexpr double kRatioWarn = 1.20; // low-alpha / flutter ratio above kRatioWarn x baselineRatio: WARNING
-// phase-05i Q5: a scene's solve median above kSolveWarn x solveRefMs prints SOLVE in that scene's warnings=;
-// one-sided (the work pins are asserted), never asserted on hosted runners, never a (d) trigger; kept apart
-// from kRatioWarn so the 07c re-pin re-derives each from >= 3 in-window runs.
+// FM-GROWTH constants (AX38 4c G5-G10).
+constexpr int kPinRuns = 3;          // an S2 pin needs >= 3 green runs (G5, G12)
+constexpr double kRatioBound = 1.10; // r <= kRatioBound x r-bar every run on Linux / Windows once pinned (G5)
+constexpr double kGrowth = 1.10;     // GROWTH WARNING: absolute low-alpha median > kGrowth x baseline (G10)
+// In-window print (G5 (e)): the run's flutter median within +-kGuardPct of F-bar. Printed only; the window w
+// of the absolute leg is derived at the 07d re-pin ((1 + w) max(r / r-bar) <= 1.083 over >= 6 runs).
+constexpr double kGuardPct = 5.0;
+// SOLVE print fallback while the S2 pin is pending (phase-05i Q5): solve median above kSolveWarn x the RG-1
+// solveRefMs. Once pinned, k x the S2 solveRefMs (G7). Print-only either way, never a (d) trigger.
 constexpr double kSolveWarn = 1.20;
-// macOS trigger (RG-1 round 4, Seat 5 file 57 r3): two consecutive macOS runs with the low-alpha median above
-// 1.15 x the mean of the four measured macOS medians (2106 / 1849 / 1887 / 1715 -> 1889; 0 of 4 rows over)
-// are a (d) defect through /fix-plan; read by the orchestrator from the GATE lines, no state in the test.
-// Re-derived at the 07c re-pin.
+// macOS trigger (4c (c), M-a / FM-TRIG): two consecutive macOS runs with the low-alpha median above
+// kMacGrowthTriggerMs are a (d) defect through /fix-plan; read by the orchestrator from the GATE lines, no
+// state in the test. In force now: RG-1 round 4 (Seat 5 file 57 r3), 1.15 x the mean of the four measured
+// macOS medians (2106 / 1849 / 1887 / 1715 -> 1889). At the 07c re-pin: floor(1.15 x the mean of the green
+// macOS low-alpha medians of the S2 runs), computed by tools/ci/repin_gate.py, never by hand.
 constexpr double kMacGrowthTriggerMs = 2172.0;
+constexpr int kMacGrowthTriggerS2Runs = 0; // 0: the RG-1 value above; else the S2 runs it was computed from
 constexpr std::size_t kFftSizeLowAlpha96k =
     2097152; // [probe-restore-split], 2026-11-11: 1152000 + 2 x 15697 -> 2^21
 constexpr std::size_t kFftSizeFlutter96k = 524288; // 377517 + 2 x 15697 -> 2^19
+constexpr S2Pin kS2Pending{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
 constexpr GateEntry kGateRegister[] = {
     // The flutter scene: strict 14 x worst <= 30 s on every OS (headroom >= 2.3x, Seat 5); no growth bound.
-    {"cube100_flutter_fallback", "Linux", 10.59, 0.0, 0.0, 0.0, false, false, true, 131.2, 1},
-    {"cube100_flutter_fallback", "macOS", 7.59, 0.0, 0.0, 0.0, false, false, true, 102.7, 1},
-    {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true, 144.4, 2},
+    {"cube100_flutter_fallback", "Linux", 10.59, 0.0, 0.0, 0.0, false, false, true, 131.2, 1, kS2Pending},
+    {"cube100_flutter_fallback", "macOS", 7.59, 0.0, 0.0, 0.0, false, false, true, 102.7, 1, kS2Pending},
+    {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true, 144.4, 2, kS2Pending},
     // The gated low-alpha cube. macOS and Windows are listed (remedy phase-07c conditions 9-10): macOS
     // recorded 33.40 s (local / file 1); Windows recorded 36.73 s on CI run 42942694523's slow runner
     // (phase-05h file 53) and printed OVER30S on 05i's run of record 43031773338. Linux (30.27 s local /
     // file 1) closed under AX38 4c (c) on phase 05i's runs (docs/review/phase-05i/9, 19): print only.
-    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1},
-    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false, 83.7, 1},
-    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, true, false, 90.4, 2},
+    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1, kS2Pending},
+    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false, 83.7, 1, kS2Pending},
+    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, true, false, 90.4, 2,
+     kS2Pending},
 };
 const GateEntry* gateRegisterEntry(const std::string& scene)
 {
