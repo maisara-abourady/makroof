@@ -8,6 +8,8 @@ as corrected by 12-interrogator-on-file11.md rows 09-15) pins, per OS and scene,
   is print-only, as macOS always is) (G5);
 * F-bar, the mean flutter restore median, and the baseline median of each scene (G10-G12);
 * solveRefMs, the mean solve median per scene, and k per OS, the largest max / mean of those medians (G7);
+* solveExitMet per OS, the G9 exit (the same-run ns-per-eval ratio within 1.05 of its mean on >= 3 runs): the
+  solve basis prints S2-PINNED where met, S2-PROVISIONAL where not (docs/review/phase-07c-1b/25 Q3);
 * kMacGrowthTriggerMs = floor(1.15 x the mean of the green macOS low-alpha medians) (4c (c), M-a);
 
 and reads, for the PR: the uniform-slowdown factor f = [1.10(1 - s_F) - (1 - s_L)] / (s_L - 1.10 s_F) from the
@@ -258,7 +260,7 @@ def _s2_init(os_d: dict, scene: str) -> str:
     return (
         f"{{{os_d['ratioRef'] if low else 0.0:.4f}, {os_d['ratioMaxOverMin'] if low else 0.0:.4f}, "
         f"{os_d['flutterRefMs']:.1f}, {sc['baselineMedianMs']:.1f}, {sc['solveRefMs']:.1f}, "
-        f"{os_d['solveK']:.4f}, {os_d['runs']}}}"
+        f"{os_d['solveK']:.4f}, {os_d['runs']}, {'true' if os_d['g9ExitMet'] else 'false'}}}"
     )
 
 
@@ -336,7 +338,10 @@ def report(p: dict, refused: list[str]) -> str:
         lines.append(f"  runs above the trigger in force ({TRIGGER_IN_FORCE_MS:.0f} ms): {above}")
         lines.append("")
     lines.append("## Constants for tests/unit/test_diffuse_records.cpp (the S2Pin of each kGateRegister entry)")
-    lines.append("  // {ratioRef, ratioMaxOverMin, flutterRefMs, baselineMedianMs, solveRefMs, solveK, runs}")
+    lines.append(
+        "  // {ratioRef, ratioMaxOverMin, flutterRefMs, baselineMedianMs, solveRefMs, solveK, runs, solveExitMet}"
+    )
+    lines.append("  // solveExitMet: the OS's G9 exit (true: solve basis S2-PINNED; false: S2-PROVISIONAL)")
     for os_name, d in p["os"].items():
         for scene in SCENES:
             lines.append(f"  {scene:<26} {os_name:<8} {_s2_init(d, scene)}")

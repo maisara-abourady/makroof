@@ -125,6 +125,9 @@ def test_report_and_main(logs: list[str], tmp_path: Path, capsys: pytest.Capture
     assert "constexpr int kMacGrowthTriggerS2Runs = 3;" in text
     # One S2Pin initializer per OS and scene; the flutter entry carries no ratio reference.
     assert "cube100_flutter_fallback   Linux    {0.0000, 0.0000, 700.0, 700.0, 101.0," in text
+    # The last field is solveExitMet, the OS's G9 exit (met on every OS of this fixture); k = 82 / 81.
+    assert "cube100_flutter_fallback   Linux    {0.0000, 0.0000, 700.0, 700.0, 101.0, 1.0123, 3, true}" in text
+    assert "solveExitMet" in text
     data = json.loads(out_json.read_text())
     assert set(data["os"]) == {"Linux", "macOS", "Windows"} and data["refused"]
 
@@ -162,6 +165,23 @@ def test_not_pinnable_below_three_runs(tmp_path: Path) -> None:
     assert not p["os"]["Linux"]["pinnable"]
     assert "NOT PINNABLE (n < 3)" in rg.report(p, [])
     assert not p["os"]["Linux"]["g9ExitMet"]
+    assert rg._s2_init(p["os"]["Linux"], rg.FLUTTER).endswith(", 1, false}")
+
+
+def test_solve_exit_flag_follows_g9(tmp_path: Path) -> None:
+    # 07c-1b/25 Q3: the paste-ready S2Pin carries solveExitMet from the OS's G9 result. Linux: ns-per-eval ratios
+    # 1.20 / 1.21 / 1.22 (within 1.05 of the mean) -> true; macOS: 0.50 / 0.72 / 0.79 (as on the S2 runs) -> false.
+    specs = []
+    for os_name, la_ns in (("Linux", (1.20, 1.21, 1.22)), ("macOS", (0.50, 0.72, 0.79))):
+        for i, ns in enumerate(la_ns):
+            specs.append("green=" + _write(tmp_path, f"{os_name}-{i}.log", _gate_lines(os_name, 700.0, 2000.0, la_ns=ns)))
+    p = rg.propose(rg.load_runs(specs)[0])
+    assert p["os"]["Linux"]["g9ExitMet"] and not p["os"]["macOS"]["g9ExitMet"]
+    text = rg.report(p, [])
+    for scene in rg.SCENES:
+        assert rg._s2_init(p["os"]["Linux"], scene).endswith(", 3, true}")
+        assert rg._s2_init(p["os"]["macOS"], scene).endswith(", 3, false}")
+        assert f"{scene:<26} macOS    {rg._s2_init(p['os']['macOS'], scene)}" in text
 
 
 def test_one_log_with_several_os_jobs(tmp_path: Path) -> None:

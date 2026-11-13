@@ -84,6 +84,11 @@ struct S2Pin
     double solveRefMs;       // mean solve median of this scene (G7)
     double solveK;           // k of this OS: the largest max / mean of its S2 solve medians (G7, PROVISIONAL)
     int runs;                // n: green S2 runs behind the pin; below kPinRuns nothing is asserted
+    // G9 exit (docs/review/phase-07c-1b/25 Q3): the OS's same-run ns-per-eval ratio within 1.05 of its mean
+    // on
+    // >= 3 green S2 runs (repin_gate.py). true: the solve basis prints S2-PINNED; false: S2-PROVISIONAL. The
+    // SOLVE warning stays print-only either way, never a (d) trigger.
+    bool solveExitMet;
 };
 struct GateEntry
 {
@@ -138,15 +143,16 @@ constexpr std::size_t kFftSizeFlutter96k = 524288; // 377517 + 2 x 15697 -> 2^19
 // S2 pin (phase-07c-1b condition 7, FM-GROWTH): tools/ci/repin_gate.py on the build-job logs of the green S2
 // CI runs 43389296112, 43402114873 and 43412038058 (code 9717a58), pasted as printed
 // (docs/review/phase-07c-1b/22-repin-gate-output.md; tests/golden/CHANGELOG.md 2026-11-13).
-// {ratioRef, ratioMaxOverMin, flutterRefMs, baselineMedianMs, solveRefMs, solveK, runs}
+// {ratioRef, ratioMaxOverMin, flutterRefMs, baselineMedianMs, solveRefMs, solveK, runs, solveExitMet}
+// solveExitMet: G9 met on Linux and Windows, not on macOS (docs/review/phase-07c-1b/22, 25 Q3).
 constexpr GateEntry kGateRegister[] = {
     // The flutter scene: strict 14 x worst <= 30 s on every OS (headroom >= 2.3x, Seat 5); no growth bound.
     {"cube100_flutter_fallback", "Linux", 10.59, 0.0, 0.0, 0.0, false, false, true, 131.2, 1,
-     S2Pin{0.0000, 0.0000, 552.3, 552.3, 130.8, 1.2225, 3}},
+     S2Pin{0.0000, 0.0000, 552.3, 552.3, 130.8, 1.2225, 3, true}},
     {"cube100_flutter_fallback", "macOS", 7.59, 0.0, 0.0, 0.0, false, false, true, 102.7, 1,
-     S2Pin{0.0000, 0.0000, 475.3, 475.3, 110.6, 1.1127, 3}},
+     S2Pin{0.0000, 0.0000, 475.3, 475.3, 110.6, 1.1127, 3, false}},
     {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true, 144.4, 2,
-     S2Pin{0.0000, 0.0000, 496.3, 496.3, 106.0, 1.0846, 3}},
+     S2Pin{0.0000, 0.0000, 496.3, 496.3, 106.0, 1.0846, 3, true}},
     // The gated low-alpha cube. macOS and Windows are listed (remedy phase-07c conditions 9-10): macOS
     // recorded 33.40 s (local / file 1); Windows recorded 36.73 s on CI run 42942694523's slow runner
     // (phase-05h file 53) and printed OVER30S on 05i's run of record 43031773338. Linux (30.27 s local /
@@ -156,11 +162,11 @@ constexpr GateEntry kGateRegister[] = {
     // (43389296112, 43402114873, 43412038058: macOS 23.46 / 22.44 / 24.08 s, Windows 20.24 / 15.96 / 19.59 s;
     // docs/review/phase-07c-1b/22): print only.
     {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1,
-     S2Pin{2.3963, 1.3681, 552.3, 1282.7, 80.7, 1.2225, 3}},
+     S2Pin{2.3963, 1.3681, 552.3, 1282.7, 80.7, 1.2225, 3, true}},
     {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, false, false, 83.7, 1,
-     S2Pin{3.1203, 1.1618, 475.3, 1481.0, 78.1, 1.1127, 3}},
+     S2Pin{3.1203, 1.1618, 475.3, 1481.0, 78.1, 1.1127, 3, false}},
     {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, false, false, 90.4, 2,
-     S2Pin{2.5297, 1.0530, 496.3, 1258.3, 66.2, 1.0846, 3}},
+     S2Pin{2.5297, 1.0530, 496.3, 1258.3, 66.2, 1.0846, 3, true}},
 };
 const GateEntry* gateRegisterEntry(const std::string& scene)
 {
@@ -749,7 +755,8 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
         const double growthBound = kGrowth * baseline;
         const double growthPct = 100.0 * (la.restore.median / baseline - 1.0);
         const double fourteen = 14.0 * la.restore.max / 1000.0;
-        // SOLVE (G7, PROVISIONAL print-only): k x the S2 solveRefMs once pinned, else kSolveWarn x RG-1's.
+        // SOLVE (G7, print-only, never a (d) trigger): k x the S2 solveRefMs once pinned, else kSolveWarn x
+        // RG-1's. Basis S2-PINNED where the OS met the G9 exit, else S2-PROVISIONAL.
         const auto solveWarnAt = [](const GateEntry& e) {
             return e.s2.runs >= kPinRuns ? e.s2.solveK * e.s2.solveRefMs : kSolveWarn * e.solveRefMs;
         };
@@ -760,7 +767,9 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
             return e.s2.runs >= kPinRuns ? e.s2.runs : e.solveRefRuns;
         };
         const auto solveBasis = [](const GateEntry& e) {
-            return e.s2.runs >= kPinRuns ? "S2-PROVISIONAL" : "PROVISIONAL";
+            if (e.s2.runs < kPinRuns)
+                return "PROVISIONAL";
+            return e.s2.solveExitMet ? "S2-PINNED" : "S2-PROVISIONAL"; // G9 exit per OS (07c-1b/25 Q3)
         };
         const double flSolveWarnAt = solveWarnAt(*flEntry);
         const double laSolveWarnAt = solveWarnAt(*entry);

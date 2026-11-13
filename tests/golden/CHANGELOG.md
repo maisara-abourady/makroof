@@ -192,3 +192,4 @@ Reason: phase-07c-1b condition 7 / D-B5 / FM-GROWTH (decider files 4, 8, 11; int
 
 - `(records-test constants)`: S2 pin of the six restore-gate register entries and the macOS growth trigger (no golden file changed)
 - `(records-test constants)`: the macOS and Windows low-alpha entries closed under AX38 4c (c) (E1, D-B5 (v)): 14 x worst <= 30 s on every S2 run (macOS 23.46 / 22.44 / 24.08 s, Windows 20.24 / 15.96 / 19.59 s), `listed` false, print only (no golden file changed)
+- `(records-test constants)`: 07c-1b S2 re-pin: G9 exit met on Linux and Windows (≥ 3 green runs, ns-per-eval ratio within 1.05 of its mean); k and solveRefMs pinned from runs 43389296112, 43402114873, 43412038058; macOS not met, PROVISIONAL until 07d. `S2Pin::solveExitMet` true on the Linux and Windows entries, false on macOS (solve basis S2-PINNED / S2-PROVISIONAL; SOLVE print-only, never a (d) trigger; `docs/review/phase-07c-1b/25` Q3) (no golden file changed)
