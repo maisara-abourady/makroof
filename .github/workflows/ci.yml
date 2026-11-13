@@ -431,7 +431,7 @@ jobs:
               grep -E "^(05h|05i|07c1|07c1b)-records|^agree-full (gated|summary)|^agree-full pooled bias band [0-9] \[(CHECK, additive|record, per reference room)" build/benchmark.log || echo "(no record lines)"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
-            gate_warn=$(grep -E "^05h-records GATE .*warnings=(.* )?(MACTRIGGER|OVER30S|GROWTH|RATIO|SOLVE)( |$)" build/benchmark.log | tr -d '\r' || true)
+            gate_warn=$(grep -E "^05h-records GATE .*warnings=(.* )?(MACTRIGGER|OVER30S|GROWTH|RATIO|RATIO-LOW|SOLVE)( |$)" build/benchmark.log | tr -d '\r' || true)
             {
               echo "### GATE warnings, ${{ matrix.name }} (AX38 4c (f): MACTRIGGER, OVER30S, GROWTH, RATIO, SOLVE)"
               echo '```'
@@ -440,7 +440,7 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             if [[ -n "$gate_warn" ]]; then
               while IFS= read -r line; do
-                fired=$(sed -E 's/.*warnings=//' <<< "$line" | tr ' ' '\n' | grep -E '^(MACTRIGGER|OVER30S|GROWTH|RATIO|SOLVE)$' | tr '\n' ' ' || true)
+                fired=$(sed -E 's/.*warnings=//' <<< "$line" | tr ' ' '\n' | grep -E '^(MACTRIGGER|OVER30S|GROWTH|RATIO|RATIO-LOW|SOLVE)$' | tr '\n' ' ' || true)
                 scene=$(sed -E 's/.* scene=([^ ]+).*/\1/' <<< "$line")
                 echo "::warning title=GATE ${{ matrix.name }} ${scene}::${fired}(AX38 4c; record, not a gate) ${line}"
               done <<< "$gate_warn"
