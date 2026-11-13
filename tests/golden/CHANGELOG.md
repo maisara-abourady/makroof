@@ -179,3 +179,9 @@ Reason: phase 05i, DECISION D-Q5 (decider file 9, Seat 5 file 8, interrogator fi
 Reason: phase 05i, decider file 9 (Q1, answer 4), interrogator file 10 (SURVIVES): an AX38 4c restore-gate register entry closes under rule (c) only if it passed 30 s on every 05i run. The 05i Q1 entry of 2026-11-11 said Linux and Windows close; on the run of record 43031773338 (docs/review/phase-05i/19) Windows printed OVER30S (46.63 s, slow runner, flutterDev +48.9 %), so under decider file 9's rule it stays listed (Linux passed both runs, 27.61 / 27.40 s, and stays closed). Constants in tests/unit/test_diffuse_records.cpp (not a golden): `listed` true for the Windows low-alpha entry, which changes only the printed text; no assertion, baseline or `solveRefMs` changes. Owed to the contractor's review push of PR #30 (interrogator file 22, P05I-120), applied here as a follow-up.
 
 - `(records-test constants)`: the Windows low-alpha entry listed again (AX38 4c (c) 'otherwise' branch, phase-05i §3.3 (ii)); print only (no golden file changed)
+
+## 2026-11-13 (07c-1b, scope 4)
+
+Reason: phase 07c-1b scope 4 (AX48 E_model fingerprint): the per-platform hashes of the fingerprint fixtures' E_b are pinned from CI, each identical on the three runs of phase 07c-1's final code (43242209571 on 6db81b6, 43258505284 on 39f751b, 43291051799 on 53d1333; `docs/review/phase-07c-1/41`, `42`, `44`): Linux `22f009efe0004e82`, macOS `9d4f48216097ae94`, Windows `a70a95cd5962863b`, modelId 1. A later change of E_b with DiffuseLimits unchanged fails the test and must bump `kEstimatorModelId` (AX48). A negative check (`[ax48-fingerprint-negative]`) shows a one-ulp change of any E_b band changes the hash.
+
+- `(records-test constants)`: `kPins` in `records: AX48 E_model fingerprint` pinned (no golden file changed)

@@ -27,6 +27,7 @@
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <random>
 #include <string>
@@ -1710,18 +1711,27 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
     struct Result
     {
         double audibleMaxMs = 0.0, audibleSumMs = 0.0, exactMs = 0.0;
+        // phase-07c-1b scope 6 (review M1): the instances' first prepares (instance insertion, outside the
+        // restore window above): their synchronous stage-1 solves (Stats::insertSolves) and their wall time
+        double insertMs = 0.0;
+        std::uint64_t insertSolves = 0;
     };
     const auto run = [&](const contract::SceneDescription& sc, double fs, int instances,
                          const std::optional<plugin::SavedDiffuse>& saved) {
+        Result r;
         std::vector<std::unique_ptr<plugin::ScenePipeline>> pipes;
+        const auto i0 = Clock::now();
         for (int i = 0; i < instances; ++i)
         {
             pipes.push_back(std::make_unique<plugin::ScenePipeline>());
             pipes.back()->prepare(fs, 512, false);
         }
+        r.insertMs = ms(i0, Clock::now());
         for (auto& p : pipes)
+        {
             REQUIRE(pipeline_test::waitFor([&] { return settled(*p); }));
-        Result r;
+            r.insertSolves += p->stats().insertSolves;
+        }
         const auto values = module3d::parameterValuesFromScene(sc);
         const auto t0 = Clock::now();
         for (auto& p : pipes) // in sequence on one thread
@@ -1742,9 +1752,12 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
                           const sim::ProvisionalTiming& t) {
         std::printf(
             "07c1-records (h) %s T60 %4.0f s %6.0f Hz %d inst %-7s: until audible per instance max %.0f ms "
-            "(sum %.0f ms); provisional -> exact (all settled) %.0f ms; L_p %.2f s / L %.2f s%s%s\n",
+            "(sum %.0f ms); provisional -> exact (all settled) %.0f ms; L_p %.2f s / L %.2f s%s; insertion "
+            "(outside "
+            "the window): insertSolves %llu, first prepares %.0f ms%s\n",
             what, t60, fs, n, keyed ? "keyed" : "keyless", r.audibleMaxMs, r.audibleSumMs, r.exactMs, t.endS,
             t.exactS, t.provisional ? "" : " (exact in place)",
+            static_cast<unsigned long long>(r.insertSolves), r.insertMs,
             n == 8 && r.audibleSumMs > 5000.0 ? "  FLAG: 8-instance load over 5 s (AX49 reversal input)"
                                               : "");
     };
@@ -1797,6 +1810,25 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
     }
 }
 
+namespace {
+// FNV-1a 64 over the E_b of the fingerprint fixtures, in fixture order (shared by the pinned test and its
+// negative check, phase-07c-1b scope 4).
+std::uint64_t ax48FingerprintHash(const std::vector<sim::EmitterBands>& levels)
+{
+    std::uint64_t h = 0xcbf29ce484222325ull;
+    for (const auto& level : levels)
+    {
+        const auto* c = reinterpret_cast<const unsigned char*>(level.data());
+        for (std::size_t i = 0; i < sizeof(sim::EmitterBands); ++i)
+        {
+            h ^= c[i];
+            h *= 0x100000001b3ull;
+        }
+    }
+    return h;
+}
+} // namespace
+
 // Phase-07c-1 AX48 E_model fingerprint: the E_b of the fingerprint fixtures (the two gated 100 m cubes, the
 // flutter cube triggering the AX22 ISM fallback, and the low-alpha s = 1 cube, air-dominated in the upper
 // bands) hashed bit for bit, per platform, with DiffuseLimits and kEstimatorModelId. A change of E_b with the
@@ -1812,21 +1844,14 @@ TEST_CASE("records: AX48 E_model fingerprint of E_b on the fingerprint fixtures"
         std::uint32_t modelId;
         std::uint64_t hash;
     };
-    // Pinned from CI (phase-07c-1); 0 = not pinned yet.
+    // Pinned in phase-07c-1b (scope 4) from CI: each hash identical on runs 43242209571, 43258505284 and
+    // 43291051799 (docs/review/phase-07c-1/41, 42, 44); 0 = not pinned. CHANGELOG: tests/golden/CHANGELOG.md.
     constexpr Pin kPins[] = {
-        {"Linux", 1, 0},
-        {"macOS", 1, 0},
-        {"Windows", 1, 0},
+        {"Linux", 1, 0x22f009efe0004e82ull},
+        {"macOS", 1, 0x9d4f48216097ae94ull},
+        {"Windows", 1, 0xa70a95cd5962863bull},
     };
-    std::uint64_t h = 0xcbf29ce484222325ull;
-    const auto mix = [&](const void* p, std::size_t n) {
-        const auto* c = static_cast<const unsigned char*>(p);
-        for (std::size_t i = 0; i < n; ++i)
-        {
-            h ^= c[i];
-            h *= 0x100000001b3ull;
-        }
-    };
+    std::vector<sim::EmitterBands> levels;
     for (const char* key :
          {"cube100_flutter_fallback", "cube100_lowalpha0.05_s0.3", "cube100_lowalpha0.05_s1"})
     {
@@ -1837,9 +1862,10 @@ TEST_CASE("records: AX48 E_model fingerprint of E_b on the fingerprint fixtures"
         build.solve();
         const auto level = build.diffuseLevel();
         REQUIRE(level.has_value());
-        mix(level->data(), sizeof(sim::EmitterBands));
+        levels.push_back(*level);
         std::printf("07c1-records ax48 fingerprint %-26s E_b[0] 1 kHz %.17g\n", key, (*level)[0][4]);
     }
+    const std::uint64_t h = ax48FingerprintHash(levels);
     for (const auto& pin : kPins)
         if (std::string(pin.os) == kOsName)
         {
@@ -1853,5 +1879,28 @@ TEST_CASE("records: AX48 E_model fingerprint of E_b on the fingerprint fixtures"
                 REQUIRE(
                     h == pin.hash); // E_b changed with DiffuseLimits unchanged: bump kEstimatorModelId (AX48)
             }
+        }
+}
+
+// Phase-07c-1b scope 4, negative check: the fingerprint sees a change of E_b. One fixture's E_b (the flutter
+// cube at 48 kHz, cheap enough for every Debug run) is hashed, then a single band of one emitter is moved by
+// one ulp; the hash must differ, so the pinned comparison above fails on any change of E_b, however small.
+TEST_CASE("records: AX48 fingerprint hash changes when E_b changes by one ulp", "[ax48-fingerprint-negative]")
+{
+    sim::BuildOptions o;
+    o.sampleRate = 48000.0;
+    o.kind = sim::BuildOptions::Kind::Omni;
+    auto build = sim::StagedBuild::plan(cube("cube100_flutter_fallback"), o);
+    build.solve();
+    const auto level = build.diffuseLevel();
+    REQUIRE(level.has_value());
+    const std::uint64_t pinned = ax48FingerprintHash({*level});
+    CHECK(ax48FingerprintHash({*level}) == pinned); // deterministic
+    for (std::size_t e = 0; e < level->size(); ++e)
+        for (std::size_t b = 0; b < (*level)[e].size(); ++b)
+        {
+            auto changed = *level;
+            changed[e][b] = std::nextafter(changed[e][b], std::numeric_limits<double>::infinity());
+            CHECK(ax48FingerprintHash({changed}) != pinned);
         }
 }
