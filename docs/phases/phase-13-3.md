@@ -44,6 +44,11 @@ Order: scope 4 (phase-13 scope 9) runs first, before C3's residual and S8 are re
    within −100 dB (e.g. SIMD in the accumulation loops), not P = 256 (it raises convolution work per
    sample 1.5–2.1×, run 42397114233, host 512) and not a change to the target (phase-06b D1).
    (phase-13 scope 9; "13b, per scope 1" is `13-1b`, phase-13 scope 1 being in 13-1)
+   Also the 8-concurrent-builder sweep with 07c-1b's instrument (buffer 64; 0/1/2/4/8 builders; priority
+   obtained and callback count printed), also on the R5 Windows release machine; a residual opens 13-1b with B1-d = a
+   process-wide limit on running background builds ≤ hardware threads − 1, class (1) and offline exempt, slot taken
+   before the gate and never under `stateMutex_`, `quiesce()` waking slot waiters. (AX38 (i) cond. 12 (c) note;
+   phase-07c-1b loop, 2026-11-13, D-B1 B1-b)
 
 ## Out of scope
 

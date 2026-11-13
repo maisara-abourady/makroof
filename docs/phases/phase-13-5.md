@@ -16,7 +16,11 @@ sub-phase raises all five before the beta decision, L5 below.)
    keep the Arni provenance label as is in the beta wording. (phase-13 R2)
 3. **Load time with 8 instances (AX38 (iv), phase 05b).** If the recorded time until the last of 8
    instances is audible at project load at 100 m exceeds 10 s, it goes to Maisara before the first
-   release. (phase-13 R3)
+   release. (phase-13 R3) The recorded time is the larger of record (h)'s prepare-first (interleaved, batched) and
+   setState-first totals without a settle wait (FM-10S), per instance until audible at the interim level ('the
+   former', AX38 (iv) Record); 13-1 raises it on the latest CI record (07d), 13-5 on the release
+   machines (13-2 scope 1); the time until the final tail has settled is named as a
+   finding if above 10 s. (phase-07c-1b loop, 2026-11-13, decider file 11 item 13)
 4. **Phase 07c not landed (conditional).** If the asynchronous diffuse solve (phase-07c) would land after
    the first release without the estimator parameters versioned in saved state, Seat 7's condition fails
    and the item returns to Maisara (decider file 47 §4, strongest objection). (phase-13 R4)
@@ -64,6 +68,9 @@ All of the umbrella's (phase-13 assumptions, shared: AQ10, AX5).
    "scope 3" is phase-13 scope 3, in 13-4)
    The condition 11 results also feed AX49's reversal (a hang, not-responding state or time limit at ≤ 8
    instances sends AX49 back to the board, 07d's candidates first). (phase-07c-1 decision loop, 2026-11-12)
+   The matrix's load column records instance-insertion time per host (cond. 11 trace, FM-B2); a hang,
+   not-responding state or limit at insertion returns FM-B2 to the board (B2-b dry or B2-d only; B2-b silent vetoed
+   by Seat 6). (phase-07c-1b loop, 2026-11-13)
 4. Placeholder identity (`AX8`: company name, plugin/manufacturer codes, bundle ID) confirmed or changed
    **before** the first beta, since changing it later breaks users' projects. (phase-13 scope 7)
 5. **Saved state and wording (AX48, AX49; phase-07c-1 decision loop, 2026-11-12; decider file

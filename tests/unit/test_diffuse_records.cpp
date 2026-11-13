@@ -7,12 +7,14 @@
 #include "DiffuseTestUtil.h"
 #include "PipelineTestUtil.h"
 #include "ProcessMemory.h"
+#include "RealtimeProbe.h"
 
 #include "contract/Json.h"
 #include "module3d/ParameterMap.h"
 #include "plugin/core/DiffuseSolveGate.h"
 #include "plugin/core/ScenePipeline.h"
 #include "sim/Fft.h"
+#include "sim/RealtimeEngine.h"
 #include "sim/diffuse/DiffuseEstimator.h"
 #include "sim/diffuse/ThreadPool.h"
 #include "sim/ism/BandRenderer.h"
@@ -22,12 +24,15 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <limits>
 #include <map>
+#include <optional>
 #include <random>
 #include <string>
 #include <thread>
@@ -63,61 +68,105 @@ constexpr const char* kOsName = "macOS";
 #else
 constexpr const char* kOsName = "Linux";
 #endif
+// Phase-07c-1b FM-GROWTH (AX38 4c G1-G14; docs/review/phase-07c-1b/11 plan item 9 as corrected by 12 rows
+// 09-15): the S2 pin of one register entry on one OS. Every value comes from tools/ci/repin_gate.py run on
+// the GATE and stage-split lines of >= 3 green S2 CI runs (never a red run; out-of-window runs count, G12),
+// pasted as constants with a CHANGELOG reason (tests/golden/CHANGELOG.md, not a golden). Pinned at 07c-1b
+// from S2 runs 43389296112, 43402114873, 43412038058 (commit 9cc0e32). An entry with runs = 0 (no S2 pin)
+// prints PROVISIONAL (S2 pin pending), asserts nothing and falls back to the RG-1 references below. "S2"
+// names the current pin (S2 at 07c-1b; re-pinned at 07c-2 and 07d, G13).
+struct S2Pin
+{
+    double ratioRef; // r-bar: mean low-alpha / flutter median-of-10 ratio (low-alpha entry; 0 on flutter)
+    double ratioMaxOverMin; // max / min of the S2 ratios on this OS; > kRatioBound: the OS is print-only (G5)
+    double flutterRefMs;    // F-bar: mean flutter restore median, the runner-speed reference (G5, G12)
+    double baselineMedianMs; // mean restore median of this scene (G10-G12; GROWTH WARNING on low-alpha)
+    double solveRefMs;       // mean solve median of this scene (G7)
+    double solveK;           // k of this OS: the largest max / mean of its S2 solve medians (G7, PROVISIONAL)
+    int runs;                // n: green S2 runs behind the pin; below kPinRuns nothing is asserted
+    // G9 exit (docs/review/phase-07c-1b/25 Q3): the OS's same-run ns-per-eval ratio within 1.05 of its mean
+    // on
+    // >= 3 green S2 runs (repin_gate.py). true: the solve basis prints S2-PINNED; false: S2-PROVISIONAL. The
+    // SOLVE warning stays print-only either way, never a (d) trigger.
+    bool solveExitMet;
+};
 struct GateEntry
 {
     const char* scene;
     const char* os;
     double recorded14xS; // 14 x (worst restore + worst solve), s: the register's recorded value (printed)
-    // DECISION RG-1 (docs/review/phase-05h/64, 66; interrogator 65, 67): on GitHub-hosted runners the gate
-    // asserts what is runner-independent and prints what is not. baselineMedianMs = the mean of the
-    // in-window runs on file (Linux 2043/2092, Windows 2000/2056; macOS 1849/1887/1715, print only);
+    // DECISION RG-1 (docs/review/phase-05h/64, 66; interrogator 65, 67), kept as the print fallback until the
+    // S2 pin (G4a-c: "at RG-1 the in-window mean ...; from 07c-1b the S2 mean"): baselineMedianMs = the mean
+    // of the in-window runs on file (Linux 2043/2092, Windows 2000/2056; macOS 1849/1887/1715, print only);
     // baselineRatio = the mean low-alpha / flutter restore-median ratio of the measured runs on file;
-    // flutterRefMs = the mean flutter restore median of those runs (the runner-speed reference);
-    // absoluteAsserted = the in-window growth bound is a REQUIRE (x64), else a print (macOS until Phase 13).
+    // flutterRefMs = the mean flutter restore median of those runs (the runner-speed reference).
     // Runs: 42909003931, 42924781618, 42935789745, 42949252041 (Windows also 42942694523; macOS the last
-    // three). Re-pinned only when the restore path changes: one run PROVISIONAL, >= 3 runs with a CHANGELOG
-    // reason (tests/golden/CHANGELOG.md, not a golden).
+    // three).
     double baselineMedianMs;
     double baselineRatio;
     double flutterRefMs;
-    bool absoluteAsserted;
+    // FM-GROWTH G1/G5: true on Linux and Windows (the same-run ratio may be asserted once pinned), false on
+    // macOS (print-only until Phase 13). The RG-1 in-window absolute REQUIRE is gone (G5: it returns only at
+    // the 07d re-pin).
+    bool ratioAssertable;
     bool listed;       // in the AX38 4c defect register (plan text); false once closed under (c): print only
     bool strict30s;    // the strict 14 x worst <= 30 s REQUIRE: the flutter scene only (interrogator file 69
                        // item 2: an entry leaving the register under section 5 (c) never re-arms it on the
                        // low-alpha scene)
     double solveRefMs; // phase-05i Q5 (docs/review/phase-05i/9, Seat 5 file 8): the scene's solve-median
                        // baseline, the mean of the in-window runs only (phase-05i 3.3 (v)): Linux and macOS
-                       // run 43007183782; Windows runs 42964823518 and 43007183782
-    int solveRefRuns;  // runs behind solveRefMs; below 3 the bound prints PROVISIONAL
+                       // run 43007183782; Windows runs 42964823518 and 43007183782 (fallback until S2)
+    int solveRefRuns;  // runs behind solveRefMs (RG-1 fallback)
+    S2Pin s2;          // FM-GROWTH: the S2 pin (repin_gate.py); runs = 0 until >= 3 green S2 runs
 };
-// RG-1 constants (provenance: docs/review/phase-05h/56 table, 64, 66).
-constexpr double kGrowth = 1.10;    // median-of-10 restore <= kGrowth x baselineMedianMs, in-window, x64
-constexpr double kGuardPct = 5.0;   // the run's flutter median within +-5 % of flutterRefMs (Seat 7 r2)
-constexpr double kRatioWarn = 1.20; // low-alpha / flutter ratio above kRatioWarn x baselineRatio: WARNING
-// phase-05i Q5: a scene's solve median above kSolveWarn x solveRefMs prints SOLVE in that scene's warnings=;
-// one-sided (the work pins are asserted), never asserted on hosted runners, never a (d) trigger; kept apart
-// from kRatioWarn so the 07c re-pin re-derives each from >= 3 in-window runs.
+// FM-GROWTH constants (AX38 4c G5-G10).
+constexpr int kPinRuns = 3;          // an S2 pin needs >= 3 green runs (G5, G12)
+constexpr double kRatioBound = 1.10; // r <= kRatioBound x r-bar every run on Linux / Windows once pinned (G5)
+constexpr double kGrowth = 1.10;     // GROWTH WARNING: absolute low-alpha median > kGrowth x baseline (G10)
+// In-window print (G5 (e)): the run's flutter median within +-kGuardPct of F-bar. Printed only; the window w
+// of the absolute leg is derived at the 07d re-pin ((1 + w) max(r / r-bar) <= 1.083 over >= 6 runs).
+constexpr double kGuardPct = 5.0;
+// SOLVE print fallback while the S2 pin is pending (phase-05i Q5): solve median above kSolveWarn x the RG-1
+// solveRefMs. Once pinned, k x the S2 solveRefMs (G7). Print-only either way, never a (d) trigger.
 constexpr double kSolveWarn = 1.20;
-// macOS trigger (RG-1 round 4, Seat 5 file 57 r3): two consecutive macOS runs with the low-alpha median above
-// 1.15 x the mean of the four measured macOS medians (2106 / 1849 / 1887 / 1715 -> 1889; 0 of 4 rows over)
-// are a (d) defect through /fix-plan; read by the orchestrator from the GATE lines, no state in the test.
-// Re-derived at the 07c re-pin.
-constexpr double kMacGrowthTriggerMs = 2172.0;
+// macOS trigger (4c (c), M-a / FM-TRIG): two consecutive macOS runs with the low-alpha median above
+// kMacGrowthTriggerMs are a (d) defect through /fix-plan; read by the orchestrator from the GATE lines, no
+// state in the test. Before the S2 pin: RG-1 round 4 (Seat 5 file 57 r3), 1.15 x the mean of the four
+// measured macOS medians (2106 / 1849 / 1887 / 1715 -> 1889). Now (phase-07c-1b condition
+// 7): floor(1.15 x the mean of the green macOS low-alpha medians of S2 runs 43389296112, 43402114873 and
+// 43412038058, 1459 / 1398 / 1586 -> 1481), computed by tools/ci/repin_gate.py, never by hand.
+constexpr double kMacGrowthTriggerMs = 1703.0;
+constexpr int kMacGrowthTriggerS2Runs = 3; // 0: the RG-1 value above; else the S2 runs it was computed from
 constexpr std::size_t kFftSizeLowAlpha96k =
     2097152; // [probe-restore-split], 2026-11-11: 1152000 + 2 x 15697 -> 2^21
 constexpr std::size_t kFftSizeFlutter96k = 524288; // 377517 + 2 x 15697 -> 2^19
+// S2 pin (phase-07c-1b condition 7, FM-GROWTH): tools/ci/repin_gate.py on the build-job logs of the green S2
+// CI runs 43389296112, 43402114873 and 43412038058 (code 9717a58), pasted as printed
+// (docs/review/phase-07c-1b/22-repin-gate-output.md; tests/golden/CHANGELOG.md 2026-11-13).
+// {ratioRef, ratioMaxOverMin, flutterRefMs, baselineMedianMs, solveRefMs, solveK, runs, solveExitMet}
+// solveExitMet: G9 met on Linux and Windows, not on macOS (docs/review/phase-07c-1b/22, 25 Q3).
 constexpr GateEntry kGateRegister[] = {
     // The flutter scene: strict 14 x worst <= 30 s on every OS (headroom >= 2.3x, Seat 5); no growth bound.
-    {"cube100_flutter_fallback", "Linux", 10.59, 0.0, 0.0, 0.0, false, false, true, 131.2, 1},
-    {"cube100_flutter_fallback", "macOS", 7.59, 0.0, 0.0, 0.0, false, false, true, 102.7, 1},
-    {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true, 144.4, 2},
-    // The gated low-alpha cube. macOS and Windows are listed (remedy phase-07c conditions 9-10): macOS
+    {"cube100_flutter_fallback", "Linux", 10.59, 0.0, 0.0, 0.0, false, false, true, 131.2, 1,
+     S2Pin{0.0000, 0.0000, 552.3, 552.3, 130.8, 1.2225, 3, true}},
+    {"cube100_flutter_fallback", "macOS", 7.59, 0.0, 0.0, 0.0, false, false, true, 102.7, 1,
+     S2Pin{0.0000, 0.0000, 475.3, 475.3, 110.6, 1.1127, 3, false}},
+    {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true, 144.4, 2,
+     S2Pin{0.0000, 0.0000, 496.3, 496.3, 106.0, 1.0846, 3, true}},
+    // The gated low-alpha cube. macOS and Windows were listed (remedy phase-07c conditions 9-10): macOS
     // recorded 33.40 s (local / file 1); Windows recorded 36.73 s on CI run 42942694523's slow runner
     // (phase-05h file 53) and printed OVER30S on 05i's run of record 43031773338. Linux (30.27 s local /
     // file 1) closed under AX38 4c (c) on phase 05i's runs (docs/review/phase-05i/9, 19): print only.
-    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1},
-    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false, 83.7, 1},
-    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, true, false, 90.4, 2},
+    // Phase 07c-1b (E1, D-B5 (v)): macOS and Windows closed under AX38 4c (c): 14 x worst <= 30 s on every S2
+    // run
+    // (43389296112, 43402114873, 43412038058: macOS 23.46 / 22.44 / 24.08 s, Windows 20.24 / 15.96 / 19.59 s;
+    // docs/review/phase-07c-1b/22): print only.
+    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1,
+     S2Pin{2.3963, 1.3681, 552.3, 1282.7, 80.7, 1.2225, 3, true}},
+    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, false, false, 83.7, 1,
+     S2Pin{3.1203, 1.1618, 475.3, 1481.0, 78.1, 1.1127, 3, false}},
+    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, false, false, 90.4, 2,
+     S2Pin{2.5297, 1.0530, 496.3, 1258.3, 66.2, 1.0846, 3, true}},
 };
 const GateEntry* gateRegisterEntry(const std::string& scene)
 {
@@ -447,19 +496,134 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
         // exact tail is not in it (the instance is destroyed after the timed restore; its builder is
         // cancelled, condition 10).
         const auto values = module3d::parameterValuesFromScene(sc);
-        const auto load = [&](const std::optional<plugin::SavedDiffuse>& saved) {
+        // Phase-07c-1b D-B5 (vi) item 3 (per-stage split, test-only; Seat 5 Q5): the timed restore's stage
+        // hook timestamps, taken on this (host) thread only; the builder's own stages after the restore
+        // returns are ignored. stageMs: per keyless restore, Plan, Solve, Assemble, Commit and the return,
+        // in ms from its start (-1: the stage did not fire).
+        std::vector<std::array<double, 5>> stageMs;
+        struct StageStamps
+        {
+            std::optional<Clock::time_point> plan, solve, assemble, commit;
+        };
+        const std::thread::id hostThread = std::this_thread::get_id();
+        const auto load = [&](const std::optional<plugin::SavedDiffuse>& saved, StageStamps* stamps) {
             plugin::ScenePipeline fresh;
             fresh.prepare(96000.0, 512, false);
             REQUIRE(pipeline_test::waitFor([&] { return !fresh.settling() && fresh.builderIdle(); }));
+            if (stamps != nullptr)
+                fresh.setStageHook([stamps, hostThread](plugin::ScenePipeline::BuildStage st) {
+                    if (std::this_thread::get_id() != hostThread)
+                        return;
+                    const auto now = Clock::now();
+                    using Bs = plugin::ScenePipeline::BuildStage;
+                    auto& slot = st == Bs::Plan       ? stamps->plan
+                                 : st == Bs::Solve    ? stamps->solve
+                                 : st == Bs::Assemble ? stamps->assemble
+                                                      : stamps->commit;
+                    if (!slot)
+                        slot = now; // the first of each stage
+                });
             const auto t0 = Clock::now();
             fresh.beginRestore();
             fresh.restore(sc, values, saved);
-            return ms(t0, Clock::now());
+            const double d = ms(t0, Clock::now());
+            if (stamps != nullptr)
+            {
+                // The split, in ms from the restore's start (t0): Plan, Solve, Assemble, Commit, return.
+                const auto at = [&](const std::optional<Clock::time_point>& tp) {
+                    return tp ? ms(t0, *tp) : -1.0;
+                };
+                stageMs.push_back(
+                    {at(stamps->plan), at(stamps->solve), at(stamps->assemble), at(stamps->commit), d});
+            }
+            return d;
         };
         std::vector<double> restore;
         for (int i = 0; i < kRuns; ++i)
-            restore.push_back(load(std::nullopt));
+        {
+            StageStamps stamps;
+            restore.push_back(load(std::nullopt, gateRegisterEntry(key) != nullptr ? &stamps : nullptr));
+        }
         const auto rs = spread(restore);
+        if (gateRegisterEntry(key) != nullptr && !stageMs.empty())
+        {
+            // Segment medians over the kRuns keyless restores (a segment whose stage did not fire: n/a).
+            const auto seg = [&](int from, int to) {
+                std::vector<double> v;
+                for (const auto& st : stageMs)
+                    if (st[static_cast<std::size_t>(from)] >= 0.0 && st[static_cast<std::size_t>(to)] >= 0.0)
+                        v.push_back(st[static_cast<std::size_t>(to)] - st[static_cast<std::size_t>(from)]);
+                return v.empty() ? Spread{-1.0, -1.0, -1.0} : spread(v);
+            };
+            std::vector<double> startToPlan;
+            for (const auto& st : stageMs)
+                if (st[0] >= 0.0)
+                    startToPlan.push_back(st[0]);
+            const auto sp0 = startToPlan.empty() ? Spread{-1.0, -1.0, -1.0} : spread(startToPlan);
+            const auto planSolve = seg(0, 1), solveAsm = seg(1, 2), asmCommit = seg(2, 3),
+                       commitRet = seg(3, 4);
+            std::printf(
+                "07c1b-records stage split os=%s scene=%s 96 kHz keyless restore (stage-hook timestamps on "
+                "the "
+                "host thread, median [min max] of %zu, ms): start->Plan (quiesce, snapshot) %.1f [%.1f "
+                "%.1f]; "
+                "Plan->Solve (ISM + matching + gate wait) %.1f [%.1f %.1f]; Solve->Assemble (solve) %.1f "
+                "[%.1f "
+                "%.1f]; Assemble->Commit (synthesis + assembly + makeIrSet + D7 compare) %.1f [%.1f %.1f]; "
+                "Commit->return %.1f [%.1f %.1f]; restore median %.0f\n",
+                kOsName, key, stageMs.size(), sp0.median, sp0.min, sp0.max, planSolve.median, planSolve.min,
+                planSolve.max, solveAsm.median, solveAsm.min, solveAsm.max, asmCommit.median, asmCommit.min,
+                asmCommit.max, commitRet.median, commitRet.min, commitRet.max, rs.median);
+            // The replay (public sim::StagedBuild, serial emitter synthesis): the exact build's synthesis
+            // separated from its assembly (assemble() fresh vs assemble() over the cached exact unit decays),
+            // makeIrSet timed apart. Median of 3. Not the restore's own (provisional) build: labelled replay.
+            sim::BuildOptions o;
+            o.sampleRate = 96000.0;
+            o.kind = sim::BuildOptions::Kind::Omni;
+            o.parallelEmitterSynthesis = false;
+            sim::RealtimeEngine engine(plugin::ScenePipeline::kPartitionSize);
+            engine.prepare(96000.0, 512);
+            std::vector<double> planR, solveR, freshR, cachedR, irSetR;
+            bool exact = true, irSetOk = true;
+            std::size_t emitters = 0;
+            for (int r = 0; r < 3; ++r)
+            {
+                auto t = Clock::now();
+                auto first = sim::StagedBuild::plan(sc, o);
+                planR.push_back(ms(t, Clock::now()));
+                t = Clock::now();
+                first.solve();
+                solveR.push_back(ms(t, Clock::now()));
+                sim::HybridDiagnostics diag;
+                t = Clock::now();
+                const auto ir = first.assemble(&diag);
+                freshR.push_back(ms(t, Clock::now()));
+                emitters = diag.emitters.size();
+                auto second = sim::StagedBuild::plan(sc, o);
+                REQUIRE(first.diffuseLevel().has_value());
+                second.useDiffuseLevel(*first.diffuseLevel());
+                second.useUnitDecays(first.unitDecays());
+                exact = exact && second.unitDecaysExact();
+                t = Clock::now();
+                (void)second.assemble();
+                cachedR.push_back(ms(t, Clock::now()));
+                t = Clock::now();
+                const auto set = engine.makeIrSet(ir);
+                irSetR.push_back(ms(t, Clock::now()));
+                irSetOk = irSetOk && set != nullptr;
+            }
+            const double fresh = spread(freshR).median, cached = spread(cachedR).median;
+            std::printf(
+                "07c1b-records stage split replay os=%s scene=%s 96 kHz (sim::StagedBuild, "
+                "parallelEmitterSynthesis = false, exact tail, median of 3, ms): plan (ISM + matching) "
+                "%.1f; solve %.1f; assemble fresh (synthesis + assembly) %.1f; assemble over the cached "
+                "exact unit decays (assembly) %.1f%s; synthesis %.1f, per emitter %.1f (mean over %zu, "
+                "serial); makeIrSet %.1f%s\n",
+                kOsName, key, spread(planR).median, spread(solveR).median, fresh, cached,
+                exact ? "" : " [cached units NOT exact]", fresh - cached,
+                emitters > 0 ? (fresh - cached) / static_cast<double>(emitters) : 0.0, emitters,
+                spread(irSetR).median, irSetOk ? "" : " [IrSet nullptr]");
+        }
         {
             auto planned = sim::StagedBuild::plan(sc, [] {
                 sim::BuildOptions o;
@@ -491,7 +655,7 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
             REQUIRE(saved.has_value());
             std::vector<double> keyed;
             for (int i = 0; i < 3; ++i)
-                keyed.push_back(load(saved));
+                keyed.push_back(load(saved, nullptr));
             const auto ks = spread(keyed);
             std::printf(
                 "05h-records restore %-26s 96 kHz keyed load (saved E_b, no solve), 3 runs: min %.0f median "
@@ -499,11 +663,12 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                 key, ks.min, ks.median, ks.max);
         }
         records[key].restore = rs;
-        // AX38 4c blocking restore gate in the RG-1 form (decider files 64/66, interrogator 65/67; D-H1 (v)
-        // amended for Maisara): on hosted runners the flutter scene's 14 x worst <= 30 s is asserted on every
-        // OS; the low-alpha entry's growth bound is asserted in a +-5 % flutter window on x64 after the scene
-        // loop (the GATE block runs after both scenes, whatever their order), everything else is printed with
-        // WARNING. A broken assertion is a defect under (d): no re-run, no cut, no range change, no seam.
+        // AX38 4c blocking restore gate (RG-1 form as amended by FM-GROWTH, phase-07c-1b G1-G14): on hosted
+        // runners the flutter scene's 14 x worst <= 30 s is asserted on every OS; the low-alpha entry's
+        // same-run ratio is asserted on Linux and Windows once S2-pinned, after the scene loop (the GATE
+        // block runs after both scenes, whatever their order); everything else is printed with WARNING. A
+        // broken assertion is a defect under (d): no re-run until green, no cut, no range change, no seam,
+        // never widened.
         if (const auto* entry = gateRegisterEntry(key))
         {
             const double fourteen = 14.0 * rs.max / 1000.0;
@@ -517,7 +682,7 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
             else
                 std::printf(
                     "05h-records restore gate %-26s %s: %s (recorded 14 x worst %.2f s); 14 "
-                    "x worst now %.2f s%s; growth bound %s after the scene loop (RG-1)\n",
+                    "x worst now %.2f s%s; ratio form %s after the scene loop (FM-GROWTH)\n",
                     key, kOsName,
                     entry->listed ? "LISTED defect" : "register entry closed, hosted-runner form",
                     entry->recorded14xS, fourteen,
@@ -528,7 +693,8 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                         : (entry->listed ? "; WARNING OVER30S (printed, not asserted on hosted runners)"
                                          : "; WARNING OVER30S on a closed register entry (printed, not "
                                            "asserted on hosted runners; name the run in the PR)"),
-                    entry->absoluteAsserted ? "asserted in-window" : "reported only");
+                    entry->ratioAssertable ? "asserted once pinned (Linux, Windows)"
+                                           : "printed only (macOS)");
         }
         else
             std::printf("05h-records restore gate %-26s %s: reported set, not gated\n", key, kOsName);
@@ -556,62 +722,148 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                     "%.0f worst %.0f ms (3 runs)\n",
                     key, cs.min, cs.median, cs.max);
     }
-    // RG-1: the machine-readable GATE line per gated scene and the low-alpha entry's guarded growth bound.
+    // The machine-readable GATE line per gated scene (FM-GROWTH, AX38 4c G5-G10; parsed by the ci.yml records
+    // step and by tools/ci/repin_gate.py) and the low-alpha entry's same-run ratio check.
     {
         const auto& fl = records["cube100_flutter_fallback"];
         const auto& la = records["cube100_lowalpha0.05_s0.3"];
         const auto* entry = gateRegisterEntry("cube100_lowalpha0.05_s0.3");
-        REQUIRE(entry != nullptr);
-        REQUIRE(fl.restore.median > 0.0);
-        const double ratio = la.restore.median / fl.restore.median;
-        const double flutterDevPct = 100.0 * (fl.restore.median / entry->flutterRefMs - 1.0);
-        const bool inWindow = std::abs(flutterDevPct) <= kGuardPct;
-        const double growthBound = kGrowth * entry->baselineMedianMs;
-        const double fourteen = 14.0 * la.restore.max / 1000.0;
         const auto* flEntry = gateRegisterEntry("cube100_flutter_fallback");
+        REQUIRE(entry != nullptr);
         REQUIRE(flEntry != nullptr);
-        const double flSolveWarnAt = kSolveWarn * flEntry->solveRefMs;
-        const double laSolveWarnAt = kSolveWarn * entry->solveRefMs;
-        const auto solveBasis = [](const GateEntry& e) {
-            return e.solveRefRuns < 3 ? "PROVISIONAL" : "PINNED";
+        REQUIRE(fl.restore.median > 0.0);
+        REQUIRE(la.restore.median > 0.0);
+        const S2Pin& pin = entry->s2;
+        const bool pinned = pin.runs >= kPinRuns;
+        // References in force: the S2 pin once n >= 3, else the RG-1 values (printed, never asserted).
+        const double ratioRef = pinned ? pin.ratioRef : entry->baselineRatio;
+        const double flutterRef = pinned ? pin.flutterRefMs : entry->flutterRefMs;
+        const double baseline = pinned ? pin.baselineMedianMs : entry->baselineMedianMs;
+        const char* refBasis = pinned ? "S2" : "RG-1";
+        // r = the run's low-alpha median-of-10 / flutter median-of-10 (G5).
+        const double ratio = la.restore.median / fl.restore.median;
+        const double ratioOverRef = ratio / ratioRef;
+        const double ratioMargin = kRatioBound - ratioOverRef; // > 0: headroom to the 1.10 bound
+        const double ratioWarnAt = kRatioBound * ratioRef;
+        const double ratioLowAt = ratioRef / kRatioBound;
+        // Print-only: macOS always; an OS whose S2 ratios have max / min > 1.10 (G5).
+        const bool ratioPrintOnly = !entry->ratioAssertable || (pinned && pin.ratioMaxOverMin > kRatioBound);
+        const bool ratioAsserted = pinned && !ratioPrintOnly;
+        const double flutterOverRef = fl.restore.median / flutterRef;
+        const double flutterDevPct = 100.0 * (flutterOverRef - 1.0);
+        const bool inWindow = std::abs(flutterDevPct) <= kGuardPct;
+        const double growthBound = kGrowth * baseline;
+        const double growthPct = 100.0 * (la.restore.median / baseline - 1.0);
+        const double fourteen = 14.0 * la.restore.max / 1000.0;
+        // SOLVE (G7, print-only, never a (d) trigger): k x the S2 solveRefMs once pinned, else kSolveWarn x
+        // RG-1's. Basis S2-PINNED where the OS met the G9 exit, else S2-PROVISIONAL.
+        const auto solveWarnAt = [](const GateEntry& e) {
+            return e.s2.runs >= kPinRuns ? e.s2.solveK * e.s2.solveRefMs : kSolveWarn * e.solveRefMs;
         };
+        const auto solveK = [](const GateEntry& e) {
+            return e.s2.runs >= kPinRuns ? e.s2.solveK : kSolveWarn;
+        };
+        const auto solveRuns = [](const GateEntry& e) {
+            return e.s2.runs >= kPinRuns ? e.s2.runs : e.solveRefRuns;
+        };
+        const auto solveBasis = [](const GateEntry& e) {
+            if (e.s2.runs < kPinRuns)
+                return "PROVISIONAL";
+            return e.s2.solveExitMet ? "S2-PINNED" : "S2-PROVISIONAL"; // G9 exit per OS (07c-1b/25 Q3)
+        };
+        const double flSolveWarnAt = solveWarnAt(*flEntry);
+        const double laSolveWarnAt = solveWarnAt(*entry);
+        // G7: the same-run low-alpha / flutter ns-per-evaluation ratio (the G9 exit reads its spread).
+        const double nsPerEvalRatio = fl.nsPerEval > 0.0 ? la.nsPerEval / fl.nsPerEval : 0.0;
         const std::string flWarnings = fl.solveMedianMs > flSolveWarnAt ? "SOLVE " : "";
         std::string warnings;
-        if (ratio > kRatioWarn * entry->baselineRatio)
-            warnings += "RATIO ";
+        // RATIO / RATIO-LOW in warnings= only against a pinned r-bar (G6); while the pin is pending the ratio
+        // check is PROVISIONAL and its verdict against the RG-1 ratio is printed on its own line only.
+        if (pinned && ratio > ratioWarnAt)
+            warnings += "RATIO "; // a red on an asserted OS; a WARNING on a print-only OS (G6)
+        if (pinned && ratio < ratioLowAt)
+            warnings += "RATIO-LOW "; // G6: an ISM or solve regression lowers the ratio
         if (la.restore.median > growthBound)
-            warnings += "GROWTH ";
+            warnings += "GROWTH "; // G10, every OS
         if (fourteen > 30.0)
             warnings += "OVER30S ";
         else
             warnings += "PASSES30S ";
+        const char* ratioCheck = !pinned ? "PROVISIONAL" : (ratioAsserted ? "ASSERTED" : "PRINT-ONLY");
         char status[64];
-        if (!entry->absoluteAsserted)
-            std::snprintf(status, sizeof(status), "reported-only");
-        else if (inWindow)
-            std::snprintf(status, sizeof(status), "asserted");
+        if (!pinned)
+            std::snprintf(status, sizeof(status), "provisional(S2-pin-pending)");
+        else if (ratioAsserted)
+            std::snprintf(status, sizeof(status), "asserted(ratio)");
         else
-            std::snprintf(status, sizeof(status), "not-evaluated(runner,flutter%+.1f%%)", flutterDevPct);
+            std::snprintf(status, sizeof(status), "print-only(ratio)");
         std::printf("05h-records GATE os=%s scene=cube100_flutter_fallback x14worst=%.2f median=%.0f "
                     "fullRebuildMedian=%.0f solveMedianMs=%.1f solveWarnAt=%.1f solveBasis=%s(n=%d) "
-                    "nsPerEval=%.2f status=asserted(30s) flutterRef=%.0f flutterDev=%+.1f%% warnings=%s\n",
+                    "solveK=%.3f nsPerEval=%.2f status=asserted(30s) flutterRef=%.0f flutterRefBasis=%s "
+                    "flutterDev=%+.1f%% inWindow=%s warnings=%s\n",
                     kOsName, 14.0 * fl.restore.max / 1000.0, fl.restore.median, fl.fullRebuildMedianMs,
-                    fl.solveMedianMs, flSolveWarnAt, solveBasis(*flEntry), flEntry->solveRefRuns,
-                    fl.nsPerEval, entry->flutterRefMs, flutterDevPct, flWarnings.c_str());
-        if (!entry->absoluteAsserted && la.restore.median > kMacGrowthTriggerMs)
+                    fl.solveMedianMs, flSolveWarnAt, solveBasis(*flEntry), solveRuns(*flEntry),
+                    solveK(*flEntry), fl.nsPerEval, flutterRef, refBasis, flutterDevPct,
+                    inWindow ? "yes" : "no", flWarnings.c_str());
+        if (!entry->ratioAssertable && la.restore.median > kMacGrowthTriggerMs)
             warnings += "MACTRIGGER ";
         if (la.solveMedianMs > laSolveWarnAt)
             warnings += "SOLVE ";
         std::printf(
             "05h-records GATE os=%s scene=cube100_lowalpha0.05_s0.3 ratio=%.3f ratioWarnAt=%.3f "
-            "solveMedianMs=%.1f solveWarnAt=%.1f solveBasis=%s(n=%d) nsPerEval=%.2f x14worst=%.2f "
-            "median=%.0f growthBound=%.0f fullRebuildMedian=%.0f status=%s trigger=%.0f warnings=%s\n",
-            kOsName, ratio, kRatioWarn * entry->baselineRatio, la.solveMedianMs, laSolveWarnAt,
-            solveBasis(*entry), entry->solveRefRuns, la.nsPerEval, fourteen, la.restore.median, growthBound,
-            la.fullRebuildMedianMs, status, entry->absoluteAsserted ? 0.0 : kMacGrowthTriggerMs,
+            "ratioRef=%.3f ratioRefBasis=%s(n=%d) ratioOverRef=%.4f ratioMargin=%+.4f ratioLowAt=%.3f "
+            "ratioCheck=%s solveMedianMs=%.1f solveWarnAt=%.1f solveBasis=%s(n=%d) solveK=%.3f "
+            "nsPerEval=%.2f "
+            "nsPerEvalRatio=%.4f x14worst=%.2f median=%.0f growthBound=%.0f growthRef=%.0f growthPct=%+.1f%% "
+            "fullRebuildMedian=%.0f flutterMedian=%.0f flutterRef=%.0f flutterDev=%+.1f%% inWindow=%s "
+            "flutterOverRef=%.4f product=%.4f status=%s trigger=%.0f triggerBasis=%s warnings=%s\n",
+            kOsName, ratio, ratioWarnAt, ratioRef, refBasis, pinned ? pin.runs : 0, ratioOverRef, ratioMargin,
+            ratioLowAt, ratioCheck, la.solveMedianMs, laSolveWarnAt, solveBasis(*entry), solveRuns(*entry),
+            solveK(*entry), la.nsPerEval, nsPerEvalRatio, fourteen, la.restore.median, growthBound, baseline,
+            growthPct, la.fullRebuildMedianMs, fl.restore.median, flutterRef, flutterDevPct,
+            inWindow ? "yes" : "no", flutterOverRef, flutterOverRef * ratioOverRef, status,
+            entry->ratioAssertable ? 0.0 : kMacGrowthTriggerMs, kMacGrowthTriggerS2Runs > 0 ? "S2" : "RG-1",
             warnings.c_str());
-        if (entry->absoluteAsserted && inWindow)
-            REQUIRE(la.restore.median <= growthBound);
+        // The human-readable verdict of the ratio check (G5, G6) and the growth print (G10).
+        if (!pinned)
+            std::printf("05h-records restore gate ratio cube100_lowalpha0.05_s0.3 %s: PROVISIONAL (S2 pin "
+                        "pending, n = %d of %d): r %.3f, r / r-bar %.4f against the RG-1 ratio %.3f; nothing "
+                        "asserted%s\n",
+                        kOsName, pin.runs, kPinRuns, ratio, ratioOverRef, ratioRef,
+                        ratio > ratioWarnAt  ? "; WARNING RATIO (above 1.10 x the RG-1 ratio)"
+                        : ratio < ratioLowAt ? "; WARNING RATIO-LOW (below the RG-1 ratio / 1.10)"
+                                             : "");
+        else
+            std::printf(
+                "05h-records restore gate ratio cube100_lowalpha0.05_s0.3 %s: %s: r %.3f <= 1.10 x "
+                "r-bar %.3f = %.3f? r / r-bar %.4f, margin %+.4f (S2, n = %d, max / min %.4f)%s%s\n",
+                kOsName,
+                ratioAsserted            ? "ASSERTED"
+                : entry->ratioAssertable ? "PRINT-ONLY (S2 ratios max / min > 1.10)"
+                                         : "PRINT-ONLY (macOS until Phase 13)",
+                ratio, ratioRef, ratioWarnAt, ratioOverRef, ratioMargin, pin.runs, pin.ratioMaxOverMin,
+                ratio > ratioWarnAt ? (ratioAsserted ? "; RED: a defect under 4c (d)" : "; WARNING RATIO")
+                                    : "",
+                ratio < ratioLowAt ? "; WARNING RATIO-LOW (an ISM or solve regression lowers it)" : "");
+        std::printf(
+            "05h-records restore gate growth cube100_lowalpha0.05_s0.3 %s: low-alpha median %.0f ms vs "
+            "%s reference %.0f ms (%+.1f %%; bound 1.10 x = %.0f ms)%s; in-window %s (flutter %.0f vs "
+            "%.0f ms, %+.1f %%, window +-%.0f %% printed only until the 07d re-pin)\n",
+            kOsName, la.restore.median, refBasis, baseline, growthPct, growthBound,
+            la.restore.median > growthBound ? "; GROWTH WARNING (printed, never asserted before 07d)" : "",
+            inWindow ? "yes" : "no", fl.restore.median, flutterRef, flutterDevPct, kGuardPct);
+        if (!entry->ratioAssertable)
+            std::printf("05h-records restore gate mactrigger %s: trigger in force %.0f ms (%s%s), low-alpha "
+                        "median %.0f ms%s\n",
+                        kOsName, kMacGrowthTriggerMs,
+                        kMacGrowthTriggerS2Runs > 0 ? "S2, floor(1.15 x mean), n = " : "RG-1, 1.15 x 1889",
+                        kMacGrowthTriggerS2Runs > 0 ? std::to_string(kMacGrowthTriggerS2Runs).c_str() : "",
+                        la.restore.median,
+                        la.restore.median > kMacGrowthTriggerMs
+                            ? "; MACTRIGGER (two consecutive runs: a 4c (d) defect; print only)"
+                            : "");
+        if (ratioAsserted)
+            REQUIRE(ratio <= ratioWarnAt);
     }
 }
 
@@ -676,12 +928,10 @@ TEST_CASE(
 // with P = 512 samples (ScenePipeline::kPartitionSize): R + 2P, about 2R + 2P, full + 2P against AQ4's 100 ms
 // / 700 ms / 3 s; (2) the offline bounce of a 3-minute room-size automation at 100 m, 48 and 96 kHz, with its
 // ratio to real time, taken at a rebuild step of one size change every 5 s of audio (36 steps; each stated
-// with the record, AX38 (iv)); (3) callback p99.9 at host buffer 64 with 1, 4 and 8 concurrent builders
-// (other instances rebuilding the 100 m cube without pause while one real-time instance processes 64-sample
-// blocks).
-TEST_CASE(
-    "records: AQ4 intervals, the 3-minute room-size bounce at 100 m, callback p99.9 with 1/4/8 builders",
-    "[.][benchmark][diffuse-records-aq4]")
+// with the record, AX38 (iv)). (3), the callback record at host buffer 64 with concurrent builders, is the
+// next test case (condition 12 (c), re-instrumented in phase-07c-1b).
+TEST_CASE("records: AQ4 intervals and the 3-minute room-size bounce at 100 m",
+          "[.][benchmark][diffuse-records-aq4]")
 {
     const auto positionRebuildMs = [](const contract::SceneDescription& sc, double fs) {
         plugin::ScenePipeline pipe;
@@ -770,15 +1020,41 @@ TEST_CASE(
             fs, steps, wall, wall / seconds, static_cast<unsigned long long>(pipe.stats().interimSubmits));
         REQUIRE(pipe.stats().interimSubmits == 0); // condition 6: offline never plays an interim
     }
-    // (3) callback p99.9 at host buffer 64 with 1 / 4 / 8 concurrent builders rebuilding the 100 m cube.
+}
+
+// Phase-07c-1 condition 12 (c) record (AX38 (i)): callback times of one real-time instance at host buffer 64
+// (48 kHz, AQ10 room) while other instances rebuild the 100 m low-alpha cube without pause (a listener move
+// on each every 50 ms: ISM, solve at the gate, assembly over the cached unit decays). Two instruments:
+// - old instrument (R16), unchanged: a normal-priority test thread paced by sleep_for, wall time only,
+//   1 / 4 / 8 builders. Its p99.9 over 953-1 936 callbacks is the 1st-2nd largest sample (R16), on a thread
+//   no host would use for audio (R4, R7, R8): kept for comparison only.
+// - phase-07c-1b D-B1 (B1-b; docs/review/phase-07c-1b/4-decider-decision-r1.md items 1-5, file 8 item 6):
+//   the callback thread at platform audio priority (RealtimeProbe.h: macOS time-constraint policy at the
+//   1 333 us period, Windows MMCSS "Pro Audio" with a high-resolution timer, Linux SCHED_FIFO, else "not
+//   available" with the error), absolute-deadline pacing (sleep to ~100 us before the deadline, then spin);
+//   per callback the wall and thread-CPU time of process() and the convolver's multiply-adds; builders
+//   0 / 1 / 2 / 4 / 8, the 0-builder floor first. Per point: callback count vs expected (INSTRUMENT INVALID
+//   below 0.95 x), median / p99 / p99.9 / max of wall and CPU, overruns > period and > period / 2,
+//   hardware_concurrency() and the priority obtained.
+// A record, never asserted. An overrun > period at 8 builders with none at 0 is re-measured in phase-13-3
+// scope 4 and on the R5 Windows release machine (a miss opens 13-1b, B1-d first; never an instance cap).
+TEST_CASE("records: condition 12 (c) callback record at host buffer 64, B1-b instrument (0/1/2/4/8 "
+          "builders) beside the old instrument (R16)",
+          "[.][benchmark][diffuse-records-aq4][cond12c]")
+{
+    constexpr double kFs = 48000.0;
+    constexpr int kBlock = 64;
+    const auto big = cube("cube100_lowalpha0.05_s0.3");
+    const auto bigValues = module3d::parameterValuesFromScene(big);
+    const auto room = aq10Room();
+    const unsigned hw = std::thread::hardware_concurrency();
+    std::map<int, double> oldP999;
+    // ---- old instrument (R16), as in phase 05h / 07c-1 ----
     for (const int builders : {1, 4, 8})
     {
-        const double fs = 48000.0;
-        const auto big = cube("cube100_lowalpha0.05_s0.3");
-        const auto bigValues = module3d::parameterValuesFromScene(big);
+        const double fs = kFs;
         plugin::ScenePipeline rt;
-        const auto room = aq10Room();
-        rt.prepare(fs, 64, false);
+        rt.prepare(fs, kBlock, false);
         rt.beginRestore();
         rt.restore(room, module3d::parameterValuesFromScene(room));
         std::vector<std::unique_ptr<plugin::ScenePipeline>> others;
@@ -801,16 +1077,16 @@ TEST_CASE(
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
         });
-        std::vector<float> a(64, 0.1f), b(64, -0.1f);
+        std::vector<float> a(kBlock, 0.1f), b(kBlock, -0.1f);
         const float* const in[2] = {a.data(), b.data()};
         float* const out[2] = {a.data(), b.data()};
         std::vector<double> us;
-        const double period = 64.0 / fs * 1e6;
+        const double period = kBlock / fs * 1e6;
         const auto tEnd = Clock::now() + std::chrono::seconds(10);
         while (Clock::now() < tEnd)
         {
             const auto c0 = Clock::now();
-            rt.process(in, out, 64);
+            rt.process(in, out, kBlock);
             us.push_back(std::chrono::duration<double, std::micro>(Clock::now() - c0).count());
             std::this_thread::sleep_for(std::chrono::microseconds(static_cast<long>(period)));
         }
@@ -818,11 +1094,184 @@ TEST_CASE(
         churn.join();
         std::sort(us.begin(), us.end());
         const double p999 = us[static_cast<std::size_t>(std::ceil(0.999 * us.size())) - 1];
-        std::printf("05h-records callback p99.9 at host buffer 64 (%.0f us period), %d concurrent builder%s "
-                    "at 100 m: p99.9 %.0f us, "
-                    "max %.0f us over %zu callbacks (10 s)\n",
-                    period, builders, builders == 1 ? "" : "s", p999, us.back(), us.size());
+        oldP999[builders] = p999;
+        std::printf(
+            "05h-records callback p99.9 [old instrument (R16): normal-priority thread, sleep_for "
+            "pacing, wall only] at host buffer 64 (%.0f us period), %d concurrent builder%s at 100 m: "
+            "p99.9 %.0f us, max %.0f us over %zu callbacks (10 s)\n",
+            period, builders, builders == 1 ? "" : "s", p999, us.back(), us.size());
     }
+
+    // ---- B1-b instrument (phase-07c-1b D-B1) ----
+    const double periodUs = kBlock / kFs * 1e6;
+    constexpr double kSeconds = 10.0;
+    const auto expected = static_cast<std::size_t>(kSeconds * 1e6 / periodUs); // 7 500 slots
+    const auto quantile = [](const std::vector<double>& sorted, double q) {
+        return sorted[static_cast<std::size_t>(std::ceil(q * static_cast<double>(sorted.size()))) - 1];
+    };
+    struct Point
+    {
+        int builders = 0;
+        std::size_t callbacks = 0, missedSlots = 0, overPeriod = 0, overHalf = 0, cpuOverHalf = 0;
+        double wallP999 = 0.0;
+    };
+    std::vector<Point> points;
+    std::vector<std::unique_ptr<plugin::ScenePipeline>> others; // created after the 0-builder floor
+    const auto othersIdle = [&] {
+        for (const auto& o : others)
+            if (!o->builderIdle() || o->settling())
+                return false;
+        return true;
+    };
+    for (const int builders : {0, 1, 2, 4, 8})
+    {
+        if (builders > 0 && others.empty())
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                others.push_back(std::make_unique<plugin::ScenePipeline>());
+                others.back()->prepare(kFs, 512, false);
+                others.back()->beginRestore();
+                others.back()->restore(big, bigValues);
+            }
+            REQUIRE(pipeline_test::waitFor(othersIdle, std::chrono::minutes(10)));
+        }
+        plugin::ScenePipeline rt;
+        rt.prepare(kFs, kBlock, false);
+        rt.beginRestore();
+        rt.restore(room, module3d::parameterValuesFromScene(room));
+        REQUIRE(pipeline_test::waitFor([&] { return !rt.settling() && rt.builderIdle(); }));
+        std::atomic<bool> stop{false};
+        std::thread churn([&] {
+            float x = 50.0f;
+            while (!stop.load())
+            {
+                x += 0.1f;
+                for (int i = 0; i < builders; ++i)
+                    others[static_cast<std::size_t>(i)]->setParameter(module3d::kListenerX, x);
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        });
+        // The callback thread: priority, timer and CPU clock are set up on it, then the paced loop.
+        std::vector<double> wall, cpu;
+        std::uint64_t maxMacs = 0;
+        std::size_t missed = 0;
+        double wakeLateMaxUs = 0.0;
+        std::string priority, timer, cpuClock;
+        std::thread callback([&] {
+            const rt_probe::AudioPriority prio(periodUs);
+            const rt_probe::Pacer pacer;
+            const rt_probe::ThreadCpuClock cpuClk;
+            priority = prio.description();
+            timer = pacer.describe();
+            cpuClock = cpuClk.describe();
+            wall.reserve(expected);
+            cpu.reserve(expected);
+            std::vector<float> a(kBlock, 0.1f), b(kBlock, -0.1f);
+            const float* const in[2] = {a.data(), b.data()};
+            float* const out[2] = {a.data(), b.data()};
+            const auto start = Clock::now() + std::chrono::milliseconds(5);
+            const auto slot = [&](std::size_t k) {
+                return start
+                       + std::chrono::duration_cast<Clock::duration>(
+                           std::chrono::duration<double, std::micro>(static_cast<double>(k) * periodUs));
+            };
+            std::size_t k = 0;
+            while (k < expected)
+            {
+                const auto deadline = slot(k);
+                pacer.waitUntil(deadline);
+                const double c0 = cpuClk.nowNs();
+                const auto w0 = Clock::now();
+                rt.process(in, out, kBlock);
+                const auto w1 = Clock::now();
+                const double c1 = cpuClk.nowNs();
+                maxMacs = std::max(maxMacs, rt.engine().convolver().lastProcessMultiplyAdds());
+                wall.push_back(std::chrono::duration<double, std::micro>(w1 - w0).count());
+                cpu.push_back((c1 - c0) / 1000.0);
+                wakeLateMaxUs = std::max(wakeLateMaxUs,
+                                         std::chrono::duration<double, std::micro>(w0 - deadline).count());
+                ++k;
+                // A slot whose successor's time has also passed is skipped (counted missed), as a driver
+                // drops a buffer it could not hand over: a late callback still runs at once.
+                const double elapsedUs =
+                    std::chrono::duration<double, std::micro>(Clock::now() - start).count();
+                const auto latest = static_cast<std::size_t>(elapsedUs / periodUs);
+                if (latest > k)
+                {
+                    const std::size_t skip = std::min(latest, expected) - k;
+                    missed += skip;
+                    k += skip;
+                }
+            }
+        });
+        callback.join();
+        stop.store(true);
+        churn.join();
+        REQUIRE(pipeline_test::waitFor(othersIdle, std::chrono::minutes(5)));
+        Point pt;
+        pt.builders = builders;
+        pt.callbacks = wall.size();
+        pt.missedSlots = missed;
+        for (const double w : wall)
+        {
+            if (w > periodUs)
+                ++pt.overPeriod;
+            if (w > 0.5 * periodUs)
+                ++pt.overHalf;
+        }
+        for (const double c : cpu)
+            if (c > 0.5 * periodUs)
+                ++pt.cpuOverHalf;
+        std::sort(wall.begin(), wall.end());
+        std::sort(cpu.begin(), cpu.end());
+        pt.wallP999 = quantile(wall, 0.999);
+        points.push_back(pt);
+        const bool valid = static_cast<double>(pt.callbacks) >= 0.95 * static_cast<double>(expected);
+        if (builders == 0)
+            std::printf("07c1b-records (c) B1-b instrument: %s; %s\n", timer.c_str(), cpuClock.c_str());
+        std::printf(
+            "07c1b-records (c) B1-b callback, %d concurrent builder%s at 100 m, buffer %d @ %.0f Hz (period "
+            "%.0f us), %.0f s: callbacks %zu / %zu expected (missed slots %zu); wall us median %.1f p99 %.1f "
+            "p99.9 %.1f max %.1f; thread CPU us median %.1f p99 %.1f p99.9 %.1f max %.1f; overruns (wall) > "
+            "period %zu, > period/2 %zu (CPU > period/2 %zu); wake late max %.0f us; max multiply-adds per "
+            "callback %llu; hardware_concurrency %u; priority: %s%s\n",
+            builders, builders == 1 ? "" : "s", kBlock, kFs, periodUs, kSeconds, pt.callbacks, expected,
+            missed, quantile(wall, 0.5), quantile(wall, 0.99), pt.wallP999, wall.back(), quantile(cpu, 0.5),
+            quantile(cpu, 0.99), quantile(cpu, 0.999), cpu.back(), pt.overPeriod, pt.overHalf, pt.cpuOverHalf,
+            wakeLateMaxUs, static_cast<unsigned long long>(maxMacs), hw, priority.c_str(),
+            valid ? "" : "  INSTRUMENT INVALID (callbacks < 0.95 x expected)");
+    }
+    // Beside the old instrument (R16), and the residual reading (D-B1 item 6): an overrun > period at 8
+    // builders with none at 0. Printed only.
+    std::string beside;
+    const Point* floor0 = nullptr;
+    const Point* top8 = nullptr;
+    for (const auto& pt : points)
+    {
+        char buf[96];
+        const auto o = oldP999.find(pt.builders);
+        if (o != oldP999.end())
+            std::snprintf(buf, sizeof(buf), "%s%d: %.0f (old %.0f)", beside.empty() ? "" : "; ", pt.builders,
+                          pt.wallP999, o->second);
+        else
+            std::snprintf(buf, sizeof(buf), "%s%d: %.0f (old n/a)", beside.empty() ? "" : "; ", pt.builders,
+                          pt.wallP999);
+        beside += buf;
+        if (pt.builders == 0)
+            floor0 = &pt;
+        if (pt.builders == 8)
+            top8 = &pt;
+    }
+    const bool residual = floor0 != nullptr && top8 != nullptr && top8->overPeriod > 0
+                          && floor0->overPeriod == 0;
+    std::printf(
+        "07c1b-records (c) B1-b beside the old instrument (R16), wall p99.9 us by builders: %s; "
+        "overruns > period at 0 / 8 builders %zu / %zu%s\n",
+        beside.c_str(), floor0 != nullptr ? floor0->overPeriod : 0, top8 != nullptr ? top8->overPeriod : 0,
+        residual ? "  RESIDUAL: overrun at 8 builders with a clean floor (D-B1 item 6: phase-13-3 scope 4 "
+                   "and the R5 Windows machine; a miss opens 13-1b)"
+                 : "");
 }
 
 // AX38 (iv) records (subset): 1, 4 and 8 instances at the AQ10 room and at 100 m, 48 and 96 kHz: the time
@@ -1680,6 +2129,11 @@ TEST_CASE("records: condition 12 (d) quiesce with N concurrent syntheses and (f)
 // audible (the restore's return: an IrSet with a tail is current) and the time from provisional to exact
 // (until the last instance settled); the ISM latency of a T60-changing edit under the AX49 D5 bridge. Any
 // 8-instance run over 5 s is flagged in print, never asserted. Its T60 sweep is an input to phase 07d.
+// Phase-07c-1b (D-B4 C7', D-B2 B2-a'' / FM-10S; docs/review/phase-07c-1b/8-decider-decision-r2.md): per
+// instance its restore time and the other instances' background builds at its start (Solve / Assemble, from
+// a stage hook on builder threads), hardware_concurrency(), and at the rated corner (96 kHz, T60 8 s; 1 and 8
+// instances) the prepare-first totals without a settle wait, interleaved and batched, beside the
+// setState-first total, with the largest of the three named. Printed only.
 TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 / 4 / 8 instances, T60 sweep, "
           "D5-bridge ISM latency",
           "[.][benchmark][diffuse-records][record-h]")
@@ -1707,29 +2161,104 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
         REQUIRE(pipeline_test::waitFor([&] { return settled(src); }, std::chrono::minutes(5)));
         return src.savedDiffuse();
     };
+    // Phase-07c-1b D-B4 (C7') and D-B2 (B2-a''): background builds at each restore's start. Each pipe gets a
+    // stage hook storing its last build stage in an atomic, on builder threads only (calls on this host
+    // thread, the synchronous prepare / restore, are ignored); at the start of restore i the other pipes
+    // whose builderBusy() is true are counted by that stage. Counted as instances, each with up to 2 emitter
+    // synthesis threads (AX49 parallel).
+    const std::thread::id hostThread = std::this_thread::get_id();
+    struct StageProbe
+    {
+        std::atomic<int> last{-1};
+    };
+    using Stage = plugin::ScenePipeline::BuildStage;
+    const auto attachProbe = [hostThread](plugin::ScenePipeline& p, StageProbe& probe) {
+        p.setStageHook([hostThread, &probe](Stage st) {
+            if (std::this_thread::get_id() != hostThread)
+                probe.last.store(static_cast<int>(st), std::memory_order_relaxed);
+        });
+    };
+    struct Busy
+    {
+        int solve = 0, assemble = 0, other = 0; // other: Plan, Commit or no stage yet in this decision
+        int queued = 0; // not busy but not idle: work waiting for the builder to start its decision
+    };
+    const auto busyAt = [](const std::vector<std::unique_ptr<plugin::ScenePipeline>>& pipes,
+                           const std::vector<std::unique_ptr<StageProbe>>& probes, std::size_t self) {
+        Busy b;
+        for (std::size_t j = 0; j < pipes.size(); ++j)
+        {
+            if (j == self)
+                continue;
+            if (!pipes[j]->builderBusy())
+            {
+                if (!pipes[j]->builderIdle())
+                    ++b.queued;
+                continue;
+            }
+            const int st = probes[j]->last.load(std::memory_order_relaxed);
+            if (st == static_cast<int>(Stage::Solve))
+                ++b.solve;
+            else if (st == static_cast<int>(Stage::Assemble))
+                ++b.assemble;
+            else
+                ++b.other;
+        }
+        return b;
+    };
+    const auto joinBusy = [](const std::vector<Busy>& v) {
+        std::string out;
+        char buf[48];
+        for (std::size_t i = 0; i < v.size(); ++i)
+        {
+            std::snprintf(buf, sizeof(buf), "%s%d(S%d/A%d/o%d)+q%d", i ? " " : "",
+                          v[i].solve + v[i].assemble + v[i].other, v[i].solve, v[i].assemble, v[i].other,
+                          v[i].queued);
+            out += buf;
+        }
+        return out;
+    };
+    const unsigned hw = std::thread::hardware_concurrency();
     struct Result
     {
         double audibleMaxMs = 0.0, audibleSumMs = 0.0, exactMs = 0.0;
+        // phase-07c-1b scope 6 (review M1): the instances' first prepares (instance insertion, outside the
+        // restore window above): their synchronous stage-1 solves (Stats::insertSolves) and their wall time
+        double insertMs = 0.0;
+        std::uint64_t insertSolves = 0;
+        // phase-07c-1b D-B4: per instance its restore time and the background builds at its start
+        std::vector<double> restoreMs;
+        std::vector<Busy> busy;
     };
     const auto run = [&](const contract::SceneDescription& sc, double fs, int instances,
                          const std::optional<plugin::SavedDiffuse>& saved) {
+        Result r;
+        std::vector<std::unique_ptr<StageProbe>> probes; // outlive the pipes (destroyed after them)
         std::vector<std::unique_ptr<plugin::ScenePipeline>> pipes;
+        const auto i0 = Clock::now();
         for (int i = 0; i < instances; ++i)
         {
+            probes.push_back(std::make_unique<StageProbe>());
             pipes.push_back(std::make_unique<plugin::ScenePipeline>());
+            attachProbe(*pipes.back(), *probes.back());
             pipes.back()->prepare(fs, 512, false);
         }
+        r.insertMs = ms(i0, Clock::now());
         for (auto& p : pipes)
+        {
             REQUIRE(pipeline_test::waitFor([&] { return settled(*p); }));
-        Result r;
+            r.insertSolves += p->stats().insertSolves;
+        }
         const auto values = module3d::parameterValuesFromScene(sc);
         const auto t0 = Clock::now();
-        for (auto& p : pipes) // in sequence on one thread
+        for (std::size_t i = 0; i < pipes.size(); ++i) // in sequence on one thread
         {
+            r.busy.push_back(busyAt(pipes, probes, i));
             const auto a = Clock::now();
-            p->beginRestore();
-            p->restore(sc, values, saved);
+            pipes[i]->beginRestore();
+            pipes[i]->restore(sc, values, saved);
             const double d = ms(a, Clock::now());
+            r.restoreMs.push_back(d);
             r.audibleMaxMs = std::max(r.audibleMaxMs, d);
             r.audibleSumMs += d;
         }
@@ -1738,21 +2267,78 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
         r.exactMs = ms(t0, Clock::now());
         return r;
     };
-    const auto print = [](const char* what, double t60, double fs, int n, bool keyed, const Result& r,
-                          const sim::ProvisionalTiming& t) {
+    const auto print = [&](const char* what, double t60, double fs, int n, bool keyed, const Result& r,
+                           const sim::ProvisionalTiming& t) {
         std::printf(
             "07c1-records (h) %s T60 %4.0f s %6.0f Hz %d inst %-7s: until audible per instance max %.0f ms "
-            "(sum %.0f ms); provisional -> exact (all settled) %.0f ms; L_p %.2f s / L %.2f s%s%s\n",
+            "(sum %.0f ms); provisional -> exact (all settled) %.0f ms; L_p %.2f s / L %.2f s%s; insertion "
+            "(outside "
+            "the window): insertSolves %llu, first prepares %.0f ms%s\n",
             what, t60, fs, n, keyed ? "keyed" : "keyless", r.audibleMaxMs, r.audibleSumMs, r.exactMs, t.endS,
             t.exactS, t.provisional ? "" : " (exact in place)",
+            static_cast<unsigned long long>(r.insertSolves), r.insertMs,
             n == 8 && r.audibleSumMs > 5000.0 ? "  FLAG: 8-instance load over 5 s (AX49 reversal input)"
                                               : "");
+        std::printf(
+            "07c1b-records (h) %s T60 %4.0f s %6.0f Hz %d inst %-7s setState-first order (prepares "
+            "settled, then restores): restore per instance ms [%s]; other instances' builders busy at "
+            "each restore start [%s] (busy count(Solve/Assemble/other) + q queued, instances, each up to 2 "
+            "emitter "
+            "threads, AX49); hardware_concurrency %u\n",
+            what, t60, fs, n, keyed ? "keyed" : "keyless", joinMs(r.restoreMs).c_str(),
+            joinBusy(r.busy).c_str(), hw);
     };
+    // FM-10S (D-B2 B2-a''): the prepare-first host order with no settle wait between prepare and restore,
+    // interleaved (prepare i, restore i, for each i) or batched (every prepare, then every restore); the
+    // total runs from the first prepare to the last restore's return (the last instance audible).
+    struct PrepareFirst
+    {
+        double totalMs = 0.0;
+        std::vector<double> prepareMs, restoreMs;
+        std::vector<Busy> busy;
+    };
+    const auto runPrepareFirst = [&](const contract::SceneDescription& sc, double fs, int instances,
+                                     const std::optional<plugin::SavedDiffuse>& saved, bool interleaved) {
+        PrepareFirst r;
+        std::vector<std::unique_ptr<StageProbe>> probes; // outlive the pipes
+        std::vector<std::unique_ptr<plugin::ScenePipeline>> pipes;
+        const auto values = module3d::parameterValuesFromScene(sc);
+        const auto restoreOne = [&](std::size_t i) {
+            r.busy.push_back(busyAt(pipes, probes, i));
+            const auto a = Clock::now();
+            pipes[i]->beginRestore();
+            pipes[i]->restore(sc, values, saved);
+            r.restoreMs.push_back(ms(a, Clock::now()));
+        };
+        const auto t0 = Clock::now();
+        for (int i = 0; i < instances; ++i)
+        {
+            probes.push_back(std::make_unique<StageProbe>());
+            pipes.push_back(std::make_unique<plugin::ScenePipeline>());
+            attachProbe(*pipes.back(), *probes.back());
+            const auto a = Clock::now();
+            pipes.back()->prepare(fs, 512, false);
+            r.prepareMs.push_back(ms(a, Clock::now()));
+            if (interleaved)
+                restoreOne(pipes.size() - 1);
+        }
+        if (!interleaved)
+            for (std::size_t i = 0; i < pipes.size(); ++i)
+                restoreOne(i);
+        r.totalMs = ms(t0, Clock::now());
+        return r; // the pipes are destroyed here (their builders cancelled; not timed)
+    };
+    // setState-first totals of the rated corner (T60 8 s, 96 kHz) by (instances, keyed), from the loop below.
+    std::map<std::pair<int, bool>, double> setStateFirst;
+    std::optional<plugin::SavedDiffuse> savedAt8;
     for (const double t60 : {2.0, 8.0, 12.0, 20.0, 35.0, 50.0})
     {
         const auto sc = cubeT60(t60);
         const auto saved = savedFor(sc);
         REQUIRE(saved.has_value());
+        const bool ratedCorner = t60 > 7.5 && t60 < 8.5;
+        if (ratedCorner)
+            savedAt8 = saved;
         for (const double fs : {48000.0, 96000.0})
         {
             sim::BuildOptions o;
@@ -1761,13 +2347,58 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
             const auto timing = sim::StagedBuild::plan(sc, o).provisionalTiming();
             for (const int n : {1, 4, 8})
             {
-                if (n > 1 && (t60 < 7.5 || t60 > 8.5))
+                if (n > 1 && !ratedCorner)
                     continue; // instances at the rated corner (T60_max 8 s); the sweep at one instance
-                print("load", t60, fs, n, false, run(sc, fs, n, std::nullopt), timing);
-                print("load", t60, fs, n, true, run(sc, fs, n, saved), timing);
+                for (const bool keyed : {false, true})
+                {
+                    const auto r = run(sc, fs, n, keyed ? saved : std::nullopt);
+                    print("load", t60, fs, n, keyed, r, timing);
+                    if (ratedCorner && fs > 90000.0)
+                        setStateFirst[{n, keyed}] = r.audibleSumMs;
+                }
             }
         }
     }
+    // FM-10S: the three totals at the rated corner (96 kHz, T60 8 s), 1 and 8 instances, keyless and keyed;
+    // which is largest is printed (phase-07d's 5 s criterion and AX38 (iv)'s 10 s line read the largest).
+    REQUIRE(savedAt8.has_value());
+    for (const int n : {1, 8})
+        for (const bool keyed : {false, true})
+        {
+            const auto sc = cubeT60(8.0);
+            const auto& saved = keyed ? savedAt8 : std::optional<plugin::SavedDiffuse>{};
+            const auto inter = runPrepareFirst(sc, 96000.0, n, saved, true);
+            const auto batch = runPrepareFirst(sc, 96000.0, n, saved, false);
+            for (const auto* pf : {&inter, &batch})
+                std::printf(
+                    "07c1b-records (h) prepare-first %-11s T60 8 s 96000 Hz %d inst %-7s (no settle "
+                    "wait): total %.0f ms; prepare per instance ms [%s]; restore per instance ms [%s]; "
+                    "other instances' builders busy at each restore start [%s] (count(Solve/Assemble/"
+                    "other) + q queued); hardware_concurrency %u\n",
+                    pf == &inter ? "interleaved" : "batched", n, keyed ? "keyed" : "keyless", pf->totalMs,
+                    joinMs(pf->prepareMs).c_str(), joinMs(pf->restoreMs).c_str(), joinBusy(pf->busy).c_str(),
+                    hw);
+            const double sf = setStateFirst.at({n, keyed});
+            const char* largest = "setState-first";
+            double largestMs = sf;
+            if (inter.totalMs > largestMs)
+            {
+                largest = "prepare-first interleaved";
+                largestMs = inter.totalMs;
+            }
+            if (batch.totalMs > largestMs)
+            {
+                largest = "prepare-first batched";
+                largestMs = batch.totalMs;
+            }
+            std::printf(
+                "07c1b-records (h) FM-10S T60 8 s 96000 Hz %d inst %-7s: prepare-first interleaved %.0f "
+                "ms, prepare-first batched %.0f ms, setState-first %.0f ms (restore sum, prepares settled "
+                "first); largest: %s %.0f ms%s%s\n",
+                n, keyed ? "keyed" : "keyless", inter.totalMs, batch.totalMs, sf, largest, largestMs,
+                n == 8 && largestMs > 5000.0 ? "  FLAG: over 5 s (phase-07d criterion)" : "",
+                n == 8 && largestMs > 10000.0 ? "  FLAG: over 10 s (AX38 (iv) line)" : "");
+        }
     // The D5 bridge: a T60-changing edit (room width) in a settled 100 m instance at T60 8 s; the ISM update
     // is submitted over the cached unit decays before the solve: its latency, and the time to the exact tail.
     for (const double fs : {48000.0, 96000.0})
@@ -1797,6 +2428,25 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
     }
 }
 
+namespace {
+// FNV-1a 64 over the E_b of the fingerprint fixtures, in fixture order (shared by the pinned test and its
+// negative check, phase-07c-1b scope 4).
+std::uint64_t ax48FingerprintHash(const std::vector<sim::EmitterBands>& levels)
+{
+    std::uint64_t h = 0xcbf29ce484222325ull;
+    for (const auto& level : levels)
+    {
+        const auto* c = reinterpret_cast<const unsigned char*>(level.data());
+        for (std::size_t i = 0; i < sizeof(sim::EmitterBands); ++i)
+        {
+            h ^= c[i];
+            h *= 0x100000001b3ull;
+        }
+    }
+    return h;
+}
+} // namespace
+
 // Phase-07c-1 AX48 E_model fingerprint: the E_b of the fingerprint fixtures (the two gated 100 m cubes, the
 // flutter cube triggering the AX22 ISM fallback, and the low-alpha s = 1 cube, air-dominated in the upper
 // bands) hashed bit for bit, per platform, with DiffuseLimits and kEstimatorModelId. A change of E_b with the
@@ -1812,21 +2462,14 @@ TEST_CASE("records: AX48 E_model fingerprint of E_b on the fingerprint fixtures"
         std::uint32_t modelId;
         std::uint64_t hash;
     };
-    // Pinned from CI (phase-07c-1); 0 = not pinned yet.
+    // Pinned in phase-07c-1b (scope 4) from CI: each hash identical on runs 43242209571, 43258505284 and
+    // 43291051799 (docs/review/phase-07c-1/41, 42, 44); 0 = not pinned. CHANGELOG: tests/golden/CHANGELOG.md.
     constexpr Pin kPins[] = {
-        {"Linux", 1, 0},
-        {"macOS", 1, 0},
-        {"Windows", 1, 0},
+        {"Linux", 1, 0x22f009efe0004e82ull},
+        {"macOS", 1, 0x9d4f48216097ae94ull},
+        {"Windows", 1, 0xa70a95cd5962863bull},
     };
-    std::uint64_t h = 0xcbf29ce484222325ull;
-    const auto mix = [&](const void* p, std::size_t n) {
-        const auto* c = static_cast<const unsigned char*>(p);
-        for (std::size_t i = 0; i < n; ++i)
-        {
-            h ^= c[i];
-            h *= 0x100000001b3ull;
-        }
-    };
+    std::vector<sim::EmitterBands> levels;
     for (const char* key :
          {"cube100_flutter_fallback", "cube100_lowalpha0.05_s0.3", "cube100_lowalpha0.05_s1"})
     {
@@ -1837,9 +2480,10 @@ TEST_CASE("records: AX48 E_model fingerprint of E_b on the fingerprint fixtures"
         build.solve();
         const auto level = build.diffuseLevel();
         REQUIRE(level.has_value());
-        mix(level->data(), sizeof(sim::EmitterBands));
+        levels.push_back(*level);
         std::printf("07c1-records ax48 fingerprint %-26s E_b[0] 1 kHz %.17g\n", key, (*level)[0][4]);
     }
+    const std::uint64_t h = ax48FingerprintHash(levels);
     for (const auto& pin : kPins)
         if (std::string(pin.os) == kOsName)
         {
@@ -1853,5 +2497,28 @@ TEST_CASE("records: AX48 E_model fingerprint of E_b on the fingerprint fixtures"
                 REQUIRE(
                     h == pin.hash); // E_b changed with DiffuseLimits unchanged: bump kEstimatorModelId (AX48)
             }
+        }
+}
+
+// Phase-07c-1b scope 4, negative check: the fingerprint sees a change of E_b. One fixture's E_b (the flutter
+// cube at 48 kHz, cheap enough for every Debug run) is hashed, then a single band of one emitter is moved by
+// one ulp; the hash must differ, so the pinned comparison above fails on any change of E_b, however small.
+TEST_CASE("records: AX48 fingerprint hash changes when E_b changes by one ulp", "[ax48-fingerprint-negative]")
+{
+    sim::BuildOptions o;
+    o.sampleRate = 48000.0;
+    o.kind = sim::BuildOptions::Kind::Omni;
+    auto build = sim::StagedBuild::plan(cube("cube100_flutter_fallback"), o);
+    build.solve();
+    const auto level = build.diffuseLevel();
+    REQUIRE(level.has_value());
+    const std::uint64_t pinned = ax48FingerprintHash({*level});
+    CHECK(ax48FingerprintHash({*level}) == pinned); // deterministic
+    for (std::size_t e = 0; e < level->size(); ++e)
+        for (std::size_t b = 0; b < (*level)[e].size(); ++b)
+        {
+            auto changed = *level;
+            changed[e][b] = std::nextafter(changed[e][b], std::numeric_limits<double>::infinity());
+            CHECK(ax48FingerprintHash({changed}) != pinned);
         }
 }

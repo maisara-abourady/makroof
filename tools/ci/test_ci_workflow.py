@@ -173,3 +173,55 @@ def test_check_fails_when_the_gate_failed(wf: dict, tmp_path: Path, gate_result:
     needs[GATE]["result"] = gate_result
     code, _ = _run(script, {"RUN": "", "REUSED": "", "NEEDS": json.dumps(needs)}, tmp_path)
     assert code != 0
+
+
+# Phase-07c-1b D-B5 (vi) item 5 (AX38 4c (f)): the restore gate's fired warnings reach the job summary and the
+# annotations; the step is run as written, on a benchmark log with GATE lines as the test prints them.
+_GATE_LOG = (
+    "05h-records GATE os=macOS scene=cube100_flutter_fallback x14worst=7.10 median=480 fullRebuildMedian=1 "
+    "solveMedianMs=99.0 solveWarnAt=123.2 solveBasis=PROVISIONAL(n=1) nsPerEval=1.00 status=asserted(30s) "
+    "flutterRef=484 flutterDev=-0.8% warnings=\r\n"
+    "05h-records GATE os=macOS scene=cube100_lowalpha0.05_s0.3 ratio=4.700 ratioWarnAt=4.500 "
+    "solveMedianMs=90.0 solveWarnAt=100.4 solveBasis=PROVISIONAL(n=1) nsPerEval=1.00 x14worst=33.20 "
+    "median=2300 growthBound=1999 fullRebuildMedian=1 status=reported-only trigger=2172 "
+    "warnings=RATIO GROWTH OVER30S MACTRIGGER \r\n"
+    "05h-records restore gate cube100_lowalpha0.05_s0.3 macOS: LISTED defect; WARNING OVER30S\n"
+    "07c1b-records stage split os=macOS scene=cube100_lowalpha0.05_s0.3 96 kHz keyless restore\n"
+)
+_QUIET_LOG = (
+    "05h-records GATE os=Linux scene=cube100_lowalpha0.05_s0.3 ratio=2.900 status=asserted trigger=0 "
+    "warnings=PASSES30S \n"
+)
+
+
+def _run_records_step(wf: dict, tmp_path: Path, log: str) -> tuple[int, str, str]:
+    script = _step(wf["jobs"]["build"], "Records to the job summary")["run"].replace("${{ matrix.name }}", "macos")
+    (tmp_path / "build").mkdir()
+    (tmp_path / "build" / "benchmark.log").write_bytes(log.encode())
+    summary = tmp_path / "summary"
+    summary.write_text("")
+    env = {**os.environ, "GITHUB_STEP_SUMMARY": str(summary)}
+    p = subprocess.run(["bash", "-eo", "pipefail", "-c", script], env=env, cwd=tmp_path, capture_output=True,
+                       text=True)
+    return p.returncode, p.stdout, summary.read_text()
+
+
+@needs_shell
+def test_gate_warnings_surface(wf: dict, tmp_path: Path) -> None:
+    code, stdout, summary = _run_records_step(wf, tmp_path, _GATE_LOG)
+    assert code == 0
+    section = summary.split("### GATE warnings, macos")[1]
+    assert "scene=cube100_lowalpha0.05_s0.3" in section and "MACTRIGGER" in section
+    assert "scene=cube100_flutter_fallback" not in section  # empty warnings=
+    assert "07c1b-records stage split" in summary  # the phase-07c-1b record lines reach the summary
+    notes = [line for line in stdout.splitlines() if line.startswith("::warning ")]
+    assert len(notes) == 1
+    assert "title=GATE macos cube100_lowalpha0.05_s0.3::RATIO GROWTH OVER30S MACTRIGGER " in notes[0]
+
+
+@needs_shell
+def test_gate_warnings_none(wf: dict, tmp_path: Path) -> None:
+    code, stdout, summary = _run_records_step(wf, tmp_path, _QUIET_LOG)
+    assert code == 0
+    assert "(none)" in summary.split("### GATE warnings, macos")[1]
+    assert "::warning" not in stdout  # PASSES30S is not OVER30S

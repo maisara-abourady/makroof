@@ -922,3 +922,188 @@ TEST_CASE("A8 / AX44: E_b is bit-identical between output modes, HRTF ids and se
         REQUIRE(std::memcmp(b.diffuseLevel()->data(), ref->data(), sizeof(sim::EmitterBands)) == 0);
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Phase-07c-1b D-B2 / FM-B2: instance insertion is a keyless load of the instance's default scene (AX48
+// FM-3')
+// ---------------------------------------------------------------------------------------------------------------
+
+namespace {
+
+// Parks the pipeline's builder (never the host thread) at its next build stage while `park` is set, so the
+// IrSet the synchronous decision submitted is the one the first boundary takes (no builder submit races it).
+struct BuilderPark
+{
+    std::atomic<bool> park{false};
+    std::thread::id host = std::this_thread::get_id();
+    void install(plugin::ScenePipeline& p)
+    {
+        p.setStageHook([this](plugin::ScenePipeline::BuildStage) {
+            if (std::this_thread::get_id() == host)
+                return;
+            while (park.load())
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        });
+    }
+};
+// Declared after the pipeline: unparks before the pipeline's destructor quiesces the builder (also when a
+// REQUIRE throws).
+struct Unpark
+{
+    std::atomic<bool>& park;
+    ~Unpark() { park.store(false); }
+};
+
+// The stage-1 (A) solve of `scene` outside the pipeline (AX48 FM-3').
+sim::EmitterBands stage1Level(const contract::SceneDescription& scene)
+{
+    auto build = sim::StagedBuild::plan(scene, omni(kRate));
+    build.solve();
+    REQUIRE(build.diffuseLevel().has_value());
+    return *build.diffuseLevel();
+}
+
+// The synchronous decision's IR: ISM + matching + the AX49 interim tail at `level` (the exact tail where
+// L_p >= L).
+sim::RoomIR syncIr(const contract::SceneDescription& scene, const sim::EmitterBands& level)
+{
+    auto build = sim::StagedBuild::plan(scene, omni(kRate));
+    build.useDiffuseLevel(level);
+    return build.assembleProvisional();
+}
+
+// K11: the IrSet the synchronous decision submitted is installed at the first partition boundary with no
+// fade: the output is the latency's silence for P samples, then wet; no fade has started.
+void requireInstalledAtOnce(plugin::ScenePipeline& p)
+{
+    const auto expected = p.lastSubmittedIrSet();
+    REQUIRE(expected != nullptr);
+    pipeline_test::Recorder rec{p};
+    rec.run(16 * 256, 256);
+    const auto& conv = p.engine().convolver();
+    REQUIRE(conv.fadeCount() == 0);
+    REQUIRE(conv.fadeStartSample() == -1);
+    REQUIRE(conv.currentIr() == expected.get());
+    const auto P = static_cast<std::size_t>(plugin::ScenePipeline::kPartitionSize);
+    double before = 0.0, after = 0.0;
+    for (int c = 0; c < 2; ++c)
+        for (std::size_t t = 0; t < rec.samples(); ++t)
+            (t < P ? before : after) += static_cast<double>(rec.out[c][t]) * rec.out[c][t];
+    REQUIRE(before == 0.0);
+    REQUIRE(after > 0.0);
+}
+
+} // namespace
+
+TEST_CASE(
+    "FM-B2 / AX48: instance insertion is a keyless load of the default scene: the stage-1 solve runs in "
+    "prepare, its first IrSet carries a tail at that E_b and is installed at the first boundary, no fade",
+    "[pipeline][interim][ax48][fm-b2]")
+{
+    BuilderPark hold;
+    plugin::ScenePipeline p;
+    Unpark unpark{hold.park};
+    hold.install(p);
+    hold.park.store(true);
+    p.prepare(kRate, 256, false); // a fresh instance, no restore, no saved level: its default scene
+    // The solve completed before prepare() returned (synchronously, on this thread).
+    const auto st = p.stats();
+    REQUIRE(st.insertSolves == 1);
+    REQUIRE(st.solves == 1);
+    REQUIRE(st.syncSolves == 1);
+    REQUIRE(st.keylessLoads == 0); // counted as an insertion (insertSolves), not as a restore's keyless load
+    REQUIRE(st.keyedLoads == 0);
+    const auto scene = p.currentScene(); // the default scene as derived (medium_room)
+    const auto ir = p.lastSubmittedIr();
+    REQUIRE(ir != nullptr);
+    REQUIRE(p.lastSubmittedIrSet() != nullptr);
+    // A tail: energy past the latest mixing time (never early-only, never silence).
+    const auto timing = sim::StagedBuild::plan(scene, omni(kRate)).provisionalTiming();
+    REQUIRE(tailEnergy(*ir, timing.mixMaxS) > 0.0);
+    // At the stage-1 E_b: the first IR is bit-identical to the synchronous build at a stage-1 solve of the
+    // same problem done outside the pipeline.
+    const auto level = stage1Level(scene);
+    REQUIRE(bitIdentical(*ir, syncIr(scene, level)));
+    requireInstalledAtOnce(p);
+    hold.park.store(false);
+    waitSettled(p);
+    // The settle adopted the insertion solve (no second solve), and its E_b is the stage-1 solve's bit for
+    // bit.
+    REQUIRE(p.stats().solves == 1);
+    const auto saved = p.savedDiffuse();
+    REQUIRE(saved.has_value());
+    REQUIRE(std::memcmp(saved->bands.data(), level.data(), sizeof(sim::EmitterBands)) == 0);
+    REQUIRE(bitIdentical(*p.lastSubmittedIr(), plugin::ScenePipeline::buildIr(scene, kRate)));
+    std::printf("07c1b-records fm-b2 insertion (medium_room, 48 kHz): insertSolves %llu, first IrSet %s, "
+                "installed at the first boundary, fadeCount 0\n",
+                static_cast<unsigned long long>(st.insertSolves),
+                timing.provisional ? "AX49 provisional" : "exact (L_p >= L)");
+}
+
+TEST_CASE("FM-B2 / R17: both VST3 orders: prepare then setState (insertion solve, then a keyless load) and "
+          "setState then prepare (a keyless load, no insertion solve)",
+          "[pipeline][interim][ax48][fm-b2]")
+{
+    const auto club = pipeline_test::loadScene("club.json");
+    SECTION("prepare, then setState")
+    {
+        BuilderPark hold;
+        plugin::ScenePipeline p;
+        Unpark unpark{hold.park};
+        hold.install(p);
+        hold.park.store(true);
+        p.prepare(kRate, 256, false);
+        REQUIRE(p.stats().insertSolves == 1);
+        REQUIRE(p.lastSubmittedIrSet() != nullptr);
+        // The host's setState follows at once. The parked builder (settling the insertion) is let go so that
+        // beginRestore() can quiesce it, and parked again before restore() restarts it.
+        hold.park.store(false);
+        p.beginRestore();
+        hold.park.store(true);
+        p.restore(club, module3d::parameterValuesFromScene(club));
+        const auto st = p.stats();
+        REQUIRE(st.insertSolves == 1); // from the prepare only
+        REQUIRE(st.keylessLoads == 1); // the restore is a keyless project load (AX48 FM-3')
+        REQUIRE(st.syncSolves == 2);   // insertion + load, both synchronous
+        REQUIRE(st.solves <= 3);       // + at most the builder's settle of the insertion, if it got that far
+        const auto scene = p.currentScene();
+        const auto clubLevel = stage1Level(scene);
+        REQUIRE(bitIdentical(*p.lastSubmittedIr(), syncIr(scene, clubLevel)));
+        // Nothing was processed between the two submits: the mailbox is latest-wins, so the first boundary
+        // installs the load's IrSet at once (the insertion IrSet is never heard), no fade.
+        requireInstalledAtOnce(p);
+        hold.park.store(false);
+        waitSettled(p);
+        REQUIRE(std::memcmp(p.savedDiffuse()->bands.data(), clubLevel.data(), sizeof(sim::EmitterBands))
+                == 0);
+        REQUIRE(bitIdentical(*p.lastSubmittedIr(), plugin::ScenePipeline::buildIr(scene, kRate)));
+    }
+    SECTION("setState, then prepare")
+    {
+        // restore() before prepare() is allowed: it only stores; prepare()'s decision is the load (the Logic
+        // order, ScenePipeline::prepare).
+        BuilderPark hold;
+        plugin::ScenePipeline p;
+        Unpark unpark{hold.park};
+        hold.install(p);
+        restoreScene(p, club);
+        REQUIRE(p.lastSubmittedIrSet() == nullptr); // stored only
+        REQUIRE(p.stats().syncSolves == 0);
+        hold.park.store(true);
+        p.prepare(kRate, 256, false);
+        const auto st = p.stats();
+        REQUIRE(st.insertSolves == 0); // not an insertion: a restore is stored
+        REQUIRE(st.keylessLoads == 1);
+        REQUIRE(st.syncSolves == 1);
+        REQUIRE(st.solves == 1);
+        const auto scene = p.currentScene();
+        const auto clubLevel = stage1Level(scene);
+        REQUIRE(bitIdentical(*p.lastSubmittedIr(), syncIr(scene, clubLevel)));
+        requireInstalledAtOnce(p);
+        hold.park.store(false);
+        waitSettled(p);
+        REQUIRE(p.stats().solves == 1);
+        REQUIRE(std::memcmp(p.savedDiffuse()->bands.data(), clubLevel.data(), sizeof(sim::EmitterBands))
+                == 0);
+    }
+}

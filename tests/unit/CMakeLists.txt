@@ -40,8 +40,10 @@ add_executable(spatial_tests
                test_diffuse_reports.cpp
                test_diffuse_records.cpp
                ProcessMemory.h
+               RealtimeProbe.h
                test_host_trace.cpp
-               test_interim.cpp)
+               test_interim.cpp
+               test_ax47_midfade.cpp)
 
 # tests/support: the AllocationTracker replaces the global operator new / delete of this binary
 # (Phase 06, zero-allocation checks of the real-time convolver).
@@ -59,9 +61,10 @@ target_link_libraries(spatial_tests
                               spatial::module3d
                               spatial::plugin_core
                               spatial::warnings)
-# ProcessMemory.h (phase-07c-1 records): GetProcessMemoryInfo on Windows.
+# ProcessMemory.h (phase-07c-1 records): GetProcessMemoryInfo on Windows. RealtimeProbe.h (phase-07c-1b
+# D-B1, the condition 12 (c) callback instrument): MMCSS (avrt) and timeBeginPeriod (winmm) on Windows.
 if(WIN32)
-    target_link_libraries(spatial_tests PRIVATE psapi)
+    target_link_libraries(spatial_tests PRIVATE psapi avrt winmm)
 endif()
 
 if(SPATIAL_BUILD_PLUGIN)

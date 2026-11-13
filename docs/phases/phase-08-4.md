@@ -49,6 +49,14 @@ S8, S9, S10 = phase-08 scope 8, 9, 10)
    under AX37 (5.3), phase-05h scope 10 carries them):** W1/W2 per output mode with the diffuse share shown separately
    (AX38 4b); the AX38 (iv) multi-instance records repeated in binaural mode, with the gate wait shown
    separately. (phase-08 scope 9)
+   **Phase-07c-1b loop (2026-11-13; `docs/review/phase-07c-1b/11-decider-decision-r3.md` items 3, 11):** the AX38 (iv)
+   binaural repeat runs 07c-1b's callback instrument in both modes in one CI run, printing callback count and priority
+   obtained; it re-reads the AX49 8-instance trigger on the larger of record (h)'s prepare-first (interleaved, batched)
+   and setState-first totals (FM-10S) in the heaviest mode and returns it to the board if it fires. `insertMs` (AX48
+   instance insertion, FM-B2) is printed per mode (omni, binaural, stereoSpeakers) and returned to the board if
+   binaural exceeds a host or validator limit; a residual (overrun > period at 8 builders, none at 0) with real-time
+   priority obtained returns D-B1 to the board before Phase 13 (AX38 (i) cond. 12 (c) note; phase-07c-1b decider
+   file 25 Q2).
 10. **Restore gate in the heaviest mode (AX38 4c, AQ10; board answer, decider files 47 §4 (i), 51 §4
     item 5; only if 05h is `done` when this phase runs; if this phase goes first under AX37 (5.3),
     phase-05h scope 10 carries it):** from this phase on, the blocking 100 m, 96 kHz restore gate measures
@@ -76,7 +84,11 @@ The umbrella's out-of-scope list ([phase-08](phase-08.md)) applies.
 - [ ] All earlier tests still pass. (phase-08 AC12, sentence 1; shared, umbrella) Plugin CPU benchmark is
       recorded. (phase-08 AC12, sentence 3) If 05h is `done`:
       W1/W2 per output mode with the diffuse share and the binaural AX38 (iv) records are recorded
-      (scope 9); otherwise phase-05h scope 10 records them. (phase-08 AC12, sentence 4)
+      (scope 9); otherwise phase-05h scope 10 records them. (phase-08 AC12, sentence 4) The callback instrument
+      runs in both modes in one CI run (count and priority printed); the AX49 8-instance trigger is re-read on the
+      larger load total (FM-10S) and returned to the board if it fires; `insertMs` printed per mode; a residual
+      (overrun > period at 8 builders, none at 0) with real-time priority obtained returns D-B1 to the board before
+      Phase 13 (AX38 (i) cond. 12 (c) note; phase-07c-1b decider file 25 Q2). (scope 9, phase-07c-1b loop)
 - [ ] **Restore gate, heaviest mode (scope 10; if 05h is `done`, otherwise carried by phase-05h scope
       10):** 14 × t_restore ≤ 30 s at the AX38 4c scenes in the
       heaviest output mode, with the one W_max constant, under the AX38 4c register rule (D-H1 (v): strict
