@@ -2408,3 +2408,31 @@ Head-code condition 10 record (plan commit f06b673) diff check: SURVIVES WITH CO
 (figures vs file 44); DC-05 (what the test asserts vs the records) and DC-07 (the drop's lock section dates from session 1,
 ee15c56; session 2's commits held the lock across the comparison and the AX47 step) corrected; DC-09 checked with git (only the
 two noted lines). Side note carried to the PR and 07c-1b follow-ups: the offline drop releases dropped IRs on the calling thread.
+
+## phase-07c-1b (decision loop, 2026-11-13; D-B1 … D-B5; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Round files: `docs/review/phase-07c-1b/` 1 (decider convening: nine-row tables per decision; five facts), 2 (Seats 1–9 round 1),
+3 (researcher RQ1–RQ5, R1–R21), 4 (decider round 1), 5 (Seats 2, 3, 6, 7 on D-B5 (ii)/(iv)), 6 (interrogator on 4), 7 (Seats 1, 3,
+4, 5, 6, 7 round 2b), 8 (decider round 2), 9 (Seats 5, 6, 7 on B-iv+), 10 (interrogator on 8), 11 (decider round 3), 12
+(interrogator on 11), 13 (diff check of the plan edits), 14 (re-check of its corrections).
+
+| id | decision / item | outcome (final) | where applied |
+|---|---|---|---|
+| D-B1 | condition 12 (c) callback p99.9 with 8 concurrent builders | B1-b: re-instrument at platform audio priority (test-only record, never a gate); residual → phase-13-3 scope 4 / R5 Windows machine, a miss opens 13-1b with B1-d first; never an instance cap — SURVIVES (files 10, 12) | AX38 (i) note; phase-07c-1b scope 3 / AC 3; phase-08-4; phase-13-3 scope 4; §6 |
+| D-B2 / FM-B2 | is instance insertion "a load" under AX48 FM-3′ | B2-a″: yes (a scope reading, amends nothing); cost counted (FM-10S), C9 first in 07d, 08-3 per-ear seeds, 08-4 `insertMs` per mode, 13-5 matrix; B2-b silent vetoed by Seat 6 (3/3) — SURVIVES WITH CORRECTIONS (file 12) | AX48; phase-07c-1b scope 6; 07d; 08-3; 08-4; 13-5; §6 |
+| FM-10S | where her AX38 (iv) 10 s line is read | on the larger of record (h)'s prepare-first (interleaved, batched) and setState-first totals, wherever read (07d, 08-4, Phase 13 R3); amends nothing — SURVIVES WITH CORRECTIONS (file 12) | AX38 (iv) Record; phase-13-1, 13-2, 13-5; 07d; 08-4; §6 |
+| D-B3 | AX47 mid-fade analysis window and signal | W-a: 1 ms windows, (1 + N_w/L)² bound, per-sample bound, 8u reconstruction, value equality outside the fade, fades from silence ε-free; signal s1 "seeded speech-like" (CI test signal only) — SURVIVES (files 10, 12) | AX47 Measurement; phase-07c-1b scope 7 / AC 7; 07c-2; 08-3; 09; §6 |
+| D-B4 | AX49 reversal fired (8-instance Windows load 9.5 s) | C7′: moved to phase-07d as an acceptance criterion (≤ 5 s on the larger total), candidates C9, C1, C6, C2, C4, C3-pb, C5 under conditions; records printed in 07c-1b; C3 and C5 vetoed as offered — SURVIVES (file 12) | AX49 Reversal; phase-07d; phase-07c-1b scope 8; §6 |
+| D-B5 (i) | re-pin run selection | S2: ≥ 3 manual `force` runs on the head after the session's last code change, all green; runs 41/42/44 never baselines — SURVIVES | AX38 4c; phase-07c-1b scope 1 / AC 1 |
+| D-B5 (ii) / FM-GROWTH | low-α growth check form | B-iv/+07d: same-run low-α / flutter ratio ≤ 1.10 × the current pin on Linux and Windows every run (print-only on an OS whose pin runs exceed max/min 1.10, and macOS); the absolute 1.10 leg returns at the 07d re-pin in a window sized with a stated margin over ≥ 6 runs — SURVIVES WITH CORRECTIONS (file 12); `AMENDS her decision of 2026-11-10: "I accept the board's answer by definition."` (AX38 4c G1–G14) | AX38 4c; 07d scope 8; §6 |
+| D-B5 (iv) | solve baselines | (iv″): S2 means, k per OS = largest max/mean, PROVISIONAL with a dated exit (G9), print-only on hosted runners throughout — SURVIVES (inside FM-GROWTH) | AX38 4c G7–G9 |
+| D-B5 (iii) / FM-TRIG | macOS trigger re-derivation | M-a: ⌊1.15 × mean of the green macOS low-α medians of the S2 runs⌋, by script; a reading, amends nothing — SURVIVES WITH CORRECTIONS (file 12) | AX38 4c |
+| D-B5 (v) | low-α register entries | E1: close only if 14 × worst ≤ 30 s on every S2 run, else listed 'closes at' phase-07d — SURVIVES | AX38 4c; phase-07c-1b scope 2 |
+| D-B5 (vi) | MACTRIGGER on runs 42, 44 | X-d−: a (d) defect with remedy 07d, closing only on measured evidence (per-stage split, same-run macOS/Linux synthesis ratio, two runs under the trigger; ≤ 3 extra runs); no closure by recalibration — SURVIVES | AX38 4c; phase-07d scope 7 |
+| K24 | process | **MACTRIGGER fired on runs 43258505284 and 43291051799 (two consecutive macOS runs over 2 172 ms) and went unread** in 07c-1; now recorded as a defect (D-B5 (vi)) and the warning tokens go to the CI job summary / `::warning::` | ci.yml "Records to the job summary"; AX38 4c |
+
+Interrogator ledger rows: P07C1B-R1-01 … 41 (file 6), P07C1B-R2-01 … 25 (file 10), P07C1B-R3-01 … 22 (file 12), P07C1B-DC-01 … 46
+(file 13), P07C1B-DC2-01 … 19 (file 14). Final status: every decision SURVIVES or SURVIVES WITH CORRECTIONS (file 12); the plan diff
+check complete (file 14). Decided for Maisara (open to her veto): FM-B2, FM-10S, FM-GROWTH (AMENDS her decision of 2026-11-10),
+FM-TRIG, D-B1, D-B3, D-B4, D-B5 (i), (v), (vi). NEEDS MAISARA: FM-D1-S3 only (carried from phase-07c-1, still unanswered).
+Placeholders `[07c-1b re-pin: …]` in AX38 4c and §6 are filled by a second `/fix-plan` pass from the S2 runs.
