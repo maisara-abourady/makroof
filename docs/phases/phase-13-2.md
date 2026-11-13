@@ -20,7 +20,7 @@ on the code 13-1 optimised.
 
 1. **Diffuse-estimator work limits and the restore (AX41, AQ10 amended 2026-11-10, phase 05b):**
    re-check W_max (provisional 3.05 M image evaluations per emitter, sized to pluginval's restore
-   watchdog less D-H1's margin; re-derived once under phase-07c; board answer, decider files 43, 47, 51) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines, together with the AX38 4c strict 30 s and growth bound on all three OSes (the figures printed by every 05h+ CI run; RG-1); any change to W_max or n\*_max is
+   watchdog less D-H1's margin; re-derived once under phase-07c; board answer, decider files 43, 47, 51) and n\*_max (1 024, sized to 25 ms of the W1 target) on the release machines, together with the AX38 4c strict 30 s and growth bound on all three OSes (the figures printed by every 05h+ CI run; RG-1) and AX38 (iv) record (h) (the totals R3 reads, FM-10S; phase-07c-1b loop, 2026-11-13); any change to W_max or n\*_max is
    an output change (golden round, §6 row) and must be fixed before the first release. Q2a (C), moving the
    diffuse solve off the synchronous restore, prepare and `reset()`, is its own phase,
    [`phase-07c.md`](phase-07c.md) (board answer, decider files 47 §4 (iii), 51 §4 items 4 and 8): **it is a

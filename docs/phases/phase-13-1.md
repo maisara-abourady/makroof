@@ -16,7 +16,11 @@ D-PS4 instruction 5.)
    keep the Arni provenance label as is in the beta wording. (phase-13 R2)
 3. **Load time with 8 instances (AX38 (iv), phase 05b).** If the recorded time until the last of 8
    instances is audible at project load at 100 m exceeds 10 s, it goes to Maisara before the first
-   release. (phase-13 R3)
+   release. (phase-13 R3) The recorded time is the larger of record (h)'s prepare-first (interleaved, batched) and
+   setState-first totals without a settle wait (FM-10S), per instance until audible at the interim level ('the
+   former', AX38 (iv) Record); 13-1 raises it on the latest CI record (07d), 13-5 on the release
+   machines (13-2 scope 1); the time until the final tail has settled is named as a
+   finding if above 10 s. (phase-07c-1b loop, 2026-11-13, decider file 11 item 13)
 4. **Phase 07c not landed (conditional).** If the asynchronous diffuse solve (phase-07c) would land after
    the first release without the estimator parameters versioned in saved state, Seat 7's condition fails
    and the item returns to Maisara (decider file 47 §4, strongest objection). (phase-13 R4)
