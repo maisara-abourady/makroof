@@ -2416,7 +2416,8 @@ Round files: `docs/review/phase-07c-1b/` 1 (decider convening: nine-row tables p
 4, 5, 6, 7 round 2b), 8 (decider round 2), 9 (Seats 5, 6, 7 on B-iv+), 10 (interrogator on 8), 11 (decider round 3), 12
 (interrogator on 11), 13 (diff check of the plan edits), 14 (re-check of its corrections), 15 (Seat 4 on FM-D1-S3), 16 (decider: FM-D1-S3 lines), 17 (Seat 5 on the lines), 18 (Seat 3 on the
 07c-2 window), 19 (decider: FM-D1-S3 final lines), 20 (interrogator on 19), 21 (diff check of the FM-D1-S3 edits), 22 (repin_gate output on the S2 runs), 23 (S2 records excerpt), 24 (interrogator
-on the re-pin fill), 25 (decider rulings on the re-pin fill, Q1–Q5).
+on the re-pin fill), 25 (decider rulings on the re-pin fill, Q1–Q5), 26 (interrogator on the file 25 edits: SURVIVES; optional 1–3 applied; 08-4 routing of
+file 25 Q2 copied into phase-08-4 scope 9 / AC).
 
 | id | decision / item | outcome (final) | where applied |
 |---|---|---|---|
