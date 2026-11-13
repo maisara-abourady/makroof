@@ -416,7 +416,10 @@ jobs:
           fi
 
       # Phase 05i (phase-05i §4 criterion 2): the AX38 records, the K-e12 record and the restore gate's GATE lines
-      # in the job summary, whatever the benchmark step read (records, never gates).
+      # in the job summary, whatever the benchmark step read (records, never gates). Phase-07c-1b D-B5 (vi) item 5
+      # (AX38 4c (f)): a GATE line whose warnings= carries MACTRIGGER, OVER30S, GROWTH, RATIO or SOLVE is
+      # repeated under its own heading and raised as a ::warning:: annotation, so a fired signal is not left
+      # unread in the log (K24); still a record, never a failure.
       - name: Records to the job summary
         if: always()
         shell: bash
@@ -425,9 +428,23 @@ jobs:
             {
               echo "### Records, ${{ matrix.name }} (AX38 4c / (iv), K-e12, restore gate)"
               echo '```'
-              grep -E "^(05h|05i|07c1)-records|^agree-full (gated|summary)|^agree-full pooled bias band [0-9] \[(CHECK, additive|record, per reference room)" build/benchmark.log || echo "(no record lines)"
+              grep -E "^(05h|05i|07c1|07c1b)-records|^agree-full (gated|summary)|^agree-full pooled bias band [0-9] \[(CHECK, additive|record, per reference room)" build/benchmark.log || echo "(no record lines)"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
+            gate_warn=$(grep -E "^05h-records GATE .*warnings=(.* )?(MACTRIGGER|OVER30S|GROWTH|RATIO|SOLVE)( |$)" build/benchmark.log | tr -d '\r' || true)
+            {
+              echo "### GATE warnings, ${{ matrix.name }} (AX38 4c (f): MACTRIGGER, OVER30S, GROWTH, RATIO, SOLVE)"
+              echo '```'
+              if [[ -n "$gate_warn" ]]; then echo "$gate_warn"; else echo "(none)"; fi
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            if [[ -n "$gate_warn" ]]; then
+              while IFS= read -r line; do
+                fired=$(sed -E 's/.*warnings=//' <<< "$line" | tr ' ' '\n' | grep -E '^(MACTRIGGER|OVER30S|GROWTH|RATIO|SOLVE)$' | tr '\n' ' ' || true)
+                scene=$(sed -E 's/.* scene=([^ ]+).*/\1/' <<< "$line")
+                echo "::warning title=GATE ${{ matrix.name }} ${scene}::${fired}(AX38 4c; record, not a gate) ${line}"
+              done <<< "$gate_warn"
+            fi
           fi
 
       - name: Install AU for validation (macOS)

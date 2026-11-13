@@ -2049,14 +2049,21 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
     struct Busy
     {
         int solve = 0, assemble = 0, other = 0; // other: Plan, Commit or no stage yet in this decision
+        int queued = 0; // not busy but not idle: work waiting for the builder to start its decision
     };
     const auto busyAt = [](const std::vector<std::unique_ptr<plugin::ScenePipeline>>& pipes,
                            const std::vector<std::unique_ptr<StageProbe>>& probes, std::size_t self) {
         Busy b;
         for (std::size_t j = 0; j < pipes.size(); ++j)
         {
-            if (j == self || !pipes[j]->builderBusy())
+            if (j == self)
                 continue;
+            if (!pipes[j]->builderBusy())
+            {
+                if (!pipes[j]->builderIdle())
+                    ++b.queued;
+                continue;
+            }
             const int st = probes[j]->last.load(std::memory_order_relaxed);
             if (st == static_cast<int>(Stage::Solve))
                 ++b.solve;
@@ -2072,8 +2079,9 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
         char buf[48];
         for (std::size_t i = 0; i < v.size(); ++i)
         {
-            std::snprintf(buf, sizeof(buf), "%s%d(S%d/A%d/o%d)", i ? " " : "",
-                          v[i].solve + v[i].assemble + v[i].other, v[i].solve, v[i].assemble, v[i].other);
+            std::snprintf(buf, sizeof(buf), "%s%d(S%d/A%d/o%d)+q%d", i ? " " : "",
+                          v[i].solve + v[i].assemble + v[i].other, v[i].solve, v[i].assemble, v[i].other,
+                          v[i].queued);
             out += buf;
         }
         return out;
@@ -2142,7 +2150,8 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
         std::printf(
             "07c1b-records (h) %s T60 %4.0f s %6.0f Hz %d inst %-7s setState-first order (prepares "
             "settled, then restores): restore per instance ms [%s]; other instances' builders busy at "
-            "each restore start [%s] (count(Solve/Assemble/other) instances, each up to 2 emitter "
+            "each restore start [%s] (busy count(Solve/Assemble/other) + q queued, instances, each up to 2 "
+            "emitter "
             "threads, AX49); hardware_concurrency %u\n",
             what, t60, fs, n, keyed ? "keyed" : "keyless", joinMs(r.restoreMs).c_str(),
             joinBusy(r.busy).c_str(), hw);
@@ -2233,7 +2242,7 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
                     "07c1b-records (h) prepare-first %-11s T60 8 s 96000 Hz %d inst %-7s (no settle "
                     "wait): total %.0f ms; prepare per instance ms [%s]; restore per instance ms [%s]; "
                     "other instances' builders busy at each restore start [%s] (count(Solve/Assemble/"
-                    "other)); hardware_concurrency %u\n",
+                    "other) + q queued); hardware_concurrency %u\n",
                     pf == &inter ? "interleaved" : "batched", n, keyed ? "keyed" : "keyless", pf->totalMs,
                     joinMs(pf->prepareMs).c_str(), joinMs(pf->restoreMs).c_str(), joinBusy(pf->busy).c_str(),
                     hw);
