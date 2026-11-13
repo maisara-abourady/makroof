@@ -339,8 +339,8 @@ CheckResult check(const Stereo& o, const Stereo* a, const Stereo& b, std::int64_
     // W-a tolerance from the sample counts (D3-L1); the fade from silence: factor 1 (D-B3 item 4).
     const double dRamp = static_cast<double>(Nw) / static_cast<double>(L);
     const double bound = fromSilence ? 1.0 + 1e-12 : (1.0 + dRamp) * (1.0 + dRamp) * (1.0 + kEnergyEps);
-    const auto av = [&](int c, std::size_t t) { return fromSilence ? 0.0f : (*a)[c][t]; };
-    for (int c = 0; c < 2; ++c)
+    const auto av = [&](std::size_t c, std::size_t t) { return fromSilence ? 0.0f : (*a)[c][t]; };
+    for (std::size_t c = 0; c < 2; ++c)
     {
         // Windows aligned to s0, covering [s0 - 4 N_w, s0 + L + 4 N_w).
         for (std::size_t w = us0 - 4 * uNw; w < us0 + uL + 4 * uNw; w += uNw)
@@ -412,7 +412,7 @@ PowerRecord recordPower(const Stereo& o, const Stereo& a, const Stereo& b, std::
     const auto us0 = static_cast<std::size_t>(s0);
     const auto uL = static_cast<std::size_t>(L);
     const auto uNw = static_cast<std::size_t>(Nw);
-    for (int c = 0; c < 2; ++c)
+    for (std::size_t c = 0; c < 2; ++c)
     {
         for (std::size_t w = us0 - 4 * uNw; w < us0 + uL + 4 * uNw; w += uNw)
         {
