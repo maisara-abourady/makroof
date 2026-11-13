@@ -70,7 +70,7 @@ Crosstalk cancellation, speaker calibration, multichannel output (PRD out of sco
       mix to the ORTF diffuse-field coherence and any per-feed filter); h the backward reach of the generator's band
       filters, any band split used by the coherence mix and any per-feed filter, plus the analysis filterbank's; the
       same bound with B, window [t_mix,e, L_f − h), 'not evaluated' rule (empty window, L_p ≥ L, zero matched tail
-      energy) and non-vacuity per band, feed and fs; the window's specular energy share of E(final) printed per case
+      energy) and non-vacuity per band, feed and fs; the window's specular energy share of E(exact) printed per case
       and band (Seat 3, print only); IRs from serial builder calls in one process, repeat builds asserted
       bit-identical first; N1 (tailSeed + 1) asserted red per feed and band; N2 (seeds swapped) asserted red on the
       two-feed aggregate, each feed's value printed beside its closed form with γ_b the scope 3 ORTF target; mix and

@@ -81,7 +81,7 @@ gate and the goldens are 08-4.
       mode), h the backward reach in samples at each fs of every filter between the noise and the shipped IR (the
       generator's band filters; any band split used by the coherence mix; the per-ear DF-HRTF magnitude and DF-EQ
       filters, half-length if linear-phase with latency compensated, 0 if causal) plus the analysis filterbank's. The
-      window length is printed per case and band; the window's specular energy share of E(final) is printed per case
+      window length is printed per case and band; the window's specular energy share of E(exact) is printed per case
       and band (Seat 3, print only); an empty window, L_p ≥ L (no provisional) or zero matched tail energy (AX49 D1)
       prints 'not evaluated' with its reason and never counts as a pass; ≥ 1 evaluated case per band, ear and fs
       (non-vacuity, not a quota). Negative controls, both asserted red: **N1**, the provisional built with

@@ -2415,7 +2415,7 @@ Round files: `docs/review/phase-07c-1b/` 1 (decider convening: nine-row tables p
 3 (researcher RQ1–RQ5, R1–R21), 4 (decider round 1), 5 (Seats 2, 3, 6, 7 on D-B5 (ii)/(iv)), 6 (interrogator on 4), 7 (Seats 1, 3,
 4, 5, 6, 7 round 2b), 8 (decider round 2), 9 (Seats 5, 6, 7 on B-iv+), 10 (interrogator on 8), 11 (decider round 3), 12
 (interrogator on 11), 13 (diff check of the plan edits), 14 (re-check of its corrections), 15 (Seat 4 on FM-D1-S3), 16 (decider: FM-D1-S3 lines), 17 (Seat 5 on the lines), 18 (Seat 3 on the
-07c-2 window), 19 (decider: FM-D1-S3 final lines), 20 (interrogator on 19).
+07c-2 window), 19 (decider: FM-D1-S3 final lines), 20 (interrogator on 19), 21 (diff check of the FM-D1-S3 edits).
 
 | id | decision / item | outcome (final) | where applied |
 |---|---|---|---|
@@ -2430,13 +2430,13 @@ Round files: `docs/review/phase-07c-1b/` 1 (decider convening: nine-row tables p
 | D-B5 (iii) / FM-TRIG | macOS trigger re-derivation | M-a: ⌊1.15 × mean of the green macOS low-α medians of the S2 runs⌋, by script; a reading, amends nothing — SURVIVES WITH CORRECTIONS (file 12) | AX38 4c |
 | D-B5 (v) | low-α register entries | E1: close only if 14 × worst ≤ 30 s on every S2 run, else listed 'closes at' phase-07d — SURVIVES | AX38 4c; phase-07c-1b scope 2 |
 | D-B5 (vi) | MACTRIGGER on runs 42, 44 | X-d−: a (d) defect with remedy 07d, closing only on measured evidence (per-stage split, same-run macOS/Linux synthesis ratio, two runs under the trigger; ≤ 3 extra runs); no closure by recalibration — SURVIVES | AX38 4c; phase-07d scope 7 |
-| FM-D1-S3 | interim stream checks for 07c-2 / 08-3 / 09 | answered by Maisara 2026-11-13 ("Write the stream checks now") = option (i); lines written with file 40 corrections 80, 86, 88, 90–93, Seat 4's conditions (file 15; corrected (i) 0/1, drafted (i) 1/2 out), Seat 5's C1–C4 (file 17, 1/1 as rated; clause (2) lies in Seat 3's row, rated by Seat 3, file 18) and Seat 3's C1–C3 (file 18, 0/1); 07c-2 window for full-length interims [t_mix,e, L) from AX47's tail window, h only at L_f; interrogator file 20 SURVIVES WITH CORRECTIONS (FM-02, -04, -06, -07, -08, -10, -11, -14, -16, -17, -19 applied; 07c-2 two-output N2 clause dropped; specular-share print added; S5 debt: ≈ 28 new IR builds per scene per mode (repeat builds included); a 1-seed form needs a /fix-plan with Seat 4 heard); D1 O8 stands, max 1, sum 12 | phase-07c-2 scope 9 / AC; phase-08-3 AC; phase-09 AC; AX47 (b) text + evidence; §6 |
+| FM-D1-S3 | interim stream checks for 07c-2 / 08-3 / 09 | answered by Maisara 2026-11-13 ("Write the stream checks now") = option (i); lines written with file 40 corrections 80, 86, 88, 90–93, Seat 4's conditions (file 15; corrected (i) 0/1, drafted (i) 1/2 out), Seat 5's C1–C4 (file 17, 1/1 as rated; clause (2) lies in Seat 3's row, rated by Seat 3, file 18) and Seat 3's C1–C3 (file 18, 0/1); 07c-2 window for full-length interims [t_mix,e, L) from AX47's tail window, h only at L_f; interrogator file 20 SURVIVES WITH CORRECTIONS (FM-02, -04, -06, -07, -08, -10, -11, -14, -16, -17, -19 applied; 07c-2 two-output N2 clause dropped; specular-share print added; S5 debt: ≈ 28 new IR builds per scene per mode (repeat builds included); a 1-seed form needs a /fix-plan with Seat 4 heard); D1 O8 stands; with the (i) lines max 1, sum 12 (O8 alone: sum 11) | phase-07c-2 scope 9 / AC; phase-08-3 AC; phase-09 AC; AX47 (b) text + evidence; §6 |
 | K24 | process | **MACTRIGGER fired on runs 43258505284 and 43291051799 (two consecutive macOS runs over 2 172 ms) and went unread** in 07c-1; now recorded as a defect (D-B5 (vi)) and the warning tokens go to the CI job summary / `::warning::` | ci.yml "Records to the job summary"; AX38 4c |
 
 Interrogator ledger rows: P07C1B-R1-01 … 41 (file 6), P07C1B-R2-01 … 25 (file 10), P07C1B-R3-01 … 22 (file 12), P07C1B-DC-01 … 46
 (file 13), P07C1B-DC2-01 … 19 (file 14), P07C1B-FM-01 … 20 (file 20: FM-01, -03, -05, -12, -13, -15, -18 CORRECT /
 faithful; FM-02, -04, -06, -07, -08, -10, -11, -14, -16, -17, -19 IMPRECISE or INCONSISTENT, corrected as applied; FM-09 a stated
-consequence; FM-20 objection holds). Final status: every decision SURVIVES or SURVIVES WITH CORRECTIONS (file 12); the plan diff
+consequence; FM-20 objection holds), P07C1B-FMDC-01 … 17 (file 21: step 5 complete; FMDC-04, -09, -15 IMPRECISE, applied). Final status: every decision SURVIVES or SURVIVES WITH CORRECTIONS (file 12); the plan diff
 check complete (file 14). Decided for Maisara (open to her veto): FM-B2, FM-10S, FM-GROWTH (AMENDS her decision of 2026-11-10),
 FM-TRIG, D-B1, D-B3, D-B4, D-B5 (i), (v), (vi). NEEDS MAISARA: none (FM-D1-S3 answered by Maisara 2026-11-13, option (i)).
 Placeholders `[07c-1b re-pin: …]` in AX38 4c and §6 are filled by a second `/fix-plan` pass from the S2 runs.
