@@ -34,16 +34,26 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
 1. **Close the AX38 4c macOS and Windows entries at the long-T60 corner.** At the gated low-α cube
    (`cube100_lowalpha0.05_s0.3`, T60_max 50.5 s, exact tail L = 12 s) AX49 builds the exact tail synchronously
    (L_p ≥ L), so the restore is the pre-07c restore minus the solve. (decider file 12 §6, row 38; K22)
-2. **Candidates** (decided through the board loop and recorded as an AX row before any code; decider file 12 §8):
-   - the constructor-spectra cache (bit-identical);
-   - parallel band-pair synthesis (bit-identical);
-   - a capped interim length on the K23 shared-history fact (both crossfade states read one input history, so
-     the output equals the exact render for lags up to L_f, within the normalisation step (K18′) [Inf]); convene Seats 1, 3, 5, 6, 7 and 9; Seat 9's
-     L_p ≥ 0.31·T60 condition and Seat 1's depth ruling are re-rated;
-   - D4 in unit-decay form (Seat 4 rated it as A3, 1; Seat 5's cell at ≈ 147 MB is unrated, interrogator file 13 row
-     P07C1-63);
-   - the cheaper generator (output-changing; a golden round; AQ10's "not optimised before Phase 13" read by the
-     board).
+2. **Candidates, in order** (decided through the board loop and recorded as an AX row before any code; decider file
+   12 §8; order and conditions from the phase-07c-1b loop, D-B4 C7′, `docs/review/phase-07c-1b/11-decider-decision-r3.md`
+   item 8):
+   - **C9** a process-wide single-flight insertion cache keyed by canonical scene + `tailSeed`, fs, P, `engineKey()`,
+     platform; any scene (NFR-8); `shared_ptr<const>`; test `insertSolves + insertCacheHits == 1` and bit-identity;
+     TSan with 8 concurrent insertions;
+   - **C1** the constructor-spectra cache (bit-identical): a transient shared spectra cache keyed by filterbank + FFT
+     size, freed when unused; its AX38 (i) / (ii) accounting decided in this phase's loop; W1/W2 "no cache credit";
+   - **C6** a process-wide count of synchronous host calls: background syntheses and builders sleep at cancel points;
+     the gate holder never pauses; `quiesce()` wakes; offline not paused; bit-identity on resume tested; record (h)
+     prints provisional → exact per instance (phase-07c-1b decider file 4 item 8);
+   - **C2** parallel band-pair synthesis (bit-identical), only on the gate's pool with C6;
+   - **C4** D4 in unit-decay form (Seat 4 rated it as A3, 1; Seat 5's cell at ≈ 147 MB is unrated, interrogator file 13
+     row P07C1-63), only as shared per-(emitter, outputIndex) unit decays, memory measured;
+   - **C3** a capped interim length on the K23 shared-history fact (both crossfade states read one input history, so
+     the output equals the exact render for lags up to L_f, within the normalisation step (K18′) [Inf]), only as C3-pb
+     (L_p,b ≥ t_mix,e,max + 0.312·T60_b + 0.1 s); convene Seats 1, 3, 5, 6, 7 and 9; Seat 9's L_p ≥ 0.31·T60 condition
+     and Seat 1's depth ruling are re-rated;
+   - **C5** the cheaper generator (output-changing; a golden round; AQ10's "not optimised before Phase 13" read by the
+     board), only with Seat 1's ABX, Seat 2's equivalence test and Seat 9's BRAS condition, before Phase 12.
 3. **Inputs:** phase-07c-1 record (h)'s T60_max sweep (2, 8, 12, 20, 35 and 50 s; per-instance time until audible
    and time from provisional to exact; 1, 4 and 8 instances; 48 and 96 kHz; three OSes) and the Seat 5 / Seat 7
    ratings of the long corner (3.82 s < L_p, up to the full synthesis), which the 07c-1 loop left unrated (K24).
@@ -51,6 +61,23 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
    time stays the non-diffuse restore and phase-13 item 3 fires on it.
 5. **Register:** the AX38 4c register's macOS entry names 07d as 'closes at', and the Windows entry's remedy names
    07d (or Phase 13's release-machine re-check if the runner is shown to be the cause, as written there).
+6. **8-instance load (AX49 reversal, moved here by D-B4 C7′; phase-07c-1b loop, 2026-11-13).** The 8-instance Windows
+   load at the rated corner is brought to ≤ 5 s on record (h) (criterion below), the candidates of scope 2 in order,
+   C9 first. Also: insertion unit decays for every outputIndex (Seat 4 (i)) — output-1 built by the builder after the
+   first IrSet unless the current mode needs two outputs; whether a mode switch inside the settling window plays an
+   interim, decided with Seats 3 and 4 and asserted in 08-3; any remedy scales with the number of outputs; 07d lands
+   before 08-4 freezes its goldens. Never an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
+7. **The macOS (d) defect (D-B5 (vi) X-d−, AX38 4c):** MACTRIGGER on runs 42 and 44, remedy here. Closure evidence:
+   the macOS per-stage split after the remedy at equal work pins; the macOS / Linux per-emitter synthesis ratio within
+   1.10 × the same runs' flutter macOS / Linux ratio; the trigger in force not exceeded on two consecutive runs; built
+   from runs 07d makes, ≤ 3 extra manual runs per defect (Seat 7); no closure by recalibration.
+8. **The growth re-pin (D-B5 (ii), FM-GROWTH, AX38 4c):** after the remedy, the ratio reference and baselines
+   re-derived from ≥ 6 green runs on the restore path in force (manual runs after 07d's last code change; earlier runs
+   pooled only if 07d leaves the restore path unchanged), and the in-window absolute leg added under AX38 4c
+   "Asserted every run" (w the largest value with (1 + w)·max(r/r̄) ≤ 1.083 over those runs; not added if max(r/r̄)
+   ≥ 1.07; dormancy stated if no in-window x64 run); the solve bound's PROVISIONAL exit, second branch (re-derived
+   here if its first branch was not met). A synthesis growth 07d itself introduces is read by scope 7's closure
+   evidence, not by the re-pinned absolute leg.
 
 ## Out of scope
 
@@ -67,6 +94,15 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
       phase restated.
 - [ ] Any bit-identical candidate is tested bit-identical to the current build on each platform (AX5); an
       output-changing candidate goes through one golden round (`update_goldens.py`, §6 row).
+- [ ] 8-instance Windows load at the rated corner ≤ 5 s on record (h), read on the larger of the prepare-first
+      (interleaved, batched) and setState-first totals (FM-10S), with runner label and vCPU printed (R1). AX38 (iv)'s
+      10 s line read on the same total (run 42 macOS keyed 10 206 ms; prepare-first ≈ 11.4–13.6 s est.); an
+      exceedance after 07d goes to the decider for Maisara before the first release. (D-B4 C7′, FM-10S; scope 6)
+- [ ] The macOS (d) defect (runs 42, 44) closed on scope 7's closure evidence through `/fix-plan`, or left open with
+      its evidence stated; no closure by recalibration. (AX38 4c X-d−)
+- [ ] The growth re-pin (scope 8): reference and baselines from ≥ 6 green runs with a CHANGELOG reason and a §6 row;
+      the in-window absolute leg asserted on Linux and Windows, or not added (max(r/r̄) ≥ 1.07) with the GROWTH print
+      kept; in-window runs per OS counted and dormancy stated. (AX38 4c, FM-GROWTH)
 
 ## Listening / manual checklist
 

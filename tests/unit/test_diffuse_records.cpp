@@ -69,16 +69,17 @@ constexpr const char* kOsName = "macOS";
 constexpr const char* kOsName = "Linux";
 #endif
 // Phase-07c-1b FM-GROWTH (AX38 4c G1-G14; docs/review/phase-07c-1b/11 plan item 9 as corrected by 12 rows
-// 09-15): the S2 pin of one register entry on one OS. Every value comes from tools/ci/repin_gate.py run on the
-// GATE and stage-split lines of >= 3 green S2 CI runs (never a red run; out-of-window runs count, G12), pasted
-// as constants with a CHANGELOG reason (tests/golden/CHANGELOG.md, not a golden). All zero with runs = 0 until
-// then: the ratio check prints PROVISIONAL (S2 pin pending) and asserts nothing, and the prints fall back to the
-// RG-1 references below. "S2" names the current pin (S2 at 07c-1b; re-pinned at 07c-2 and 07d, G13).
+// 09-15): the S2 pin of one register entry on one OS. Every value comes from tools/ci/repin_gate.py run on
+// the GATE and stage-split lines of >= 3 green S2 CI runs (never a red run; out-of-window runs count, G12),
+// pasted as constants with a CHANGELOG reason (tests/golden/CHANGELOG.md, not a golden). All zero with runs =
+// 0 until then: the ratio check prints PROVISIONAL (S2 pin pending) and asserts nothing, and the prints fall
+// back to the RG-1 references below. "S2" names the current pin (S2 at 07c-1b; re-pinned at 07c-2 and 07d,
+// G13).
 struct S2Pin
 {
-    double ratioRef;         // r-bar: mean low-alpha / flutter median-of-10 ratio (low-alpha entry; 0 on flutter)
-    double ratioMaxOverMin;  // max / min of the S2 ratios on this OS; > kRatioBound: the OS is print-only (G5)
-    double flutterRefMs;     // F-bar: mean flutter restore median, the runner-speed reference (G5, G12)
+    double ratioRef; // r-bar: mean low-alpha / flutter median-of-10 ratio (low-alpha entry; 0 on flutter)
+    double ratioMaxOverMin; // max / min of the S2 ratios on this OS; > kRatioBound: the OS is print-only (G5)
+    double flutterRefMs;    // F-bar: mean flutter restore median, the runner-speed reference (G5, G12)
     double baselineMedianMs; // mean restore median of this scene (G10-G12; GROWTH WARNING on low-alpha)
     double solveRefMs;       // mean solve median of this scene (G7)
     double solveK;           // k of this OS: the largest max / mean of its S2 solve medians (G7, PROVISIONAL)
@@ -90,8 +91,8 @@ struct GateEntry
     const char* os;
     double recorded14xS; // 14 x (worst restore + worst solve), s: the register's recorded value (printed)
     // DECISION RG-1 (docs/review/phase-05h/64, 66; interrogator 65, 67), kept as the print fallback until the
-    // S2 pin (G4a-c: "at RG-1 the in-window mean ...; from 07c-1b the S2 mean"): baselineMedianMs = the mean of
-    // the in-window runs on file (Linux 2043/2092, Windows 2000/2056; macOS 1849/1887/1715, print only);
+    // S2 pin (G4a-c: "at RG-1 the in-window mean ...; from 07c-1b the S2 mean"): baselineMedianMs = the mean
+    // of the in-window runs on file (Linux 2043/2092, Windows 2000/2056; macOS 1849/1887/1715, print only);
     // baselineRatio = the mean low-alpha / flutter restore-median ratio of the measured runs on file;
     // flutterRefMs = the mean flutter restore median of those runs (the runner-speed reference).
     // Runs: 42909003931, 42924781618, 42935789745, 42949252041 (Windows also 42942694523; macOS the last
@@ -143,8 +144,10 @@ constexpr GateEntry kGateRegister[] = {
     // recorded 33.40 s (local / file 1); Windows recorded 36.73 s on CI run 42942694523's slow runner
     // (phase-05h file 53) and printed OVER30S on 05i's run of record 43031773338. Linux (30.27 s local /
     // file 1) closed under AX38 4c (c) on phase 05i's runs (docs/review/phase-05i/9, 19): print only.
-    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1, kS2Pending},
-    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false, 83.7, 1, kS2Pending},
+    {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1,
+     kS2Pending},
+    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false, 83.7, 1,
+     kS2Pending},
     {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, true, false, 90.4, 2,
      kS2Pending},
 };
@@ -643,11 +646,12 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                 key, ks.min, ks.median, ks.max);
         }
         records[key].restore = rs;
-        // AX38 4c blocking restore gate in the RG-1 form (decider files 64/66, interrogator 65/67; D-H1 (v)
-        // amended for Maisara): on hosted runners the flutter scene's 14 x worst <= 30 s is asserted on every
-        // OS; the low-alpha entry's growth bound is asserted in a +-5 % flutter window on x64 after the scene
-        // loop (the GATE block runs after both scenes, whatever their order), everything else is printed with
-        // WARNING. A broken assertion is a defect under (d): no re-run, no cut, no range change, no seam.
+        // AX38 4c blocking restore gate (RG-1 form as amended by FM-GROWTH, phase-07c-1b G1-G14): on hosted
+        // runners the flutter scene's 14 x worst <= 30 s is asserted on every OS; the low-alpha entry's
+        // same-run ratio is asserted on Linux and Windows once S2-pinned, after the scene loop (the GATE
+        // block runs after both scenes, whatever their order); everything else is printed with WARNING. A
+        // broken assertion is a defect under (d): no re-run until green, no cut, no range change, no seam,
+        // never widened.
         if (const auto* entry = gateRegisterEntry(key))
         {
             const double fourteen = 14.0 * rs.max / 1000.0;
@@ -661,7 +665,7 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
             else
                 std::printf(
                     "05h-records restore gate %-26s %s: %s (recorded 14 x worst %.2f s); 14 "
-                    "x worst now %.2f s%s; growth bound %s after the scene loop (RG-1)\n",
+                    "x worst now %.2f s%s; ratio form %s after the scene loop (FM-GROWTH)\n",
                     key, kOsName,
                     entry->listed ? "LISTED defect" : "register entry closed, hosted-runner form",
                     entry->recorded14xS, fourteen,
@@ -672,7 +676,8 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                         : (entry->listed ? "; WARNING OVER30S (printed, not asserted on hosted runners)"
                                          : "; WARNING OVER30S on a closed register entry (printed, not "
                                            "asserted on hosted runners; name the run in the PR)"),
-                    entry->absoluteAsserted ? "asserted in-window" : "reported only");
+                    entry->ratioAssertable ? "asserted once pinned (Linux, Windows)"
+                                           : "printed only (macOS)");
         }
         else
             std::printf("05h-records restore gate %-26s %s: reported set, not gated\n", key, kOsName);
@@ -700,62 +705,145 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
                     "%.0f worst %.0f ms (3 runs)\n",
                     key, cs.min, cs.median, cs.max);
     }
-    // RG-1: the machine-readable GATE line per gated scene and the low-alpha entry's guarded growth bound.
+    // The machine-readable GATE line per gated scene (FM-GROWTH, AX38 4c G5-G10; parsed by the ci.yml records
+    // step and by tools/ci/repin_gate.py) and the low-alpha entry's same-run ratio check.
     {
         const auto& fl = records["cube100_flutter_fallback"];
         const auto& la = records["cube100_lowalpha0.05_s0.3"];
         const auto* entry = gateRegisterEntry("cube100_lowalpha0.05_s0.3");
-        REQUIRE(entry != nullptr);
-        REQUIRE(fl.restore.median > 0.0);
-        const double ratio = la.restore.median / fl.restore.median;
-        const double flutterDevPct = 100.0 * (fl.restore.median / entry->flutterRefMs - 1.0);
-        const bool inWindow = std::abs(flutterDevPct) <= kGuardPct;
-        const double growthBound = kGrowth * entry->baselineMedianMs;
-        const double fourteen = 14.0 * la.restore.max / 1000.0;
         const auto* flEntry = gateRegisterEntry("cube100_flutter_fallback");
+        REQUIRE(entry != nullptr);
         REQUIRE(flEntry != nullptr);
-        const double flSolveWarnAt = kSolveWarn * flEntry->solveRefMs;
-        const double laSolveWarnAt = kSolveWarn * entry->solveRefMs;
-        const auto solveBasis = [](const GateEntry& e) {
-            return e.solveRefRuns < 3 ? "PROVISIONAL" : "PINNED";
+        REQUIRE(fl.restore.median > 0.0);
+        REQUIRE(la.restore.median > 0.0);
+        const S2Pin& pin = entry->s2;
+        const bool pinned = pin.runs >= kPinRuns;
+        // References in force: the S2 pin once n >= 3, else the RG-1 values (printed, never asserted).
+        const double ratioRef = pinned ? pin.ratioRef : entry->baselineRatio;
+        const double flutterRef = pinned ? pin.flutterRefMs : entry->flutterRefMs;
+        const double baseline = pinned ? pin.baselineMedianMs : entry->baselineMedianMs;
+        const char* refBasis = pinned ? "S2" : "RG-1";
+        // r = the run's low-alpha median-of-10 / flutter median-of-10 (G5).
+        const double ratio = la.restore.median / fl.restore.median;
+        const double ratioOverRef = ratio / ratioRef;
+        const double ratioMargin = kRatioBound - ratioOverRef; // > 0: headroom to the 1.10 bound
+        const double ratioWarnAt = kRatioBound * ratioRef;
+        const double ratioLowAt = ratioRef / kRatioBound;
+        // Print-only: macOS always; an OS whose S2 ratios have max / min > 1.10 (G5).
+        const bool ratioPrintOnly = !entry->ratioAssertable || (pinned && pin.ratioMaxOverMin > kRatioBound);
+        const bool ratioAsserted = pinned && !ratioPrintOnly;
+        const double flutterOverRef = fl.restore.median / flutterRef;
+        const double flutterDevPct = 100.0 * (flutterOverRef - 1.0);
+        const bool inWindow = std::abs(flutterDevPct) <= kGuardPct;
+        const double growthBound = kGrowth * baseline;
+        const double growthPct = 100.0 * (la.restore.median / baseline - 1.0);
+        const double fourteen = 14.0 * la.restore.max / 1000.0;
+        // SOLVE (G7, PROVISIONAL print-only): k x the S2 solveRefMs once pinned, else kSolveWarn x RG-1's.
+        const auto solveWarnAt = [](const GateEntry& e) {
+            return e.s2.runs >= kPinRuns ? e.s2.solveK * e.s2.solveRefMs : kSolveWarn * e.solveRefMs;
         };
+        const auto solveK = [](const GateEntry& e) {
+            return e.s2.runs >= kPinRuns ? e.s2.solveK : kSolveWarn;
+        };
+        const auto solveRuns = [](const GateEntry& e) {
+            return e.s2.runs >= kPinRuns ? e.s2.runs : e.solveRefRuns;
+        };
+        const auto solveBasis = [](const GateEntry& e) {
+            return e.s2.runs >= kPinRuns ? "S2-PROVISIONAL" : "PROVISIONAL";
+        };
+        const double flSolveWarnAt = solveWarnAt(*flEntry);
+        const double laSolveWarnAt = solveWarnAt(*entry);
+        // G7: the same-run low-alpha / flutter ns-per-evaluation ratio (the G9 exit reads its spread).
+        const double nsPerEvalRatio = fl.nsPerEval > 0.0 ? la.nsPerEval / fl.nsPerEval : 0.0;
         const std::string flWarnings = fl.solveMedianMs > flSolveWarnAt ? "SOLVE " : "";
         std::string warnings;
-        if (ratio > kRatioWarn * entry->baselineRatio)
-            warnings += "RATIO ";
+        // RATIO / RATIO-LOW in warnings= only against a pinned r-bar (G6); while the pin is pending the ratio
+        // check is PROVISIONAL and its verdict against the RG-1 ratio is printed on its own line only.
+        if (pinned && ratio > ratioWarnAt)
+            warnings += "RATIO "; // a red on an asserted OS; a WARNING on a print-only OS (G6)
+        if (pinned && ratio < ratioLowAt)
+            warnings += "RATIO-LOW "; // G6: an ISM or solve regression lowers the ratio
         if (la.restore.median > growthBound)
-            warnings += "GROWTH ";
+            warnings += "GROWTH "; // G10, every OS
         if (fourteen > 30.0)
             warnings += "OVER30S ";
         else
             warnings += "PASSES30S ";
+        const char* ratioCheck = !pinned ? "PROVISIONAL" : (ratioAsserted ? "ASSERTED" : "PRINT-ONLY");
         char status[64];
-        if (!entry->absoluteAsserted)
-            std::snprintf(status, sizeof(status), "reported-only");
-        else if (inWindow)
-            std::snprintf(status, sizeof(status), "asserted");
+        if (!pinned)
+            std::snprintf(status, sizeof(status), "provisional(S2-pin-pending)");
+        else if (ratioAsserted)
+            std::snprintf(status, sizeof(status), "asserted(ratio)");
         else
-            std::snprintf(status, sizeof(status), "not-evaluated(runner,flutter%+.1f%%)", flutterDevPct);
+            std::snprintf(status, sizeof(status), "print-only(ratio)");
         std::printf("05h-records GATE os=%s scene=cube100_flutter_fallback x14worst=%.2f median=%.0f "
                     "fullRebuildMedian=%.0f solveMedianMs=%.1f solveWarnAt=%.1f solveBasis=%s(n=%d) "
-                    "nsPerEval=%.2f status=asserted(30s) flutterRef=%.0f flutterDev=%+.1f%% warnings=%s\n",
+                    "solveK=%.3f nsPerEval=%.2f status=asserted(30s) flutterRef=%.0f flutterRefBasis=%s "
+                    "flutterDev=%+.1f%% inWindow=%s warnings=%s\n",
                     kOsName, 14.0 * fl.restore.max / 1000.0, fl.restore.median, fl.fullRebuildMedianMs,
-                    fl.solveMedianMs, flSolveWarnAt, solveBasis(*flEntry), flEntry->solveRefRuns,
-                    fl.nsPerEval, entry->flutterRefMs, flutterDevPct, flWarnings.c_str());
-        if (!entry->absoluteAsserted && la.restore.median > kMacGrowthTriggerMs)
+                    fl.solveMedianMs, flSolveWarnAt, solveBasis(*flEntry), solveRuns(*flEntry),
+                    solveK(*flEntry), fl.nsPerEval, flutterRef, refBasis, flutterDevPct,
+                    inWindow ? "yes" : "no", flWarnings.c_str());
+        if (!entry->ratioAssertable && la.restore.median > kMacGrowthTriggerMs)
             warnings += "MACTRIGGER ";
         if (la.solveMedianMs > laSolveWarnAt)
             warnings += "SOLVE ";
         std::printf(
             "05h-records GATE os=%s scene=cube100_lowalpha0.05_s0.3 ratio=%.3f ratioWarnAt=%.3f "
-            "solveMedianMs=%.1f solveWarnAt=%.1f solveBasis=%s(n=%d) nsPerEval=%.2f x14worst=%.2f "
-            "median=%.0f growthBound=%.0f fullRebuildMedian=%.0f status=%s trigger=%.0f warnings=%s\n",
-            kOsName, ratio, kRatioWarn * entry->baselineRatio, la.solveMedianMs, laSolveWarnAt,
-            solveBasis(*entry), entry->solveRefRuns, la.nsPerEval, fourteen, la.restore.median, growthBound,
-            la.fullRebuildMedianMs, status, entry->absoluteAsserted ? 0.0 : kMacGrowthTriggerMs,
+            "ratioRef=%.3f ratioRefBasis=%s(n=%d) ratioOverRef=%.4f ratioMargin=%+.4f ratioLowAt=%.3f "
+            "ratioCheck=%s solveMedianMs=%.1f solveWarnAt=%.1f solveBasis=%s(n=%d) solveK=%.3f "
+            "nsPerEval=%.2f "
+            "nsPerEvalRatio=%.4f x14worst=%.2f median=%.0f growthBound=%.0f growthRef=%.0f growthPct=%+.1f%% "
+            "fullRebuildMedian=%.0f flutterMedian=%.0f flutterRef=%.0f flutterDev=%+.1f%% inWindow=%s "
+            "flutterOverRef=%.4f product=%.4f status=%s trigger=%.0f triggerBasis=%s warnings=%s\n",
+            kOsName, ratio, ratioWarnAt, ratioRef, refBasis, pinned ? pin.runs : 0, ratioOverRef, ratioMargin,
+            ratioLowAt, ratioCheck, la.solveMedianMs, laSolveWarnAt, solveBasis(*entry), solveRuns(*entry),
+            solveK(*entry), la.nsPerEval, nsPerEvalRatio, fourteen, la.restore.median, growthBound, baseline,
+            growthPct, la.fullRebuildMedianMs, fl.restore.median, flutterRef, flutterDevPct,
+            inWindow ? "yes" : "no", flutterOverRef, flutterOverRef * ratioOverRef, status,
+            entry->ratioAssertable ? 0.0 : kMacGrowthTriggerMs, kMacGrowthTriggerS2Runs > 0 ? "S2" : "RG-1",
             warnings.c_str());
-        if (entry->absoluteAsserted && inWindow)
-            REQUIRE(la.restore.median <= growthBound);
+        // The human-readable verdict of the ratio check (G5, G6) and the growth print (G10).
+        if (!pinned)
+            std::printf("05h-records restore gate ratio cube100_lowalpha0.05_s0.3 %s: PROVISIONAL (S2 pin "
+                        "pending, n = %d of %d): r %.3f, r / r-bar %.4f against the RG-1 ratio %.3f; nothing "
+                        "asserted%s\n",
+                        kOsName, pin.runs, kPinRuns, ratio, ratioOverRef, ratioRef,
+                        ratio > ratioWarnAt  ? "; WARNING RATIO (above 1.10 x the RG-1 ratio)"
+                        : ratio < ratioLowAt ? "; WARNING RATIO-LOW (below the RG-1 ratio / 1.10)"
+                                             : "");
+        else
+            std::printf(
+                "05h-records restore gate ratio cube100_lowalpha0.05_s0.3 %s: %s: r %.3f <= 1.10 x "
+                "r-bar %.3f = %.3f? r / r-bar %.4f, margin %+.4f (S2, n = %d, max / min %.4f)%s%s\n",
+                kOsName,
+                ratioAsserted            ? "ASSERTED"
+                : entry->ratioAssertable ? "PRINT-ONLY (S2 ratios max / min > 1.10)"
+                                         : "PRINT-ONLY (macOS until Phase 13)",
+                ratio, ratioRef, ratioWarnAt, ratioOverRef, ratioMargin, pin.runs, pin.ratioMaxOverMin,
+                ratio > ratioWarnAt ? (ratioAsserted ? "; RED: a defect under 4c (d)" : "; WARNING RATIO")
+                                    : "",
+                ratio < ratioLowAt ? "; WARNING RATIO-LOW (an ISM or solve regression lowers it)" : "");
+        std::printf(
+            "05h-records restore gate growth cube100_lowalpha0.05_s0.3 %s: low-alpha median %.0f ms vs "
+            "%s reference %.0f ms (%+.1f %%; bound 1.10 x = %.0f ms)%s; in-window %s (flutter %.0f vs "
+            "%.0f ms, %+.1f %%, window +-%.0f %% printed only until the 07d re-pin)\n",
+            kOsName, la.restore.median, refBasis, baseline, growthPct, growthBound,
+            la.restore.median > growthBound ? "; GROWTH WARNING (printed, never asserted before 07d)" : "",
+            inWindow ? "yes" : "no", fl.restore.median, flutterRef, flutterDevPct, kGuardPct);
+        if (!entry->ratioAssertable)
+            std::printf("05h-records restore gate mactrigger %s: trigger in force %.0f ms (%s%s), low-alpha "
+                        "median %.0f ms%s\n",
+                        kOsName, kMacGrowthTriggerMs,
+                        kMacGrowthTriggerS2Runs > 0 ? "S2, floor(1.15 x mean), n = " : "RG-1, 1.15 x 1889",
+                        kMacGrowthTriggerS2Runs > 0 ? std::to_string(kMacGrowthTriggerS2Runs).c_str() : "",
+                        la.restore.median,
+                        la.restore.median > kMacGrowthTriggerMs
+                            ? "; MACTRIGGER (two consecutive runs: a 4c (d) defect; print only)"
+                            : "");
+        if (ratioAsserted)
+            REQUIRE(ratio <= ratioWarnAt);
     }
 }
 

@@ -40,6 +40,9 @@ Phase 06 convolver (headphone rendering, `outputMode = binaural`).
      `tailSeedForOutput` seeds and the same per-mode decorrelation as the exact tail; a v2 state restored in
      binaural uses the saved E_b bit-identically (AX48 tests); a mode switch never re-solves, never waits for a
      synthesis and reuses the cached unit decays (Seat 4 M; AX49).
+   - **Phase-07c-1b loop (2026-11-13; `docs/review/phase-07c-1b/11-decider-decision-r3.md` items 6, 11):** the AX47
+     mid-fade check (AX47 "Measurement", 07c-1b's `[ax47-midfade]`) runs per ear; at instance insertion (AX48, FM-B2)
+     the first IrSet carries the per-ear seeds and decorrelation, asserted beside the `[pipeline]` insertion test.
 6. The plugin sends `outputMode` through, so `binaural` now uses this path. `stereoSpeakers`
    keeps using omni until Phase 09. (phase-08 scope 6, sentences 2–3; sentence 1 in 08-2) No UI
    code or string table knows which head shipped: any About/credits text reads the header's attribution
@@ -68,6 +71,9 @@ gate and the goldens are 08-4.
       (phase-08 AC11)
 - [ ] **Interim tail per mode (AX48, AX49):** the binaural provisional tail uses the exact tail's
       `tailSeedForOutput` seeds and decorrelation; a mode switch never re-solves or waits for a synthesis.
+- [ ] **AX47 mid-fade check per ear; insertion per ear (AX47, AX48 FM-B2):** the AX47 mid-fade check passes per
+      ear; the first IrSet at instance insertion carries the per-ear seeds and decorrelation (beside the `[pipeline]`
+      insertion test).
 - [ ] All earlier tests still pass. (phase-08 AC12, sentence 1; shared, umbrella) pluginval passes.
       (phase-08 AC12, sentence 2)
 

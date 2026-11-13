@@ -59,13 +59,17 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
      16 trials, ≥ 12/16 = detected) are run in this phase. This phase's loop sets the AX47 ABX's detection
      criterion and step sizes before the run (AX47 reversal; a per-size 12/16 rule over several sizes raises
      the family-wise false-detection rate, interrogator file 16 row P07C1-DC-06). AX47's reversal (bound 0.5 dB) and AX49's reversal
-     (L4 detects the cut) follow from their results.
+     (L4 detects the cut) follow from their results. The generated speech-like stimulus of `[ax47-midfade]` is a CI
+     test signal only; 07c-2's self-ABX and the acceptance set use recorded speech (D-B3 condition A; phase-07c-1b
+     loop, 2026-11-13).
    - **Class (c) decision, bound by AX47:** whether a statistical source (a stage-1 estimate that is not the
      final) is admitted, decided by this phase's loop under AX47 ("From 07c-2"; Seat 1's p95 reading is the
      recorded input). **Admission waits for the AX47 ABX result** (the bound it is held to, 1 dB or 0.5 dB,
      is the ABX's outcome).
    - **The load fallback:** the load source when stage 1 is inadmissible, decided in the same loop; it meets
      AX47 and conditions 5 and 9 and never gives an early-only first IrSet for a scene with a tail.
+   - **Instance insertion (FM-B2, AX48):** Instance insertion (FM-B2) takes 07c-2's stage-1 rules for statistical
+     sources. (phase-07c-1b loop, 2026-11-13)
    - **The W_max raise changes E_prec** (AX48), so v2 states saved before the raise load keyless.
    - **Seat 2's prefix check:** verify Seat 2's prefix claim (`pathCount`, `pilotStops`).
 

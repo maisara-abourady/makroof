@@ -40,6 +40,8 @@ room calibration) and let the user switch between this mode and binaural.
    tail; the AX44 / AX48 E_b test is extended to stereoSpeakers (E_b bit-identical to omni and binaural; a v2
    state restored in stereoSpeakers uses the saved E_b bit-identically). (phase-07c-1 decision loop,
    2026-11-12; decider file `docs/review/phase-07c-1/12-decider-decision-r3.md` §8)
+   The AX47 mid-fade check (AX47 "Measurement", 07c-1b's `[ax47-midfade]`) runs per speaker feed (phase-07c-1b loop,
+   2026-11-13; `docs/review/phase-07c-1b/11-decider-decision-r3.md` item 6).
 6. `render_cli --mode stereoSpeakers`, listening pack, goldens.
 
 ## Out of scope
@@ -63,6 +65,7 @@ Crosstalk cancellation, speaker calibration, multichannel output (PRD out of sco
 - [ ] Mode switch during playback: the click detector (Phase 02) reports 0 events across 10 switches.
 - [ ] E_b bit-identical between stereoSpeakers, omni and binaural (AX44, AX48); a mode switch never re-solves
       or waits for a synthesis (AX49).
+- [ ] The AX47 mid-fade check passes per speaker feed (AX47 "Measurement").
 - [ ] All earlier tests and pluginval still pass.
 
 ## Listening / manual checklist (Maisara, Adam monitors via RME, sitting in the sweet spot)
