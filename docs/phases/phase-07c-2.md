@@ -68,6 +68,35 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
      is the ABX's outcome).
    - **The load fallback:** the load source when stage 1 is inadmissible, decided in the same loop; it meets
      AX47 and conditions 5 and 9 and never gives an early-only first IrSet for a scene with a tail.
+   - **Interim stream check (D1, FM-D1-S3; Maisara 2026-11-13).** If this phase's loop admits a class (c) source or a
+     load fallback whose interim tail is built from the exact tail's `BandNoiseGenerator`, seed and emitter stream
+     (`tailSeedForOutput`), a test compares the interim IR with the final IR, both as shipped, from two serial builds of
+     one scene and seed in one process (never from the async pipeline; never against a measured IR; a repeat build of
+     each IR is asserted bit-identical before any comparison), per emitter, output and band on the A4 set (48 and
+     96 kHz, 2 seeds, more only with a reason in the PR): 10·log10(E(interim − final)/E(final)) ≤ 20·log10(10^(B/20) − 1)
+     dB, B the AX47 bound in force after the ABX (1 dB → −18.27 dB; 0.5 dB → −24.55 dB). Window: an interim that fades
+     at the AX49 L_f uses AX47 (b)'s [t_mix,e, L_f − h), h AX47 (b)'s plus the backward reach of any per-mode filter in
+     force; a full-length interim (the final's length L and per-band decay, differing only in per-band level) uses
+     AX47's tail window [t_mix,e, L), since the two IRs share their end: h is subtracted only at an L_f edge, never at
+     L. The window length is printed per case and band; the window's specular energy share of E(final) is printed per
+     case and band (Seat 3, print only); an empty window prints 'not evaluated', and a case with zero matched tail
+     energy (e.g. an AX22 ISM-only fallback whose matching window holds zero energy; AX49 D1 early-only scenes) prints
+     'not evaluated (no tail)'; neither ever counts as a pass; ≥ 1 evaluated case per band, output and fs
+     (non-vacuity, not a quota). Negative control N1, asserted red per emitter, output and band: the interim built with
+     tailSeed + 1 (neither of its `tailSeedForOutput` seeds equal to either of tailSeed's, asserted as a guard on the
+     seed derivation); expected 10·log10(1 + g²), +2.54 to +3.54 dB for an interim step g within ±1 dB (≈ +3.01 dB at
+     g = 1; incoherent energies add, Vorländer §4.3 Eq. 4.15). The final IRs are those the AX47 tests already build;
+     the test runs in the Release test job; the PR prints the added wall time per OS.
+     **No shared prefix.** An admitted source whose interim does not share the exact tail's stream, length or per-band
+     decay is outside this check, and instead: (1) a test asserts the fact that excludes it (its `tailSeedForOutput`
+     seeds, its length or its per-band decay differ from the final's); (2) where its stream differs, it fails AX18's
+     Same-scene steps condition (the same emitter streams), so it lies outside AX47 Scope's "Same-scene steps are
+     equal-gain (AX18)", and its handover to the final is equal-power, recorded by AX47's measurement sentence, unless
+     this phase's loop (Seats 3 and 5, AX18) sets another law together with an asserted bound on the mid-fade band
+     level; (3) where its per-band decay differs, EDT within 5 % at 500 Hz and 1 kHz against the final on AX47 (b)'s
+     terms (cases with d < 0.5; 'not evaluated (outside EDT domain …)' otherwise; ≥ 1 evaluated case at each); (4)
+     AX47's level step ≤ B per emitter and band, asserted in the tail window and, for an interim that fades at L_f, in
+     the common window t_mix,e…L_f. The PR names the source and gives these results.
    - **Instance insertion (FM-B2, AX48):** Instance insertion (FM-B2) takes 07c-2's stage-1 rules for statistical
      sources. (phase-07c-1b loop, 2026-11-13)
    - **The W_max raise changes E_prec** (AX48), so v2 states saved before the raise load keyless.
@@ -91,6 +120,12 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
       goldens updated once through `update_goldens.py` with the reason; §6 row. (phase-07c A6)
 - [ ] The Phase 12 (ii) preset check re-run under the new W_max and reported, if Phase 12 has run;
       otherwise Phase 12 runs it at 07c's W_max. (phase-07c A9)
+- [ ] **Interim stream check (D1, FM-D1-S3):** every admitted interim source that shares the exact tail's stream
+      passes scope 9's interim stream check per emitter, output and band (repeat builds bit-identical, N1 red, ≥ 1
+      evaluated case per band, output and fs, zero-tail cases 'not evaluated (no tail)'); every admitted source with
+      no shared prefix has scope 9's asserted exclusion fact, handover law (equal-power, or the loop's law with its
+      asserted mid-fade bound), EDT check where its decay differs, and level step in both windows; or the PR states
+      that no such source was admitted. The added wall time per OS is printed.
 
 ## Listening / manual checklist
 

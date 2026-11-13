@@ -71,6 +71,32 @@ gate and the goldens are 08-4.
       (phase-08 AC11)
 - [ ] **Interim tail per mode (AX48, AX49):** the binaural provisional tail uses the exact tail's
       `tailSeedForOutput` seeds and decorrelation; a mode switch never re-solves or waits for a synthesis.
+- [ ] **Interim tail stream per ear (AX47 (b) prefix check; D1, FM-D1-S3):** on the A4 set (48 and 96 kHz, 2 seeds,
+      more only with a reason in the PR), per emitter, ear and band, the binaural provisional IR against the exact IR,
+      both as shipped (after the 2×2 coherence mix and the per-ear diffuse-field HRTF magnitude and any DF-EQ), from two
+      serial builder calls of one scene and seed in one process (never from the async pipeline; never against a
+      measured IR; a repeat build of each IR, N1 and N2 included, asserted bit-identical before any comparison):
+      10·log10(E(provisional − exact)/E(exact)) ≤ 20·log10(10^(B/20) − 1) dB, B the AX47 bound in force
+      (1 dB → −18.27 dB; 0.5 dB → −24.55 dB), over [t_mix,e, L_f − h), L_f the AX49 fade start (the same in every
+      mode), h the backward reach in samples at each fs of every filter between the noise and the shipped IR (the
+      generator's band filters; any band split used by the coherence mix; the per-ear DF-HRTF magnitude and DF-EQ
+      filters, half-length if linear-phase with latency compensated, 0 if causal) plus the analysis filterbank's. The
+      window length is printed per case and band; the window's specular energy share of E(final) is printed per case
+      and band (Seat 3, print only); an empty window, L_p ≥ L (no provisional) or zero matched tail energy (AX49 D1)
+      prints 'not evaluated' with its reason and never counts as a pass; ≥ 1 evaluated case per band, ear and fs
+      (non-vacuity, not a quota). Negative controls, both asserted red: **N1**, the provisional built with
+      tailSeed + 1 (neither of its `tailSeedForOutput` seeds equal to either of tailSeed's, asserted as a guard on
+      the seed derivation), per emitter, ear and band, expected ≈ +3.01 dB whatever γ_b (Vorländer §4.3 Eq. 4.15);
+      **N2**, the provisional built with the two `tailSeedForOutput` seeds swapped, asserted on the two-ear aggregate
+      per emitter and band, 10·log10((E_L,diff + E_R,diff)/(E_L + E_R)), expected ≈ +3.01 dB at equal ear energies,
+      with each ear's value printed beside its unit-gain closed form, L 10·log10(2(1 − √(1 − γ_b²))),
+      R 10·log10(2(1 + √(1 − γ_b²))), and the per-band ear energy ratio printed (L alone is not asserted: it is green
+      where |γ_b| ≤ 0.122 at B = 1 dB (≤ 0.059 at 0.5 dB)). Direct assertion: the provisional and exact builder paths
+      take the mix coefficients (a_b, b_b) and the per-ear filter coefficients from one shared function or cache, and
+      the test asserts them bit-identical within one process (never across OSes). The exact IRs are those already
+      built for the AX47 (b) and mid-fade fixtures (one build per scene, fs and seed); the test runs in the Release
+      test job; the PR prints the added wall time per OS. (Maisara 2026-11-13; phase-07c-1b decider files 16, 19;
+      Seats 4, 5, 3 files 15, 17, 18; interrogator file 20)
 - [ ] **AX47 mid-fade check per ear; insertion per ear (AX47, AX48 FM-B2):** the AX47 mid-fade check passes per
       ear; the first IrSet at instance insertion carries the per-ear seeds and decorrelation (beside the `[pipeline]`
       insertion test).

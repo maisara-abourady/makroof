@@ -77,7 +77,9 @@ a range change, a formulation seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5
    the R5 Windows release machine; a miss opens 13-1b (D-PS4 instruction 2) with B1-d first candidate.
 4. **AX48 E_model fingerprint:** pin the per-platform hashes (Linux `22f009efe0004e82` from run 43242209571; macOS
    and Windows from CI) so the fingerprint test fails on any change.
-5. **FM-D1-S3:** apply Maisara's answer (Raise item 1) through `/fix-plan`.
+5. **FM-D1-S3:** apply Maisara's answer (Raise item 1) through `/fix-plan`. **Answered by Maisara 2026-11-13: option (i)** ("Write the stream checks now"); the lines are in phase-07c-2
+   (scope 9, acceptance), phase-08-3 and phase-09 (acceptance), AX47 (b) and BUILD_PLAN §6 (`docs/review/phase-07c-1b/`
+   files 15–20).
 6. **Instance insertion (review M1).** A fresh instance's first prepare (no restore, no held or saved level) runs the
    stage-1 diffuse solve synchronously, as before 07c-1; AQ10 and AX48 name "a load" and do not name instance
    insertion. The board loop reads whether instance insertion is a load (the embedded default scene's first build)
@@ -147,7 +149,8 @@ Follow-ups noted (review minors from 07c-1, not scope here):
 - [ ] The E_model fingerprint test asserts the pinned hash on Linux, macOS and Windows and fails on a changed E_b
       (negative check).
 - [ ] FM-D1-S3: Maisara's answer recorded in BUILD_PLAN §6; if she chooses (i), the corrected lines are in
-      phase-07c-2, phase-08-3 and phase-09 through `/fix-plan`.
+      phase-07c-2, phase-08-3 and phase-09 through `/fix-plan`. (Maisara answered (i) on 2026-11-13; §6 row and lines
+      in, `docs/review/phase-07c-1b/` files 15–20.)
 - [ ] Instance insertion (scope 6): the reading of whether instance insertion is a load under AX48 FM-3′ recorded
       (the AX48 text through `/fix-plan` if it changes), and a test asserting the decided behaviour. (review M1)
 - [ ] AX47 mid-fade check (scope 7): a test renders wet pink noise and a seeded speech-like signal through a project load and its settling

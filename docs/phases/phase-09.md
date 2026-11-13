@@ -65,6 +65,19 @@ Crosstalk cancellation, speaker calibration, multichannel output (PRD out of sco
 - [ ] Mode switch during playback: the click detector (Phase 02) reports 0 events across 10 switches.
 - [ ] E_b bit-identical between stereoSpeakers, omni and binaural (AX44, AX48); a mode switch never re-solves
       or waits for a synthesis (AX49).
+- [ ] **Interim tail stream per speaker feed (AX47 (b) prefix check; D1, FM-D1-S3):** as phase-08-3's criterion, for the
+      stereoSpeakers provisional against the exact IR, per emitter, feed (L, R) and band, both as shipped (after the 2×2
+      mix to the ORTF diffuse-field coherence and any per-feed filter); h the backward reach of the generator's band
+      filters, any band split used by the coherence mix and any per-feed filter, plus the analysis filterbank's; the
+      same bound with B, window [t_mix,e, L_f − h), 'not evaluated' rule (empty window, L_p ≥ L, zero matched tail
+      energy) and non-vacuity per band, feed and fs; the window's specular energy share of E(final) printed per case
+      and band (Seat 3, print only); IRs from serial builder calls in one process, repeat builds asserted
+      bit-identical first; N1 (tailSeed + 1) asserted red per feed and band; N2 (seeds swapped) asserted red on the
+      two-feed aggregate, each feed's value printed beside its closed form with γ_b the scope 3 ORTF target; mix and
+      per-feed filter coefficients from one shared function or cache, asserted bit-identical within one process
+      (never across OSes); 2 seeds (more only with a reason in the PR); exact IRs reused from the AX47 (b) and
+      mid-fade fixtures; Release test job; the PR prints the added wall time per OS. (Maisara 2026-11-13;
+      phase-07c-1b decider files 16, 19; Seats 4, 5, 3 files 15, 17, 18; interrogator file 20)
 - [ ] The AX47 mid-fade check passes per speaker feed (AX47 "Measurement").
 - [ ] All earlier tests and pluginval still pass.
 
