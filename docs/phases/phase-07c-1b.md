@@ -106,7 +106,9 @@ a range change, a formulation seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5
    `docs/review/phase-07c-1/41-orchestrator-ci-records-43242209571.md`): an 8-instance Windows load at the rated corner (96 kHz, T60 8 s, 100 m cube, loaded in sequence) took keyless
    9 511 ms, keyed 9 448 ms (macOS 7 846 / 8 780 ms, Linux 4 995 / 5 083 ms) against AX49's 5 s. Back to the board
    with phase 07d's candidates first, per AX49 "Reversal"; the decision was moved to phase-07d by D-B4 (C7′) — never
-   an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
+   an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5). **Records this phase (D-B4, test-only; decider file 8):** record (h)
+   prints per instance its restore time; the background builds running at its start (stage hook and `builderBusy()`,
+   split Solve / Assemble, counted as instances); `hardware_concurrency()`; and the prepare-first totals (scope 6).
 
 ## Out of scope
 
@@ -130,7 +132,7 @@ Follow-ups noted (review minors from 07c-1, not scope here):
 - [ ] Condition 7, the 07c re-pin: the flutter reference, the low-α / flutter ratio reference and the baseline
       median (`kGateRegister`), `solveRefMs` and k per OS pinned from ≥ 3 green S2 runs per OS (out-of-window runs
       count; never a red run; one run PROVISIONAL, printed not asserted; the solve bound PROVISIONAL until its dated
-      exit; print-only on hosted runners throughout (G9)); the ratio asserted at 1.10 × its pin on Linux and Windows; the
+      exit; print-only on hosted runners throughout (G9)); the ratio asserted at 1.10 × its pin on Linux and Windows (an OS whose S2 ratios have max/min > 1.10 print-only); the
       macOS trigger (2 172 ms) re-derived by script as ⌊1.15 × the mean of the green macOS low-α medians of those runs⌋; the per-stage split
       and f printed; with a CHANGELOG reason and a §6 row. (AX38 4c as amended by FM-GROWTH and read by FM-TRIG,
       2026-11-13; D-Q5; phase-07c-1's condition 7 criterion)
@@ -150,7 +152,7 @@ Follow-ups noted (review minors from 07c-1, not scope here):
       (the AX48 text through `/fix-plan` if it changes), and a test asserting the decided behaviour. (review M1)
 - [ ] AX47 mid-fade check (scope 7): a test renders wet pink noise and a seeded speech-like signal through a project load and its settling
       step (and an edit's interim and final) and asserts, across each AX47 step (equal-gain, AX18 FM-1: the settling step of a project load and an edit's interim → final), per 1 ms window aligned to the fade start (N_w = lround(0.001·fs)) and per output channel, E_out ≤ (1 + N_w/L)²·max(E_a, E_b)·(1 + 10⁻⁵) (E_a, E_b: the two IRs rendered alone),
-      the per-sample bound |o| ≤ max(|a|,|b|) + 8u·(|a|+|b|), the reconstruction to 8u·(|a|+|b|) and value equality with the endpoint outside the fade, and for each fade from silence |o| ≤ |b|, on three OSes; the load's equal-power fade over another scene's IrSet (AX18) is recorded, not asserted against the louder endpoint (the cross term of two correlated wet renders can exceed it, Vorländer §4.3 Eq. 4.15). (AX47 "Measurement", D-B3, decider files 4, 8, 11; review M2; DC-08, DC-09)
+      the per-sample bound |o| ≤ max(|a|,|b|) + 8u·(|a|+|b|), the reconstruction to 8u·(|a|+|b|) and value equality with the endpoint outside the fade, and for each fade from silence |o| ≤ |b|, on three OSes; the load's equal-power fade over another scene's IrSet (AX18) is recorded, not asserted against the louder endpoint (the cross term of two correlated wet renders can exceed it, Vorländer §4.3 Eq. 4.15). (AX47 "Measurement", D-B3, decider files 4, 8, 11; review M2; P07C1-S5-DC-08, -09)
 - [ ] AX49 reversal (scope 8): the board's decision on the AX49 reversal recorded (AX row / ledger), applied via
       `/fix-plan`: moved to phase-07d by D-B4 (C7′), with the trigger as a 07d acceptance criterion and the records of
       record (h) printed in this phase; no instance cap. (AX49 "Reversal"; record (h), run 43242209571)
