@@ -1,7 +1,7 @@
-# Phase 07d — Restore gate at the long-T60 corner (condition 9's split)
+# Phase 07d — Load at the long-T60 corner, the macOS (d) defect and the growth re-pin (condition 9's split)
 
-Size: **S–M** (remainder, if needed: `07d-b`) · Depends on: 07c-1 and [07c-1b](phase-07c-1b.md) `done` (07c-1b closes or
-names 07d for the AX38 4c entries on the re-pinned gate) · Created 2026-11-12 under phase-07c-1
+Size: **S–M** (remainder, if needed: `07d-b`) · Depends on: 07c-1 and [07c-1b](phase-07c-1b.md) `done` (07c-1b closed both
+AX38 4c `cube100_lowalpha0.05_s0.3` entries under E1 and leaves scopes 2, 6–8 here) · Created 2026-11-12 under phase-07c-1
 condition 9's split clause ("If this phase's loop finds condition 9 does not fit here, a `phase-07d.md` of size S–M
 is created") by the phase-07c-1 decision loop (FM-2′; AX49 "Long-T60 corner") · Lead subject matter: not named by
 the loop; Seats 5 and 7 are convened on the inputs below (AX49 future-debt register) · Read first, in this order:
@@ -18,9 +18,12 @@ None from the loop that created this phase.
 
 ## Goal
 
-Close the AX38 4c restore-gate register entries that phase-07c-1 cannot close: at the long-T60 corner, where
-AX49's interim is the full tail (L_p ≥ L), the restore still contains the full unit-decay synthesis. (phase-07c-1
-decision loop, decider file 12 §8)
+Bring the 8-instance Windows load at the rated corner to ≤ 5 s on record (h) through scope 2's candidates, C9 first
+(scope 6; D-B4 C7′). Close the macOS (d) defect of runs 42 and 44 on measured evidence (scope 7; X-d−). Re-pin the
+AX38 4c growth check from ≥ 6 green runs on the restore path this phase leaves (scope 8; FM-GROWTH). At the long-T60
+corner AX49's interim is the full tail (L_p ≥ L), so the restore still contains the full unit-decay synthesis
+(phase-07c-1 decider file 12 §8). The AX38 4c register entries this phase was created to close were closed in
+phase-07c-1b (E1, 2026-11-13; scope 1).
 
 ## Assumptions in force
 
@@ -83,7 +86,10 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
    "Asserted every run" (w the largest value with (1 + w)·max(r/r̄) ≤ 1.083 over those runs; not added if max(r/r̄)
    ≥ 1.07; dormancy stated if no in-window x64 run); the solve bound's PROVISIONAL exit, second branch (re-derived
    here if its first branch was not met). A synthesis growth 07d itself introduces is read by scope 7's closure
-   evidence, not by the re-pinned absolute leg.
+   evidence, not by the re-pinned absolute leg. If Linux's ratios over the re-pin runs again have max/min > 1.10
+   (S2: 1.3681), or max(r/r̄) ≥ 1.07 leaves it without the absolute leg, Linux's hosted growth check returns to this
+   phase's board loop (FM-GROWTH reversal, met in substance at S2), with the S2 and re-pin spreads; 1.10 unchanged, no
+   re-run.
 
 ## Out of scope
 
@@ -109,7 +115,8 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
 - [ ] The growth re-pin (scope 8): reference and baselines from ≥ 6 green runs with a CHANGELOG reason and a §6 row;
       the in-window absolute leg asserted on Linux and Windows (an OS whose ratios over the current pin's runs have
       max/min > 1.10 is print-only), or not added (max(r/r̄) ≥ 1.07) with the GROWTH print
-      kept; in-window runs per OS counted and dormancy stated. (AX38 4c, FM-GROWTH)
+      kept; in-window runs per OS counted and dormancy stated; Linux returned to the board under scope 8 if print-only again.
+      (AX38 4c, FM-GROWTH)
 
 ## Listening / manual checklist
 
