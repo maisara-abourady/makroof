@@ -34,6 +34,9 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
 1. **Close the AX38 4c macOS and Windows entries at the long-T60 corner.** At the gated low-α cube
    (`cube100_lowalpha0.05_s0.3`, T60_max 50.5 s, exact tail L = 12 s) AX49 builds the exact tail synchronously
    (L_p ≥ L), so the restore is the pre-07c restore minus the solve. (decider file 12 §6, row 38; K22)
+   *Closed in phase-07c-1b (E1, 2026-11-13):* both `cube100_lowalpha0.05_s0.3` entries closed under AX38 4c (c) on
+   S2 runs 43389296112, 43402114873, 43412038058 (14 × worst macOS 23.46 / 22.44 / 24.08 s, Windows 20.24 / 15.96 /
+   19.59 s); a later OVER30S is handled as AX38 4c E1 states.
 2. **Candidates, in order** (decided through the board loop and recorded as an AX row before any code; decider file
    12 §8; order and conditions from the phase-07c-1b loop, D-B4 C7′, `docs/review/phase-07c-1b/11-decider-decision-r3.md`
    item 8):
@@ -60,7 +63,8 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
 4. **Release premise:** BUILD_PLAN premise P1 (AX38 (iv)): if 07d lands after the first release, the interim-audible
    time stays the non-diffuse restore and phase-13 item 3 fires on it.
 5. **Register:** the AX38 4c register's macOS entry names 07d as 'closes at', and the Windows entry's remedy names
-   07d (or Phase 13's release-machine re-check if the runner is shown to be the cause, as written there).
+   07d (or Phase 13's release-machine re-check if the runner is shown to be the cause, as written there). Both
+   entries closed in phase-07c-1b (E1; scope 1).
 6. **8-instance load (AX49 reversal, moved here by D-B4 C7′; phase-07c-1b loop, 2026-11-13).** The 8-instance Windows
    load at the rated corner is brought to ≤ 5 s on record (h) (criterion below), the candidates of scope 2 in order,
    C9 first. Also: insertion unit decays for every outputIndex (Seat 4 (i)) — output-1 built by the builder after the
@@ -71,6 +75,8 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
    the macOS per-stage split after the remedy at equal work pins; the macOS / Linux per-emitter synthesis ratio within
    1.10 × the same runs' flutter macOS / Linux ratio; the trigger in force not exceeded on two consecutive runs; built
    from runs 07d makes, ≤ 3 extra manual runs per defect (Seat 7); no closure by recalibration.
+   Re-derived at 07c-1b (AX38 4c X-d−, 2026-11-13): runs 42 (2 223 ms) and 44 (2 572 ms) exceed the S2 trigger
+   1 703 ms, so the defect stands.
 8. **The growth re-pin (D-B5 (ii), FM-GROWTH, AX38 4c):** after the remedy, the ratio reference and baselines
    re-derived from ≥ 6 green runs on the restore path in force (manual runs after 07d's last code change; earlier runs
    pooled only if 07d leaves the restore path unchanged), and the in-window absolute leg added under AX38 4c
@@ -91,7 +97,7 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
       code commit.
 - [ ] The AX38 4c restore gate runs at both gated builds on three OSes in its register form; the macOS and Windows
       entries leave the register through `/fix-plan` under (c), or stay listed with their remedy and closing
-      phase restated.
+      phase restated. (Both closed in phase-07c-1b, E1, 2026-11-13; scope 1.)
 - [ ] Any bit-identical candidate is tested bit-identical to the current build on each platform (AX5); an
       output-changing candidate goes through one golden round (`update_goldens.py`, §6 row).
 - [ ] 8-instance Windows load at the rated corner ≤ 5 s on record (h), read on the larger of the prepare-first
