@@ -126,30 +126,41 @@ constexpr double kGuardPct = 5.0;
 constexpr double kSolveWarn = 1.20;
 // macOS trigger (4c (c), M-a / FM-TRIG): two consecutive macOS runs with the low-alpha median above
 // kMacGrowthTriggerMs are a (d) defect through /fix-plan; read by the orchestrator from the GATE lines, no
-// state in the test. In force now: RG-1 round 4 (Seat 5 file 57 r3), 1.15 x the mean of the four measured
-// macOS medians (2106 / 1849 / 1887 / 1715 -> 1889). At the 07c re-pin: floor(1.15 x the mean of the green
-// macOS low-alpha medians of the S2 runs), computed by tools/ci/repin_gate.py, never by hand.
-constexpr double kMacGrowthTriggerMs = 2172.0;
-constexpr int kMacGrowthTriggerS2Runs = 0; // 0: the RG-1 value above; else the S2 runs it was computed from
+// state in the test. Before the S2 pin: RG-1 round 4 (Seat 5 file 57 r3), 1.15 x the mean of the four
+// measured macOS medians (2106 / 1849 / 1887 / 1715 -> 1889). Now (phase-07c-1b condition
+// 7): floor(1.15 x the mean of the green macOS low-alpha medians of S2 runs 43389296112, 43402114873 and
+// 43412038058, 1459 / 1398 / 1586 -> 1481), computed by tools/ci/repin_gate.py, never by hand.
+constexpr double kMacGrowthTriggerMs = 1703.0;
+constexpr int kMacGrowthTriggerS2Runs = 3; // 0: the RG-1 value above; else the S2 runs it was computed from
 constexpr std::size_t kFftSizeLowAlpha96k =
     2097152; // [probe-restore-split], 2026-11-11: 1152000 + 2 x 15697 -> 2^21
 constexpr std::size_t kFftSizeFlutter96k = 524288; // 377517 + 2 x 15697 -> 2^19
-constexpr S2Pin kS2Pending{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0};
+// S2 pin (phase-07c-1b condition 7, FM-GROWTH): tools/ci/repin_gate.py on the build-job logs of the green S2
+// CI runs 43389296112, 43402114873 and 43412038058 (code 9717a58), pasted as printed
+// (docs/review/phase-07c-1b/22-repin-gate-output.md; tests/golden/CHANGELOG.md 2026-11-13).
+// {ratioRef, ratioMaxOverMin, flutterRefMs, baselineMedianMs, solveRefMs, solveK, runs}
 constexpr GateEntry kGateRegister[] = {
     // The flutter scene: strict 14 x worst <= 30 s on every OS (headroom >= 2.3x, Seat 5); no growth bound.
-    {"cube100_flutter_fallback", "Linux", 10.59, 0.0, 0.0, 0.0, false, false, true, 131.2, 1, kS2Pending},
-    {"cube100_flutter_fallback", "macOS", 7.59, 0.0, 0.0, 0.0, false, false, true, 102.7, 1, kS2Pending},
-    {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true, 144.4, 2, kS2Pending},
+    {"cube100_flutter_fallback", "Linux", 10.59, 0.0, 0.0, 0.0, false, false, true, 131.2, 1,
+     S2Pin{0.0000, 0.0000, 552.3, 552.3, 130.8, 1.2225, 3}},
+    {"cube100_flutter_fallback", "macOS", 7.59, 0.0, 0.0, 0.0, false, false, true, 102.7, 1,
+     S2Pin{0.0000, 0.0000, 475.3, 475.3, 110.6, 1.1127, 3}},
+    {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true, 144.4, 2,
+     S2Pin{0.0000, 0.0000, 496.3, 496.3, 106.0, 1.0846, 3}},
     // The gated low-alpha cube. macOS and Windows are listed (remedy phase-07c conditions 9-10): macOS
     // recorded 33.40 s (local / file 1); Windows recorded 36.73 s on CI run 42942694523's slow runner
     // (phase-05h file 53) and printed OVER30S on 05i's run of record 43031773338. Linux (30.27 s local /
     // file 1) closed under AX38 4c (c) on phase 05i's runs (docs/review/phase-05i/9, 19): print only.
+    // Phase 07c-1b (E1, D-B5 (v)): macOS and Windows closed under AX38 4c (c): 14 x worst <= 30 s on every S2
+    // run
+    // (43389296112, 43402114873, 43412038058: macOS 23.46 / 22.44 / 24.08 s, Windows 20.24 / 15.96 / 19.59 s;
+    // docs/review/phase-07c-1b/22): print only.
     {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1,
-     kS2Pending},
-    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false, 83.7, 1,
-     kS2Pending},
-    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, true, false, 90.4, 2,
-     kS2Pending},
+     S2Pin{2.3963, 1.3681, 552.3, 1282.7, 80.7, 1.2225, 3}},
+    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, false, false, 83.7, 1,
+     S2Pin{3.1203, 1.1618, 475.3, 1481.0, 78.1, 1.1127, 3}},
+    {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, false, false, 90.4, 2,
+     S2Pin{2.5297, 1.0530, 496.3, 1258.3, 66.2, 1.0846, 3}},
 };
 const GateEntry* gateRegisterEntry(const std::string& scene)
 {

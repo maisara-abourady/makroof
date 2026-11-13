@@ -185,3 +185,10 @@ Reason: phase 05i, decider file 9 (Q1, answer 4), interrogator file 10 (SURVIVES
 Reason: phase 07c-1b scope 4 (AX48 E_model fingerprint): the per-platform hashes of the fingerprint fixtures' E_b are pinned from CI, each identical on the three runs of phase 07c-1's final code (43242209571 on 6db81b6, 43258505284 on 39f751b, 43291051799 on 53d1333; `docs/review/phase-07c-1/41`, `42`, `44`): Linux `22f009efe0004e82`, macOS `9d4f48216097ae94`, Windows `a70a95cd5962863b`, modelId 1. A later change of E_b with DiffuseLimits unchanged fails the test and must bump `kEstimatorModelId` (AX48). A negative check (`[ax48-fingerprint-negative]`) shows a one-ulp change of any E_b band changes the hash.
 
 - `(records-test constants)`: `kPins` in `records: AX48 E_model fingerprint` pinned (no golden file changed)
+
+## 2026-11-13 (07c-1b, condition 7 re-pin)
+
+Reason: phase-07c-1b condition 7 / D-B5 / FM-GROWTH (decider files 4, 8, 11; interrogator file 12): the AX38 4c restore gate's S2 pin, from the three green S2 CI runs 43389296112, 43402114873 and 43412038058 (code 9717a58), computed by `tools/ci/repin_gate.py` on the nine build-job logs and pasted as printed (`docs/review/phase-07c-1b/22-repin-gate-output.md`). Constants in tests/unit/test_diffuse_records.cpp (not a golden): the `S2Pin` of every `kGateRegister` entry (ratioRef, ratioMaxOverMin, flutterRefMs, baselineMedianMs, solveRefMs, solveK; runs = 3 per OS and scene; Linux ratio max/min 1.3681 and macOS print-only, Windows asserted), and the macOS trigger `kMacGrowthTriggerMs` 2172 -> 1703 ms (floor(1.15 x 1481), the mean of the macOS low-alpha medians 1459 / 1398 / 1586) with `kMacGrowthTriggerS2Runs` 0 -> 3. The unused `kS2Pending` placeholder is removed.
+
+- `(records-test constants)`: S2 pin of the six restore-gate register entries and the macOS growth trigger (no golden file changed)
+- `(records-test constants)`: the macOS and Windows low-alpha entries closed under AX38 4c (c) (E1, D-B5 (v)): 14 x worst <= 30 s on every S2 run (macOS 23.46 / 22.44 / 24.08 s, Windows 20.24 / 15.96 / 19.59 s), `listed` false, print only (no golden file changed)
