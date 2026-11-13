@@ -69,8 +69,7 @@ public:
                           static_cast<unsigned long>(taskIndex), GetThreadPriority(GetCurrentThread()));
         }
         else
-            std::snprintf(buf, sizeof(buf),
-                          "priority: not available (MMCSS \"Pro Audio\" failed, GetLastError %lu)",
+            std::snprintf(buf, sizeof(buf), "not available (MMCSS \"Pro Audio\" failed, GetLastError %lu)",
                           static_cast<unsigned long>(GetLastError()));
 #elif defined(__APPLE__)
         mach_timebase_info_data_t tb{};
@@ -102,8 +101,8 @@ public:
                           got.constraint, tb.numer, tb.denom);
         }
         else
-            std::snprintf(buf, sizeof(buf),
-                          "priority: not available (THREAD_TIME_CONSTRAINT_POLICY kern_return %d)", kr);
+            std::snprintf(buf, sizeof(buf), "not available (THREAD_TIME_CONSTRAINT_POLICY kern_return %d)",
+                          kr);
 #else
         sched_param sp{};
         const int maxPrio = sched_get_priority_max(SCHED_FIFO);
@@ -123,7 +122,7 @@ public:
                           got.sched_priority, obtained_ ? "in force" : "not read back", rtLimit);
         }
         else
-            std::snprintf(buf, sizeof(buf), "priority: not available (errno %d: %s; RLIMIT_RTPRIO %lld)", rc,
+            std::snprintf(buf, sizeof(buf), "not available (errno %d: %s; RLIMIT_RTPRIO %lld)", rc,
                           std::strerror(rc), rtLimit);
 #endif
         description_ = buf;

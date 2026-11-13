@@ -523,7 +523,9 @@ TEST_CASE("AX47 / D-B3: no mid-fade window exceeds the louder endpoint (W-a, 1 m
           "[ax47-midfade]")
 {
     const auto started = std::chrono::steady_clock::now();
-    const auto law = sim::conv::CrossfadeLaw::EqualGain; // AX18: a same-scene step is equal-gain
+    // AX18: a same-scene step is equal-gain. This test supplies the law; which law the pipeline picks per
+    // step is asserted in test_scene_pipeline.cpp ("Switch rule (D7)" and "AX18 / FM-1 on the AX49 path").
+    const auto law = sim::conv::CrossfadeLaw::EqualGain;
     for (const double fs : {48000.0, 96000.0})
     {
         const auto tBuild = std::chrono::steady_clock::now();

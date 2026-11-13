@@ -71,10 +71,10 @@ constexpr const char* kOsName = "Linux";
 // Phase-07c-1b FM-GROWTH (AX38 4c G1-G14; docs/review/phase-07c-1b/11 plan item 9 as corrected by 12 rows
 // 09-15): the S2 pin of one register entry on one OS. Every value comes from tools/ci/repin_gate.py run on
 // the GATE and stage-split lines of >= 3 green S2 CI runs (never a red run; out-of-window runs count, G12),
-// pasted as constants with a CHANGELOG reason (tests/golden/CHANGELOG.md, not a golden). All zero with runs =
-// 0 until then: the ratio check prints PROVISIONAL (S2 pin pending) and asserts nothing, and the prints fall
-// back to the RG-1 references below. "S2" names the current pin (S2 at 07c-1b; re-pinned at 07c-2 and 07d,
-// G13).
+// pasted as constants with a CHANGELOG reason (tests/golden/CHANGELOG.md, not a golden). Pinned at 07c-1b
+// from S2 runs 43389296112, 43402114873, 43412038058 (commit 9cc0e32). An entry with runs = 0 (no S2 pin)
+// prints PROVISIONAL (S2 pin pending), asserts nothing and falls back to the RG-1 references below. "S2"
+// names the current pin (S2 at 07c-1b; re-pinned at 07c-2 and 07d, G13).
 struct S2Pin
 {
     double ratioRef; // r-bar: mean low-alpha / flutter median-of-10 ratio (low-alpha entry; 0 on flutter)
@@ -153,7 +153,7 @@ constexpr GateEntry kGateRegister[] = {
      S2Pin{0.0000, 0.0000, 475.3, 475.3, 110.6, 1.1127, 3, false}},
     {"cube100_flutter_fallback", "Windows", 9.65, 0.0, 0.0, 0.0, false, false, true, 144.4, 2,
      S2Pin{0.0000, 0.0000, 496.3, 496.3, 106.0, 1.0846, 3, true}},
-    // The gated low-alpha cube. macOS and Windows are listed (remedy phase-07c conditions 9-10): macOS
+    // The gated low-alpha cube. macOS and Windows were listed (remedy phase-07c conditions 9-10): macOS
     // recorded 33.40 s (local / file 1); Windows recorded 36.73 s on CI run 42942694523's slow runner
     // (phase-05h file 53) and printed OVER30S on 05i's run of record 43031773338. Linux (30.27 s local /
     // file 1) closed under AX38 4c (c) on phase 05i's runs (docs/review/phase-05i/9, 19): print only.
