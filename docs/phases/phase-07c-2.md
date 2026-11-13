@@ -101,6 +101,13 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
      sources. (phase-07c-1b loop, 2026-11-13)
    - **The W_max raise changes E_prec** (AX48), so v2 states saved before the raise load keyless.
    - **Seat 2's prefix check:** verify Seat 2's prefix claim (`pathCount`, `pilotStops`).
+10. **Carried from 07c-1b (P07C1B-R1), only if `listed` is still `false` on the macOS `cube100_lowalpha0.05_s0.3` row
+    of `kGateRegister` on `main` when this phase starts:** in this phase's first code commit, in one commit: that
+    row's `listed` `false` → `true` in `tests/unit/test_diffuse_records.cpp` with its comment line, the
+    `tests/golden/CHANGELOG.md` line, and texts T1, T4 and T8 (through `/fix-plan`), exactly as written in
+    `docs/review/phase-07c-1b/32-decider-R1-round3.md`; nothing else in the row changes (`recorded14xS` stays 33.40).
+    The same item stands in phase-07d scope 9; whichever phase starts first does it, and the other records it as done
+    with the commit.
 
 ## Out of scope
 

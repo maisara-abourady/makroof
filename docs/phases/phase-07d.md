@@ -80,6 +80,13 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
    from runs 07d makes, ≤ 3 extra manual runs per defect (Seat 7); no closure by recalibration.
    Re-derived at 07c-1b (AX38 4c X-d−, 2026-11-13): runs 42 (2 223 ms) and 44 (2 572 ms) exceed the S2 trigger
    1 703 ms, so the defect stands.
+   Evidence added at 07c-1b (AX38 4c X-d−, P07C1B-R1): PR #33's run 43427854710 (head ac54495; restore path as the S2
+   runs; hosted macOS runner; records-test scene 100 m / 96 kHz, exact tail L = 12 s, 2 emitters; not a per-instance
+   cost): MACTRIGGER once (low-α median 1 851 ms), ratio 4.626 (1.48 × r̄), flutterDev −15.8 %, 14 × worst 30.50 s
+   (OVER30S; the entry's re-list decided, P07C1B-R1, lands with its flag in the carrier push, scope 1 and scope 9): a
+   print, not a new defect. A joined pair adds no runs to this defect's ≤ 3. The closure test re-attributes the macOS
+   low-α restore with the split timer (a pair attributed elsewhere splits out) and checks that restore's
+   interim→final tail handover for clicks with the tools/acoustics click detector, on runs 07d makes.
 8. **The growth re-pin (D-B5 (ii), FM-GROWTH, AX38 4c):** after the remedy, the ratio reference and baselines
    re-derived from ≥ 6 green runs on the restore path in force (manual runs after 07d's last code change; earlier runs
    pooled only if 07d leaves the restore path unchanged), and the in-window absolute leg added under AX38 4c
@@ -90,6 +97,13 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
    (S2: 1.3681), or max(r/r̄) ≥ 1.07 leaves it without the absolute leg, Linux's hosted growth check returns to this
    phase's board loop (FM-GROWTH reversal, met in substance at S2), with the S2 and re-pin spreads; 1.10 unchanged, no
    re-run.
+9. **Carried from 07c-1b (P07C1B-R1), only if `listed` is still `false` on the macOS `cube100_lowalpha0.05_s0.3` row
+   of `kGateRegister` on `main` when this phase starts:** in this phase's first code commit, in one commit: that
+   row's `listed` `false` → `true` in `tests/unit/test_diffuse_records.cpp` with its comment line, the
+   `tests/golden/CHANGELOG.md` line, and texts T1, T4 and T8 (through `/fix-plan`), exactly as written in
+   `docs/review/phase-07c-1b/32-decider-R1-round3.md`; nothing else in the row changes (`recorded14xS` stays 33.40).
+   The same item stands in phase-07c-2 scope 10; whichever phase starts first does it, and the other records it as
+   done with the commit.
 
 ## Out of scope
 
