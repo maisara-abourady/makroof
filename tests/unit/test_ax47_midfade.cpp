@@ -25,9 +25,13 @@
 //      during the fade, per-window E <= E_b (1 + 1e-12), (ii) and (iii) with a = 0.
 //   5. Equal-power fade club -> living_room: recorded, not asserted (per-window 10 log10(E_out / max) and the
 //      correlation rho over the fade).
-//   6. Signals: seeded pink noise and the s1 speech-like stimulus (glottal pulses at f0 120 Hz +- 5 % seeded
-//      jitter, three two-pole resonators at 500 / 1500 / 2500 Hz, a 4 Hz syllabic envelope, pauses >= 200 ms,
-//      one starting inside the fade). Both deterministic (AX5): no download, no committed WAV.
+//   6. Signals: seeded pink noise and the s1 seeded speech-like stimulus (glottal pulses at f0 120 Hz +- 5 %
+//      seeded jitter, three two-pole resonators at 500 / 1500 / 2500 Hz, a 4 Hz syllabic envelope, pauses
+//      >= 200 ms). Board round 2 (Seats 1, 4): a pause boundary inside a fade in EACH direction, so the
+//      seeded speech-like stimulus comes in two variants: "release" (a pause starts inside the fade: release
+//      into the tail) and "onset" (a pause ends inside the fade: an onset into the fade). Its seeds and
+//      parameters are fixed, versioned constants (kSpeechLikeV1). All deterministic (AX5): no download, no
+//      committed WAV.
 #include "PipelineTestUtil.h"
 
 #include "module3d/ParameterMap.h"
@@ -128,39 +132,81 @@ std::vector<float> pinkNoise(std::size_t n, std::uint64_t seed)
     return out;
 }
 
-// Ruling s1: a deterministic speech-like stimulus. A glottal pulse train (f0 120 Hz, each period jittered by
-// a seeded +-5 %) through a cascade of three two-pole resonators (500 / 1500 / 2500 Hz; bandwidths 80 / 100 /
-// 120 Hz: test design parameters, not claims about speech), a 4 Hz raised-cosine syllabic envelope, and
-// pauses of 200-350 ms. One pause of 250 ms starts at input sample `pauseAt`, chosen by the caller so that it
-// starts inside the fade (the envelope is at its peak there: an onset into silence). Peak scaled to 0.3.
-std::vector<float> speechLike(std::size_t n, double fs, std::uint64_t seed, std::size_t pauseAt)
+// Ruling s1, version 1: the seeded speech-like stimulus. Its seeds and parameters are fixed constants of this
+// version and are never changed: a change is a new version (kSpeechLikeV2 ...) with its own name in the
+// printed records. Resonator frequencies and bandwidths are test design parameters, not claims about any
+// recorded material (not ITU-T P.50).
+struct SpeechLikeParams
 {
-    sim::Pcg32 rng(seed, 11u);
+    std::uint64_t seed[2]; // per input channel (PCG32 stream 11)
+    double f0Hz;           // glottal pulse rate
+    double jitter;         // +- relative, per period, seeded
+    double formantHz[3];   // two-pole resonators, in cascade
+    double bandwidthHz[3];
+    double syllableHz;           // raised-cosine syllabic envelope
+    double runMinS, runMaxS;     // runs between pauses
+    double pauseMinS, pauseMaxS; // pauses (>= 200 ms)
+    double boundaryPauseS;       // the pause whose boundary lies inside the fade
+    double peak;
+};
+constexpr SpeechLikeParams kSpeechLikeV1{{0x5eed11ce0001ull, 0x5eed11ce0002ull},
+                                         120.0,
+                                         0.05,
+                                         {500.0, 1500.0, 2500.0},
+                                         {80.0, 100.0, 120.0},
+                                         4.0,
+                                         0.5,
+                                         1.0,
+                                         0.20,
+                                         0.35,
+                                         0.25,
+                                         0.3};
+
+// Which pause boundary lies inside the fade (board round 2, Seats 1, 4).
+enum class Boundary
+{
+    Release, // a pause STARTS at `boundaryAt`: the input stops, the output releases into the tail
+    Onset    // a pause ENDS at `boundaryAt`: the input starts again inside the fade
+};
+
+// The seeded speech-like stimulus (kSpeechLikeV1) for input channel `channel`: a glottal pulse train (f0 with
+// a seeded +-jitter per period) through the resonator cascade, the syllabic envelope (at its peak at
+// `boundaryAt`, so the boundary is an abrupt stop or start), pauses of 200-350 ms, and one pause of 250 ms
+// whose start (Release) or end (Onset) is input sample `boundaryAt`. Peak scaled to 0.3.
+std::vector<float> seededSpeechLike(std::size_t n, double fs, int channel, std::size_t boundaryAt,
+                                    Boundary boundary)
+{
+    const SpeechLikeParams& v = kSpeechLikeV1;
+    sim::Pcg32 rng(v.seed[channel], 11u);
     const auto uniform = [&] { return static_cast<double>(rng.next()) / 4294967296.0; }; // [0, 1)
     std::vector<double> src(n, 0.0);
     double t = 0.0;
     while (t < static_cast<double>(n))
     {
         src[static_cast<std::size_t>(t)] = 1.0;
-        t += fs / (120.0 * (1.0 + 0.05 * (2.0 * uniform() - 1.0)));
+        t += fs / (v.f0Hz * (1.0 + v.jitter * (2.0 * uniform() - 1.0)));
     }
-    for (const auto& [f, bw] : {std::pair{500.0, 80.0}, std::pair{1500.0, 100.0}, std::pair{2500.0, 120.0}})
+    for (int m = 0; m < 3; ++m)
     {
+        const double f = v.formantHz[m];
+        const double bw = v.bandwidthHz[m];
         const double r = std::exp(-std::numbers::pi * bw / fs);
         const double a1 = 2.0 * r * std::cos(2.0 * std::numbers::pi * f / fs);
         const double a2 = -r * r;
         const double g = 1.0 - r; // rough unity-order gain at the peak
         double y1 = 0.0, y2 = 0.0;
-        for (auto& v : src)
+        for (auto& x : src)
         {
-            const double y = g * v + a1 * y1 + a2 * y2;
+            const double y = g * x + a1 * y1 + a2 * y2;
             y2 = y1;
             y1 = y;
-            v = y;
+            x = y;
         }
     }
-    // Pause mask: speech runs of 0.5-1.0 s, pauses of 0.20-0.35 s; the forced pause at pauseAt, preceded by
-    // >= 0.25 s of speech.
+    // Pause mask: runs of 0.5-1.0 s, pauses of 0.20-0.35 s; the boundary pause, preceded by >= 0.25 s of
+    // signal and followed by a run.
+    const double pauseAt = static_cast<double>(boundaryAt)
+                           - (boundary == Boundary::Onset ? v.boundaryPauseS * fs : 0.0);
     std::vector<char> active(n, 1);
     const auto pause = [&](double from, double len) {
         const auto a = static_cast<std::size_t>(std::max(0.0, from));
@@ -168,38 +214,40 @@ std::vector<float> speechLike(std::size_t n, double fs, std::uint64_t seed, std:
         for (std::size_t i = a; i < b; ++i)
             active[i] = 0;
     };
-    const double limit = static_cast<double>(pauseAt) - 0.6 * fs;
+    const auto run = [&] { return (v.runMinS + (v.runMaxS - v.runMinS) * uniform()) * fs; };
+    const auto pauseLen = [&] { return (v.pauseMinS + (v.pauseMaxS - v.pauseMinS) * uniform()) * fs; };
+    const double limit = pauseAt - (v.pauseMaxS + v.boundaryPauseS) * fs;
     t = 0.0;
     for (;;)
     {
-        t += (0.5 + 0.5 * uniform()) * fs;
+        t += run();
         if (t >= limit)
             break;
-        const double len = (0.20 + 0.15 * uniform()) * fs;
+        const double len = pauseLen();
         pause(t, len);
         t += len;
     }
-    pause(static_cast<double>(pauseAt), 0.25 * fs);
-    t = static_cast<double>(pauseAt) + 0.25 * fs;
+    pause(pauseAt, v.boundaryPauseS * fs);
+    t = pauseAt + v.boundaryPauseS * fs;
     while (t < static_cast<double>(n))
     {
-        t += (0.5 + 0.5 * uniform()) * fs;
-        const double len = (0.20 + 0.15 * uniform()) * fs;
+        t += run();
+        const double len = pauseLen();
         pause(t, len);
         t += len;
     }
     double peak = 0.0;
     for (std::size_t i = 0; i < n; ++i)
     {
-        // 4 Hz syllabic envelope, at its peak at pauseAt.
-        const double ph = 2.0 * std::numbers::pi * 4.0
-                          * (static_cast<double>(i) - static_cast<double>(pauseAt)) / fs;
+        // The syllabic envelope, at its peak at the boundary.
+        const double ph = 2.0 * std::numbers::pi * v.syllableHz
+                          * (static_cast<double>(i) - static_cast<double>(boundaryAt)) / fs;
         src[i] *= active[i] ? 0.5 * (1.0 + std::cos(ph)) : 0.0;
         peak = std::max(peak, std::abs(src[i]));
     }
     std::vector<float> out(n);
     for (std::size_t i = 0; i < n; ++i)
-        out[i] = static_cast<float>(0.3 * src[i] / peak);
+        out[i] = static_cast<float>(v.peak * src[i] / peak);
     return out;
 }
 
@@ -325,7 +373,10 @@ CheckResult check(const Stereo& o, const Stereo* a, const Stereo& b, std::int64_
             const double abs = std::abs(at) + std::abs(bt);
             if (t < us0 || t >= us0 + uL)
             {
-                // (iii) outside the fade: the endpoint rendered alone, exactly (K23).
+                // (iii) outside the fade: the endpoint rendered alone, exactly (K23). Compared by value (==),
+                // not memcmp: in the block where the fade ends the engine computes o = 0 a + 1 b (gOut[L] =
+                // 0, gIn[L] = 1), which gives +0 where b = -0 (and 0 a may be -0); == treats +-0 as equal and
+                // still catches any other difference (no NaN can occur: finite IRs and inputs, AX32).
                 if (o[c][t] != (t < us0 ? av(c, t) : b[c][t]))
                     ++r.outsideFails;
                 if (fromSilence && t < us0 && o[c][t] != 0.0f)
@@ -502,17 +553,24 @@ TEST_CASE("AX47 / D-B3: no mid-fade window exceeds the louder endpoint (W-a, 1 m
             const std::size_t end = static_cast<std::size_t>(s0Expected) + static_cast<std::size_t>(L)
                                     + 4 * static_cast<std::size_t>(Nw) + p;
             const std::size_t n = (end + p - 1) / p * p;
-            // The speech pause starts inside the fade: input sample s0 - P + L/4 reaches the output at s0 +
-            // L/4.
-            const auto pauseAt = static_cast<std::size_t>(s0Expected) - p + static_cast<std::size_t>(L / 4);
-
+            // The seeded speech-like pause boundaries inside the fade: input sample s0 - P + j reaches the
+            // output at s0 + j (latency P). Release: a pause starts at j = L/4; onset: a pause ends at j =
+            // 3L/4.
+            const auto inFade = [&](int j) {
+                return static_cast<std::size_t>(s0Expected) - p + static_cast<std::size_t>(j);
+            };
             const std::uint64_t seedBase = static_cast<std::uint64_t>(fs) + static_cast<std::uint64_t>(P);
-            const Stereo signals[2] = {
+            constexpr int kSignals = 3;
+            const Stereo signals[kSignals] = {
                 {pinkNoise(n, seedBase + 1), pinkNoise(n, seedBase + 2)},
-                {speechLike(n, fs, seedBase + 3, pauseAt), speechLike(n, fs, seedBase + 4, pauseAt)}};
-            const char* signalNames[2] = {"pink", "speech"};
+                {seededSpeechLike(n, fs, 0, inFade(L / 4), Boundary::Release),
+                 seededSpeechLike(n, fs, 1, inFade(L / 4), Boundary::Release)},
+                {seededSpeechLike(n, fs, 0, inFade(3 * L / 4), Boundary::Onset),
+                 seededSpeechLike(n, fs, 1, inFade(3 * L / 4), Boundary::Onset)}};
+            const char* signalNames[kSignals] = {"pink", "seeded-speech-like-v1 release",
+                                                 "seeded-speech-like-v1 onset"};
 
-            for (int si = 0; si < 2; ++si)
+            for (int si = 0; si < kSignals; ++si)
             {
                 const Stereo& x = signals[si];
                 // Endpoints alone (installed at once) and the faded renders, each on its own fresh engine.
@@ -522,14 +580,19 @@ TEST_CASE("AX47 / D-B3: no mid-fade window exceeds the louder endpoint (W-a, 1 m
                     [&] { bLoad = render(P, fs, x, n, loadB, nullptr, 0, law); },
                     [&] { aEdit = render(P, fs, x, n, editA, nullptr, 0, law); },
                     [&] { bEdit = render(P, fs, x, n, editB, nullptr, 0, law); },
-                    [&] { bOther = render(P, fs, x, n, other, nullptr, 0, law); },
                     [&] { mLoad = render(P, fs, x, n, loadA, loadB, k, law); },
                     [&] { mEdit = render(P, fs, x, n, editA, editB, k, law); },
-                    // D-B3 item 5: club (exact final) -> living_room, equal power (AX18): recorded only.
-                    [&] {
-                        mPower = render(P, fs, x, n, loadB, other, k, sim::conv::CrossfadeLaw::EqualPower);
-                    },
                 };
+                // D-B3 item 5: club (exact final) -> living_room, equal power (AX18): recorded only, at P =
+                // 512 only (Debug runtime: the record needs no P = 128 point; nothing asserted is dropped).
+                const bool recordPowerHere = P == plugin::ScenePipeline::kPartitionSize;
+                if (recordPowerHere)
+                {
+                    jobs.emplace_back([&] { bOther = render(P, fs, x, n, other, nullptr, 0, law); });
+                    jobs.emplace_back([&] {
+                        mPower = render(P, fs, x, n, loadB, other, k, sim::conv::CrossfadeLaw::EqualPower);
+                    });
+                }
                 // D-B3 item 4: fade from silence, 3 blocks with no IR, then the first submit (K11).
                 const std::size_t nSilence =
                     (7 * p + static_cast<std::size_t>(L) + 4 * static_cast<std::size_t>(Nw)) / p * p + p;
@@ -565,7 +628,7 @@ TEST_CASE("AX47 / D-B3: no mid-fade window exceeds the louder endpoint (W-a, 1 m
                     REQUIRE(cs.b.fades == 0);
                     const auto r = check(cs.m.out, &cs.a.out, cs.b.out, cs.m.s0, L, Nw);
                     std::printf(
-                        "ax47-midfade %6.0f Hz P=%3d %-6s %-24s %s: worst window %+.4f dB (in the fade "
+                        "ax47-midfade %6.0f Hz P=%3d %-29s %-24s %s: worst window %+.4f dB (in the fade "
                         "%+.4f dB; bound %+.4f dB), %d windows checked, %d skipped (< -100 dB)\n",
                         fs, P, signalNames[si], cs.name, lawName(law), r.worstRatioDb, r.worstInFadeDb,
                         20.0 * std::log10(1.0 + static_cast<double>(Nw) / L), r.windows, r.skipped);
@@ -586,7 +649,7 @@ TEST_CASE("AX47 / D-B3: no mid-fade window exceeds the louder endpoint (W-a, 1 m
                     REQUIRE(mSilence.currentAtEnd == loadB.get());
                     const auto r = check(mSilence.out, nullptr, bSilence.out, mSilence.s0, L, Nw);
                     std::printf(
-                        "ax47-midfade %6.0f Hz P=%3d %-6s %-24s %s: worst window %+.4f dB (in the fade "
+                        "ax47-midfade %6.0f Hz P=%3d %-29s %-24s %s: worst window %+.4f dB (in the fade "
                         "%+.4f dB; bound 1 + 1e-12), %d windows checked, %d skipped (< -100 dB)\n",
                         fs, P, signalNames[si], "from silence", lawName(law), r.worstRatioDb, r.worstInFadeDb,
                         r.windows, r.skipped);
@@ -598,11 +661,12 @@ TEST_CASE("AX47 / D-B3: no mid-fade window exceeds the louder endpoint (W-a, 1 m
                     CHECK(r.zeroFails == 0);
                     CHECK(r.outsideFails == 0); // (iii) with a = 0
                 }
+                if (recordPowerHere)
                 {
                     // Recorded, not asserted (D-B3 item 5; Eq. 4.15: the cross term 2 |p1||p2| cos).
                     REQUIRE(mPower.fades == 1);
                     const auto rec = recordPower(mPower.out, bLoad.out, bOther.out, mPower.s0, L, Nw);
-                    std::printf("ax47-midfade %6.0f Hz P=%3d %-6s %-24s %s: max window 10log10(E_out/max) "
+                    std::printf("ax47-midfade %6.0f Hz P=%3d %-29s %-24s %s: max window 10log10(E_out/max) "
                                 "%+.4f dB, rho over the fade %.3f / %.3f (record only)\n",
                                 fs, P, signalNames[si], "club -> living_room", "equal-power", rec.maxExcessDb,
                                 rec.rho[0], rec.rho[1]);
