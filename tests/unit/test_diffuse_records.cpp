@@ -7,12 +7,14 @@
 #include "DiffuseTestUtil.h"
 #include "PipelineTestUtil.h"
 #include "ProcessMemory.h"
+#include "RealtimeProbe.h"
 
 #include "contract/Json.h"
 #include "module3d/ParameterMap.h"
 #include "plugin/core/DiffuseSolveGate.h"
 #include "plugin/core/ScenePipeline.h"
 #include "sim/Fft.h"
+#include "sim/RealtimeEngine.h"
 #include "sim/diffuse/DiffuseEstimator.h"
 #include "sim/diffuse/ThreadPool.h"
 #include "sim/ism/BandRenderer.h"
@@ -22,6 +24,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -29,6 +32,7 @@
 #include <fstream>
 #include <limits>
 #include <map>
+#include <optional>
 #include <random>
 #include <string>
 #include <thread>
@@ -448,19 +452,134 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
         // exact tail is not in it (the instance is destroyed after the timed restore; its builder is
         // cancelled, condition 10).
         const auto values = module3d::parameterValuesFromScene(sc);
-        const auto load = [&](const std::optional<plugin::SavedDiffuse>& saved) {
+        // Phase-07c-1b D-B5 (vi) item 3 (per-stage split, test-only; Seat 5 Q5): the timed restore's stage
+        // hook timestamps, taken on this (host) thread only; the builder's own stages after the restore
+        // returns are ignored. stageMs: per keyless restore, Plan, Solve, Assemble, Commit and the return,
+        // in ms from its start (-1: the stage did not fire).
+        std::vector<std::array<double, 5>> stageMs;
+        struct StageStamps
+        {
+            std::optional<Clock::time_point> plan, solve, assemble, commit;
+        };
+        const std::thread::id hostThread = std::this_thread::get_id();
+        const auto load = [&](const std::optional<plugin::SavedDiffuse>& saved, StageStamps* stamps) {
             plugin::ScenePipeline fresh;
             fresh.prepare(96000.0, 512, false);
             REQUIRE(pipeline_test::waitFor([&] { return !fresh.settling() && fresh.builderIdle(); }));
+            if (stamps != nullptr)
+                fresh.setStageHook([stamps, hostThread](plugin::ScenePipeline::BuildStage st) {
+                    if (std::this_thread::get_id() != hostThread)
+                        return;
+                    const auto now = Clock::now();
+                    using Bs = plugin::ScenePipeline::BuildStage;
+                    auto& slot = st == Bs::Plan       ? stamps->plan
+                                 : st == Bs::Solve    ? stamps->solve
+                                 : st == Bs::Assemble ? stamps->assemble
+                                                      : stamps->commit;
+                    if (!slot)
+                        slot = now; // the first of each stage
+                });
             const auto t0 = Clock::now();
             fresh.beginRestore();
             fresh.restore(sc, values, saved);
-            return ms(t0, Clock::now());
+            const double d = ms(t0, Clock::now());
+            if (stamps != nullptr)
+            {
+                // The split, in ms from the restore's start (t0): Plan, Solve, Assemble, Commit, return.
+                const auto at = [&](const std::optional<Clock::time_point>& tp) {
+                    return tp ? ms(t0, *tp) : -1.0;
+                };
+                stageMs.push_back(
+                    {at(stamps->plan), at(stamps->solve), at(stamps->assemble), at(stamps->commit), d});
+            }
+            return d;
         };
         std::vector<double> restore;
         for (int i = 0; i < kRuns; ++i)
-            restore.push_back(load(std::nullopt));
+        {
+            StageStamps stamps;
+            restore.push_back(load(std::nullopt, gateRegisterEntry(key) != nullptr ? &stamps : nullptr));
+        }
         const auto rs = spread(restore);
+        if (gateRegisterEntry(key) != nullptr && !stageMs.empty())
+        {
+            // Segment medians over the kRuns keyless restores (a segment whose stage did not fire: n/a).
+            const auto seg = [&](int from, int to) {
+                std::vector<double> v;
+                for (const auto& st : stageMs)
+                    if (st[static_cast<std::size_t>(from)] >= 0.0 && st[static_cast<std::size_t>(to)] >= 0.0)
+                        v.push_back(st[static_cast<std::size_t>(to)] - st[static_cast<std::size_t>(from)]);
+                return v.empty() ? Spread{-1.0, -1.0, -1.0} : spread(v);
+            };
+            std::vector<double> startToPlan;
+            for (const auto& st : stageMs)
+                if (st[0] >= 0.0)
+                    startToPlan.push_back(st[0]);
+            const auto sp0 = startToPlan.empty() ? Spread{-1.0, -1.0, -1.0} : spread(startToPlan);
+            const auto planSolve = seg(0, 1), solveAsm = seg(1, 2), asmCommit = seg(2, 3),
+                       commitRet = seg(3, 4);
+            std::printf(
+                "07c1b-records stage split os=%s scene=%s 96 kHz keyless restore (stage-hook timestamps on "
+                "the "
+                "host thread, median [min max] of %zu, ms): start->Plan (quiesce, snapshot) %.1f [%.1f "
+                "%.1f]; "
+                "Plan->Solve (ISM + matching + gate wait) %.1f [%.1f %.1f]; Solve->Assemble (solve) %.1f "
+                "[%.1f "
+                "%.1f]; Assemble->Commit (synthesis + assembly + makeIrSet + D7 compare) %.1f [%.1f %.1f]; "
+                "Commit->return %.1f [%.1f %.1f]; restore median %.0f\n",
+                kOsName, key, stageMs.size(), sp0.median, sp0.min, sp0.max, planSolve.median, planSolve.min,
+                planSolve.max, solveAsm.median, solveAsm.min, solveAsm.max, asmCommit.median, asmCommit.min,
+                asmCommit.max, commitRet.median, commitRet.min, commitRet.max, rs.median);
+            // The replay (public sim::StagedBuild, serial emitter synthesis): the exact build's synthesis
+            // separated from its assembly (assemble() fresh vs assemble() over the cached exact unit decays),
+            // makeIrSet timed apart. Median of 3. Not the restore's own (provisional) build: labelled replay.
+            sim::BuildOptions o;
+            o.sampleRate = 96000.0;
+            o.kind = sim::BuildOptions::Kind::Omni;
+            o.parallelEmitterSynthesis = false;
+            sim::RealtimeEngine engine(plugin::ScenePipeline::kPartitionSize);
+            engine.prepare(96000.0, 512);
+            std::vector<double> planR, solveR, freshR, cachedR, irSetR;
+            bool exact = true, irSetOk = true;
+            std::size_t emitters = 0;
+            for (int r = 0; r < 3; ++r)
+            {
+                auto t = Clock::now();
+                auto first = sim::StagedBuild::plan(sc, o);
+                planR.push_back(ms(t, Clock::now()));
+                t = Clock::now();
+                first.solve();
+                solveR.push_back(ms(t, Clock::now()));
+                sim::HybridDiagnostics diag;
+                t = Clock::now();
+                const auto ir = first.assemble(&diag);
+                freshR.push_back(ms(t, Clock::now()));
+                emitters = diag.emitters.size();
+                auto second = sim::StagedBuild::plan(sc, o);
+                REQUIRE(first.diffuseLevel().has_value());
+                second.useDiffuseLevel(*first.diffuseLevel());
+                second.useUnitDecays(first.unitDecays());
+                exact = exact && second.unitDecaysExact();
+                t = Clock::now();
+                (void)second.assemble();
+                cachedR.push_back(ms(t, Clock::now()));
+                t = Clock::now();
+                const auto set = engine.makeIrSet(ir);
+                irSetR.push_back(ms(t, Clock::now()));
+                irSetOk = irSetOk && set != nullptr;
+            }
+            const double fresh = spread(freshR).median, cached = spread(cachedR).median;
+            std::printf(
+                "07c1b-records stage split replay os=%s scene=%s 96 kHz (sim::StagedBuild, "
+                "parallelEmitterSynthesis = false, exact tail, median of 3, ms): plan (ISM + matching) "
+                "%.1f; solve %.1f; assemble fresh (synthesis + assembly) %.1f; assemble over the cached "
+                "exact unit decays (assembly) %.1f%s; synthesis %.1f, per emitter %.1f (mean over %zu, "
+                "serial); makeIrSet %.1f%s\n",
+                kOsName, key, spread(planR).median, spread(solveR).median, fresh, cached,
+                exact ? "" : " [cached units NOT exact]", fresh - cached,
+                emitters > 0 ? (fresh - cached) / static_cast<double>(emitters) : 0.0, emitters,
+                spread(irSetR).median, irSetOk ? "" : " [IrSet nullptr]");
+        }
         {
             auto planned = sim::StagedBuild::plan(sc, [] {
                 sim::BuildOptions o;
@@ -492,7 +611,7 @@ TEST_CASE("records: AX38 4b/4c rebuilds, memory and the 100 m / 96 kHz restore w
             REQUIRE(saved.has_value());
             std::vector<double> keyed;
             for (int i = 0; i < 3; ++i)
-                keyed.push_back(load(saved));
+                keyed.push_back(load(saved, nullptr));
             const auto ks = spread(keyed);
             std::printf(
                 "05h-records restore %-26s 96 kHz keyed load (saved E_b, no solve), 3 runs: min %.0f median "
@@ -677,12 +796,10 @@ TEST_CASE(
 // with P = 512 samples (ScenePipeline::kPartitionSize): R + 2P, about 2R + 2P, full + 2P against AQ4's 100 ms
 // / 700 ms / 3 s; (2) the offline bounce of a 3-minute room-size automation at 100 m, 48 and 96 kHz, with its
 // ratio to real time, taken at a rebuild step of one size change every 5 s of audio (36 steps; each stated
-// with the record, AX38 (iv)); (3) callback p99.9 at host buffer 64 with 1, 4 and 8 concurrent builders
-// (other instances rebuilding the 100 m cube without pause while one real-time instance processes 64-sample
-// blocks).
-TEST_CASE(
-    "records: AQ4 intervals, the 3-minute room-size bounce at 100 m, callback p99.9 with 1/4/8 builders",
-    "[.][benchmark][diffuse-records-aq4]")
+// with the record, AX38 (iv)). (3), the callback record at host buffer 64 with concurrent builders, is the
+// next test case (condition 12 (c), re-instrumented in phase-07c-1b).
+TEST_CASE("records: AQ4 intervals and the 3-minute room-size bounce at 100 m",
+          "[.][benchmark][diffuse-records-aq4]")
 {
     const auto positionRebuildMs = [](const contract::SceneDescription& sc, double fs) {
         plugin::ScenePipeline pipe;
@@ -771,15 +888,41 @@ TEST_CASE(
             fs, steps, wall, wall / seconds, static_cast<unsigned long long>(pipe.stats().interimSubmits));
         REQUIRE(pipe.stats().interimSubmits == 0); // condition 6: offline never plays an interim
     }
-    // (3) callback p99.9 at host buffer 64 with 1 / 4 / 8 concurrent builders rebuilding the 100 m cube.
+}
+
+// Phase-07c-1 condition 12 (c) record (AX38 (i)): callback times of one real-time instance at host buffer 64
+// (48 kHz, AQ10 room) while other instances rebuild the 100 m low-alpha cube without pause (a listener move
+// on each every 50 ms: ISM, solve at the gate, assembly over the cached unit decays). Two instruments:
+// - old instrument (R16), unchanged: a normal-priority test thread paced by sleep_for, wall time only,
+//   1 / 4 / 8 builders. Its p99.9 over 953-1 936 callbacks is the 1st-2nd largest sample (R16), on a thread
+//   no host would use for audio (R4, R7, R8): kept for comparison only.
+// - phase-07c-1b D-B1 (B1-b; docs/review/phase-07c-1b/4-decider-decision-r1.md items 1-5, file 8 item 6):
+//   the callback thread at platform audio priority (RealtimeProbe.h: macOS time-constraint policy at the
+//   1 333 us period, Windows MMCSS "Pro Audio" with a high-resolution timer, Linux SCHED_FIFO, else "not
+//   available" with the error), absolute-deadline pacing (sleep to ~100 us before the deadline, then spin);
+//   per callback the wall and thread-CPU time of process() and the convolver's multiply-adds; builders
+//   0 / 1 / 2 / 4 / 8, the 0-builder floor first. Per point: callback count vs expected (INSTRUMENT INVALID
+//   below 0.95 x), median / p99 / p99.9 / max of wall and CPU, overruns > period and > period / 2,
+//   hardware_concurrency() and the priority obtained.
+// A record, never asserted. An overrun > period at 8 builders with none at 0 is re-measured in phase-13-3
+// scope 4 and on the R5 Windows release machine (a miss opens 13-1b, B1-d first; never an instance cap).
+TEST_CASE("records: condition 12 (c) callback record at host buffer 64, B1-b instrument (0/1/2/4/8 "
+          "builders) beside the old instrument (R16)",
+          "[.][benchmark][diffuse-records-aq4][cond12c]")
+{
+    constexpr double kFs = 48000.0;
+    constexpr int kBlock = 64;
+    const auto big = cube("cube100_lowalpha0.05_s0.3");
+    const auto bigValues = module3d::parameterValuesFromScene(big);
+    const auto room = aq10Room();
+    const unsigned hw = std::thread::hardware_concurrency();
+    std::map<int, double> oldP999;
+    // ---- old instrument (R16), as in phase 05h / 07c-1 ----
     for (const int builders : {1, 4, 8})
     {
-        const double fs = 48000.0;
-        const auto big = cube("cube100_lowalpha0.05_s0.3");
-        const auto bigValues = module3d::parameterValuesFromScene(big);
+        const double fs = kFs;
         plugin::ScenePipeline rt;
-        const auto room = aq10Room();
-        rt.prepare(fs, 64, false);
+        rt.prepare(fs, kBlock, false);
         rt.beginRestore();
         rt.restore(room, module3d::parameterValuesFromScene(room));
         std::vector<std::unique_ptr<plugin::ScenePipeline>> others;
@@ -802,16 +945,16 @@ TEST_CASE(
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
         });
-        std::vector<float> a(64, 0.1f), b(64, -0.1f);
+        std::vector<float> a(kBlock, 0.1f), b(kBlock, -0.1f);
         const float* const in[2] = {a.data(), b.data()};
         float* const out[2] = {a.data(), b.data()};
         std::vector<double> us;
-        const double period = 64.0 / fs * 1e6;
+        const double period = kBlock / fs * 1e6;
         const auto tEnd = Clock::now() + std::chrono::seconds(10);
         while (Clock::now() < tEnd)
         {
             const auto c0 = Clock::now();
-            rt.process(in, out, 64);
+            rt.process(in, out, kBlock);
             us.push_back(std::chrono::duration<double, std::micro>(Clock::now() - c0).count());
             std::this_thread::sleep_for(std::chrono::microseconds(static_cast<long>(period)));
         }
@@ -819,11 +962,184 @@ TEST_CASE(
         churn.join();
         std::sort(us.begin(), us.end());
         const double p999 = us[static_cast<std::size_t>(std::ceil(0.999 * us.size())) - 1];
-        std::printf("05h-records callback p99.9 at host buffer 64 (%.0f us period), %d concurrent builder%s "
-                    "at 100 m: p99.9 %.0f us, "
-                    "max %.0f us over %zu callbacks (10 s)\n",
-                    period, builders, builders == 1 ? "" : "s", p999, us.back(), us.size());
+        oldP999[builders] = p999;
+        std::printf(
+            "05h-records callback p99.9 [old instrument (R16): normal-priority thread, sleep_for "
+            "pacing, wall only] at host buffer 64 (%.0f us period), %d concurrent builder%s at 100 m: "
+            "p99.9 %.0f us, max %.0f us over %zu callbacks (10 s)\n",
+            period, builders, builders == 1 ? "" : "s", p999, us.back(), us.size());
     }
+
+    // ---- B1-b instrument (phase-07c-1b D-B1) ----
+    const double periodUs = kBlock / kFs * 1e6;
+    constexpr double kSeconds = 10.0;
+    const auto expected = static_cast<std::size_t>(kSeconds * 1e6 / periodUs); // 7 500 slots
+    const auto quantile = [](const std::vector<double>& sorted, double q) {
+        return sorted[static_cast<std::size_t>(std::ceil(q * static_cast<double>(sorted.size()))) - 1];
+    };
+    struct Point
+    {
+        int builders = 0;
+        std::size_t callbacks = 0, missedSlots = 0, overPeriod = 0, overHalf = 0, cpuOverHalf = 0;
+        double wallP999 = 0.0;
+    };
+    std::vector<Point> points;
+    std::vector<std::unique_ptr<plugin::ScenePipeline>> others; // created after the 0-builder floor
+    const auto othersIdle = [&] {
+        for (const auto& o : others)
+            if (!o->builderIdle() || o->settling())
+                return false;
+        return true;
+    };
+    for (const int builders : {0, 1, 2, 4, 8})
+    {
+        if (builders > 0 && others.empty())
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                others.push_back(std::make_unique<plugin::ScenePipeline>());
+                others.back()->prepare(kFs, 512, false);
+                others.back()->beginRestore();
+                others.back()->restore(big, bigValues);
+            }
+            REQUIRE(pipeline_test::waitFor(othersIdle, std::chrono::minutes(10)));
+        }
+        plugin::ScenePipeline rt;
+        rt.prepare(kFs, kBlock, false);
+        rt.beginRestore();
+        rt.restore(room, module3d::parameterValuesFromScene(room));
+        REQUIRE(pipeline_test::waitFor([&] { return !rt.settling() && rt.builderIdle(); }));
+        std::atomic<bool> stop{false};
+        std::thread churn([&] {
+            float x = 50.0f;
+            while (!stop.load())
+            {
+                x += 0.1f;
+                for (int i = 0; i < builders; ++i)
+                    others[static_cast<std::size_t>(i)]->setParameter(module3d::kListenerX, x);
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        });
+        // The callback thread: priority, timer and CPU clock are set up on it, then the paced loop.
+        std::vector<double> wall, cpu;
+        std::uint64_t maxMacs = 0;
+        std::size_t missed = 0;
+        double wakeLateMaxUs = 0.0;
+        std::string priority, timer, cpuClock;
+        std::thread callback([&] {
+            const rt_probe::AudioPriority prio(periodUs);
+            const rt_probe::Pacer pacer;
+            const rt_probe::ThreadCpuClock cpuClk;
+            priority = prio.description();
+            timer = pacer.describe();
+            cpuClock = cpuClk.describe();
+            wall.reserve(expected);
+            cpu.reserve(expected);
+            std::vector<float> a(kBlock, 0.1f), b(kBlock, -0.1f);
+            const float* const in[2] = {a.data(), b.data()};
+            float* const out[2] = {a.data(), b.data()};
+            const auto start = Clock::now() + std::chrono::milliseconds(5);
+            const auto slot = [&](std::size_t k) {
+                return start
+                       + std::chrono::duration_cast<Clock::duration>(
+                           std::chrono::duration<double, std::micro>(static_cast<double>(k) * periodUs));
+            };
+            std::size_t k = 0;
+            while (k < expected)
+            {
+                const auto deadline = slot(k);
+                pacer.waitUntil(deadline);
+                const double c0 = cpuClk.nowNs();
+                const auto w0 = Clock::now();
+                rt.process(in, out, kBlock);
+                const auto w1 = Clock::now();
+                const double c1 = cpuClk.nowNs();
+                maxMacs = std::max(maxMacs, rt.engine().convolver().lastProcessMultiplyAdds());
+                wall.push_back(std::chrono::duration<double, std::micro>(w1 - w0).count());
+                cpu.push_back((c1 - c0) / 1000.0);
+                wakeLateMaxUs = std::max(wakeLateMaxUs,
+                                         std::chrono::duration<double, std::micro>(w0 - deadline).count());
+                ++k;
+                // A slot whose successor's time has also passed is skipped (counted missed), as a driver
+                // drops a buffer it could not hand over: a late callback still runs at once.
+                const double elapsedUs =
+                    std::chrono::duration<double, std::micro>(Clock::now() - start).count();
+                const auto latest = static_cast<std::size_t>(elapsedUs / periodUs);
+                if (latest > k)
+                {
+                    const std::size_t skip = std::min(latest, expected) - k;
+                    missed += skip;
+                    k += skip;
+                }
+            }
+        });
+        callback.join();
+        stop.store(true);
+        churn.join();
+        REQUIRE(pipeline_test::waitFor(othersIdle, std::chrono::minutes(5)));
+        Point pt;
+        pt.builders = builders;
+        pt.callbacks = wall.size();
+        pt.missedSlots = missed;
+        for (const double w : wall)
+        {
+            if (w > periodUs)
+                ++pt.overPeriod;
+            if (w > 0.5 * periodUs)
+                ++pt.overHalf;
+        }
+        for (const double c : cpu)
+            if (c > 0.5 * periodUs)
+                ++pt.cpuOverHalf;
+        std::sort(wall.begin(), wall.end());
+        std::sort(cpu.begin(), cpu.end());
+        pt.wallP999 = quantile(wall, 0.999);
+        points.push_back(pt);
+        const bool valid = static_cast<double>(pt.callbacks) >= 0.95 * static_cast<double>(expected);
+        if (builders == 0)
+            std::printf("07c1b-records (c) B1-b instrument: %s; %s\n", timer.c_str(), cpuClock.c_str());
+        std::printf(
+            "07c1b-records (c) B1-b callback, %d concurrent builder%s at 100 m, buffer %d @ %.0f Hz (period "
+            "%.0f us), %.0f s: callbacks %zu / %zu expected (missed slots %zu); wall us median %.1f p99 %.1f "
+            "p99.9 %.1f max %.1f; thread CPU us median %.1f p99 %.1f p99.9 %.1f max %.1f; overruns (wall) > "
+            "period %zu, > period/2 %zu (CPU > period/2 %zu); wake late max %.0f us; max multiply-adds per "
+            "callback %llu; hardware_concurrency %u; priority: %s%s\n",
+            builders, builders == 1 ? "" : "s", kBlock, kFs, periodUs, kSeconds, pt.callbacks, expected,
+            missed, quantile(wall, 0.5), quantile(wall, 0.99), pt.wallP999, wall.back(), quantile(cpu, 0.5),
+            quantile(cpu, 0.99), quantile(cpu, 0.999), cpu.back(), pt.overPeriod, pt.overHalf, pt.cpuOverHalf,
+            wakeLateMaxUs, static_cast<unsigned long long>(maxMacs), hw, priority.c_str(),
+            valid ? "" : "  INSTRUMENT INVALID (callbacks < 0.95 x expected)");
+    }
+    // Beside the old instrument (R16), and the residual reading (D-B1 item 6): an overrun > period at 8
+    // builders with none at 0. Printed only.
+    std::string beside;
+    const Point* floor0 = nullptr;
+    const Point* top8 = nullptr;
+    for (const auto& pt : points)
+    {
+        char buf[96];
+        const auto o = oldP999.find(pt.builders);
+        if (o != oldP999.end())
+            std::snprintf(buf, sizeof(buf), "%s%d: %.0f (old %.0f)", beside.empty() ? "" : "; ", pt.builders,
+                          pt.wallP999, o->second);
+        else
+            std::snprintf(buf, sizeof(buf), "%s%d: %.0f (old n/a)", beside.empty() ? "" : "; ", pt.builders,
+                          pt.wallP999);
+        beside += buf;
+        if (pt.builders == 0)
+            floor0 = &pt;
+        if (pt.builders == 8)
+            top8 = &pt;
+    }
+    const bool residual = floor0 != nullptr && top8 != nullptr && top8->overPeriod > 0
+                          && floor0->overPeriod == 0;
+    std::printf(
+        "07c1b-records (c) B1-b beside the old instrument (R16), wall p99.9 us by builders: %s; "
+        "overruns > period at 0 / 8 builders %zu / %zu%s\n",
+        beside.c_str(), floor0 != nullptr ? floor0->overPeriod : 0, top8 != nullptr ? top8->overPeriod : 0,
+        residual ? "  RESIDUAL: overrun at 8 builders with a clean floor (D-B1 item 6: phase-13-3 scope 4 "
+                   "and the R5 Windows machine; a miss opens 13-1b)"
+                 : "");
 }
 
 // AX38 (iv) records (subset): 1, 4 and 8 instances at the AQ10 room and at 100 m, 48 and 96 kHz: the time
@@ -1681,6 +1997,11 @@ TEST_CASE("records: condition 12 (d) quiesce with N concurrent syntheses and (f)
 // audible (the restore's return: an IrSet with a tail is current) and the time from provisional to exact
 // (until the last instance settled); the ISM latency of a T60-changing edit under the AX49 D5 bridge. Any
 // 8-instance run over 5 s is flagged in print, never asserted. Its T60 sweep is an input to phase 07d.
+// Phase-07c-1b (D-B4 C7', D-B2 B2-a'' / FM-10S; docs/review/phase-07c-1b/8-decider-decision-r2.md): per
+// instance its restore time and the other instances' background builds at its start (Solve / Assemble, from
+// a stage hook on builder threads), hardware_concurrency(), and at the rated corner (96 kHz, T60 8 s; 1 and 8
+// instances) the prepare-first totals without a settle wait, interleaved and batched, beside the
+// setState-first total, with the largest of the three named. Printed only.
 TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 / 4 / 8 instances, T60 sweep, "
           "D5-bridge ISM latency",
           "[.][benchmark][diffuse-records][record-h]")
@@ -1708,6 +2029,56 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
         REQUIRE(pipeline_test::waitFor([&] { return settled(src); }, std::chrono::minutes(5)));
         return src.savedDiffuse();
     };
+    // Phase-07c-1b D-B4 (C7') and D-B2 (B2-a''): background builds at each restore's start. Each pipe gets a
+    // stage hook storing its last build stage in an atomic, on builder threads only (calls on this host
+    // thread, the synchronous prepare / restore, are ignored); at the start of restore i the other pipes
+    // whose builderBusy() is true are counted by that stage. Counted as instances, each with up to 2 emitter
+    // synthesis threads (AX49 parallel).
+    const std::thread::id hostThread = std::this_thread::get_id();
+    struct StageProbe
+    {
+        std::atomic<int> last{-1};
+    };
+    using Stage = plugin::ScenePipeline::BuildStage;
+    const auto attachProbe = [hostThread](plugin::ScenePipeline& p, StageProbe& probe) {
+        p.setStageHook([hostThread, &probe](Stage st) {
+            if (std::this_thread::get_id() != hostThread)
+                probe.last.store(static_cast<int>(st), std::memory_order_relaxed);
+        });
+    };
+    struct Busy
+    {
+        int solve = 0, assemble = 0, other = 0; // other: Plan, Commit or no stage yet in this decision
+    };
+    const auto busyAt = [](const std::vector<std::unique_ptr<plugin::ScenePipeline>>& pipes,
+                           const std::vector<std::unique_ptr<StageProbe>>& probes, std::size_t self) {
+        Busy b;
+        for (std::size_t j = 0; j < pipes.size(); ++j)
+        {
+            if (j == self || !pipes[j]->builderBusy())
+                continue;
+            const int st = probes[j]->last.load(std::memory_order_relaxed);
+            if (st == static_cast<int>(Stage::Solve))
+                ++b.solve;
+            else if (st == static_cast<int>(Stage::Assemble))
+                ++b.assemble;
+            else
+                ++b.other;
+        }
+        return b;
+    };
+    const auto joinBusy = [](const std::vector<Busy>& v) {
+        std::string out;
+        char buf[48];
+        for (std::size_t i = 0; i < v.size(); ++i)
+        {
+            std::snprintf(buf, sizeof(buf), "%s%d(S%d/A%d/o%d)", i ? " " : "",
+                          v[i].solve + v[i].assemble + v[i].other, v[i].solve, v[i].assemble, v[i].other);
+            out += buf;
+        }
+        return out;
+    };
+    const unsigned hw = std::thread::hardware_concurrency();
     struct Result
     {
         double audibleMaxMs = 0.0, audibleSumMs = 0.0, exactMs = 0.0;
@@ -1715,15 +2086,21 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
         // restore window above): their synchronous stage-1 solves (Stats::insertSolves) and their wall time
         double insertMs = 0.0;
         std::uint64_t insertSolves = 0;
+        // phase-07c-1b D-B4: per instance its restore time and the background builds at its start
+        std::vector<double> restoreMs;
+        std::vector<Busy> busy;
     };
     const auto run = [&](const contract::SceneDescription& sc, double fs, int instances,
                          const std::optional<plugin::SavedDiffuse>& saved) {
         Result r;
+        std::vector<std::unique_ptr<StageProbe>> probes; // outlive the pipes (destroyed after them)
         std::vector<std::unique_ptr<plugin::ScenePipeline>> pipes;
         const auto i0 = Clock::now();
         for (int i = 0; i < instances; ++i)
         {
+            probes.push_back(std::make_unique<StageProbe>());
             pipes.push_back(std::make_unique<plugin::ScenePipeline>());
+            attachProbe(*pipes.back(), *probes.back());
             pipes.back()->prepare(fs, 512, false);
         }
         r.insertMs = ms(i0, Clock::now());
@@ -1734,12 +2111,14 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
         }
         const auto values = module3d::parameterValuesFromScene(sc);
         const auto t0 = Clock::now();
-        for (auto& p : pipes) // in sequence on one thread
+        for (std::size_t i = 0; i < pipes.size(); ++i) // in sequence on one thread
         {
+            r.busy.push_back(busyAt(pipes, probes, i));
             const auto a = Clock::now();
-            p->beginRestore();
-            p->restore(sc, values, saved);
+            pipes[i]->beginRestore();
+            pipes[i]->restore(sc, values, saved);
             const double d = ms(a, Clock::now());
+            r.restoreMs.push_back(d);
             r.audibleMaxMs = std::max(r.audibleMaxMs, d);
             r.audibleSumMs += d;
         }
@@ -1748,8 +2127,8 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
         r.exactMs = ms(t0, Clock::now());
         return r;
     };
-    const auto print = [](const char* what, double t60, double fs, int n, bool keyed, const Result& r,
-                          const sim::ProvisionalTiming& t) {
+    const auto print = [&](const char* what, double t60, double fs, int n, bool keyed, const Result& r,
+                           const sim::ProvisionalTiming& t) {
         std::printf(
             "07c1-records (h) %s T60 %4.0f s %6.0f Hz %d inst %-7s: until audible per instance max %.0f ms "
             "(sum %.0f ms); provisional -> exact (all settled) %.0f ms; L_p %.2f s / L %.2f s%s; insertion "
@@ -1760,12 +2139,65 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
             static_cast<unsigned long long>(r.insertSolves), r.insertMs,
             n == 8 && r.audibleSumMs > 5000.0 ? "  FLAG: 8-instance load over 5 s (AX49 reversal input)"
                                               : "");
+        std::printf(
+            "07c1b-records (h) %s T60 %4.0f s %6.0f Hz %d inst %-7s setState-first order (prepares "
+            "settled, then restores): restore per instance ms [%s]; other instances' builders busy at "
+            "each restore start [%s] (count(Solve/Assemble/other) instances, each up to 2 emitter "
+            "threads, AX49); hardware_concurrency %u\n",
+            what, t60, fs, n, keyed ? "keyed" : "keyless", joinMs(r.restoreMs).c_str(),
+            joinBusy(r.busy).c_str(), hw);
     };
+    // FM-10S (D-B2 B2-a''): the prepare-first host order with no settle wait between prepare and restore,
+    // interleaved (prepare i, restore i, for each i) or batched (every prepare, then every restore); the
+    // total runs from the first prepare to the last restore's return (the last instance audible).
+    struct PrepareFirst
+    {
+        double totalMs = 0.0;
+        std::vector<double> prepareMs, restoreMs;
+        std::vector<Busy> busy;
+    };
+    const auto runPrepareFirst = [&](const contract::SceneDescription& sc, double fs, int instances,
+                                     const std::optional<plugin::SavedDiffuse>& saved, bool interleaved) {
+        PrepareFirst r;
+        std::vector<std::unique_ptr<StageProbe>> probes; // outlive the pipes
+        std::vector<std::unique_ptr<plugin::ScenePipeline>> pipes;
+        const auto values = module3d::parameterValuesFromScene(sc);
+        const auto restoreOne = [&](std::size_t i) {
+            r.busy.push_back(busyAt(pipes, probes, i));
+            const auto a = Clock::now();
+            pipes[i]->beginRestore();
+            pipes[i]->restore(sc, values, saved);
+            r.restoreMs.push_back(ms(a, Clock::now()));
+        };
+        const auto t0 = Clock::now();
+        for (int i = 0; i < instances; ++i)
+        {
+            probes.push_back(std::make_unique<StageProbe>());
+            pipes.push_back(std::make_unique<plugin::ScenePipeline>());
+            attachProbe(*pipes.back(), *probes.back());
+            const auto a = Clock::now();
+            pipes.back()->prepare(fs, 512, false);
+            r.prepareMs.push_back(ms(a, Clock::now()));
+            if (interleaved)
+                restoreOne(pipes.size() - 1);
+        }
+        if (!interleaved)
+            for (std::size_t i = 0; i < pipes.size(); ++i)
+                restoreOne(i);
+        r.totalMs = ms(t0, Clock::now());
+        return r; // the pipes are destroyed here (their builders cancelled; not timed)
+    };
+    // setState-first totals of the rated corner (T60 8 s, 96 kHz) by (instances, keyed), from the loop below.
+    std::map<std::pair<int, bool>, double> setStateFirst;
+    std::optional<plugin::SavedDiffuse> savedAt8;
     for (const double t60 : {2.0, 8.0, 12.0, 20.0, 35.0, 50.0})
     {
         const auto sc = cubeT60(t60);
         const auto saved = savedFor(sc);
         REQUIRE(saved.has_value());
+        const bool ratedCorner = t60 > 7.5 && t60 < 8.5;
+        if (ratedCorner)
+            savedAt8 = saved;
         for (const double fs : {48000.0, 96000.0})
         {
             sim::BuildOptions o;
@@ -1774,13 +2206,58 @@ TEST_CASE("records: phase-07c-1 record (h), project loads keyed and keyless, 1 /
             const auto timing = sim::StagedBuild::plan(sc, o).provisionalTiming();
             for (const int n : {1, 4, 8})
             {
-                if (n > 1 && (t60 < 7.5 || t60 > 8.5))
+                if (n > 1 && !ratedCorner)
                     continue; // instances at the rated corner (T60_max 8 s); the sweep at one instance
-                print("load", t60, fs, n, false, run(sc, fs, n, std::nullopt), timing);
-                print("load", t60, fs, n, true, run(sc, fs, n, saved), timing);
+                for (const bool keyed : {false, true})
+                {
+                    const auto r = run(sc, fs, n, keyed ? saved : std::nullopt);
+                    print("load", t60, fs, n, keyed, r, timing);
+                    if (ratedCorner && fs > 90000.0)
+                        setStateFirst[{n, keyed}] = r.audibleSumMs;
+                }
             }
         }
     }
+    // FM-10S: the three totals at the rated corner (96 kHz, T60 8 s), 1 and 8 instances, keyless and keyed;
+    // which is largest is printed (phase-07d's 5 s criterion and AX38 (iv)'s 10 s line read the largest).
+    REQUIRE(savedAt8.has_value());
+    for (const int n : {1, 8})
+        for (const bool keyed : {false, true})
+        {
+            const auto sc = cubeT60(8.0);
+            const auto& saved = keyed ? savedAt8 : std::optional<plugin::SavedDiffuse>{};
+            const auto inter = runPrepareFirst(sc, 96000.0, n, saved, true);
+            const auto batch = runPrepareFirst(sc, 96000.0, n, saved, false);
+            for (const auto* pf : {&inter, &batch})
+                std::printf(
+                    "07c1b-records (h) prepare-first %-11s T60 8 s 96000 Hz %d inst %-7s (no settle "
+                    "wait): total %.0f ms; prepare per instance ms [%s]; restore per instance ms [%s]; "
+                    "other instances' builders busy at each restore start [%s] (count(Solve/Assemble/"
+                    "other)); hardware_concurrency %u\n",
+                    pf == &inter ? "interleaved" : "batched", n, keyed ? "keyed" : "keyless", pf->totalMs,
+                    joinMs(pf->prepareMs).c_str(), joinMs(pf->restoreMs).c_str(), joinBusy(pf->busy).c_str(),
+                    hw);
+            const double sf = setStateFirst.at({n, keyed});
+            const char* largest = "setState-first";
+            double largestMs = sf;
+            if (inter.totalMs > largestMs)
+            {
+                largest = "prepare-first interleaved";
+                largestMs = inter.totalMs;
+            }
+            if (batch.totalMs > largestMs)
+            {
+                largest = "prepare-first batched";
+                largestMs = batch.totalMs;
+            }
+            std::printf(
+                "07c1b-records (h) FM-10S T60 8 s 96000 Hz %d inst %-7s: prepare-first interleaved %.0f "
+                "ms, prepare-first batched %.0f ms, setState-first %.0f ms (restore sum, prepares settled "
+                "first); largest: %s %.0f ms%s%s\n",
+                n, keyed ? "keyed" : "keyless", inter.totalMs, batch.totalMs, sf, largest, largestMs,
+                n == 8 && largestMs > 5000.0 ? "  FLAG: over 5 s (phase-07d criterion)" : "",
+                n == 8 && largestMs > 10000.0 ? "  FLAG: over 10 s (AX38 (iv) line)" : "");
+        }
     // The D5 bridge: a T60-changing edit (room width) in a settled 100 m instance at T60 8 s; the ISM update
     // is submitted over the cached unit decays before the solve: its latency, and the time to the exact tail.
     for (const double fs : {48000.0, 96000.0})
