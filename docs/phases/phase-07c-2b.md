@@ -18,7 +18,7 @@ they wait on the ABX scene question (M3), the ABX itself (a person's action) and
 reopens a decision: every rule is phase-07c-2's, applied to the work that remains.
 
 **Dependencies (CLAUDE.md rule 3).** 07c-2 `done` in BUILD_PLAN §0, with its PR, its CI run of record (three OSes) and
-the board files `docs/review/phase-07c-2/` 1–34 cited there. The items arrive by three hand-offs in the 07c-2 session
+the board files `docs/review/phase-07c-2/` 1–36 cited there. The items arrive by three hand-offs in the 07c-2 session
 brief: O12 by the scope list restated after steward round 4 (G19); M3 and the seal by the scope list restated after
 decider round 4 (file 31); the split ending by the G17 answer, under which 07c-2's PR marks the ABX (O9) and the items
 behind it (O10, O11, O4–O7, O12) as moved here.
