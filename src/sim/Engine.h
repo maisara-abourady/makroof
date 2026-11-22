@@ -269,6 +269,10 @@ public:
     ~StagedBuild();
 
     bool needsSolve() const noexcept;
+    // Phase-07c-2 scope 11 (D-W3 H-2c): replaces options.cancel for the stages that follow (the plugin hands
+    // a planned build to its solve task with that task's per-generation cancel token). Never changes a
+    // result.
+    void setCancel(const std::atomic<bool>* cancel) noexcept;
     // `pool` (if not nullptr) replaces options.diffusePool for this solve: the plugin passes the gate's pool
     // only while it holds the gate (condition 12).
     void solve(diffuse::ThreadPool* pool = nullptr);

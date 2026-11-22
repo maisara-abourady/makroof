@@ -861,6 +861,12 @@ bool StagedBuild::needsSolve() const noexcept
     return state_ && state_->hybrid && !state_->solveDone && !state_->options.tailLevelAx16;
 }
 
+void StagedBuild::setCancel(const std::atomic<bool>* cancel) noexcept
+{
+    if (state_)
+        state_->options.cancel = cancel;
+}
+
 void StagedBuild::solve(diffuse::ThreadPool* pool)
 {
     if (!needsSolve())

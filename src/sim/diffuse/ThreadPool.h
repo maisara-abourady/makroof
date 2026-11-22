@@ -2,7 +2,9 @@
 
 // The diffuse estimator's worker pool (AX39: process-wide, owned with the AX38 gate). A blocking
 // parallel-for over block indices; which thread runs a block never changes a result (D4: blocks are
-// reduced in index order by the caller). Builder thread only.
+// reduced in index order by the caller). One caller at a time: the AX38 gate holder (the host, offline or
+// builder thread, or since phase-07c-2 scope 11 the gate executor running a builder-class solve task).
+#include <atomic>
 #include <condition_variable>
 #include <cstdint>
 #include <functional>
@@ -26,6 +28,15 @@ public:
 
     unsigned size() const noexcept { return static_cast<unsigned>(workers_.size()) + 1; }
 
+    // Phase-07c-2 scope 11 (D-W3 H-2c, Seat 5): the number of threads (the caller included, 1..size()) that
+    // take shares in the following parallelFor() calls; 0 or >= size() = all. The plugin's gate sets size() -
+    // 1 for a solve that runs beside the IR builder. Which thread runs a block never changes a result (D4),
+    // so the limit only trades speed. Set it only between parallelFor() calls (the plugin does under the AX38
+    // gate).
+    void setShareLimit(unsigned threads) noexcept;
+    // The threads that take shares: min(limit, size()), at least 1.
+    unsigned shareThreads() const noexcept;
+
     // Runs fn(i) for i in [0, count) on the pool and the calling thread; returns when all have run.
     // A false return from fn stops the remaining indices from being started.
     // fn must not throw (the estimator's blocks do not allocate or throw): an exception would leave
@@ -38,7 +49,7 @@ public:
     static ThreadPool& process();
 
 private:
-    void workerLoop();
+    void workerLoop(unsigned id);
     void runShare();
 
     std::vector<std::thread> workers_;
@@ -53,6 +64,8 @@ private:
     bool halt_ = false;
     unsigned active_ = 0;
     std::uint64_t epoch_ = 0;
+    std::atomic<unsigned> limit_{0}; // setShareLimit(); 0 = all
+    unsigned participants_ = 1;      // of the running parallelFor (under mutex_): workers 1..participants_-1
 };
 
 } // namespace sim::diffuse
