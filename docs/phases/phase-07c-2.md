@@ -49,6 +49,13 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
    Whether the per-evaluation solve time (`nsPerEval` on the GATE line) stays invariant across 07c's moves is
    checked here; if it moves, Seats 2 and 3 are convened (the re-pin above is unconditional) (D-Q5
    future-debt register, decider file `docs/review/phase-05i/9-decider-r2.md`). (phase-07c condition 3)
+   The re-derivation waits on scope 11 (M7 in) and on the class (c) / load-fallback round (scope 9); the full
+   waiting list (with M7b, TSan, the pin-time measurements and U2 as recorded in each seat's own terms) is decider
+   file `docs/review/phase-07c-2/13-decider-rebuttal-r4.md`, "D-W1: waiting list, corrected", as restated in file
+   15, "Other items". The AX38 (iv) load mark is read on its own definition, the time until the last instance is
+   audible at load (at the interim level since 07c-1), not the time until the final tail settles; it binds W only
+   through the keyless path (K-a or `medium_room` insertion, FM-B2), which is the class (c) round's matter (decider
+   file `docs/review/phase-07c-2/8-decider-rebuttal-r2.md` §3).
 8. **Follow-on checks.** The Phase 12 (ii) preset check (no preset default raises U) is re-run under this
    phase's W_max (Seat 6 (e)). Phase 08 goldens in capped rooms carry a tolerance derived from the
    achieved SE, unless this phase lands before they are frozen (Seat 4). (phase-07c condition 8)
@@ -62,6 +69,10 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
      (L4 detects the cut) follow from their results. The generated speech-like stimulus of `[ax47-midfade]` is a CI
      test signal only; 07c-2's self-ABX and the acceptance set use recorded speech (D-B3 condition A; phase-07c-1b
      loop, 2026-11-13).
+     The design is set (D-W2, final): as pre-registered in `docs/review/phase-07c-2/13-decider-rebuttal-r4.md`,
+     "D-W2: final", items 1–16 (the AX47 self-ABX's listener, trials, anchor, test family, decision rule, step,
+     assertions, trial structure, signals, scene, chain, blinding, distribution and record; AX49 L4; the 08-3
+     binaural rerun; scheduling); speech McGill TSP v2, built locally only. (AX47 and AX49 rows.)
    - **Class (c) decision, bound by AX47:** whether a statistical source (a stage-1 estimate that is not the
      final) is admitted, decided by this phase's loop under AX47 ("From 07c-2"; Seat 1's p95 reading is the
      recorded input). **Admission waits for the AX47 ABX result** (the bound it is held to, 1 dB or 0.5 dB,
@@ -108,6 +119,47 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
     `docs/review/phase-07c-1b/32-decider-R1-round3.md`; nothing else in the row changes (`recorded14xS` stays 33.40).
     The same item stands in phase-07d scope 9; whichever phase starts first does it, and the other records it as done
     with the commit.
+11. **The ISM never waits behind the solve (D-W3, H-2c; a defect of phase-07c-1 condition 4).** Today an edit that
+    arrives during a builder solve waits for that solve before its own ISM is built (`ScenePipeline::decide`; the
+    solve runs inline on the one builder thread, `IrBuilderThread.h` L5), so condition 4's "the ISM update is never
+    held behind the diffuse solve" holds only after a quiet spell. Condition 4 itself is unchanged ("exactly one step
+    per solve and never mid-drag"; FM-W3a withdrawn). Decider files `docs/review/phase-07c-2/11-decider-decision-r3.md`
+    (D-W3), `13-decider-rebuttal-r4.md` (H-2c), `15-decider-rebuttal-r5.md` (items 3 and 4 as finally worded);
+    interrogator file `16-interrogator-on-file15.md` (corrections and the orchestrator's application). Code lines
+    are at HEAD of 2026-11-22 and are cited with their function and comment, since the file moves.
+    1. **The solve runs off the builder thread,** as a task on the process-wide gate executor, never as a thread per
+       instance. Its input is an immutable snapshot of the `DiffuseProblem` with E_prec and E_model; its result comes
+       back through a shared-ownership mailbox. The builder is the only committer (`ScenePipeline::commit`, "The
+       deciding thread is the only committer", L583). The gate is held around the solve as before (AX38 (i)). The
+       pool is `hardware_concurrency − 1` while the builder works alongside it. `quiesce()` waits for, or safely
+       orphans, an in-flight task (Seat 5).
+    2. **The builder never waits for a solve.** Each edit gets its B1′ IrSet at once (the condition 4 B1′ branch of
+       `ScenePipeline::decide`); the builder then hands the solve over and returns to serve edits.
+    3. **Final adoption.** A finished solve is adopted as the final only if `dirty_` is unchanged since the
+       generation read before the scene snapshot (`ScenePipeline::decide`, "The generation is read BEFORE the
+       snapshot", L356); any parameter edit after that read discards it, as today (the two mid-drag checks before and
+       after the solve, L543 / L556); edits that do not bump `dirty_` today do not. Adoption is one AQ4 step. The
+       final is bit-identical to an uncancelled one-shot solve (D7).
+    4. **A superseded solve stops at its next stop point.** A per-generation cancel token, separate from
+       `builderAbandon_`, stops the solve at its next stop point once `dirty_` ≠ the generation of item 3 (the value
+       read before the snapshot). Stop points are spaced by a fixed work count, never by time (AX41). A cancelled
+       solve never yields an E_b. **No held-level adoption during motion** (condition 4).
+    5. **Offline is unchanged.** Offline renders and `render_cli` wait for the final synchronously (AX5, condition 6).
+    6. **Tests.** A TSan `[pipeline]` stress test with edits at random solve points and the pipeline destroyed
+       mid-solve; a final bit-identical with and without cancelled predecessors; offline output bit-identical;
+       `[reset-nowait]` still green; B1-b re-run with the solve duration printed.
+    7. **Acceptance measurements.**
+       - **M7 under H-2c:** the ISM latency of an edit made mid-solve, with the solve occupying the pool, on the three
+         CI OSes at m = 1, 4, 5, 6, 8, capped scenes (1 instance; `layout4_s1/listener_corner` and the s = 1 cube; pool
+         size; worst over ≥ 3 runs, as set in decider file 8 §6): **≤ 700 ms on the worst OS and flat in m** (Seat 3 (a), Seat 5
+         (iii); AQ4's yardstick, Vorländer Table 15.1 by extension).
+       - **M7b (record):** under the AX38 (iv) patterns and continuous automation, the fraction of solves completed,
+         the time from the end of automation to the final, and the size of the end step, against H-0's
+         `discardedMidDrag`. M7b is also D-W4's evidence; D-W4 (whether the reverb level should follow during long
+         automation) is ruled in [phase-10-3](phase-10-3.md).
+    8. **Routing.** It lands in this phase, or as the first work of `07c-2b`, before the golden round (Seat 7). Phase
+       08's goldens are frozen only after 07c-2 (or 07c-2b) is `done` (BUILD_PLAN §0). If M7 fails (above 700 ms or
+       not flat in m) or TSan shows a race, D-W3 returns to the board, and Seat 5's W-C2 condition fails with it.
 
 ## Out of scope
 
@@ -119,7 +171,7 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
   record "offline-bounce time of a 3-minute room-size automation at 100 m, with its ratio to real time" is in this
   phase's packet (Seat 8; D-H1 (iv), AX41).
 - Conditions 2, 4–7 and 9–11 and the decisions D-C1–D-C3: [phase-07c-1](phase-07c-1.md) (condition 7's re-pin:
-  [phase-07c-1b](phase-07c-1b.md)).
+  [phase-07c-1b](phase-07c-1b.md)), except condition 4's defect (the ISM held behind the solve), which is scope 11.
 
 ## Acceptance criteria — automated
 
@@ -133,6 +185,13 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
       no shared prefix has scope 9's asserted exclusion fact, handover law (equal-power, or the loop's law with its
       asserted mid-fade bound), EDT check where its decay differs, and level step in both windows; or the PR states
       that no such source was admitted. The added wall time per OS is printed.
+- [ ] **The ISM never waits behind the solve (scope 11, D-W3 H-2c):** the solve runs off the builder thread and
+      the builder commits each edit's B1′ IrSet without waiting; finals adopted only on the generation read before
+      the snapshot, superseded solves stopped by the per-generation token, no held-level adoption during motion;
+      TSan `[pipeline]` stress (edits at random solve points, pipeline destroyed mid-solve) green; finals
+      bit-identical with and without cancelled predecessors; offline output bit-identical; `[reset-nowait]` green;
+      B1-b re-run with the solve duration printed; **M7 ≤ 700 ms on the worst OS and flat in m** at m = 1, 4, 5, 6, 8
+      (three CI OSes, capped scenes); M7b recorded against H-0's `discardedMidDrag`.
 
 ## Listening / manual checklist
 

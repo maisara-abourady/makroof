@@ -2444,3 +2444,18 @@ consequence; FM-20 objection holds), P07C1B-FMDC-01 … 17 (file 21: step 5 comp
 check complete (file 14). Decided for Maisara (open to her veto): FM-B2, FM-10S, FM-GROWTH (AMENDS her decision of 2026-11-10),
 FM-TRIG, D-B1, D-B3, D-B4, D-B5 (i), (v), (vi). NEEDS MAISARA: none (FM-D1-S3 answered by Maisara 2026-11-13, option (i)).
 Placeholders `[07c-1b re-pin: …]` in AX38 4c and §6 are filled by a second `/fix-plan` pass from the S2 runs.
+
+## phase-07c-2 (decision loop, 2026-11-22; D-W1, D-W2, D-W3, D-W4; corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d)
+
+Files under `docs/review/phase-07c-2/`: 1 (decider convening), 2 parts 1–3 (fact sheets: F1–F13, W sweep, M2 m* = 6), 3 and 7
+(researcher RQ-W1/W2, RQ-W2-6/7/9), 4-seat1…9 (round 1), 5 (decider round 1), 6 (interrogator on 5), 8 (decider rebuttal r2),
+10-seat1…9 (round 2), 11 (decider round 3), 12 (interrogator on 11), 13 (decider rebuttal r4), 14 (interrogator on 13),
+15 (decider rebuttal r5), 16 (interrogator on 15, with the orchestrator's application), 17 (researcher RQ-W4-1, pending).
+
+| id | decision / item | outcome (final) | where applied |
+|---|---|---|---|
+| P07C2-W1 | W_max re-derived under (C) | round-1 rule withdrawn on its own clause (window m* = 6 … U3 projected empty: ISM hold ≈ pool solve > 700 ms at ×6); FM-W1a, FM-W1b withdrawn (PRD MISREAD, file 6); re-decision waits on D-W3 (M7), the ABX and the class (c) round, the pin-time measurements M1, M3–M6, M8, M9 and a three-OS SE/VOV print (files 13, 15) | phase-07c-2 scope 3 |
+| P07C2-W2 | AX47 self-ABX and AX49 L4 design | X-5: noise 0.9 → 0.5 dB ≥ 12/16, speech 0.9 → 0.5 dB ≥ 13/16, FWER ≤ 0.049 strong; 3 dB anchor ≥ 5/6; McGill TSP v2 speech, built locally only; pre-registered as file 13 "D-W2: final" items 1–16 — SURVIVES (files 12, 14) | AX47, AX49; phase-07c-2 scope 9 |
+| P07C2-W3 | the ISM update held behind a running solve | **a defect of phase-07c-1 condition 4** ("the ISM update is never held behind the diffuse solve" held only after a quiet spell); H-2c: solve off the builder thread on the gate executor, builder never waits, today's generation check (read before the scene snapshot) for final adoption, superseded solves stop early, no held-level adoption during motion, condition 4 unchanged; M7 ≤ 700 ms flat in m, M7b record, TSan — SURVIVES WITH CORRECTIONS (file 16, applied) | phase-07c-2 scope 11 / AC; BUILD_PLAN §0 (08-x goldens wait for 07c-2) |
+| P07C2-W3a | FM-W3a (recency adoption during motion, amending condition 4) | FAILS (PRD MISREAD, two readings; premise NOT CHECKABLE, file 12); withdrawn, condition 4 stands (file 13; file 14 SURVIVES) | — |
+| P07C2-W4 | should the tail level follow during long automation | deferred, UNDERINFORMED; homed in phase-10-3 (M7b record under the shipped law and a validation-only alternative; blind listening item; ruling before Phase 13's beta; NEEDS MAISARA case (a) if the PRD still reads two ways); RQ-W4-1 to the researcher — SURVIVES WITH CORRECTIONS (file 16, applied) | phase-10-3 |

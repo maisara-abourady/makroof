@@ -14,11 +14,12 @@
 // pilot and the joint rule as shipped). One instance, the process-wide gate pool as shipped
 // (hardware_concurrency threads), 48 kHz.
 //
-// M7b (record only, no cancel-on-edit rule is implemented): from the measured idle-edit timings, the fraction
-// of solves that would complete before the next edit if every edit cancelled the running solve, for an edit
-// every 5 s (room size stepping 1 m) and every 100 ms (continuous automation): a solve completes iff the time
-// from its edit to the end of its solve (C = interim + gate entry + solve) is below the edit interval. C is
-// measured on position edits (10 per case) and on 2 room-size edits (kRoomD +-1 m) per case at m = 6, 8.
+// M7b (record only, no cancel-on-edit rule is implemented; asked at m = 6, 8, printed at every m): from the
+// measured idle-edit timings, the fraction of solves that would complete before the next edit if every edit
+// cancelled the running solve, for an edit every 5 s (room size stepping 1 m) and every 100 ms (continuous
+// automation): a solve completes iff the time from its edit to the end of its solve (C = interim + gate entry
+// + solve) is below the edit interval. C is measured on position edits (10 per case) and on 2 room-size edits
+// (kRoomD +-1 m) per case at m = 6, 8.
 #include "DiffuseTestUtil.h"
 #include "PipelineTestUtil.h"
 
@@ -393,8 +394,6 @@ TEST_CASE("records: M7 ISM hold of a position edit during a running builder solv
     // M7b: cancel-on-edit, from the measured edit-to-solve-end times (not implemented in shipped code).
     for (const auto& r : all)
     {
-        if (r.m != 6 && r.m != 8)
-            continue;
         const auto c = stats(r.editToSolveEndMs);
         std::printf(
             "07c2-m7b os=%s scene=%s m=%d cancel-on-edit (hypothetical): edit->solve end median %.1f worst "
@@ -403,6 +402,11 @@ TEST_CASE("records: M7 ISM hold of a position edit during a running builder solv
             kOsName, r.scene.c_str(), r.m, c.median, c.worst, r.editToSolveEndMs.size(),
             100.0 * fractionBelow(r.editToSolveEndMs, 5000.0),
             100.0 * fractionBelow(r.editToSolveEndMs, 100.0));
+        if (r.roomEditToSolveEndMs.empty()) // room-size edits are run at m = 6, 8 only
+        {
+            std::printf("\n");
+            continue;
+        }
         const auto rc = stats(r.roomEditToSolveEndMs);
         std::printf(
             " | room size +-1 m (n=%zu): edit->solve end median %.1f worst %.1f ms; every 5 s %.0f%%, every "
