@@ -1238,8 +1238,8 @@ TEST_CASE("Scope 11 (H-2c): a final is bit-identical with and without cancelled 
 
 namespace {
 
-// Serialises the test's host calls (prepare, release, restore, reset, offline switch) against the audio thread's
-// process(), as the host contract requires; setParameter comes from the test thread freely.
+// Serialises the test's host calls (prepare, release, restore, reset, offline switch) against the audio
+// thread's process(), as the host contract requires; setParameter comes from the test thread freely.
 struct HostAudio
 {
     plugin::ScenePipeline& p;

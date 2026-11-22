@@ -18,12 +18,14 @@
 //     submit; the offline drop (setNonRealtime(true), offline reset()) runs under stateMutex_ after the
 //     builder stopped accepting, so no submit reaches the engine during it (phase-07c-1 condition 10).
 //     None of them concurrently with process().
-//   - The realtime diffuse solve (phase-07c-2 scope 11, D-W3 H-2c): a task (SolveJob) on the gate's process-wide
+//   - The realtime diffuse solve (phase-07c-2 scope 11, D-W3 H-2c): a task (SolveJob) on the gate's
+//   process-wide
 //     executor, never on the builder thread and never a thread per instance. It reads only its own immutable
-//     snapshot (the planned build, the generation read before the snapshot, the scene), dirty_ and the engine's
-//     constant IrSet parameters, counts its solve under stateMutex_, and writes its final into itself; the
-//     builder reads it after the task's `ready` flag and alone commits it. quiesce (prepare, release, restore,
-//     the destructor) cancels every task and orphans or waits for it; the offline entry cancels without waiting.
+//     snapshot (the planned build, the generation read before the snapshot, the scene), dirty_ and the
+//     engine's constant IrSet parameters, counts its solve under stateMutex_, and writes its final into
+//     itself; the builder reads it after the task's `ready` flag and alone commits it. quiesce (prepare,
+//     release, restore, the destructor) cancels every task and orphans or waits for it; the offline entry
+//     cancels without waiting.
 //   - The decision state (last handled generation, last submitted IR, restore flag): under stateMutex_,
 //     taken by the builder, the host-thread calls and the offline process(). The realtime process()
 //     never takes a lock or allocates.
