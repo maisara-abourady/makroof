@@ -108,8 +108,10 @@ ABX test.
 4. **Seal** each chain: `python tools/ci/abx_kit.py seal --pack build/abx-07c-2/<chain> --session <session dir> --key <key file>`.
    - Keep the key file outside the session folder. The listener must not see it.
    - The session folder holds only `<level>dB/trial_NN/{A,B,X}.wav`.
-   - Commit `<session dir>/prereg_hashes.json` **before the run**. It holds the key's SHA-256 and every stimulus's
-     SHA-256 (item 11).
+   - Commit `<key file stem>-prereg.json`, written beside the key, **before the run**. It holds the key's SHA-256
+     and a salted SHA-256 of every A, B and X (item 11). Each file has its own secret salt, kept in the key. Plain
+     hashes would give the answers away, because X is a byte copy of A or B. `score` checks the session folder
+     and the key against this record.
    - Never give the listener the unsealed pack (`build/abx-07c-2/<chain>/`).
 5. **Date the session** in the session brief (item 16). If neither 07c-2 nor 07c-2b can hold it, it goes to
    Maisara as a person's action.
@@ -152,7 +154,7 @@ ABX test.
 
 Write X's answer (A or B) per trial. The same table as CSV:
 `python tools/ci/abx_kit.py blank --chain <chain> --out responses-<chain>.csv`. Score it with
-`python tools/ci/abx_kit.py score --key <key file> --responses responses-<chain>.csv --chain <chain>`.
+`python tools/ci/abx_kit.py score --key <key file> --session <session dir> --responses responses-<chain>.csv --chain <chain>`.
 
 ### Noise chain, 0.9 dB block
 

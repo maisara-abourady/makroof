@@ -277,7 +277,28 @@ def test_noise_trial_end_to_end(tmp_path: pathlib.Path) -> None:
         assert np.array_equal(a[:s0], b[:s0]) and not np.array_equal(a, b)
     # seal: X is A or B, the key outside the session, the hashes recorded
     rec = abx_kit.seal(tmp_path / "noise", tmp_path / "session", tmp_path / "key.json", key_seed=5)
-    assert len(rec["stimuli_sha256"]) == 3 * len(m["blocks"]) and len(rec["key_sha256"]) == 64
+    import json
+
+    digests = rec["stimuli_salted_sha256"]
+    assert len(digests) == 3 * len(m["blocks"]) and len(rec["key_sha256"]) == 64
+    assert json.loads(abx_kit.prereg_path(tmp_path / "key.json").read_text()) == rec
+    # the committed record must not reveal X (D-W2 item 11): no committed digest equals another, none equals a
+    # stimulus's plain SHA-256, and the listener's folder holds only A, B and X
+    sess = tmp_path / "session"
+    files = sorted(p.relative_to(sess).as_posix() for p in sess.rglob("*") if p.is_file())
+    assert files == sorted(digests) and all(f.endswith(("/A.wav", "/B.wav", "/X.wav")) for f in files)
+    assert len(set(digests.values())) == len(digests)
+    assert not {abx_kit.sha256_file(sess / f) for f in files} & set(digests.values())
+    # scoring checks the folder against the record; a swapped X is refused
+    abx_kit.verify_session(tmp_path / "key.json", sess)
+    key = json.loads((tmp_path / "key.json").read_text())
+    x_file = next(f for f in files if f.endswith("/X.wav"))
+    level, trial = x_file.split("dB/")[0], int(x_file.split("trial_")[1][:2])
+    (x_rec,) = [t for t in key["blocks"][level] if t["trial"] == trial]
+    swapped = "B" if x_rec["X"] == "A" else "A"
+    (sess / x_file).write_bytes((sess / x_file).with_name(f"{swapped}.wav").read_bytes())
+    with pytest.raises(ValueError):
+        abx_kit.verify_session(tmp_path / "key.json", sess)
     with pytest.raises(ValueError):
         abx_kit.seal(tmp_path / "noise", tmp_path / "session", tmp_path / "session" / "key.json")
 

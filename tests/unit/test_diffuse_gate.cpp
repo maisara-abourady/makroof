@@ -270,6 +270,49 @@ TEST_CASE(
                 REQUIRE(p->handledGeneration() == p->dirtyGeneration());
             }
         }
+        DYNAMIC_SECTION("running inside the solve, destroy " << destroy)
+        {
+            // Review M2: deterministic, not by chance. The task is parked inside the AX38 gate at the Solve
+            // stage (the stage hook runs on the task); teardown on another thread must wait for it, then
+            // complete.
+            auto p = std::make_unique<plugin::ScenePipeline>();
+            restoreScene(*p, scene);
+            p->prepare(kRate, 256, false);
+            REQUIRE(pipeline_test::waitFor([&] { return p->builderIdle() && !p->settling(); }));
+            std::atomic<bool> parked{false}, release{false};
+            p->setStageHook([&](plugin::ScenePipeline::BuildStage stage) {
+                if (stage != plugin::ScenePipeline::BuildStage::Solve || parked.exchange(true))
+                    return;
+                while (!release.load())
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            });
+            p->setParameter(module3d::kListenerY, p->parameter(module3d::kListenerY) + 0.3f);
+            REQUIRE(pipeline_test::waitFor([&] { return parked.load(); }));
+            REQUIRE(gate->held()); // the task is inside the gate
+            std::atomic<bool> tornDown{false};
+            std::thread teardown([&] {
+                if (destroy)
+                    p.reset();
+                else
+                    p->release();
+                tornDown.store(true);
+            });
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            const bool waited = !tornDown.load(); // teardown cannot finish while the task runs
+            release.store(true);
+            teardown.join();
+            REQUIRE(waited);
+            REQUIRE(tornDown.load());
+            REQUIRE(pipeline_test::waitFor([&] { return !gate->held(); }));
+            if (!destroy)
+            {
+                p->setStageHook({});
+                REQUIRE_FALSE(p->builderBusy());
+                p->prepare(kRate, 256, false);
+                REQUIRE(pipeline_test::waitFor([&] { return p->builderIdle() && !p->settling(); }));
+                REQUIRE(p->handledGeneration() == p->dirtyGeneration());
+            }
+        }
         DYNAMIC_SECTION("queued on the executor, destroy " << destroy)
         {
             std::vector<std::shared_ptr<TestTask>> blockers;

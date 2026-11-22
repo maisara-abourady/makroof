@@ -181,8 +181,10 @@ public:
         std::uint64_t keylessLoads = 0;       // synchronous loads that solved (no or mismatching saved level)
         std::uint64_t insertSolves = 0; // synchronous solves at a fresh instance's first prepare (no restore,
                                         // no held level: the pre-07c-1 behaviour; reading in phase-07c-1b)
-        std::uint64_t discardedMidDrag =
-            0;                       // solves not adopted because the parameters moved (never mid-drag)
+        // Solves not adopted because the parameters moved (never mid-drag). Since phase-07c-2 scope 11 (H-2c)
+        // this also counts superseded solves stopped by their cancel token before they finished, not only
+        // solves that completed and were then discarded (H-0's meaning); M7b reads it with this meaning.
+        std::uint64_t discardedMidDrag = 0;
         std::uint64_t steps = 0;     // interim -> final adoptions (one per solve)
         double lastStepDb = 0.0;     // AX47: max |level step| over bands and emitters of the last one
         double maxStepDb = 0.0;      // the largest since construction

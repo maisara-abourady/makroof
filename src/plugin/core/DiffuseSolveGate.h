@@ -73,8 +73,11 @@ public:
     sim::diffuse::ThreadPool& pool() noexcept { return pool_; }
 
     // ---- the solve executor (phase-07c-2 scope 11) ----
-    static constexpr unsigned kExecutorThreads =
-        2; // one solving, one unwinding a superseded solve or assembling
+    // D-W3 (docs/review/phase-07c-2/11, "a task on the process-wide gate executor"); the count is the
+    // builder's choice recorded in file 19: one thread solving, one unwinding a superseded solve or
+    // assembling, so a cancelled solve never delays the next. M7/M7b measure it; no acoustic effect (results
+    // are bit-identical, D7).
+    static constexpr unsigned kExecutorThreads = 2;
     // A unit of work on the executor. Its state is Queued until an executor thread starts it (Running, then
     // Done) or its owner orphans it (Orphaned: it never runs and its execute() never touches the owner).
     class Task

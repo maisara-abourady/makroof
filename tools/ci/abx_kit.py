@@ -779,10 +779,25 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
 # ---------------------------------------------------------------------------------------------------------
 
 
+def prereg_path(key_path: pathlib.Path) -> pathlib.Path:
+    """Where seal writes the record to commit before the run: beside the key, never in the session folder."""
+    return key_path.with_name(key_path.stem + "-prereg.json")
+
+
+def salted_sha256(salt_hex: str, path: pathlib.Path) -> str:
+    """SHA-256 of a secret per-file salt followed by the file's bytes (item 11's commitment)."""
+    h = hashlib.sha256(bytes.fromhex(salt_hex))
+    h.update(path.read_bytes())
+    return h.hexdigest()
+
+
 def seal(pack: pathlib.Path, session: pathlib.Path, key_path: pathlib.Path, key_seed: int | None = None) -> dict:
     """Item 11: draws X = A or B per trial from a seeded key (secret unless given), writes the session folder (A, B,
     X per trial, no other information), the key to `key_path` (keep it outside the session folder, unseen by the
-    listener) and returns the record to commit before the run: the key's SHA-256 and every stimulus's SHA-256."""
+    listener) and the record to commit before the run to `prereg_path(key_path)`: the key's SHA-256 and a salted
+    SHA-256 of every stimulus. X is a byte copy of A or B, so plain digests would give every answer away (X's digest
+    would equal A's or B's); each file gets its own secret salt, held in the key, and `score` checks the session
+    folder against the record with them."""
     import shutil
 
     manifest = json.loads((pack / "manifest.json").read_text())
@@ -791,25 +806,43 @@ def seal(pack: pathlib.Path, session: pathlib.Path, key_path: pathlib.Path, key_
     seed = int(key_seed if key_seed is not None else secrets.randbits(63))
     rng = np.random.default_rng(seed)
     key: dict = {"chain": manifest["chain"], "seed": seed, "blocks": {}}
-    record: dict = {"chain": manifest["chain"], "stimuli_sha256": {}}
+    record: dict = {"chain": manifest["chain"], "stimuli_salted_sha256": {}}
     for level, block in manifest["blocks"].items():
         key["blocks"][level] = []
         for t in block:
-            src = pack / f"{level}dB" / f"trial_{t['trial']:02d}"
-            dst = session / f"{level}dB" / f"trial_{t['trial']:02d}"
+            rel = f"{level}dB/trial_{t['trial']:02d}"
+            src, dst = pack / rel, session / rel
             dst.mkdir(parents=True, exist_ok=True)
             x = "A" if rng.integers(0, 2) == 0 else "B"
             for name in ("A", "B"):
                 shutil.copyfile(src / f"{name}.wav", dst / f"{name}.wav")
             shutil.copyfile(src / f"{x}.wav", dst / "X.wav")
+            salts = {name: secrets.token_hex(32) for name in ("A", "B", "X")}  # never from the seed: unguessable
             for name in ("A", "B", "X"):
-                record["stimuli_sha256"][f"{level}dB/trial_{t['trial']:02d}/{name}.wav"] = sha256_file(dst / f"{name}.wav")
-            key["blocks"][level].append({"trial": t["trial"], "kind": t["kind"], "g_db": t["g_db"], "X": x})
+                record["stimuli_salted_sha256"][f"{rel}/{name}.wav"] = salted_sha256(salts[name], dst / f"{name}.wav")
+            key["blocks"][level].append({"trial": t["trial"], "kind": t["kind"], "g_db": t["g_db"], "X": x,
+                                         "salts": salts})
     text = json.dumps(key, indent=1, sort_keys=True)
     key_path.write_text(text)
     record["key_sha256"] = hashlib.sha256(text.encode()).hexdigest()
-    (session / "prereg_hashes.json").write_text(json.dumps(record, indent=1, sort_keys=True))
+    prereg_path(key_path).write_text(json.dumps(record, indent=1, sort_keys=True))
     return record
+
+
+def verify_session(key_path: pathlib.Path, session: pathlib.Path) -> None:
+    """At scoring: the key is the committed one, and every file in the session folder is the one committed (item 11)."""
+    text = key_path.read_text()
+    record = json.loads(prereg_path(key_path).read_text())
+    if hashlib.sha256(text.encode()).hexdigest() != record["key_sha256"]:
+        raise ValueError("the key does not match the committed record")
+    key = json.loads(text)
+    for level, block in key["blocks"].items():
+        for t in block:
+            rel = f"{level}dB/trial_{t['trial']:02d}"
+            for name in ("A", "B", "X"):
+                if salted_sha256(t["salts"][name], session / rel / f"{name}.wav") != record["stimuli_salted_sha256"][
+                        f"{rel}/{name}.wav"]:
+                    raise ValueError(f"{rel}/{name}.wav does not match the committed record")
 
 
 def binom_tail(k: int, n: int, p: float = 0.5) -> float:
@@ -899,6 +932,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--key", type=pathlib.Path, required=True)
     p.add_argument("--responses", type=pathlib.Path, required=True)
     p.add_argument("--chain", choices=("noise", "speech"), required=True)
+    p.add_argument("--session", type=pathlib.Path, required=True, help="the listener's folder; X.wav is checked")
     p = sub.add_parser("blank")
     p.add_argument("--chain", choices=("noise", "speech"), required=True)
     p.add_argument("--out", type=pathlib.Path, required=True)
@@ -916,9 +950,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"written to {args.out / args.cmd}")
     elif args.cmd == "seal":
         record = seal(args.pack, args.session, args.key)
-        print(json.dumps({"key_sha256": record["key_sha256"], "stimuli": len(record["stimuli_sha256"])}, indent=1))
-        print(f"commit {args.session / 'prereg_hashes.json'} before the run; keep {args.key} unseen until scoring")
+        print(json.dumps({"key_sha256": record["key_sha256"], "stimuli": len(record["stimuli_salted_sha256"])}, indent=1))
+        print(f"commit {prereg_path(args.key)} before the run; keep {args.key} unseen until scoring")
     elif args.cmd == "score":
+        verify_session(args.key, args.session)
         for r in score(args.key, read_responses(args.responses), args.chain):
             print(json.dumps(r))
     elif args.cmd == "blank":
