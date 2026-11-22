@@ -481,9 +481,13 @@ bool ScenePipeline::decide(Source source, bool load)
         // lost wake-up: the task sets `ready` before the flag).
         mailbox_.store(false, std::memory_order_release);
         std::shared_ptr<SolveJob> done;
+        std::vector<std::shared_ptr<SolveJob>> reaped; // freed after jobMutex_ is released (condition 10)
         {
             std::lock_guard<std::mutex> lock(jobMutex_);
-            std::erase_if(retired_, [](const auto& j) { return j->done(); });
+            for (auto& j : retired_)
+                if (j->done())
+                    reaped.push_back(std::move(j));
+            std::erase(retired_, nullptr);
             if (job_ && job_->ready.load(std::memory_order_acquire))
             {
                 done = job_;
@@ -741,7 +745,19 @@ bool ScenePipeline::decide(Source source, bool load)
                     job_ = job;
                     inflightGen_.store(gen, std::memory_order_release);
                 }
-                gate_->post(std::move(job));
+                try
+                {
+                    gate_->post(std::move(job));
+                }
+                catch (...)
+                {
+                    // A failed post (thread start or allocation) must not leave the generation marked in
+                    // flight with no task behind it: the next decision retries it.
+                    std::lock_guard<std::mutex> lock(jobMutex_);
+                    job_.reset();
+                    inflightGen_.store(kNone, std::memory_order_release);
+                    throw;
+                }
                 return false; // the generation is handled when the final is committed
             }
             if (!level)

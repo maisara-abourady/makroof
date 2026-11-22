@@ -147,9 +147,8 @@ void DiffuseSolveGate::post(std::shared_ptr<Task> task)
 {
     {
         std::lock_guard lock(execMutex_);
-        if (executors_.empty())
-            for (unsigned i = 0; i < kExecutorThreads; ++i)
-                executors_.emplace_back([this] { executorLoop(); });
+        while (executors_.size() < kExecutorThreads) // retried on the next post if a thread failed to start
+            executors_.emplace_back([this] { executorLoop(); });
         tasks_.push_back(std::move(task));
     }
     execCv_.notify_one();
