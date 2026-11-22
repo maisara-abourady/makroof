@@ -1,10 +1,10 @@
 // Phase 07c-2, facts F3 / F4 / F12 of docs/review/phase-07c-2/1-decider-convening.md: the diffuse solve at
-// W_max x {1, 2, 4, 8, 16}. VALIDATION ONLY: no shipped code path or constant changes. The override is the
-// existing DiffuseLimits::wScene field (W_scene = 2 W_max, AX41), set here to 2 x kWMaxPerEmitterProvisional
-// x the multiplier; nothing else of the shipping rule (n*_max, SE target, pilot, joint rule) is touched.
-// Hidden; prints records only, asserts nothing but D4 (the result is independent of the thread count).
-// The diffuse problem has no sample rate: diffuse_test::plan (the planEmitter mirror) builds it from the
-// scene alone, so these solves are the ones the 48 and 96 kHz builds run.
+// W_max x {1, 2, 4, 5, 6, 7, 8, 16}. VALIDATION ONLY: no shipped code path or constant changes. The override
+// is the existing DiffuseLimits::wScene field (W_scene = 2 W_max, AX41), set here to 2 x
+// kWMaxPerEmitterProvisional x the multiplier; nothing else of the shipping rule (n*_max, SE target, pilot,
+// joint rule) is touched. Hidden; prints records only, asserts nothing but D4 (the result is independent of
+// the thread count). The diffuse problem has no sample rate: diffuse_test::plan (the planEmitter mirror)
+// builds it from the scene alone, so these solves are the ones the 48 and 96 kHz builds run.
 #include "DiffuseTestUtil.h"
 
 #include "sim/diffuse/DiffuseEstimator.h"
@@ -32,7 +32,7 @@ double ms(Clock::time_point a, Clock::time_point b)
     return std::chrono::duration<double, std::milli>(b - a).count();
 }
 
-constexpr int kMultipliers[] = {1, 2, 4, 8, 16};
+constexpr int kMultipliers[] = {1, 2, 4, 5, 6, 7, 8, 16}; // 5-7: M2 (decider file 5)
 
 DiffuseLimits limitsAt(int mult)
 {
@@ -135,8 +135,9 @@ double totalDb(const DiffuseProblem& pr, const DiffuseResult& r, std::size_t e, 
 
 } // namespace
 
-TEST_CASE("wmax-sweep: the diffuse solve at W_max x {1, 2, 4, 8, 16} (F3 time and memory, F4 accuracy)",
-          "[.][wmax-sweep]")
+TEST_CASE(
+    "wmax-sweep: the diffuse solve at W_max x {1, 2, 4, 5, 6, 7, 8, 16} (F3 time and memory, F4 accuracy)",
+    "[.][wmax-sweep]")
 {
     ThreadPool& pool = ThreadPool::process();
     ThreadPool single(1);
@@ -230,8 +231,7 @@ TEST_CASE("wmax-sweep: the diffuse solve at W_max x {1, 2, 4, 8, 16} (F3 time an
 // replicates of the shipping rule on disjoint streams against one long run, at the two gated cubes, at
 // multipliers 1, 4 and 16. The stride grows past 2^20 when N + 8 000 would overrun it, and the long run sits
 // beyond every replicate's range.
-TEST_CASE("wmax-sweep: 30-replicate p95 at the gated cubes at W_max x {1, 4, 16}",
-          "[.][wmax-sweep]")
+TEST_CASE("wmax-sweep: 30-replicate p95 at the gated cubes at W_max x {1, 4, 16}", "[.][wmax-sweep]")
 {
     constexpr int kReplicates = 30;
     for (const char* key : {"cube100_lowalpha0.05_s0.3", "cube100_flutter_fallback"})
