@@ -40,6 +40,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <bit>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -534,7 +535,8 @@ TEST_CASE("ScenePipeline: the M7 diffuse-limits seam defaults to the shipped Dif
     const auto check = [](const sim::diffuse::DiffuseLimits& a, const sim::diffuse::DiffuseLimits& b) {
         CHECK(a.wScene == b.wScene);
         CHECK(a.nStarMax == b.nStarMax);
-        CHECK(a.seTargetDb == b.seTargetDb);
+        CHECK(std::bit_cast<std::uint64_t>(a.seTargetDb)
+              == std::bit_cast<std::uint64_t>(b.seTargetDb)); // exact
         CHECK(a.fixedHistories == b.fixedHistories);
         CHECK(a.fixedStart == b.fixedStart);
         CHECK(a.historyOffset == b.historyOffset);
@@ -542,7 +544,8 @@ TEST_CASE("ScenePipeline: the M7 diffuse-limits seam defaults to the shipped Dif
     check(p.diffuseLimits(), shipped);
     CHECK(shipped.wScene == 2 * sim::diffuse::kWMaxPerEmitterProvisional);
     CHECK(shipped.nStarMax == sim::diffuse::kNStarMax);
-    CHECK(shipped.seTargetDb == sim::diffuse::kSeTargetDb);
+    CHECK(std::bit_cast<std::uint64_t>(shipped.seTargetDb)
+          == std::bit_cast<std::uint64_t>(sim::diffuse::kSeTargetDb)); // exact
     sim::diffuse::DiffuseLimits x6 = shipped;
     x6.wScene *= 6;
     p.setDiffuseLimitsForTest(x6);

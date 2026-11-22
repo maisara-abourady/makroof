@@ -15,8 +15,11 @@ import os
 import pathlib
 import sys
 
-import numpy as np
 import pytest
+
+# The contract-tools job installs only tools/ci/requirements.txt; numpy comes with the acoustics requirements
+# (python job), where this module runs.
+np = pytest.importorskip("numpy")
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
