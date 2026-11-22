@@ -253,6 +253,12 @@ build/release/tests/unit/spatial_tests "[benchmark]" --benchmark-samples 10
 cmake --preset tsan -DSPATIAL_BUILD_PLUGIN=OFF && cmake --build --preset tsan --target spatial_tests
 build/tsan/tests/unit/spatial_tests "[conv],[pipeline],[diffuse]"
 
+# Phase 07c-2: D-W2 ABX kit (validation only; run sheet docs/validation/abx-07c-2-run-sheet.md). --abx-step-db g
+# steps the tail energy by g dB with the AQ4 fade starting at output sample --abx-step-sample N (realtime emulation,
+# fixed block); --w-multiplier m sets W_scene = 2 m W_max. The speech chain downloads McGill TSP v2 by SHA-256, local only
+build/cli/render_cli --scene scene.json --mode omni --in noise.wav --out step.wav --realtime-emulation --block 512 --abx-step-db 0.9 --abx-step-sample 96256   # N: a multiple of P and the block; abx_kit.py writes layout4_s1/default itself
+python tools/ci/abx_kit.py noise --out build/abx-07c-2     # also: speech, seal, score, blank
+
 # Phase 07: state fixtures tests/state/v<N>_*.bin (regenerate only when pluginStateVersion is bumped,
 # adding the new version's files; old fixtures must keep loading)
 build/debug/tests/unit/spatial_tests "[.generate-state-fixtures]"
