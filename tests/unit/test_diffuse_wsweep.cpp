@@ -136,7 +136,7 @@ double totalDb(const DiffuseProblem& pr, const DiffuseResult& r, std::size_t e, 
 } // namespace
 
 TEST_CASE("wmax-sweep: the diffuse solve at W_max x {1, 2, 4, 8, 16} (F3 time and memory, F4 accuracy)",
-          "[.][benchmark][wmax-sweep]")
+          "[.][wmax-sweep]")
 {
     ThreadPool& pool = ThreadPool::process();
     ThreadPool single(1);
@@ -231,7 +231,7 @@ TEST_CASE("wmax-sweep: the diffuse solve at W_max x {1, 2, 4, 8, 16} (F3 time an
 // multipliers 1, 4 and 16. The stride grows past 2^20 when N + 8 000 would overrun it, and the long run sits
 // beyond every replicate's range.
 TEST_CASE("wmax-sweep: 30-replicate p95 at the gated cubes at W_max x {1, 4, 16}",
-          "[.][benchmark][wmax-sweep]")
+          "[.][wmax-sweep]")
 {
     constexpr int kReplicates = 30;
     for (const char* key : {"cube100_lowalpha0.05_s0.3", "cube100_flutter_fallback"})
