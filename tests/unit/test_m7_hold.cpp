@@ -397,6 +397,133 @@ double fractionBelow(const std::vector<double>& v, double limitMs)
            / static_cast<double>(v.size());
 }
 
+// ---- M7b under the AX38 (iv) patterns (phase-07c-2 scope 11 item 7; RECORDS ONLY) ----
+// The two patterns of the AX38 (iv) records test (test_diffuse_records.cpp, "records: AX38 (iv)
+// multi-instance load and staleness"), on the M7 scenes and the M7 W_max seam (W_scene = 2 x m x
+// kWMaxPerEmitterProvisional through setDiffuseLimitsForTest, before prepare()):
+// - (L) project load: N fresh instances restored one after another on this (host) thread, prepare +
+//   beginRestore + restore each, as that test does (keyless: no saved level; prepare() of a fresh instance
+//   solves synchronously once and the keyless restore once more, so "sync" is 2 per instance); the pattern
+//   ends when the last restore() returns.
+// - (J) joint step: with every instance settled after (L), one listener-Y change on every instance at
+//   once; the pattern ends when the last setParameter() returns.
+// Per pattern, the deltas of Stats summed over the instances (solves, of them synchronous, finalSubmits,
+// discardedMidDrag), the time from the end of the pattern to each instance's next final (finalSubmits + 1; 0
+// for an instance whose final was already in when the pattern ended, counted as "final in before the end";
+// median and worst), and the end step (Stats::lastStepDb after that final, median and worst over the
+// instances; Stats::maxStepDb, the largest since construction, worst). No audio thread: the convolver's
+// mailbox is latest-wins and submits never wait for process() (as in the AX38 (iv) records test). H-0
+// reference, not measured: under H-0 a single load or joint step has no mid-solve edit, so its
+// discardedMidDrag was 0 by construction.
+constexpr int kM7bInstances[] = {1, 4, 8};
+constexpr int kM7bMultipliers[] = {1, 6};
+
+struct PatternResult
+{
+    std::uint64_t solves = 0, syncSolves = 0, finals = 0, discarded = 0;
+    int finalBeforeEnd = 0; // instances whose final was in when the pattern ended (time to final 0)
+    double patternMs = 0.0;
+    std::vector<double> toFinalMs, lastStepDb;
+    double maxStepDb = 0.0;
+};
+
+// Waits for each instance's next final after `base` (from tEnd), then for every instance to settle; the Stats
+// deltas are taken after the settle.
+PatternResult finishPattern(const std::vector<std::unique_ptr<plugin::ScenePipeline>>& pipes,
+                            const std::vector<plugin::ScenePipeline::Stats>& base, Clock::time_point tEnd)
+{
+    PatternResult r;
+    const std::size_t n = pipes.size();
+    r.toFinalMs.assign(n, 0.0);
+    std::vector<bool> done(n, false);
+    for (std::size_t i = 0; i < n; ++i)
+        if (pipes[i]->stats().finalSubmits > base[i].finalSubmits)
+        {
+            done[i] = true; // already in: its time to final is recorded as 0
+            ++r.finalBeforeEnd;
+        }
+    const auto deadline = Clock::now() + std::chrono::seconds(300);
+    for (std::size_t left = n - static_cast<std::size_t>(r.finalBeforeEnd); left > 0;)
+    {
+        for (std::size_t i = 0; i < n; ++i)
+            if (!done[i] && pipes[i]->stats().finalSubmits > base[i].finalSubmits)
+            {
+                done[i] = true;
+                r.toFinalMs[i] = msBetween(tEnd, Clock::now());
+                --left;
+            }
+        REQUIRE(Clock::now() < deadline);
+        std::this_thread::sleep_for(std::chrono::microseconds(500));
+    }
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        waitSettled(*pipes[i]);
+        const auto s = pipes[i]->stats();
+        r.solves += s.solves - base[i].solves;
+        r.syncSolves += s.syncSolves - base[i].syncSolves;
+        r.finals += s.finalSubmits - base[i].finalSubmits;
+        r.discarded += s.discardedMidDrag - base[i].discardedMidDrag;
+        r.lastStepDb.push_back(s.lastStepDb);
+        r.maxStepDb = std::max(r.maxStepDb, s.maxStepDb);
+    }
+    return r;
+}
+
+void printPattern(const char* pattern, const std::string& scene, int m, int n, const PatternResult& r)
+{
+    const auto tf = stats(r.toFinalMs), ls = stats(r.lastStepDb);
+    const double denom = static_cast<double>(r.finals + r.discarded);
+    std::printf(
+        "07c2-m7b os=%s scene=%s m=%d pattern=%s N=%d: pattern %.0f ms; solves %llu (sync %llu), "
+        "finalSubmits %llu, discardedMidDrag %llu, completed finals/(finals+discarded) %.0f%%; final in "
+        "before the end %d/%d; end of pattern -> final (0 if before) median %.1f worst %.1f ms; end step "
+        "lastStepDb median %.3f worst %.3f dB, "
+        "maxStepDb %.3f dB; H-0: discardedMidDrag 0 by construction (no mid-solve edit), not "
+        "measured\n",
+        kOsName, scene.c_str(), m, pattern, n, r.patternMs, static_cast<unsigned long long>(r.solves),
+        static_cast<unsigned long long>(r.syncSolves), static_cast<unsigned long long>(r.finals),
+        static_cast<unsigned long long>(r.discarded),
+        denom > 0.0 ? 100.0 * static_cast<double>(r.finals) / denom : 0.0, r.finalBeforeEnd, n, tf.median,
+        tf.worst, ls.median, ls.worst, r.maxStepDb);
+}
+
+void runPatterns(const std::string& name, const contract::SceneDescription& sc, int m, int n)
+{
+    sim::diffuse::DiffuseLimits lim;
+    lim.wScene = 2 * sim::diffuse::kWMaxPerEmitterProvisional * static_cast<std::int64_t>(m);
+    std::vector<std::unique_ptr<plugin::ScenePipeline>> pipes;
+    for (int i = 0; i < n; ++i)
+    {
+        pipes.push_back(std::make_unique<plugin::ScenePipeline>());
+        pipes.back()->setDiffuseLimitsForTest(lim);
+    }
+    const auto values = module3d::parameterValuesFromScene(sc);
+    // (L) project load.
+    std::vector<plugin::ScenePipeline::Stats> base(static_cast<std::size_t>(n));
+    const auto t0 = Clock::now();
+    for (auto& p : pipes)
+    {
+        p->prepare(kRate, 256, false);
+        p->beginRestore();
+        p->restore(sc, values);
+    }
+    const auto tLoad = Clock::now();
+    auto load = finishPattern(pipes, base, tLoad);
+    load.patternMs = msBetween(t0, tLoad);
+    printPattern("L(load)", name, m, n, load);
+    // (J) joint step: one listener-Y change (kStepNorm) on every instance at once.
+    for (std::size_t i = 0; i < pipes.size(); ++i)
+        base[i] = pipes[i]->stats();
+    const float y = pipes.front()->parameter(module3d::kListenerY) + kStepNorm;
+    const auto t1 = Clock::now();
+    for (auto& p : pipes)
+        p->setParameter(module3d::kListenerY, y);
+    const auto tJoint = Clock::now();
+    auto joint = finishPattern(pipes, base, tJoint);
+    joint.patternMs = msBetween(t1, tJoint);
+    printPattern("J(joint step)", name, m, n, joint);
+}
+
 } // namespace
 
 TEST_CASE("ScenePipeline: the M7 diffuse-limits seam defaults to the shipped DiffuseLimits",
@@ -468,4 +595,19 @@ TEST_CASE(
             100.0 * fractionBelow(r.roomEditToSolveEndMs, 5000.0),
             100.0 * fractionBelow(r.roomEditToSolveEndMs, 100.0));
     }
+}
+
+TEST_CASE("records: M7b under the AX38 (iv) patterns (project load, joint step), N = 1, 4, 8, m = 1, 6",
+          "[.][benchmark][m7-hold]")
+{
+    const struct
+    {
+        const char* name;
+        contract::SceneDescription scene;
+    } scenes[] = {{"layout4_s1/listener_corner", layout4Corner()},
+                  {"cube100_lowalpha0.05_s1", cubeLowAlphaS1()}};
+    for (const auto& s : scenes)
+        for (const int m : kM7bMultipliers)
+            for (const int n : kM7bInstances)
+                runPatterns(s.name, s.scene, m, n);
 }
