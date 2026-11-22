@@ -191,6 +191,44 @@ struct Probe
     }
 };
 
+// The host's audio thread: process() in blocks of 256 at the real-time pace, so the engine installs each
+// submitted IrSet (the convolver's request queue is drained only by process(); with nothing draining it,
+// submits start to fail).
+class AudioThread
+{
+public:
+    explicit AudioThread(plugin::ScenePipeline& p)
+        : thread_([this, &p] {
+            constexpr int kBlock = 256;
+            std::vector<float> l(kBlock, 0.0f), r(kBlock, 0.0f);
+            const auto period = std::chrono::duration_cast<Clock::duration>(
+                std::chrono::duration<double>(kBlock / kRate));
+            auto next = Clock::now();
+            while (!stop_.load())
+            {
+                std::fill(l.begin(), l.end(), 0.0f);
+                std::fill(r.begin(), r.end(), 0.0f);
+                const float* const in[2] = {l.data(), r.data()};
+                float* const out[2] = {l.data(), r.data()};
+                p.process(in, out, kBlock);
+                next += period;
+                std::this_thread::sleep_until(next);
+            }
+        })
+    {}
+    ~AudioThread()
+    {
+        stop_.store(true);
+        thread_.join();
+    }
+    AudioThread(const AudioThread&) = delete;
+    AudioThread& operator=(const AudioThread&) = delete;
+
+private:
+    std::atomic<bool> stop_{false};
+    std::thread thread_;
+};
+
 void waitSettled(const plugin::ScenePipeline& p)
 {
     REQUIRE(pipeline_test::waitFor([&] { return !p.settling() && p.builderIdle(); }, std::chrono::seconds(300)));
@@ -216,6 +254,7 @@ CaseResult runCase(const std::string& name, const contract::SceneDescription& sc
     p.beginRestore();
     p.restore(sc, module3d::parameterValuesFromScene(sc));
     waitSettled(p);
+    AudioThread audio(p);
     Probe probe(p);
     const float y0 = p.parameter(module3d::kListenerY);
     int k = 0;
