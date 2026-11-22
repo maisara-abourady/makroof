@@ -336,17 +336,24 @@ CaseResult runCase(const std::string& name, const contract::SceneDescription& sc
         const auto a0 = p.stats();
         const int n = static_cast<int>(std::lround(kAutomationS / kAutomationPeriodS));
         auto next = Clock::now();
+        auto tEnd = next;
+        auto a1 = a0;
         for (int i = 0; i < n; ++i)
         {
             p.setParameter(module3d::kListenerY, nextY());
+            if (i == n - 1)
+            {
+                // Read at the last edit, not one period later: a solve shorter than the period (cube, m = 1,
+                // on a fast runner) is adopted within that period, and the wait below would then never see a
+                // later one.
+                tEnd = Clock::now();
+                a1 = p.stats();
+                break;
+            }
             next += std::chrono::duration_cast<Clock::duration>(
                 std::chrono::duration<double>(kAutomationPeriodS));
             std::this_thread::sleep_until(next);
         }
-        const auto tEnd = Clock::now()
-                          - std::chrono::duration_cast<Clock::duration>(
-                              std::chrono::duration<double>(kAutomationPeriodS)); // the last edit
-        const auto a1 = p.stats();
         REQUIRE(pipeline_test::waitFor([&] { return p.stats().finalSubmits > a1.finalSubmits; },
                                        std::chrono::seconds(300)));
         const auto tFinal = Clock::now();
