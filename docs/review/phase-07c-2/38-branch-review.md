@@ -111,5 +111,5 @@ Added by the orchestrator, 2026-11-22.
 | m2 (`discardedMidDrag` meaning changed) | Fixed: the `Stats` comment documents that it now also counts superseded solves stopped before they finished. | 90e4eda (`src/plugin/core/ScenePipeline.h`) |
 | m3 (brief: steward log, "Decided for Maisara") | The brief's "Decided for Maisara" section is filled (task G23); the steward log is carried through the remaining steward rounds. | session brief `docs/sessions/2026-11-22-phase-07c-2.md` |
 | m4 (07c-2b cites files 1–34) | Fixed: 07c-2b cites 1–36. | ff1f414; file 37 item 3 |
-| Q1 (M7 "worst over ≥ 3 runs", "flat in m") | Answered by the final three-OS CI run's per-OS `07c2-m7` table. | run RUN_ID_TBD |
-| Q2 (three-OS green, TSan, ASan, `listening-pack`) | Answered by the final three-OS CI run. | run RUN_ID_TBD |
+| Q1 (M7 "worst over ≥ 3 runs", "flat in m") | Answered by the final three-OS CI run's per-OS `07c2-m7` table. | run 45045891476 |
+| Q2 (three-OS green, TSan, ASan, `listening-pack`) | Answered by the final three-OS CI run. | run 45045891476 |
