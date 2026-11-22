@@ -161,9 +161,12 @@ constexpr GateEntry kGateRegister[] = {
     // run
     // (43389296112, 43402114873, 43412038058: macOS 23.46 / 22.44 / 24.08 s, Windows 20.24 / 15.96 / 19.59 s;
     // docs/review/phase-07c-1b/22): print only.
+    // Phase 07c-1b P07C1B-R1: macOS re-listed under AX38 4c (a) after closure: PR #33 run 43427854710
+    // printed 14 x worst 30.50 s (hosted macOS runner; 100 m / 96 kHz, exact tail L = 12 s, 2 emitters;
+    // not a per-instance cost; OVER30S); recorded value 33.40 s kept; print only.
     {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1,
      S2Pin{2.3963, 1.3681, 552.3, 1282.7, 80.7, 1.2225, 3, true}},
-    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, false, false, 83.7, 1,
+    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false, 83.7, 1,
      S2Pin{3.1203, 1.1618, 475.3, 1481.0, 78.1, 1.1127, 3, false}},
     {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, false, false, 90.4, 2,
      S2Pin{2.5297, 1.0530, 496.3, 1258.3, 66.2, 1.0846, 3, true}},

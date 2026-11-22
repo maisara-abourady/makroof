@@ -193,3 +193,9 @@ Reason: phase-07c-1b condition 7 / D-B5 / FM-GROWTH (decider files 4, 8, 11; int
 - `(records-test constants)`: S2 pin of the six restore-gate register entries and the macOS growth trigger (no golden file changed)
 - `(records-test constants)`: the macOS and Windows low-alpha entries closed under AX38 4c (c) (E1, D-B5 (v)): 14 x worst <= 30 s on every S2 run (macOS 23.46 / 22.44 / 24.08 s, Windows 20.24 / 15.96 / 19.59 s), `listed` false, print only (no golden file changed)
 - `(records-test constants)`: 07c-1b S2 re-pin: G9 exit met on Linux and Windows (≥ 3 green runs, ns-per-eval ratio within 1.05 of its mean); k and solveRefMs pinned from runs 43389296112, 43402114873, 43412038058; macOS not met, PROVISIONAL until 07d. `S2Pin::solveExitMet` true on the Linux and Windows entries, false on macOS (solve basis S2-PINNED / S2-PROVISIONAL; SOLVE print-only, never a (d) trigger; `docs/review/phase-07c-1b/25` Q3) (no golden file changed)
+
+## 2026-11-22 (07c-1b P07C1B-R1)
+
+Reason: phase 07c-1b P07C1B-R1 (carried to phase 07c-2 scope 10, its first code commit): the macOS `cube100_lowalpha0.05_s0.3` entry closed under AX38 4c E1 on the S2 runs, then PR #33's run 43427854710 printed OVER30S, so it is re-listed under AX38 4c (a); print only; no golden file changed.
+
+- `(records-test constants)`: the macOS low-alpha entry re-listed under AX38 4c (a) after closure (PR #33 run 43427854710: 14 x worst 30.50 s on the hosted macOS runner; 100 m / 96 kHz, exact tail L = 12 s, 2 emitters; OVER30S); `listed` true, recorded value 33.40 s unchanged; print only (no golden file changed)
