@@ -65,7 +65,7 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
    - **The ABX runs first** (the ABX scene question M3, the seal and the run moved to phase-07c-2b, 2026-11-22, two-session split: its
      scopes 2 and 3; the design and kit stay here): the AX47 self-ABX (16 trials, capped layout-4 scene, noise and speech) and the
      AX49 listening item L4 (blind held-chord ABX, provisional against exact tail, T60 8 s, fully wet,
-     16 trials, ≥ 12/16 = detected) are run in this phase. This phase's loop sets the AX47 ABX's detection
+     16 trials, ≥ 12/16 = detected) are run in phase-07c-2b (its scopes 2 and 3). This phase's loop sets the AX47 ABX's detection
      criterion and step sizes before the run (AX47 reversal; a per-size 12/16 rule over several sizes raises
      the family-wise false-detection rate, interrogator file 16 row P07C1-DC-06). AX47's reversal (bound 0.5 dB) and AX49's reversal
      (L4 detects the cut) follow from their results. The generated speech-like stimulus of `[ax47-midfade]` is a CI
@@ -212,7 +212,8 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
 
 ## Contractor review focus
 
-- the W_max re-derivation from the background budget (phase-07c F6)
+- the W_max re-derivation from the background budget (phase-07c F6) (moved to phase-07c-2b, 2026-11-22, two-session split: its
+  contractor review focus)
 
 ## Risks
 
