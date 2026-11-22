@@ -33,6 +33,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <random>
 #include <string>
@@ -65,6 +66,7 @@ constexpr const char* kOsName = "Linux";
 
 constexpr double kRate = 48000.0;
 constexpr int kMultipliers[] = {1, 4, 5, 6, 8};
+const int kOnlyCase = std::getenv("M7_ONLY") ? std::atoi(std::getenv("M7_ONLY")) : -1; // DEBUG
 constexpr int kIdleEdits = 10;
 constexpr int kMidEdits = 10;
 constexpr int kRoomEdits = 2;   // per case at m = 6, 8 (M7b)
@@ -251,13 +253,20 @@ CaseResult runCase(const std::string& name, const contract::SceneDescription& sc
                                                   std::chrono::duration<double, std::milli>(u * dMed)));
         const bool ended = probe.endSeq.load() == seq;
         late += ended ? 1 : 0;
+        const auto st0 = p.stats();
+        const auto dec0 = probe.decisions.load();
         const auto t0 = probe.editAndArm(nextY());
         const double hold = msBetween(t0, probe.waitHold());
+        const auto st1 = p.stats();
         r.midHoldMs.push_back(hold);
         std::printf("07c2-m7trial os=%s scene=%s m=%d edit %d at %.1f ms into the solve (u=%.3f of D_med %.1f ms%s): "
-                    "hold %.1f ms\n",
+                    "hold %.1f ms [decisions +%llu, interim +%llu, final +%llu, discarded +%llu]\n",
                     kOsName, name.c_str(), m, i, msBetween(start, t0), u, dMed,
-                    ended ? ", solve already ended" : "", hold);
+                    ended ? ", solve already ended" : "", hold,
+                    static_cast<unsigned long long>(probe.decisions.load() - dec0),
+                    static_cast<unsigned long long>(st1.interimSubmits - st0.interimSubmits),
+                    static_cast<unsigned long long>(st1.finalSubmits - st0.finalSubmits),
+                    static_cast<unsigned long long>(st1.discardedMidDrag - st0.discardedMidDrag));
     }
     waitSettled(p);
 
@@ -334,7 +343,8 @@ TEST_CASE("records: M7 ISM hold of a position edit during a running builder solv
     std::uint64_t seed = 0x07C20007;
     for (const auto& s : scenes)
         for (const int m : kMultipliers)
-            all.push_back(runCase(s.name, s.scene, m, seed++));
+            if (kOnlyCase < 0 || kOnlyCase == m)
+                all.push_back(runCase(s.name, s.scene, m, seed++));
     // M7b: cancel-on-edit, from the measured edit-to-solve-end times (not implemented in shipped code).
     for (const auto& r : all)
     {
