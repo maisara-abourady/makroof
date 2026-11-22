@@ -14,12 +14,45 @@ ABX test.
 
 - **The step:** a change of g dB in tail energy, uniform across all 8 bands. The two IrSets come from one
   StagedBuild through `useDiffuseLevel`. The early sound is bit-identical, and only the tail changes (item 5).
-  - Item 5 scales the whole tail energy (diffuse and specular) by 10^(g/10), as item 6's formula requires; on
-    layout4_s1/default the specular share is 0 in every band, so this equals scaling E_b alone (file 5's wording);
-    the kit refuses a down-step that would need E'_diff < 0. (Decider file 21, point 1.)
+  - **What item 5 scales** (decider file 34, item 1, verbatim; it replaces file 27's sentence and the earlier
+    file 21 wording, under M1 A, file 31):
+
+    > Item 5 scales the whole tail target E_target = E_spec + E_diff by k = 10^(g/10). Cli L788, read with Engine
+    > L181–183, sets E′_diff = k·E_diff + (k−1)·E_spec, so E′_target = k·E_target. A band with E_spec = 0 is scaled
+    > directly (L776–779), with the same result. The rendered window from t_mix,e + 2.5 ms onward holds no images
+    > (NoiseTail L278–279; MixingTime.h L27). So the whole window waveform scales by 10^(g/20), and item 6's identity
+    > is exact at any specular share of E_target (test_cli.cpp L350–358 asserts it at share ≈ 0.74). The only
+    > unscaled energy in [t_mix,e, L) is the 2.5 ms ISM fade-out. It lies inside the 0.1 dB window tolerance
+    > whenever its share s_w ≤ 2.3 %; s_w is printed and asserted. The kit refuses three cases:
+    > - (a) a scene with no diffuse tail level, at any g (L755–758);
+    > - (b) a step that would need negative diffuse energy, i.e. k < share of E_target (L788–795);
+    > - (c) a band with a specular-only tail, i.e. E_spec ≠ 0 with E_diff ≤ 0 or no diffuse reference, when g ≠ 0
+    >   (L762, L781–786).
+    >
+    > [S-A only, as long as layout4_s1/default is the ABX scene:] On layout4_s1/default the share is 0 in every band,
+    > so this equals scaling E_b alone (file 5's wording).
+
+  - **What the manifest prints for it** (item 6; decider file 27, amendment 1 and "specular_share print", applied
+    under file 31): per emitter and output, `window_unscaled_share` (s_w, the exact split N = (a·u − s)/(a − 1),
+    a = 10^(g/20), as E(N)/E(u) over [t_mix,e, L)), per band and broadband, asserted ≤ 2.3 %; beside it, under its
+    own name, render_cli's `target_specular_share` (E_target's specular share per band, a level target, not a
+    waveform in the window); and, on the heard IR pair at each g, per band and broadband, the tail-window share of
+    the heard energy, ΔG and ΔC80 (C80 per Vorländer Eq. 6.7, late window 80 ms to the end of the IR; file 29's
+    method). These are prints; none changes a stimulus.
 - **B** is the unstepped render, held throughout. **A** carries the step. **X** is either A or B (item 7).
 - **Directions:** in each block, 8 trials step up and 8 step down, in random order (item 7).
 - **Timing:** at least one T30 of programme comes before the step, and at least 2 s after it (item 7).
+- **Which T30 (M2 T-a, decider files 31 and 34).** The gaps, pauses and the Q5 onset window use T30(1 kHz) of the
+  heard IR, 2.009 s on layout4_s1/default. The manifest labels it (Seat 9): **"heard-IR T30, ISO fit spanning the
+  AX21 gap, not a decay rate"**, with the tail T30 beside it: **tail T30(1 kHz) 1.254 / 1.274 s** (emitters L / R,
+  from t_mix,e; the diffuse target's Eyring T60 is 1.291 s). Manifest fields: `scene.T30_1k_s`,
+  `scene.T30_1k_s_label`, `scene.tail_T30_1k_s`.
+- **M2 debt check, before each seal (decider file 34, item 3).** For each sealed scene the manifest prints the
+  minimum gap, the heard-IR T30 and the tail T30, and asserts minimum gap ≥ tail T30 (`m2_gap_check`); the build
+  stops if it fails. With the speech chain it must also pass Q5's ≥ 20 dB onset assertion. On S-A the noise
+  chain's minimum gap is 2.016 s against tail T30 1.254 / 1.274 s. The check matters for any other scene M3 or
+  item 15(i) seals: T-a's harmlessness rests on the gap exceeding the tail's own decay, which fails on layout 5
+  (heard 2.557–2.575 s against tail-alone 2.58–2.62 s, K4 fact 9).
 - **Scene:** `layout4_s1/default`, an "occupied mid-size hall envelope, not a validated preset" (item 9).
   - 20 × 30 × 10 m, with an absorbing floor and scattering 1 on every face.
   - Fixed tailSeed 12345 (**kit choice**: the value the scene template carries).
@@ -67,8 +100,9 @@ ABX test.
      The script downloads `48k.zip`, checks it against our SHA-256 and writes `NOTICE-TSP.txt`. Never commit or
      upload these files (item 12).
    - Each build runs every item-6 assertion on every stimulus, and stops if any fails. The assertions are: early
-     parts bit-identical, the stated tail step, the `[ax47-midfade]` checks, no new click at the step, and, for
-     speech, Q5's tail ≥ floor + 20 dB at the onset.
+     parts bit-identical, the stated tail step, the window's unscaled share s_w ≤ 2.3 %, the `[ax47-midfade]`
+     checks, no new click at the step, and, for speech, Q5's tail ≥ floor + 20 dB at the onset. It also stops if
+     the M2 gap check (minimum gap ≥ tail T30) fails.
    - `manifest.json` records the measured values, every stimulus's SHA-256 and, for speech, the excerpt's SHA-256
      and every replaced onset.
 4. **Seal** each chain: `python tools/ci/abx_kit.py seal --pack build/abx-07c-2/<chain> --session <session dir> --key <key file>`.

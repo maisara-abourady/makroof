@@ -23,8 +23,14 @@ useDiffuseLevel, faded in with the shipped AQ4 30 ms equal-gain crossfade (AX18)
 Assertions on every stimulus (item 6): early parts bit-identical (the IRs up to the tail's fade-in, and the render
 before the onset); 10 log10(E(stepped - unstepped)/E(unstepped)) = 20 log10|10^(g/20) - 1| over the tail window;
 the [ax47-midfade] checks (tests/unit/test_ax47_midfade.cpp: W-a windows and companions (i)-(iii)); the
-tools.acoustics click detector finds no event in the step region; the per-band wet-output change and the window's
-specular share are printed. Speech (Q5): the onset <= 0.43 T30(1 kHz) after the end of speech, the rendered tail
+tools.acoustics click detector finds no event in the step region; the per-band wet-output change, the window's
+unscaled energy share (exact split, `window_unscaled_share`, asserted <= 2.3 %) and render_cli's E_target specular
+share (`target_specular_share`) are printed, each under its own name (decider file 27, amendment 1; file 31, item 6).
+Per g, on the heard IR pair: the tail-window share of the heard energy, Delta G and Delta C80 per band (Seat 1's
+condition, file 27). M2 (files 31, 34): the manifest carries the heard-IR T30 with Seat 9's label, the tail T30
+beside it and the minimum gap, and asserts minimum gap >= tail T30.
+
+Speech (Q5): the onset <= 0.43 T30(1 kHz) after the end of speech, the rendered tail
 >= the rendered floor (TSP's own noise) + 20 dB at the onset (1 kHz band, 50 ms window); a failing seeded onset
 is replaced by the next seed index and the replacement recorded.
 """
@@ -88,6 +94,10 @@ ONSET_SEED_RANGE = 32  # noise: the onset's seeded offset in partitions, 0..31
 END_OF_SPEECH_DB = 15.0  # end of speech: the last 10 ms frame above TSP's noise floor + 15 dB
 MAX_PEAK_DBFS = -1.0  # no normalisation (item 10): a stimulus peaking above this fails the build
 U = 2.0**-24  # float32 unit roundoff, as test_ax47_midfade.cpp uses it
+S_W_MAX = 0.023  # file 34 item 1: the ISM fade-out's unscaled share s_w of [t_mix,e, L), inside the 0.1 dB tolerance
+C80_S = 0.080  # Vorlaender Eq. 6.7: early [0, 80 ms), late [80 ms, end of the IR file) (file 29, method 5)
+# M2 T-a, Seat 9's label for the heard-IR T30 (decider files 27, 31, 34): printed beside the tail's own T30
+HEARD_T30_LABEL = "heard-IR T30, ISO fit spanning the AX21 gap, not a decay rate"
 
 # ---- McGill TSP speech database, version 2 (2018-11), Simplified BSD; docs/THIRD_PARTY.md ----
 TSP_URL = "https://mmsp.ece.mcgill.ca/Documents/Data/TSP-Speech-Database/48k.zip"
@@ -168,6 +178,7 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
     lst = np.asarray(scene["listener"]["position"])
     volume = float(d["volume"])
     out["T30_1k_s"] = float(t30)
+    out["T30_1k_s_label"] = HEARD_T30_LABEL
     out["T60_eyring_1k_s"] = float(d["t60"][4])
     # Critical distance r_c = 0.057 sqrt(V / T) (omni source, g = 1: Kuttruff Eq. 5.44, 0.1 sqrt(V / (pi T)), stated
     # there with Sabine's T; here with the diffuse target's Eyring T60; print only).
@@ -179,6 +190,7 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
         out["emitters"].append({"id": e["id"], "r_m": r, "r_over_rc": r / rc, "capHit_shipped": e["diffuse"]["capHit"],
                                 **emitter_ir_metrics(ir[:, e["channel"] * 2], fs, e, d)})
     out["r_c_m"] = rc
+    out["tail_T30_1k_s"] = [x["tail_T30_1k_s"] for x in out["emitters"]]  # per emitter, from t_mix,e (beside T30_1k_s)
     # The heard IR (both emitters summed): at equal r the two direct sounds coincide and add coherently, the tails
     # do not, so this D/R is about 3 dB above each emitter's own (decider file 21, 2b; file 22). The per-emitter D/R
     # (single-emitter IR, AX13) is the one to set against r/r_c.
@@ -186,7 +198,8 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
     out["DRR_dB_broadband"] = m["broadband"].get("DRR")
     out["DRR_dB_1k"] = m["bands"]["1000"].get("DRR")
     out["diagnostics"] = d
-    log(f"scene layout4_s1/default: capped at m = 6, 7, 8 ({out['capped']}); heard T30(1 kHz) {t30:.3f} s "
+    log(f"scene layout4_s1/default: capped at m = 6, 7, 8 ({out['capped']}); T30(1 kHz) {t30:.3f} s "
+        f"({HEARD_T30_LABEL}; tail T30 {', '.join(_fmt(x, 3) for x in out['tail_T30_1k_s'])} s) "
         f"(Eyring T60 {out['T60_eyring_1k_s']:.3f} s); r_c {rc:.2f} m ({out['r_c_m_T30']:.2f} m from the heard T30); "
         + "; ".join(f"emitter {x['id']} r {x['r_m']:.2f} m r/r_c {x['r_over_rc']:.2f} D/R {_fmt(x['DRR_dB_broadband'])} dB "
                     f"(1 kHz {_fmt(x['DRR_dB_1k'])} dB), tail-alone T30(1 kHz) {_fmt(x['tail_T30_1k_s'], 3)} s"
@@ -219,16 +232,40 @@ def emitter_ir_metrics(h: np.ndarray, fs: float, e: dict, diag: dict) -> dict:
 # ---------------------------------------------------------------------------------------------------------
 
 
-def ir_pair(binary: pathlib.Path, scene_path: pathlib.Path, g: float, work: pathlib.Path) -> tuple[np.ndarray, np.ndarray]:
+def ir_pair(binary: pathlib.Path, scene_path: pathlib.Path, g: float,
+            work: pathlib.Path) -> tuple[np.ndarray, np.ndarray, dict]:
+    """The unstepped and stepped IR (float32) and render_cli's own print of E_target's specular share per emitter
+    and band (`target_specular_share`: E_spec / (E_spec + E_diff) of the tail target, not a share of the window)."""
     u, s = work / f"ir_unstepped.wav", work / f"ir_stepped_{g:+.2f}.wav"
-    _run(binary, "--scene", scene_path, "--mode", "omni", "--abx-step-db", repr(float(g)), "--ir", u, "--abx-stepped-ir", s)
-    return wav.read_float32(u)[0], wav.read_float32(s)[0]
+    stdout = _run(binary, "--scene", scene_path, "--mode", "omni", "--abx-step-db", repr(float(g)), "--ir", u,
+                  "--abx-stepped-ir", s)
+    return wav.read_float32(u)[0], wav.read_float32(s)[0], parse_target_specular_share(stdout)
+
+
+def parse_target_specular_share(stdout: str) -> dict[int, list[float]]:
+    """render_cli --abx-step-db's line "abx step: emitter E g G dB; specular share of E_target per band: v1 .. v8"."""
+    out: dict[int, list[float]] = {}
+    marker = "specular share of E_target per band:"
+    for line in stdout.splitlines():
+        if line.startswith("abx step: emitter ") and marker in line:
+            emitter = int(line.split()[3])
+            out[emitter] = [float(v) for v in line.split(marker, 1)[1].split()]
+            assert len(out[emitter]) == len(bands.OCTAVE_BANDS_HZ), line
+    return out
+
+
+def unscaled_part(u: np.ndarray, s: np.ndarray, g: float) -> np.ndarray:
+    """K3's exact split (decider file 27; file 25, method 5b): with IR = N + T and stepped = N + a T, a = 10^(g/20),
+    the part that does not scale is N = (a u - s) / (a - 1)."""
+    a = 10.0 ** (g / 20.0)
+    return (a * u - s) / (a - 1.0)
 
 
 def ir_assertions(unstepped: np.ndarray, stepped: np.ndarray, diag: dict, g: float) -> dict:
     """The IR-level part of item 6, per emitter and output channel: the early part bit-identical up to the tail's
     fade-in (t_mix,e - 2.5 ms), the stated step over the tail window [t_mix,e, L) (AX47's) and over the tail alone
-    [t_mix,e + 2.5 ms, L); the window's specular share (print only, Seat 3)."""
+    [t_mix,e + 2.5 ms, L); the window's unscaled share s_w = E(N)/E(u), N from the exact split (asserted <= S_W_MAX
+    on [t_mix,e, L), file 34 item 1)."""
     fs = float(diag["sampleRate"])
     half = int(round(0.0025 * fs))
     expected = 20.0 * math.log10(abs(10.0 ** (g / 20.0) - 1.0))
@@ -246,11 +283,12 @@ def ir_assertions(unstepped: np.ndarray, stepped: np.ndarray, diag: dict, g: flo
             res = {}
             for name, start in (("ax47_window", mix), ("tail_alone", mix + half)):
                 eu, es, ed = (np.sum(u[start:] ** 2), np.sum(s[start:] ** 2), np.sum((s[start:] - u[start:]) ** 2))
-                tail = ed / (10.0 ** (g / 20.0) - 1.0) ** 2  # the tail's energy in the window, from the difference
+                en = np.sum(unscaled_part(u[start:], s[start:], g) ** 2)
                 res[name] = {"start_tap": start, "length": len(u) - start, "step_db": 10 * math.log10(es / eu),
-                             "diff_db": 10 * math.log10(ed / eu), "specular_share": max(0.0, 1.0 - tail / eu)}
+                             "diff_db": 10 * math.log10(ed / eu), "window_unscaled_share": float(en / eu)}
             # D-W2 item 6, stated tolerances: 0.01 dB on the tail alone (exact up to float32 rounding); 0.1 dB over
-            # [t_mix,e, L), which also holds the early part's fade-out (its specular share is printed).
+            # [t_mix,e, L), which also holds the early part's 2.5 ms fade-out: inside it while s_w <= 2.3 % (file 34).
+            assert res["ax47_window"]["window_unscaled_share"] <= S_W_MAX, (e["channel"], o, res, S_W_MAX)
             assert abs(res["tail_alone"]["diff_db"] - expected) <= 0.01, (e["channel"], o, res, expected)
             assert abs(res["tail_alone"]["step_db"] - g) <= 0.01, (e["channel"], o, res, g)
             assert abs(res["ax47_window"]["diff_db"] - expected) <= 0.1, (e["channel"], o, res, expected)
@@ -259,22 +297,63 @@ def ir_assertions(unstepped: np.ndarray, stepped: np.ndarray, diag: dict, g: flo
     return {"g_db": g, "rows": rows}
 
 
-def ir_band_shares(unstepped: np.ndarray, stepped: np.ndarray, diag: dict, g: float) -> list[dict]:
-    """Per emitter and band (print only): the window's specular share of E(unstepped) over [t_mix,e, L) and the
-    step measured per band."""
+def ir_band_shares(unstepped: np.ndarray, stepped: np.ndarray, diag: dict, g: float,
+                   target_share: dict[int, list[float]]) -> list[dict]:
+    """Per emitter and band (print only; file 27, "specular_share print"): the window's unscaled share
+    `window_unscaled_share` = E(N)/E(u) over [t_mix,e, L), N from the exact split, per band and broadband; beside it,
+    under its own name, render_cli's `target_specular_share` (E_target's specular share, a level target, not a
+    waveform in the window); and the step measured per band."""
     fs = float(diag["sampleRate"])
     out = []
     for e in diag["emitters"]:
         mix = int(math.ceil((e["mixS"] - diag["alignmentShiftS"]) * fs))
         c = e["channel"] * 2
         u, s = unstepped[:, c].astype(np.float64), stepped[:, c].astype(np.float64)
-        row = {"emitter": e["channel"], "bands": {}}
-        for fc in bands.OCTAVE_BANDS_HZ:
-            ub, sb = bands.filter_band(u, fs, fc)[mix:], bands.filter_band(s, fs, fc)[mix:]
-            eu, ed = np.sum(ub**2), np.sum((sb - ub) ** 2)
-            share = max(0.0, 1.0 - ed / (10.0 ** (g / 20.0) - 1.0) ** 2 / eu)
-            row["bands"][bands.band_key(fc)] = {"step_db": 10 * math.log10(np.sum(sb**2) / eu), "specular_share": share}
+        n = unscaled_part(u, s, g)
+        shares = target_share.get(e["channel"])
+        row = {"emitter": e["channel"],
+               "window_unscaled_share_broadband": float(np.sum(n[mix:] ** 2) / np.sum(u[mix:] ** 2)), "bands": {}}
+        for i, fc in enumerate(bands.OCTAVE_BANDS_HZ):
+            ub, sb, nb = (bands.filter_band(x, fs, fc)[mix:] for x in (u, s, n))
+            eu = np.sum(ub**2)
+            row["bands"][bands.band_key(fc)] = {"step_db": 10 * math.log10(np.sum(sb**2) / eu),
+                                                "window_unscaled_share": float(np.sum(nb**2) / eu),
+                                                "target_specular_share": None if shares is None else shares[i]}
         out.append(row)
+    return out
+
+
+def _c80_db(x: np.ndarray, early_end: int) -> float:
+    early, late = float(np.sum(x[:early_end] ** 2)), float(np.sum(x[early_end:] ** 2))
+    return 10 * math.log10(early / late)
+
+
+def heard_pair_metrics(unstepped: np.ndarray, stepped: np.ndarray, fs: float, g: float) -> dict:
+    """Print only (Seat 1's condition, decider file 27; method of file 29, step 5), on the heard IR pair
+    hu = u[:, 0] + u[:, 2], hs = s[:, 0] + s[:, 2], broadband and per band (`bands.filter_band_with_lead`, so the
+    zero-phase filter's pre-ringing is kept): the tail-window share of the heard energy E(T)/E(hu), with
+    T = (hs - hu)/(a - 1) the part that scales; Delta G = 10 log10(E(hs)/E(hu)) over the whole IR;
+    Delta C80 = C80(hs) - C80(hu), C80 per Vorlaender Eq. 6.7, t = 0 at the broadband onset of hu (ISO 3382-1's
+    -20 dB rule), late window 80 ms to the end of the IR file (no noise floor, so no Lundeby truncation)."""
+    hu = unstepped[:, 0].astype(np.float64) + unstepped[:, 2].astype(np.float64)
+    hs = stepped[:, 0].astype(np.float64) + stepped[:, 2].astype(np.float64)
+    a = 10.0 ** (g / 20.0)
+    onset = metrics.onset_index(hu)
+    n80 = int(round(C80_S * fs))
+
+    def one(xu: np.ndarray, xs: np.ndarray, lead: int) -> dict:
+        eu = float(np.sum(xu**2))
+        tail = (xs - xu) / (a - 1.0)
+        b = lead + onset + n80
+        return {"tail_share_of_heard": float(np.sum(tail**2)) / eu,
+                "delta_G_db": 10 * math.log10(float(np.sum(xs**2)) / eu),
+                "delta_C80_db": _c80_db(xs, b) - _c80_db(xu, b)}
+
+    out = {"basis": "heard IR: emitters L + R summed (output 0)", "onset_tap": onset, "broadband": one(hu, hs, 0),
+           "bands": {}}
+    for fc in bands.OCTAVE_BANDS_HZ:
+        (bu, lead), (bs, _) = bands.filter_band_with_lead(hu, fs, fc), bands.filter_band_with_lead(hs, fs, fc)
+        out["bands"][bands.band_key(fc)] = one(bu, bs, lead)
     return out
 
 
@@ -437,10 +516,25 @@ def render_trial(binary, scene_path, programme: np.ndarray, onset: int, g: float
             "sha256": {"A": sha256_file(a_path), "B": sha256_file(b_path)}}
 
 
+def gap_check(scene: dict, min_gap_s: float, gap_t30_s: float) -> dict:
+    """M2 debt check (decider file 34, item 3): T-a's gaps and pauses are >= the heard-IR T30, which is harmless only
+    while the minimum gap also exceeds the tail's own decay (true on S-A, false on layout 5). Printed: the minimum
+    gap, the heard-IR T30 (Seat 9's label) and the tail T30 per emitter; asserted: minimum gap >= every tail T30."""
+    tail = scene["tail_T30_1k_s"]
+    if any(t is None for t in tail):
+        raise RuntimeError(f"tail T30(1 kHz) not measured on every emitter ({tail}): the M2 gap check cannot run")
+    assert abs(gap_t30_s - scene["T30_1k_s"]) <= 1e-9, (gap_t30_s, scene["T30_1k_s"])  # the gaps use the heard T30
+    rec = {"min_gap_s": float(min_gap_s), "heard_T30_1k_s": scene["T30_1k_s"], "heard_T30_label": HEARD_T30_LABEL,
+           "tail_T30_1k_s": tail, "min_gap_ge_tail_T30": bool(min_gap_s >= max(tail))}
+    assert rec["min_gap_ge_tail_T30"], f"M2: minimum gap {min_gap_s:.3f} s < tail T30 {max(tail):.3f} s (file 34 item 3)"
+    return rec
+
+
 def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_for, log=print, levels=LEVELS_DB,
-                trials: int | None = None) -> dict:
+                trials: int | None = None, min_gap_s: float | None = None, gap_t30_s: float | None = None) -> dict:
     """Both blocks of one chain (0.9 dB and 0.5 dB: every stimulus is sealed before the run, item 11) plus the
-    familiarisation pairs; `programme_for(seed_index) -> (x, onset, record)`. `trials` limits each block (tests)."""
+    familiarisation pairs; `programme_for(seed_index) -> (x, onset, record)`. `trials` limits each block (tests).
+    `min_gap_s`, `gap_t30_s`: the programme's shortest gap or pause and the T30 it was built from (the M2 check)."""
     out.mkdir(parents=True, exist_ok=True)
     scene_path = out / "scene_layout4_s1_default.json"
     scene_path.write_text(json.dumps(scene_layout4_s1_default(), indent=1))
@@ -452,13 +546,27 @@ def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_f
                       "partition": PARTITION, "block": BLOCK, "render_cli": str(binary), "blocks": {}, "ir_checks": {}}
     manifest["scene"] = check_scene(binary, scene_path, work, log)
     diag = manifest["scene"].pop("diagnostics")
+    manifest["m2_gap_check"] = gap_check(manifest["scene"], min_gap_s, gap_t30_s)
+    gc = manifest["m2_gap_check"]
+    log(f"{chain}: M2 gap check: minimum gap {gc['min_gap_s']:.3f} s >= tail T30(1 kHz) "
+        f"{', '.join(f'{x:.3f}' for x in gc['tail_T30_1k_s'])} s; T30(1 kHz) {gc['heard_T30_1k_s']:.3f} s ({HEARD_T30_LABEL})")
     for g in sorted({s * x for x in (*levels, ANCHOR_DB) for s in (1, -1)}):
-        u, s = ir_pair(binary, scene_path, g, work)
-        manifest["ir_checks"][f"{g:+.1f}"] = {**ir_assertions(u, s, diag, g), "bands": ir_band_shares(u, s, diag, g)}
+        u, s, target_share = ir_pair(binary, scene_path, g, work)
+        rec = {**ir_assertions(u, s, diag, g), "bands": ir_band_shares(u, s, diag, g, target_share),
+               "heard": heard_pair_metrics(u, s, float(diag["sampleRate"]), g)}
+        manifest["ir_checks"][f"{g:+.1f}"] = rec
+        hb, h1k = rec["heard"]["broadband"], rec["heard"]["bands"]["1000"]
         log(f"{chain}: IR step {g:+.1f} dB: tail alone "
-            + ", ".join(f"{r['tail_alone']['step_db']:+.4f}" for r in manifest["ir_checks"][f"{g:+.1f}"]["rows"])
-            + " dB; window specular share "
-            + ", ".join(f"{r['ax47_window']['specular_share']:.2e}" for r in manifest["ir_checks"][f"{g:+.1f}"]["rows"]))
+            + ", ".join(f"{r['tail_alone']['step_db']:+.4f}" for r in rec["rows"])
+            + " dB; window_unscaled_share (s_w, <= 2.3 %) "
+            + ", ".join(f"{r['ax47_window']['window_unscaled_share']:.2e}" for r in rec["rows"])
+            + "; per band (max over bands) "
+            + ", ".join(f"{max(b['window_unscaled_share'] for b in r['bands'].values()):.2e}" for r in rec["bands"])
+            + "; target_specular_share (max over bands) "
+            + ", ".join(_fmt(max((b["target_specular_share"] or 0.0) for b in r["bands"].values()), 3) for r in rec["bands"])
+            + f"; heard: tail share 1 kHz {h1k['tail_share_of_heard']:.3f} (broadband {hb['tail_share_of_heard']:.3f}), "
+            f"delta G 1 kHz {h1k['delta_G_db']:+.3f} dB (broadband {hb['delta_G_db']:+.3f}), delta C80 1 kHz "
+            f"{h1k['delta_C80_db']:+.3f} dB (broadband {hb['delta_C80_db']:+.3f})")
     for level in levels:
         block = []
         for t in trial_plan(chain, level)[: trials or BLOCK_TRIALS]:
@@ -502,7 +610,8 @@ def build_noise_chain(out: pathlib.Path, binary: pathlib.Path, log=print, trials
         _run(binary, "--scene", tmp_scene, "--mode", "omni", "--ir", ir)
         h, fs = wav.read(ir)
         holder["t30"] = float(metrics.room_metrics(h[:, 0] + h[:, 2], fs)["bands"]["1000"]["T30"])
-    return build_chain("noise", binary, out, programme_for, log, trials=trials)
+    gap_s = int(math.ceil(holder["t30"] * FS / PARTITION)) * PARTITION / FS  # noise_programme's gap (all gaps equal)
+    return build_chain("noise", binary, out, programme_for, log, trials=trials, min_gap_s=gap_s, gap_t30_s=holder["t30"])
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -658,7 +767,7 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
         f"{rec_base['q5_passing_contiguous_from_first']}; replacement: first draw replaced with p "
         f"{rec_base['q5_first_draw_replaced_p']:.3f}, {rec_base['q5_expected_replaced_per_stimulus']:.2f} replaced "
         "onsets per stimulus expected")
-    manifest = build_chain("speech", binary, out, programme_for, log, trials=trials)
+    manifest = build_chain("speech", binary, out, programme_for, log, trials=trials, min_gap_s=pause / FS, gap_t30_s=t30)
     manifest["tsp"] = {"url": TSP_URL, "sha256": TSP_SHA256, "notice": TSP_NOTICE, **{k: v for k, v in rec_base.items()}}
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1, default=float))
     (out / "NOTICE-TSP.txt").write_text(TSP_NOTICE + "\n")

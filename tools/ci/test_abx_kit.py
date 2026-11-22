@@ -4,6 +4,9 @@
 - src/plugin never reaches the validation-only step flag (item 5).
 - The trial plan has the pre-registered structure (items 2, 7); scoring follows items 3, 4 and 13, and refuses to
   unseal a 0.5 dB block unless 0.9 dB was detected in that chain (item 11).
+- Item 6's prints (decider files 27, 31): the exact split N = (a u - s)/(a - 1) behind `window_unscaled_share`,
+  render_cli's `target_specular_share` parsed under its own name, and the heard-pair tail share, Delta G and Delta C80.
+- M2 (files 31, 34): Seat 9's T30 label, the tail T30 beside it, and the minimum gap >= tail T30 assertion.
 - End to end (render_cli needed; skipped without it unless SPATIAL_REQUIRE_RENDER_CLI=1): one noise trial with every
   item-6 assertion, and g = 0 bit-identical to no flag.
 """
@@ -38,6 +41,63 @@ def test_preregistered_numbers() -> None:
     assert abx_kit.W_CANDIDATES == (6, 7, 8)
     assert (abx_kit.Q5_ONSET_MAX_T30, abx_kit.Q5_MARGIN_DB, abx_kit.Q5_BAND_HZ, abx_kit.Q5_WINDOW_S) == (0.43, 20.0, 1000.0, 0.05)
     assert abx_kit.POST_STEP_S == 2.0
+    assert abx_kit.S_W_MAX == 0.023  # file 34 item 1
+    assert abx_kit.C80_S == 0.080  # Vorlaender Eq. 6.7 (file 29)
+    assert abx_kit.HEARD_T30_LABEL == "heard-IR T30, ISO fit spanning the AX21 gap, not a decay rate"  # Seat 9, M2
+
+
+def test_exact_unscaled_split() -> None:
+    # K3's split (file 25, method 5b): IR = N + T, stepped = N + a T; N = (a u - s)/(a - 1) exactly, whatever the
+    # overlap of N and T (the inferred print it replaces carried the cross term 2<N, T>).
+    rng = np.random.default_rng(1)
+    n, tail = rng.standard_normal(4000) * 0.1, rng.standard_normal(4000)
+    for g in (-3.0, -0.9, 0.5, 0.9, 3.0):
+        a = 10 ** (g / 20)
+        assert np.allclose(abx_kit.unscaled_part(n + tail, n + a * tail, g), n, rtol=0, atol=1e-12)
+
+
+def test_parse_target_specular_share() -> None:
+    out = ("abx step: emitter 0 g 0.9 dB; specular share of E_target per band: 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7\n"
+           "abx step: emitter 1 g 0.9 dB; specular share of E_target per band: 0 0 0 0 0 0 0 0\n"
+           "abx step: emitter 0 tail-energy change set per band (dB): 0.9 0.9 0.9 0.9 0.9 0.9 0.9 0.9\n")
+    assert abx_kit.parse_target_specular_share(out) == {0: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7], 1: [0.0] * 8}
+
+
+def test_heard_pair_metrics_synthetic() -> None:
+    # A direct impulse at 10 ms and a decaying tail from 300 ms in emitter L (channel 0); emitter R (channel 2) silent.
+    # Only the tail scales, and it lies wholly in C80's late window: Delta C80 = -g, Delta G = 10 log10(1 + share
+    # (a^2 - 1)), share = E(tail)/E(heard).
+    fs, g = 48000, 0.9
+    a = 10 ** (g / 20)
+    t = np.arange(fs) / fs
+    tail = np.where(t >= 0.3, np.random.default_rng(2).standard_normal(fs) * np.exp(-(t - 0.3) * 6.9) * 0.05, 0.0)
+    u = np.zeros((fs, 4))
+    u[480, 0] = 1.0
+    s = u.copy()
+    u[:, 0] += tail
+    s[:, 0] += a * tail
+    m = abx_kit.heard_pair_metrics(u, s, fs, g)
+    bb = m["broadband"]
+    share = np.sum(tail**2) / np.sum(u[:, 0] ** 2)
+    assert m["onset_tap"] == 480
+    assert abs(bb["tail_share_of_heard"] - share) <= 1e-12
+    assert abs(bb["delta_G_db"] - 10 * np.log10(1 + share * (a * a - 1))) <= 1e-9
+    assert abs(bb["delta_C80_db"] + g) <= 1e-9
+    assert abs(m["bands"]["1000"]["delta_C80_db"] + g) <= 1e-6
+    assert set(m["bands"]) == {"63", "125", "250", "500", "1000", "2000", "4000", "8000"}
+
+
+def test_m2_gap_check() -> None:
+    # File 34 item 3: minimum gap, heard-IR T30 (labelled) and tail T30 printed; minimum gap >= tail T30 asserted.
+    scene = {"T30_1k_s": 2.009, "tail_T30_1k_s": [1.254, 1.274]}
+    rec = abx_kit.gap_check(scene, 2.016, 2.009)
+    assert rec == {"min_gap_s": 2.016, "heard_T30_1k_s": 2.009, "heard_T30_label": abx_kit.HEARD_T30_LABEL,
+                   "tail_T30_1k_s": [1.254, 1.274], "min_gap_ge_tail_T30": True}
+    # layout 5 (K4 fact 9): heard 2.557 s against tail-alone 2.58-2.62 s fails
+    with pytest.raises(AssertionError):
+        abx_kit.gap_check({"T30_1k_s": 2.557, "tail_T30_1k_s": [2.58, 2.62]}, 2.560, 2.557)
+    with pytest.raises(RuntimeError):
+        abx_kit.gap_check({"T30_1k_s": 2.0, "tail_T30_1k_s": [None, 1.2]}, 2.1, 2.0)
 
 
 def test_family_error_and_power() -> None:
@@ -178,9 +238,36 @@ def test_noise_trial_end_to_end(tmp_path: pathlib.Path) -> None:
     for e in em:
         assert abs(e["tail_T30_1k_s"] / e["target_T60_1k_s"] - 1.0) <= 0.10, e
         assert e["T30_1k_s"] > 1.3 * e["tail_T30_1k_s"], e
+    # M2 (files 31, 34): Seat 9's label on the heard-IR T30, the tail T30 beside it, the gap check passed on S-A
+    assert sc["T30_1k_s_label"] == abx_kit.HEARD_T30_LABEL
+    assert sc["tail_T30_1k_s"] == [e["tail_T30_1k_s"] for e in em]
+    gc = m["m2_gap_check"]
+    assert gc["heard_T30_1k_s"] == sc["T30_1k_s"] and gc["heard_T30_label"] == abx_kit.HEARD_T30_LABEL
+    assert gc["min_gap_s"] >= sc["T30_1k_s"] and gc["min_gap_s"] >= max(gc["tail_T30_1k_s"]) and gc["min_gap_ge_tail_T30"]
+    keys = {"63", "125", "250", "500", "1000", "2000", "4000", "8000"}
     for g, rec in m["ir_checks"].items():
+        gd = float(g)
+        a = 10 ** (gd / 20)
         for row in rec["rows"]:
-            assert abs(row["tail_alone"]["step_db"] - float(g)) <= 0.01
+            assert abs(row["tail_alone"]["step_db"] - gd) <= 0.01
+            # item 6 print fix (file 27): the exact split, not the inferred specular_share; s_w <= 2.3 % (file 34)
+            assert "specular_share" not in row["ax47_window"]
+            assert 0.0 <= row["ax47_window"]["window_unscaled_share"] <= abx_kit.S_W_MAX
+            assert row["ax47_window"]["window_unscaled_share"] < 1e-9  # S-A: no images in the window (K3, K4)
+        for br in rec["bands"]:
+            assert br["window_unscaled_share_broadband"] < 1e-9 and set(br["bands"]) == keys
+            for b in br["bands"].values():
+                assert b["window_unscaled_share"] < 1e-9
+                assert b["target_specular_share"] == 0.0  # render_cli's own print; 0 on layout4_s1/default
+        # Seat 1's condition (file 27): per band and broadband on the heard pair; S-A's 1 kHz values are K4's (file 29)
+        h = rec["heard"]
+        assert set(h["bands"]) == keys
+        for x in (h["broadband"], *h["bands"].values()):
+            assert abs(x["delta_G_db"] - 10 * np.log10(1 + x["tail_share_of_heard"] * (a * a - 1))) <= 1e-6
+            assert abs(x["delta_C80_db"] + gd) <= 0.01  # [0, 80 ms) holds only the direct sound (63 Hz rings most)
+        for x in (h["broadband"], h["bands"]["1000"]):
+            assert abs(x["delta_C80_db"] + gd) <= 1e-6
+        assert round(h["bands"]["1000"]["tail_share_of_heard"], 3) == 0.046
     for level, block in m["blocks"].items():
         (t,) = block
         assert t["midfade"]["windows"] > 0
