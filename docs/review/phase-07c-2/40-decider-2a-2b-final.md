@@ -1,4 +1,4 @@
-# 40 — Decider: 2a and 2b, final (rebuttal to interrogator file 39)
+# 40 — Decider: 2a and 2b, final (rebuttal to interrogator file 39; file 41's corrections applied)
 
 Both answers are final. 2a stands with the interrogator's two corrections. 2b is revised to answer all three points
 of file 39, and names homes outside `docs/review/` for the vetoed label and the 8 kHz follow-up. All plan edits are
@@ -28,7 +28,7 @@ No seat argues for sealing now.
   [0.0007, 0.1865]·T30, narrower than the pre-registered 0.43·T30 ceiling. Amend the rule to the realised window, or
   leave it and record the window?
 - **Answer:** "The pre-registered Q5 rule (onset no later than 0.43 · T30(1 kHz) after the end of speech, ≥ 20 dB
-  onset assertion) is not amended. The realised window, [0.0007, 0.1865] · T30 (1.3 ms to 0.375 s at heard-IR T30
+  onset assertion) is not amended. The realised window, [0.0007, 0.1865] · T30 (1.4 ms to 0.375 s at heard-IR T30
   2.009 s; passing boundaries 0–33 and 35 of 81; first-draw replacement probability 46/81 = 0.568; 46/36 = 1.28
   replaced onsets per stimulus), is recorded in the run sheet and recomputed by the kit for the pre-registered pair
   before sealing. Seat 9's premise correction to the 0.43 ceiling (t ≤ hold + (SNR − 20 − L_drop)/60 · T60_tail,
@@ -70,7 +70,8 @@ No seat argues for sealing now.
 
 ## H1. Homes outside `docs/review/`
 1. Seat 9's premise correction (2a): phase-07c-2b.md scope 2, debt-register bullet L91 (P1).
-2. The superseded label (2b): phase-07c-2b.md scope 2, "Amendments held for M3" L94–99 (P2), plus PR Follow-up F1.
+2. The superseded label (2b, printed by the run sheet, `abx_kit.py` and `tools/ci/listening_pack.py` L452): phase-07c-2b.md
+   scope 2, "Amendments held for M3" L94–99 (P2), plus PR Follow-up F1.
    Two guards stop a seal under the old string: item 9's label is replaced once M3 survives (L94–96); "the manifest
    carries Seat 9's label" is required before each seal (L112).
 3. The 8 kHz +18 % follow-up (2b): phase-08-4.md "Notes from the split", the freeze-point-conditions bullet
@@ -87,31 +88,33 @@ every option, goes in the decision's debt register (file 31)." (L91) with:
    - Seat 9's 0.43 ceiling, rated 1/1 on every option, goes in the decision's debt register (file 31), with its
      premise corrected on the record (Seat 9, file 26 §5; decider file 40, 2a): the 26/60 premise assumed D/R ≤ 0;
      the corrected bound is t ≤ hold + (SNR − 20 − L_drop)/60 · T60_tail, L_drop = 10·log10(1 + 10^(D/R/10)), which
-     on layout4_s1/default (L_drop 13.3 dB, hold 0.1 s, T60_tail 1.30 s) gives 0.375 s, the measured realised Q5
+     on layout4_s1/default (L_drop 13.3 dB, from the heard L + R D/R +13.1 dB at 1 kHz, file 22; hold 0.1 s; T60_tail 1.30 s; the 46 dB SNR is broadband, Seat 9's [Hyp]) gives 0.375 s, the measured realised Q5
      window. The pre-registered Q5 rule itself is not amended (decider file 40, 2a).
 ```
 **P2.** `docs/phases/phase-07c-2b.md`, scope 2, "Amendments held for M3" bullet, after "File 34 item 1's "[S-A only,
 as long as layout4_s1/default is the ABX scene:]" clause is re-examined by M3's scene choice." (L99), append:
 ```
      Until then the item-9 label "occupied mid-size hall envelope, not a validated preset", still printed in
-     `docs/validation/abx-07c-2-run-sheet.md` (§1 "Scene") and in `tools/ci/abx_kit.py` (scene docstring and the
-     manifest `label` string), is **superseded pending M3**: Seat 9 rated it 3/3 (file 26) and "hall" and "occupied"
-     are removed everywhere (file 27). It is replaced by M3's item-9 label in both files before any seal; no stimulus
-     is sealed or cited under it (decider file 40, 2b).
+     `docs/validation/abx-07c-2-run-sheet.md` (§1 "Scene"), in `tools/ci/abx_kit.py` (scene docstring and the
+     manifest `label` string) and by `tools/ci/listening_pack.py` (L452, which prints the kit's label into the
+     phase-07c-2 listening-pack artifact's text and manifest), is **superseded pending M3**: Seat 9 rated it 3/3
+     (file 26) and "hall" and "occupied" are removed everywhere (file 27). It is replaced by M3's item-9 label in all
+     three before any seal; no stimulus is sealed under it, and the 07c-2 listening-pack artifact that still prints
+     it is marked superseded in 07c-2's PR listening checklist (decider file 40, 2b).
 ```
 **P3.** `docs/phases/phase-08-4.md`, "Notes from the split", last bullet ending "and AX35 (a converter re-run before
 the freeze is a parameter change)." (L133), append:
 ```
   Also before the freeze: the **8 kHz tail-T30 follow-up** (phase-07c-2 decider files 27 and 40, 2b; NFR-8, reported,
   nothing tuned). The tail T30 at 8 kHz on layout4_s1/default reads 0.870 / 0.884 s against the 0.740 s target
-  (+18 %; tail EDT +5 %; file 22). Render a synthetic exponential noise with T60 0.74 s through the AX13 band filter,
+  (+18 %; tail EDT +5 to +7 %; file 22). Render a synthetic exponential noise with T60 0.74 s through the AX13 band filter,
   and measure the tail's own band-7 noise without the neighbouring bands, to settle whether the analysis filter or
   the tail causes it. The result (cause, numbers) is cited before any golden is frozen; if it has not been run, it is
   this phase's first work (`tools/acoustics` only, no `src/sim/` change). If the tail is the cause, it returns to the
   board before the freeze; nothing is tuned for the scene.
 ```
 **PR Follow-ups:** F1 "The ABX item-9 label 'occupied mid-size hall envelope' (run sheet §1, `abx_kit.py` docstring
-and manifest `label`) is superseded pending M3 (Seat 9 3/3); replaced before any seal in phase-07c-2b scope 2
+and manifest `label`, and `listening_pack.py` L452 (the 07c-2 listening-pack artifact)) is superseded pending M3 (Seat 9 3/3); replaced before any seal in phase-07c-2b scope 2
 (decider file 40, 2b)." F2 "The 8 kHz tail T30 reads +18 % against target (file 22); its cause is settled before
 Phase 08's goldens freeze, as a freeze-point condition in phase-08-4 'Notes from the split' (decider files 27, 40)."
 
@@ -131,7 +134,7 @@ Phase 08's goldens freeze, as a freeze-point condition in phase-08-4 'Notes from
 | seat | commits later phases to | undo cost | evidence arrives | repaid when |
 |---|---|---|---|---|
 | 9 | 0.43 ceiling kept with premise corrected; binds again on s < 1 scenes | re-check the window on the M3 scene | M3, item 15(i) | M2/Q5 checks pass on the sealed scene (07c-2b scope 2) |
-| 9 | old label stays in run sheet and kit until M3 | two-line edit + one CI run | M3 survives | replaced before any seal (P2) |
+| 9 | old label stays in run sheet and kit until M3 | three lines in three files (run sheet L56; abx_kit.py L133, L156; listening_pack.py L452 reads the kit's string) + one CI run | M3 survives | replaced before any seal (P2) |
 | 3 | 8 kHz tail T30 +18 % | analysis fix, or tail fix through the board | the 8 kHz follow-up | cited before the 08-4 freeze (P3) |
 
 ## Strongest objection

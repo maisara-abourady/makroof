@@ -88,7 +88,12 @@ The numbered items run in this order.
      the round's decision says otherwise.
    - **V3's /fix-plan:** if V3 is chosen, AX47's Reversal "capped layout-4 scene" becomes "capped layout-4 or layout-5
      scene" through `/fix-plan` (file 31), with a §6 row.
-   - Seat 9's 0.43 ceiling, rated 1/1 on every option, goes in the decision's debt register (file 31).
+   - Seat 9's 0.43 ceiling, rated 1/1 on every option, goes in the decision's debt register (file 31), with its
+     premise corrected on the record (Seat 9, file 26 §5; decider file 40, 2a): the 26/60 premise assumed D/R ≤ 0;
+     the corrected bound is t ≤ hold + (SNR − 20 − L_drop)/60 · T60_tail, L_drop = 10·log10(1 + 10^(D/R/10)), which
+     on layout4_s1/default (L_drop 13.3 dB, from the heard L + R D/R +13.1 dB at 1 kHz, file 22; hold 0.1 s;
+     T60_tail 1.30 s; the 46 dB SNR is broadband, Seat 9's [Hyp]) gives 0.375 s, the measured realised Q5 window.
+     The pre-registered Q5 rule itself is not amended (decider file 40, 2a; interrogator file 41).
    - The decider decides; the interrogator returns SURVIVES or SURVIVES WITH CORRECTIONS (applied); ledger rows;
      "Decided for Maisara" entry with PRD ids (file 31's provisional PRD reading: NFR-1, NFR-8 L112).
    - **Amendments held for M3** (file 31, "Amendments to file 13", "Held for M3"), applied to file 13's design and the
@@ -97,6 +102,13 @@ The numbered items run in this order.
      non-detection is recorded for its scene class only; the 1 dB bound elsewhere rests on D-C1, as AX47 states.",
      file 31 answer 5); **item 15** (the 08-3 binaural rerun, per the chosen option's 08-3 part). File 34 item 1's
      "[S-A only, as long as layout4_s1/default is the ABX scene:]" clause is re-examined by M3's scene choice.
+     Until then the item-9 label "occupied mid-size hall envelope, not a validated preset", still printed in
+     `docs/validation/abx-07c-2-run-sheet.md` (§1 "Scene"), in `tools/ci/abx_kit.py` (scene docstring and the
+     manifest `label` string) and by `tools/ci/listening_pack.py` (L452, which prints the kit's label into the
+     phase-07c-2 listening-pack artifact's text and manifest), is **superseded pending M3**: Seat 9 rated it 3/3
+     (file 26) and "hall" and "occupied" are removed everywhere (file 27). It is replaced by M3's item-9 label in all
+     three before any seal; no stimulus is sealed under it, and the 07c-2 listening-pack artifact that still prints
+     it is marked superseded in 07c-2's PR listening checklist (decider file 40, 2b; interrogator file 41).
    - **Before any seal: M1's reversal condition and s_w** (decider file 34 item 2): M1 reverses if item 6's identity
      assertions fail on a rendered A/B pair of any scene with E_target specular share > 0 (10·log10(E(stepped −
      unstepped)/E(unstepped)) = 20·log10|10^(g/20) − 1| over the tail window; the per-band step equals g);
