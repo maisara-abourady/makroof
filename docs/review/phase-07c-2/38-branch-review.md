@@ -113,3 +113,25 @@ Added by the orchestrator, 2026-11-22.
 | m4 (07c-2b cites files 1–34) | Fixed: 07c-2b cites 1–36. | ff1f414; file 37 item 3 |
 | Q1 (M7 "worst over ≥ 3 runs", "flat in m") | Answered by the final three-OS CI run's per-OS `07c2-m7` table. | run 45045891476 |
 | Q2 (three-OS green, TSan, ASan, `listening-pack`) | Answered by the final three-OS CI run. | run 45045891476 |
+
+## Addendum: the fixes after the review head (90e4eda), checked on 2026-11-22
+
+The review ran on 79564bb; 90e4eda came after it. Checked by the orchestrator against the findings it answers (not an
+independent re-review; the PR's contractor focus names both for the contracted engineer):
+
+- **B1 (seal leaked X): closed.** The reviewer's suggested "commit A, B and key hashes only" would still leak:
+  X.wav is a byte copy of A or B, so X's plain hash equals one of the committed ones. 90e4eda commits a salted
+  SHA-256 per file instead (`salted_sha256`, a fresh 32-byte `secrets.token_hex` salt per A, B and X, never derived
+  from the seed), holds the salts in the key, writes the record beside the key (`prereg_path`), never into the
+  session folder, and `score --session` runs `verify_session` (key hash, then every file against the record) before
+  scoring. `test_noise_trial_end_to_end` asserts: the session folder holds only A/B/X; no committed digest equals
+  another or any file's plain SHA-256; a swapped X is refused. 16 kit tests pass locally; python tools green on
+  three OSes in run 45045891476.
+- **M2 (mid-solve destruction by chance): closed.** `tests/unit/test_diffuse_gate.cpp`, section "running inside the
+  solve, destroy {1,0}": the task is parked in the stage hook at `BuildStage::Solve` (inside the AX38 gate, gate
+  `held()` asserted), teardown (`reset()` or `release()`) runs on another thread, the test asserts it has not
+  finished after 50 ms (it waits for the running task), then releases the task and asserts teardown completes and
+  the gate is free; the release variant re-prepares and settles. Release and TSan 5/5 locally; TSan job green in run
+  45045891476.
+- **m1, m2:** comments only (`kExecutorThreads` cites D-W3 and file 19; `discardedMidDrag` documents the H-2c
+  meaning that M7b reads).
