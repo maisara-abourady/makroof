@@ -25,4 +25,4 @@ implementer's write-up as evidence. It did not build or run anything.
 | 2 | low | `erase_if(retired_, …)` freed the last reference to finished jobs (IR, IrSet) while holding `jobMutex_`. An offline `reset()` / `setNonRealtime(true)` through `cancelBuilder()` could then wait on those frees, a small breach of condition 10. | **Fixed:** finished jobs are moved to a local vector under the lock and destroyed after it is released. |
 | 3 | info | A cancelled job stays in `retired_` until the next `decide()` or quiesce. | **Answered:** memory only, bounded by one job per superseded generation between decisions. `jobsIdle()` is correct. No change. |
 
-Fix verification: a TSan run of `[pipeline],[diffuse]` locally, then the next manual three-OS CI run (cited in the brief).
+Fix verification: local TSan `[pipeline],[diffuse]` after the fixes: 64 test cases, 66 765 assertions, all passed, 0 ThreadSanitizer warnings. Then the next manual three-OS CI run (cited in the brief).
