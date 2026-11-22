@@ -378,7 +378,8 @@ void solveHybrid(StagedBuild::State& st)
             diffuse::DiffuseRunOptions run;
             run.pool = options.diffusePool;
             run.stop = options.cancel;
-            diffuse::DiffuseLimits limits;
+            diffuse::DiffuseLimits limits = options.diffuseLimitsOverride ? *options.diffuseLimitsOverride
+                                                                          : diffuse::DiffuseLimits{};
             if (options.diffuseFixedHistories > 0)
                 limits.fixedHistories = options.diffuseFixedHistories; // validation only
             const diffuse::DiffuseResult result = diffuse::estimateDiffuse(problem, limits, run);

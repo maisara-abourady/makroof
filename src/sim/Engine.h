@@ -29,7 +29,8 @@ namespace sim {
 
 namespace diffuse {
 class ThreadPool;
-}
+struct DiffuseLimits;
+} // namespace diffuse
 
 // Supported sample rates (AX6). buildRoomIR() rejects anything else.
 inline constexpr double kSupportedSampleRatesHz[] = {44100.0, 48000.0, 88200.0, 96000.0};
@@ -125,6 +126,11 @@ struct BuildOptions
     // DiffuseLimits::fixedHistories), so a comparison can be made at the AX42 tolerance instead of the
     // shipping rule's SE. 0 (every product path) runs the AX41 joint rule.
     std::int64_t diffuseFixedHistories = 0;
+    // Validation only (phase-07c-2 M7: the pipeline at a W other than the shipped one, through
+    // plugin::ScenePipeline::setDiffuseLimitsForTest): the DiffuseLimits of the diffuse solve in place of the
+    // shipped diffuse::DiffuseLimits{} (diffuseFixedHistories > 0 still sets fixedHistories on top). nullptr in
+    // every product path.
+    const diffuse::DiffuseLimits* diffuseLimitsOverride = nullptr;
     // Phase-07c-1 (AX49): synthesise the two emitters' unit decays in parallel (one extra thread) instead of
     // one after the other. Bit-identical to the serial build (each emitter's synthesis is a pure function of
     // its own seed and stream; test "[staged]"). The plugin sets it; render_cli and the validation keep the

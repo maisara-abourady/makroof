@@ -249,8 +249,21 @@ void ScenePipeline::setPlatformTagForTest(std::uint64_t tag)
     platformTag_ = tag;
 }
 
+void ScenePipeline::setDiffuseLimitsForTest(const sim::diffuse::DiffuseLimits& limits)
+{
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    diffuseLimitsForTest_ = limits;
+}
+
+sim::diffuse::DiffuseLimits ScenePipeline::diffuseLimits() const
+{
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    return diffuseLimitsForTest_.value_or(sim::diffuse::DiffuseLimits{});
+}
+
 sim::StagedBuild ScenePipeline::planStage(const contract::SceneDescription& scene, Source source,
-                                          const std::function<void(BuildStage)>& hook)
+                                          const std::function<void(BuildStage)>& hook,
+                                          const sim::diffuse::DiffuseLimits* limitsForTest)
 {
     // The offline path takes the gate only after quiesce() has returned (AX38 (i)).
     assert(source != Source::Offline || !builder_->accepting());
@@ -259,6 +272,7 @@ sim::StagedBuild ScenePipeline::planStage(const contract::SceneDescription& scen
     options.kind = sim::BuildOptions::Kind::Omni; // Phase 07: the omni hybrid IR until 08/09
     options.cancel = source == Source::Builder ? &builderAbandon_ : nullptr;
     options.parallelEmitterSynthesis = true; // AX49: the two emitters in parallel (bit-identical to serial)
+    options.diffuseLimitsOverride = limitsForTest; // nullptr except under setDiffuseLimitsForTest (M7)
     if (hook)
         hook(BuildStage::Plan);
     return sim::StagedBuild::plan(scene, options);
@@ -353,6 +367,7 @@ bool ScenePipeline::decide(Source source, bool load)
         std::shared_ptr<const std::vector<sim::tail::UnitDecay>> units;
         bool restoreBg = false;
         std::uint64_t platform = 0;
+        std::optional<sim::diffuse::DiffuseLimits> limitsForTest; // M7 seam (nullopt in every product path)
         {
             std::lock_guard<std::mutex> lock(stateMutex_);
             scene = module3d::deriveScene(values, base_);
@@ -374,6 +389,7 @@ bool ScenePipeline::decide(Source source, bool load)
                 units = units_;
             restoreBg = restoreGen_.has_value() && gen >= *restoreGen_;
             platform = platformTag_;
+            limitsForTest = diffuseLimitsForTest_;
         }
         if (hook)
             hook();
@@ -386,7 +402,7 @@ bool ScenePipeline::decide(Source source, bool load)
             return commit(source, gen, scene, b);
 
         const auto* abandon = source == Source::Builder ? &builderAbandon_ : nullptr;
-        sim::StagedBuild build = planStage(scene, source, stageHook);
+        sim::StagedBuild build = planStage(scene, source, stageHook, limitsForTest ? &*limitsForTest : nullptr);
         const std::uint64_t p = build.problemHash();
         const std::uint64_t s = sceneKey(scene);
         // A level solved in this process for this very problem is final: a change of seed, output mode or

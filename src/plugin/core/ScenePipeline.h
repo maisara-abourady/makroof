@@ -35,6 +35,7 @@
 #include "plugin/core/IrBuilderThread.h"
 #include "sim/Engine.h"
 #include "sim/RealtimeEngine.h"
+#include "sim/diffuse/DiffuseEstimator.h"
 
 #include <array>
 #include <atomic>
@@ -137,6 +138,13 @@ public:
     static std::uint64_t sceneKey(const contract::SceneDescription& scene);
     // Test hook (AX48 Pi-mismatch test): replaces this pipeline's platform tag.
     void setPlatformTagForTest(std::uint64_t tag);
+    // Validation-only seam (phase-07c-2 M7, decider file 8 section 6): every later decision of this pipeline
+    // solves with `limits` instead of the shipped sim::diffuse::DiffuseLimits{} (e.g. W_scene at m x the
+    // shipped W_max). Never called by src/plugin; call it before prepare() (or with the builder idle). The
+    // AX48 key (engineKey()) keeps the shipped limits. diffuseLimits() returns what the solve uses (the shipped
+    // limits by default).
+    void setDiffuseLimitsForTest(const sim::diffuse::DiffuseLimits& limits);
+    sim::diffuse::DiffuseLimits diffuseLimits() const;
     // The base scene (non-parameter fields) and the current derived scene.
     contract::SceneDescription baseScene() const;
     contract::SceneDescription currentScene() const;
@@ -260,7 +268,8 @@ private:
         double windowEndS = 0.0;
     };
     sim::StagedBuild planStage(const contract::SceneDescription& scene, Source source,
-                               const std::function<void(BuildStage)>& hook);
+                               const std::function<void(BuildStage)>& hook,
+                               const sim::diffuse::DiffuseLimits* limitsForTest);
     Level solveStage(sim::StagedBuild& build, Source source, const std::function<void(BuildStage)>& hook,
                      std::uint64_t p, std::uint64_t s);
     // Submits `b` (under stateMutex_). Returns true when the generation was recorded as handled.
@@ -327,6 +336,7 @@ private:
     double unitsRate_ = 0.0;
     bool loadedState_ = false; // a restore happened (the first one is a project load)
     std::uint64_t platformTag_;
+    std::optional<sim::diffuse::DiffuseLimits> diffuseLimitsForTest_; // M7 seam; nullopt = the shipped limits
     Stats stats_;
     std::atomic<std::uint64_t> rateEvents_{0}; // condition 6 render-log episodes (written by the builder)
     std::atomic<double> rateAudioS_{0.0};
