@@ -49,7 +49,7 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
    Whether the per-evaluation solve time (`nsPerEval` on the GATE line) stays invariant across 07c's moves is
    checked here; if it moves, Seats 2 and 3 are convened (the re-pin above is unconditional) (D-Q5
    future-debt register, decider file `docs/review/phase-05i/9-decider-r2.md`). (phase-07c condition 3)
-   The re-derivation waits on scope 11 (M7 in) and on the class (c) / load-fallback round (scope 9); the full
+   The re-derivation waits on scope 11 done (M7, M7b, TSan) and on the class (c) / load-fallback round (scope 9); the full
    waiting list (with M7b, TSan, the pin-time measurements and U2 as recorded in each seat's own terms) is decider
    file `docs/review/phase-07c-2/13-decider-rebuttal-r4.md`, "D-W1: waiting list, corrected", as restated in file
    15, "Other items". The AX38 (iv) load mark is read on its own definition, the time until the last instance is
@@ -70,7 +70,7 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
      test signal only; 07c-2's self-ABX and the acceptance set use recorded speech (D-B3 condition A; phase-07c-1b
      loop, 2026-11-13).
      The design is set (D-W2, final): as pre-registered in `docs/review/phase-07c-2/13-decider-rebuttal-r4.md`,
-     "D-W2: final", items 1–16 (the AX47 self-ABX's listener, trials, anchor, test family, decision rule, step,
+     "D-W2: final", items 1–16, and its section "Q5: TSP step placement (pre-registered)" (the AX47 self-ABX's listener, trials, anchor, test family, decision rule, step,
      assertions, trial structure, signals, scene, chain, blinding, distribution and record; AX49 L4; the 08-3
      binaural rerun; scheduling); speech McGill TSP v2, built locally only. (AX47 and AX49 rows.)
    - **Class (c) decision, bound by AX47:** whether a statistical source (a stage-1 estimate that is not the
@@ -150,8 +150,8 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
        `[reset-nowait]` still green; B1-b re-run with the solve duration printed.
     7. **Acceptance measurements.**
        - **M7 under H-2c:** the ISM latency of an edit made mid-solve, with the solve occupying the pool, on the three
-         CI OSes at m = 1, 4, 5, 6, 8, capped scenes (1 instance; `layout4_s1/listener_corner` and the s = 1 cube; pool
-         size; worst over ≥ 3 runs, as set in decider file 8 §6): **≤ 700 ms on the worst OS and flat in m** (Seat 3 (a), Seat 5
+         CI OSes at m = 1, 4, 5, 6, 8, capped scenes (1 instance; `layout4_s1/listener_corner` and the s = 1 cube; the shipped H-2c pool,
+         `hardware_concurrency − 1`, with the solve occupying it; worst over ≥ 3 runs; set-up from decider file 8 §6): **≤ 700 ms on the worst OS and flat in m** (Seat 3 (a), Seat 5
          (iii); AQ4's yardstick, Vorländer Table 15.1 by extension).
        - **M7b (record):** under the AX38 (iv) patterns and continuous automation, the fraction of solves completed,
          the time from the end of automation to the final, and the size of the end step, against H-0's
