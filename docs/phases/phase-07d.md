@@ -107,7 +107,8 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
    `tests/golden/CHANGELOG.md` line, and texts T1, T4 and T8 (through `/fix-plan`), exactly as written in
    `docs/review/phase-07c-1b/32-decider-R1-round3.md`; nothing else in the row changes (`recorded14xS` stays 33.40).
    The same item stands in phase-07c-2 scope 10; whichever phase starts first does it, and the other records it as
-   done with the commit.
+   done with the commit. **Done in phase-07c-2** (its first code commit, 5b65864, 2026-11-22): the flag, comment
+   line, CHANGELOG line and T1, T4, T8 landed there; nothing remains for this phase under this item.
 
 ## Out of scope
 
