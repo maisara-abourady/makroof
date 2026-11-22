@@ -14,17 +14,31 @@ ABX test.
 
 - **The step:** a change of g dB in tail energy, uniform across all 8 bands. The two IrSets come from one
   StagedBuild through `useDiffuseLevel`. The early sound is bit-identical, and only the tail changes (item 5).
+  - Item 5 scales the whole tail energy (diffuse and specular) by 10^(g/10), as item 6's formula requires; on
+    layout4_s1/default the specular share is 0 in every band, so this equals scaling E_b alone (file 5's wording);
+    the kit refuses a down-step that would need E'_diff < 0. (Decider file 21, point 1.)
 - **B** is the unstepped render, held throughout. **A** carries the step. **X** is either A or B (item 7).
 - **Directions:** in each block, 8 trials step up and 8 step down, in random order (item 7).
 - **Timing:** at least one T30 of programme comes before the step, and at least 2 s after it (item 7).
 - **Scene:** `layout4_s1/default`, an "occupied mid-size hall envelope, not a validated preset" (item 9).
   - 20 × 30 × 10 m, with an absorbing floor and scattering 1 on every face.
   - Fixed tailSeed 12345 (**kit choice**: the value the scene template carries).
-  - The kit asserts that the scene is capped at m = 6, 7 and 8, and prints r/r_c and D/R into the manifest.
+  - The kit asserts that the scene is capped at m = 6, 7 and 8, and prints r/r_c and D/R into the manifest: D/R
+    per emitter (each emitter's own IR) and of the heard IR (L + R summed), which is about 3 dB higher (file 22).
 - **Signals (item 8):**
   - **Noise chain:** pulsed pink noise, with gaps ≥ T30(1 kHz) and the step at the start of a gap.
   - **Speech chain:** McGill TSP v2 at 48 kHz, one adult speaker and one file pair, with a pause ≥ T30 between
     them. The onset falls in the pause, no later than 0.43 · T30(1 kHz) after the end of speech (Q5).
+    - **Realised Q5 onset window, recorded before sealing** (decider file 21, 2a; measured in
+      `docs/review/phase-07c-2/22-drr-t30-check.md` on the kit's smoke pair MA01_01 / MA01_02; the kit recomputes
+      and records them for whichever pair is pre-registered): accepted onsets lie in
+      **[0, 0.187 · T30]** after the end of speech (0.0007 to 0.1865 · T30, i.e. 1.3 ms to 0.375 s, T30(1 kHz) of the
+      heard IR = 2.009 s). 35 of the 81 boundaries in the 0.43 · T30 ceiling pass the ≥ 20 dB assertion: boundaries
+      0–33 and 35 (boundary 34 misses by 0.6 dB), so the passing set is not strictly contiguous.
+    - **Expected replacement rate:** a stimulus's first seeded onset is replaced with probability 46/81 = 0.568; the
+      expected number of replaced onsets per stimulus is 46/36 = 1.28 (draws without replacement, interrogator
+      file 23). Both are written into the speech `manifest.json` (`tsp.q5_realised_window_T30`,
+      `tsp.q5_first_draw_replaced_p`, `tsp.q5_expected_replaced_per_stimulus`, `tsp.q5_passing_boundary_indices`).
 
 ## 2. Equipment and presentation (item 10)
 

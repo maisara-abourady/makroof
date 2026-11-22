@@ -169,20 +169,49 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
     volume = float(d["volume"])
     out["T30_1k_s"] = float(t30)
     out["T60_eyring_1k_s"] = float(d["t60"][4])
-    # Critical distance r_c = 0.057 sqrt(V / T) (omni source, Kuttruff Eq. 5.40 family; print only).
+    # Critical distance r_c = 0.057 sqrt(V / T) (omni source, g = 1: Kuttruff Eq. 5.44, 0.1 sqrt(V / (pi T)), stated
+    # there with Sabine's T; here with the diffuse target's Eyring T60; print only).
     rc = 0.057 * math.sqrt(volume / float(d["t60"][4]))
+    out["r_c_m_T30"] = 0.057 * math.sqrt(volume / float(t30))  # the same with the heard IR's T30 (file 21, 2b)
     out["emitters"] = []
     for e, em in zip(d["emitters"], scene["emitters"]):
         r = float(np.linalg.norm(np.asarray(em["position"]) - lst))
-        out["emitters"].append({"id": e["id"], "r_m": r, "r_over_rc": r / rc, "capHit_shipped": e["diffuse"]["capHit"]})
+        out["emitters"].append({"id": e["id"], "r_m": r, "r_over_rc": r / rc, "capHit_shipped": e["diffuse"]["capHit"],
+                                **emitter_ir_metrics(ir[:, e["channel"] * 2], fs, e, d)})
     out["r_c_m"] = rc
+    # The heard IR (both emitters summed): at equal r the two direct sounds coincide and add coherently, the tails
+    # do not, so this D/R is about 3 dB above each emitter's own (decider file 21, 2b; file 22). The per-emitter D/R
+    # (single-emitter IR, AX13) is the one to set against r/r_c.
+    out["DRR_basis"] = "heard IR: emitters L + R summed (the programme feeds both); per-emitter D/R under emitters"
     out["DRR_dB_broadband"] = m["broadband"].get("DRR")
     out["DRR_dB_1k"] = m["bands"]["1000"].get("DRR")
     out["diagnostics"] = d
-    log(f"scene layout4_s1/default: capped at m = 6, 7, 8 ({out['capped']}); T30(1 kHz) {t30:.3f} s; r_c {rc:.2f} m; "
-        + "; ".join(f"emitter {x['id']} r {x['r_m']:.2f} m r/r_c {x['r_over_rc']:.2f}" for x in out["emitters"])
-        + f"; D/R broadband {out['DRR_dB_broadband']} dB, 1 kHz {out['DRR_dB_1k']} dB")
+    log(f"scene layout4_s1/default: capped at m = 6, 7, 8 ({out['capped']}); heard T30(1 kHz) {t30:.3f} s "
+        f"(Eyring T60 {out['T60_eyring_1k_s']:.3f} s); r_c {rc:.2f} m ({out['r_c_m_T30']:.2f} m from the heard T30); "
+        + "; ".join(f"emitter {x['id']} r {x['r_m']:.2f} m r/r_c {x['r_over_rc']:.2f} D/R {_fmt(x['DRR_dB_broadband'])} dB "
+                    f"(1 kHz {_fmt(x['DRR_dB_1k'])} dB), tail-alone T30(1 kHz) {_fmt(x['tail_T30_1k_s'], 3)} s"
+                    for x in out["emitters"])
+        + f"; heard (L + R) D/R broadband {_fmt(out['DRR_dB_broadband'])} dB, 1 kHz {_fmt(out['DRR_dB_1k'])} dB")
     return out
+
+
+def _fmt(x, digits: int = 1) -> str:
+    return "None" if x is None else f"{x:.{digits}f}"
+
+
+def emitter_ir_metrics(h: np.ndarray, fs: float, e: dict, diag: dict) -> dict:
+    """One emitter's own omni IR (print only; decider file 21, 2b): D/R (AX13) broadband and at 1 kHz; T30 and EDT
+    (1 kHz) of the whole IR; T30 and EDT (1 kHz) of the tail alone, from t_mix,e, beside the diffuse target's T60.
+    The whole-IR T30 includes the empty stretch between the direct sound and t_mix,e (AX21: specular-only early part,
+    scattering 1 on every face here), so it reads longer than the tail's own decay (file 22)."""
+    h = np.asarray(h, dtype=np.float64)
+    whole = metrics.room_metrics(h, fs)
+    mix = int(math.ceil((e["mixS"] - diag["alignmentShiftS"]) * fs))
+    tail = metrics.room_metrics(h[mix:], fs)
+    return {"DRR_dB_broadband": whole["broadband"].get("DRR"), "DRR_dB_1k": whole["bands"]["1000"].get("DRR"),
+            "T30_1k_s": whole["bands"]["1000"]["T30"], "EDT_1k_s": whole["bands"]["1000"]["EDT"],
+            "t_mix_s": float(e["mixS"]), "tail_T30_1k_s": tail["bands"]["1000"]["T30"],
+            "tail_EDT_1k_s": tail["bands"]["1000"]["EDT"], "target_T60_1k_s": float(diag["t60"][4])}
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -533,6 +562,21 @@ def speech_parts(s1: np.ndarray, s2: np.ndarray) -> dict:
     return {"end_of_speech": end, "noise_db_10ms": noise_db, "noise": s1[: lead * n].copy(), "noise_ms": lead * 10}
 
 
+def q5_window_record(boundaries: list[int], passing: list[int], eos: int, t30_samples: float) -> dict:
+    """The realised Q5 onset window and replacement rate (decider file 21, 2a; interrogator file 23), recorded before
+    sealing. Onsets are drawn from a seeded permutation of all N boundaries and the first of the K passing ones is
+    taken (replace-and-record), so accepted onsets are uniform over the passing set; the first draw is replaced with
+    p = (N - K) / N, and the expected number of replaced onsets per stimulus (failures before the first success,
+    without replacement) is (N - K) / (K + 1). The window is [first, latest] passing boundary, in T30 after the end
+    of speech; `contiguous` says whether the passing set is the first K boundaries."""
+    n, k = len(boundaries), len(passing)
+    return {"q5_realised_window_T30": [(min(passing) - eos) / t30_samples, (max(passing) - eos) / t30_samples],
+            "q5_passing_contiguous_from_first": list(passing) == list(boundaries[:k]),
+            "q5_passing_boundary_indices": [boundaries.index(b) for b in passing],
+            "q5_first_draw_replaced_p": (n - k) / n,
+            "q5_expected_replaced_per_stimulus": (n - k) / (k + 1)}
+
+
 def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, files: tuple[str, str],
                        cache: pathlib.Path, log=print, trials: int | None = None) -> dict:
     """The speech chain: TSP sentence 1, a pause >= T30, sentence 2 (item 8); the onset in the pause, <= 0.43 T30
@@ -583,12 +627,15 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
         unstepped = _render(binary, scene_path, p, o)[:, 0].astype(np.float64)
 
     win = int(round(Q5_WINDOW_S * FS))
-    passing = [b for b in boundaries if band_level_db(unstepped, FS, b, win) >= floor_db + Q5_MARGIN_DB]
+    margins = [band_level_db(unstepped, FS, b, win) - floor_db for b in boundaries]
+    passing = [b for b, mg in zip(boundaries, margins) if mg >= Q5_MARGIN_DB]
     rec_base["q5_boundaries"] = len(boundaries)
+    rec_base["q5_margin_db_per_boundary"] = margins
     rec_base["q5_boundaries_passing"] = len(passing)
     rec_base["q5_latest_passing_after_eos_T30"] = (max(passing) - eos) / FS / t30 if passing else None
     if not passing:
         raise RuntimeError(f"no partition boundary in the Q5 window has tail >= floor + {Q5_MARGIN_DB} dB")
+    rec_base.update(q5_window_record(boundaries, passing, eos, t30 * FS))
 
     def programme_for(seed_index: int):
         rng = np.random.default_rng([KEY_SEED_BLOCKS["speech"], 1000 + seed_index])
@@ -605,7 +652,12 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
 
     log(f"speech: {speaker} {files}, end of speech {eos / FS:.3f} s, pause {pause / FS:.3f} s, T30(1 kHz) {t30:.3f} s, "
         f"floor {floor_db:.1f} dB (1 kHz), {len(boundaries)} onset boundaries in the Q5 window, {len(passing)} of them "
-        f"with tail >= floor + {Q5_MARGIN_DB:g} dB (latest at {rec_base['q5_latest_passing_after_eos_T30']:.3f} T30)")
+        f"with tail >= floor + {Q5_MARGIN_DB:g} dB (latest at {rec_base['q5_latest_passing_after_eos_T30']:.3f} T30); "
+        f"realised onset window [{rec_base['q5_realised_window_T30'][0]:.3f}, {rec_base['q5_realised_window_T30'][1]:.3f}]"
+        f" T30 after the end of speech, passing set contiguous from the first boundary: "
+        f"{rec_base['q5_passing_contiguous_from_first']}; replacement: first draw replaced with p "
+        f"{rec_base['q5_first_draw_replaced_p']:.3f}, {rec_base['q5_expected_replaced_per_stimulus']:.2f} replaced "
+        "onsets per stimulus expected")
     manifest = build_chain("speech", binary, out, programme_for, log, trials=trials)
     manifest["tsp"] = {"url": TSP_URL, "sha256": TSP_SHA256, "notice": TSP_NOTICE, **{k: v for k, v in rec_base.items()}}
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1, default=float))

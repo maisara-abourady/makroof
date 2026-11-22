@@ -137,6 +137,25 @@ def _binary() -> pathlib.Path | None:
     return b
 
 
+def test_q5_window_record() -> None:
+    # Decider file 21, 2a and interrogator file 23: the realised window and the replacement rate. N = 81 boundaries,
+    # K = 35 passing: the first draw is replaced with p = 46/81, and 46/36 onsets per stimulus are replaced on average.
+    b = [1000 + 512 * i for i in range(81)]
+    passing = b[:34] + [b[35]]
+    rec = abx_kit.q5_window_record(b, passing, eos=1000, t30_samples=512 * 100.0)
+    assert rec["q5_first_draw_replaced_p"] == 46 / 81
+    assert rec["q5_expected_replaced_per_stimulus"] == 46 / 36
+    assert rec["q5_realised_window_T30"] == [0.0, 0.35]
+    assert rec["q5_passing_contiguous_from_first"] is False
+    assert rec["q5_passing_boundary_indices"] == list(range(34)) + [35]
+    # Monte Carlo of the kit's draw (a seeded permutation, the first passing one taken): failures before it.
+    rng = np.random.default_rng(3)
+    ok = np.zeros(81, bool)
+    ok[rec["q5_passing_boundary_indices"]] = True
+    fails = [int(np.argmax(ok[rng.permutation(81)])) for _ in range(20000)]
+    assert abs(np.mean(fails) - 46 / 36) < 0.05
+
+
 def test_noise_trial_end_to_end(tmp_path: pathlib.Path) -> None:
     binary = _binary()
     if binary is None:
@@ -146,6 +165,16 @@ def test_noise_trial_end_to_end(tmp_path: pathlib.Path) -> None:
     m = abx_kit.build_noise_chain(tmp_path / "noise", binary, log=lambda *_: None, trials=1)
     sc = m["scene"]
     assert all(all(v) for v in sc["capped"].values())
+    # Decider file 21, 2b (file 22): D/R per emitter, on that emitter's own IR, beside the heard (L + R) one. At equal
+    # r the two direct sounds add coherently and the uncorrelated tails do not: the heard D/R is about 3 dB higher.
+    # The tail alone decays at the diffuse target's T60; the whole-IR T30 reads longer (AX21 empty early part).
+    em = sc["emitters"]
+    assert len(em) == 2 and abs(em[0]["r_m"] - em[1]["r_m"]) < 1e-9
+    per_emitter = 10 * np.log10(np.mean([10 ** (e["DRR_dB_1k"] / 10) for e in em]))
+    assert 2.0 <= sc["DRR_dB_1k"] - per_emitter <= 4.0, (sc["DRR_dB_1k"], [e["DRR_dB_1k"] for e in em])
+    for e in em:
+        assert abs(e["tail_T30_1k_s"] / e["target_T60_1k_s"] - 1.0) <= 0.10, e
+        assert e["T30_1k_s"] > 1.3 * e["tail_T30_1k_s"], e
     for g, rec in m["ir_checks"].items():
         for row in rec["rows"]:
             assert abs(row["tail_alone"]["step_db"] - float(g)) <= 0.01
