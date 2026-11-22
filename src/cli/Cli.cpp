@@ -7,6 +7,7 @@
 #include "sim/OfflineRender.h"
 #include "sim/RealtimeEngine.h"
 #include "sim/Rng.h"
+#include "sim/diffuse/DiffuseEstimator.h"
 
 #include <algorithm>
 #include <array>
@@ -15,6 +16,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -62,6 +64,15 @@ struct Options
     bool tailOnly = false;
     bool tailLevelAx16 = false; // phase 05h, validation only: the Phase 04 (AX16) tail level
     std::optional<std::uint64_t> diffuseHistories; // phase 05h, validation only: a fixed solve size
+    // Phase-07c-2 D-W2 (AX47 self-ABX), validation only, like --no-air-absorption (AX4): a uniform g dB step
+    // of the tail energy, from a second IrSet of the same StagedBuild through useDiffuseLevel, crossfaded in
+    // at output sample abxStepSample with the shipped AQ4 30 ms equal-gain fade (AX18). Off unless given; the
+    // plugin never links src/cli (tools/ci/test_abx_kit.py checks that src/plugin never names it).
+    std::optional<double> abxStepDb;
+    std::optional<std::uint64_t> abxStepSample;
+    std::string abxSteppedIrPath;
+    std::optional<double>
+        wMultiplier; // validation only: W_scene = 2 m W_max (the D-W2 cap check at m = 6, 7, 8)
     std::optional<double> rate;
     std::optional<sim::BuildOptions::Kind> mode;
     bool help = false;
@@ -150,10 +161,13 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             target = &options.diagnosticsPath;
         else if (arg == "--switch-scene")
             target = &options.switchScenePath;
+        else if (arg == "--abx-stepped-ir")
+            target = &options.abxSteppedIrPath;
         else if (arg != "--rate" && arg != "--mode" && arg != "--tail-seed" && arg != "--ensemble"
                  && arg != "--ensemble-emitter" && arg != "--image-cap" && arg != "--atmosphere"
                  && arg != "--mix-floor-ms" && arg != "--block" && arg != "--partition"
-                 && arg != "--switch-every" && arg != "--tail-level" && arg != "--diffuse-histories")
+                 && arg != "--switch-every" && arg != "--tail-level" && arg != "--diffuse-histories"
+                 && arg != "--abx-step-db" && arg != "--abx-step-sample" && arg != "--w-multiplier")
             return "unknown argument '" + arg + "'";
 
         if (i + 1 >= args.size())
@@ -257,6 +271,32 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
                 return "--switch-every must be a number of seconds in [0.05, 60], got '" + value + "'";
             options.switchEveryS = sec;
         }
+        else if (arg == "--abx-step-db")
+        {
+            char* end = nullptr;
+            const double g = std::strtod(value.c_str(), &end);
+            if (value.empty() || end != value.c_str() + value.size() || !std::isfinite(g) || g < -12.0
+                || g > 12.0)
+                return "--abx-step-db must be a number of dB in [-12, 12], got '" + value + "'";
+            options.abxStepDb = g;
+        }
+        else if (arg == "--abx-step-sample")
+        {
+            const auto n = parseSeed(value);
+            if (!n)
+                return "--abx-step-sample must be an output sample index in [0, 4294967295], got '" + value
+                       + "'";
+            options.abxStepSample = *n;
+        }
+        else if (arg == "--w-multiplier")
+        {
+            char* end = nullptr;
+            const double m = std::strtod(value.c_str(), &end);
+            if (value.empty() || end != value.c_str() + value.size() || !std::isfinite(m) || m <= 0.0
+                || m > 64.0)
+                return "--w-multiplier must be a number in (0, 64], got '" + value + "'";
+            options.wMultiplier = m;
+        }
         else if (arg == "--ensemble-emitter")
         {
             options.ensembleEmitter = parseSeed(value);
@@ -280,8 +320,8 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
     if (options.inPath.empty() != options.outPath.empty())
         return "--in and --out must be given together";
     if (options.inPath.empty() && options.irPath.empty() && options.imagesPath.empty()
-        && options.diagnosticsPath.empty())
-        return "nothing to do: give --in and --out, --ir, --images or --diagnostics";
+        && options.diagnosticsPath.empty() && options.abxSteppedIrPath.empty())
+        return "nothing to do: give --in and --out, --ir, --images, --diagnostics or --abx-stepped-ir";
     if (!options.diagnosticsPath.empty() && options.mode && *options.mode != sim::BuildOptions::Kind::Omni)
         return "--diagnostics needs --mode omni (the hybrid IR)";
     if (options.tailOnly && (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni))
@@ -305,6 +345,34 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         return "--block, --partition, --switch-scene and --switch-every need --realtime-emulation";
     if (options.switchScenePath.empty() != !options.switchEveryS)
         return "--switch-scene and --switch-every must be given together";
+    if (options.wMultiplier && (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni))
+        return "--w-multiplier needs --mode omni (the hybrid IR)";
+    if ((options.abxStepSample || !options.abxSteppedIrPath.empty()) && !options.abxStepDb)
+        return "--abx-step-sample and --abx-stepped-ir need --abx-step-db";
+    if (options.abxStepDb)
+    {
+        if (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni)
+            return "--abx-step-db needs --mode omni (the hybrid IR)";
+        if (options.ensemble || options.tailLevelAx16 || !options.switchScenePath.empty())
+            return "--abx-step-db excludes --ensemble, --tail-level ax16 and --switch-scene";
+        if (!options.inPath.empty()
+            && (!options.realtimeEmulation || !options.abxStepSample
+                || (options.block && *options.block == 0)))
+            return "--abx-step-db with --in/--out needs --realtime-emulation, a fixed --block and "
+                   "--abx-step-sample";
+        if (options.inPath.empty() && options.abxSteppedIrPath.empty())
+            return "--abx-step-db needs --in/--out or --abx-stepped-ir";
+        if (options.abxStepSample && *options.abxStepSample != 0)
+        {
+            const auto p = static_cast<std::uint64_t>(
+                options.partition.value_or(sim::conv::kDefaultPartitionSize));
+            const auto b = static_cast<std::uint64_t>(options.block.value_or(512));
+            if (*options.abxStepSample < p || *options.abxStepSample % p != 0
+                || *options.abxStepSample % b != 0)
+                return "--abx-step-sample must be 0 or a multiple of the partition and of the block, "
+                       "at least one partition";
+        }
+    }
     if (options.rate && !sim::isSupportedSampleRate(*options.rate))
         return "--rate must be one of 44100, 48000, 88200, 96000 (AX6)";
     return {};
@@ -573,8 +641,16 @@ bool writeDiagnostics(const std::filesystem::path& path, const contract::SceneDe
 // IR in both paths). With `other`, the engine switches between ir and *other every switchEvery
 // samples of the render (equal-power, AX18: unrelated IRs), starting with ir; a host block boundary
 // is placed at every switch.
-bool renderRealtime(const sim::RoomIR& ir, const sim::RoomIR* other, const Options& options,
-                    const sim::MultiChannel& input, sim::MultiChannel& output, std::string& error)
+//
+// With `stepped` (--abx-step-db, validation only): the engine starts on `ir` and requests `stepped` once,
+// with the shipped equal-gain law (AQ4, AX18: the plugin's interim -> final adoption), so that its fade
+// starts at output sample options.abxStepSample (a multiple of P and of the block). By CrossfadingConvolver's
+// timing (AX31) a request made after r input samples, r a multiple of P, starts its fade at engine output
+// sample r + 2P, i.e. at r + P once the latency is removed: the request goes in at r = abxStepSample - P.
+// abxStepSample 0 renders `stepped` alone from sample 0 (the fade's end point for the AX47 mid-fade checks).
+bool renderRealtime(const sim::RoomIR& ir, const sim::RoomIR* other, const sim::RoomIR* stepped,
+                    const Options& options, const sim::MultiChannel& input, sim::MultiChannel& output,
+                    std::string& error)
 {
     const int partition = options.partition.value_or(sim::conv::kDefaultPartitionSize);
     const int block = options.block.value_or(512);
@@ -583,18 +659,38 @@ bool renderRealtime(const sim::RoomIR& ir, const sim::RoomIR* other, const Optio
     engine.prepare(ir.sampleRate, maxBlock);
     const auto setA = engine.makeIrSet(ir);
     const auto setB = other != nullptr ? engine.makeIrSet(*other) : nullptr;
-    if (!setA || (other != nullptr && !setB))
+    const auto setStep = stepped != nullptr ? engine.makeIrSet(*stepped) : nullptr;
+    if (!setA || (other != nullptr && !setB) || (stepped != nullptr && !setStep))
     {
         error = "the room IR does not fit the real-time engine (longer than "
                 + std::to_string(sim::RealtimeEngine::maxIrLengthSamples(ir.sampleRate))
                 + " samples, or a non-finite tap)";
         return false;
     }
-    const std::size_t irLength = std::max(ir.length(), other != nullptr ? other->length() : std::size_t{0});
+    const std::size_t irLength = std::max({ir.length(), other != nullptr ? other->length() : std::size_t{0},
+                                           stepped != nullptr ? stepped->length() : std::size_t{0}});
     const std::size_t frames = input.empty() ? 0 : input.front().size();
     const std::size_t outLength = frames == 0 ? 0 : frames + std::max<std::size_t>(irLength, 1) - 1;
     const auto latency = static_cast<std::size_t>(partition);
     const std::size_t total = outLength + latency;
+    // --abx-step-db: the input position of the request (see above); never reached when stepped is nullptr.
+    std::size_t stepAt = total;
+    const bool steppedAlone = stepped != nullptr && options.abxStepSample.value_or(0) == 0;
+    if (stepped != nullptr && !steppedAlone)
+    {
+        const std::uint64_t onset = options.abxStepSample.value_or(0);
+        if (onset < latency || onset % latency != 0 || onset % static_cast<std::uint64_t>(block) != 0
+            || onset >= outLength)
+        {
+            error = "--abx-step-sample " + std::to_string(onset)
+                    + " must be 0 or a multiple of the partition (" + std::to_string(partition)
+                    + ") and of the block (" + std::to_string(block)
+                    + "), at least one partition, and inside the render (" + std::to_string(outLength)
+                    + " samples)";
+            return false;
+        }
+        stepAt = static_cast<std::size_t>(onset) - latency;
+    }
 
     std::vector<std::vector<float>> in(2, std::vector<float>(total, 0.0f)),
         out(2, std::vector<float>(total, 0.0f));
@@ -605,12 +701,14 @@ bool renderRealtime(const sim::RoomIR& ir, const sim::RoomIR* other, const Optio
                                      ? std::max<std::size_t>(1, static_cast<std::size_t>(std::llround(
                                                                     *options.switchEveryS * ir.sampleRate)))
                                      : 0;
-    engine.submitIrSet(setA);
+    engine.submitIrSet(steppedAlone ? setStep : setA);
     sim::Pcg32 rng(kRandomBlockSeed, kRandomBlockStream);
     std::size_t nextSwitch = interval;
     bool onA = true;
     for (std::size_t pos = 0; pos < total;)
     {
+        if (pos == stepAt)
+            engine.submitIrSet(setStep, sim::conv::CrossfadeLaw::EqualGain);
         if (interval != 0 && pos == nextSwitch)
         {
             onA = !onA;
@@ -622,6 +720,8 @@ bool renderRealtime(const sim::RoomIR& ir, const sim::RoomIR* other, const Optio
         n = std::min(n, total - pos);
         if (interval != 0)
             n = std::min(n, nextSwitch - pos);
+        if (pos < stepAt)
+            n = std::min(n, stepAt - pos);
         const float* ins[2] = {in[0].data() + pos, in[1].data() + pos};
         float* outs[2] = {out[0].data() + pos, out[1].data() + pos};
         engine.process(ins, outs, static_cast<int>(n));
@@ -631,6 +731,104 @@ bool renderRealtime(const sim::RoomIR& ir, const sim::RoomIR* other, const Optio
     output.assign(2, {});
     for (std::size_t c = 0; c < 2; ++c)
         output[c].assign(out[c].begin() + static_cast<std::ptrdiff_t>(latency), out[c].end());
+    return true;
+}
+
+// --abx-step-db (phase-07c-2 D-W2 item 5; validation only, AX4 style): the unstepped IR `ir` and the stepped
+// IR `stepped`, two IrSets from ONE StagedBuild. `ir` is plan(); solve(); assemble() (bit-identical to
+// buildRoomIR, AX5 "[staged]"). `stepped` reuses the plan and its unit decays and sets, through
+// useDiffuseLevel, the diffuse level that makes the tail energy E_target,b = E_spec,b + E_diff,b of every
+// emitter change by g dB in every band (D-W2 item 5: "a change of g dB in tail energy, uniform across all 8
+// bands"):  E'_diff,b = k E_diff,b + (k - 1) E_spec,b,  k = 10^(g/10). Where the specular share of the
+// tail target is 0 this is file 5's E_b 10^(g/10). The tail amplitude is sqrt(E_target / E_unit), so the
+// whole tail scales by 10^(g/20) and the early part (images, direct path) is unchanged. g = 0 passes the
+// solve's level unchanged; the two IRs must then be bit-identical (checked here). Prints, per emitter and
+// band, the specular share of E_target and the tail-energy change set.
+bool buildAbxStep(const contract::SceneDescription& scene, const sim::BuildOptions& build, double g,
+                  sim::RoomIR& ir, sim::RoomIR& stepped, sim::HybridDiagnostics& diagnostics,
+                  std::ostream& out, std::string& error)
+{
+    auto staged = sim::StagedBuild::plan(scene, build);
+    staged.solve();
+    ir = staged.assemble(&diagnostics);
+    const std::optional<sim::EmitterBands> level = staged.diffuseLevel();
+    if (!level)
+    {
+        error = "--abx-step-db: the scene has no diffuse tail level to step";
+        return false;
+    }
+    const double k = std::pow(10.0, g / 10.0);
+    sim::EmitterBands steppedLevel = *level;
+    if (g != 0.0)
+        for (const auto& e : diagnostics.emitters)
+        {
+            if (e.channel < 0 || static_cast<std::size_t>(e.channel) >= steppedLevel.size())
+                continue;
+            const auto& d = e.match.diffuse;
+            auto& bands = steppedLevel[static_cast<std::size_t>(e.channel)];
+            out << "abx step: emitter " << e.channel << " g " << g
+                << " dB; specular share of E_target per band:";
+            for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+            {
+                const double spec = d.bandsSpecularEnergy[b], diff = d.bandsDiffuseEnergy[b];
+                const double ref = d.bandsDiffuseReference[b];
+                out << ' ' << (spec + diff > 0.0 ? spec / (spec + diff) : 0.0);
+                if (spec == 0.0)
+                {
+                    bands[b] = k * ref;
+                    continue;
+                }
+                if (diff <= 0.0 || ref <= 0.0)
+                {
+                    error = "--abx-step-db: emitter " + std::to_string(e.channel) + " band "
+                            + std::to_string(b)
+                            + " has a specular-only tail, which useDiffuseLevel cannot step";
+                    return false;
+                }
+                const double steppedRef = k * ref + (k - 1.0) * spec * (ref / diff); // reference units
+                if (!(steppedRef >= 0.0))
+                {
+                    error = "--abx-step-db: a " + std::to_string(g) + " dB step of emitter "
+                            + std::to_string(e.channel) + " band " + std::to_string(b)
+                            + " would need a negative diffuse energy (specular share too high)";
+                    return false;
+                }
+                bands[b] = steppedRef;
+            }
+            out << "\n";
+        }
+    staged.useUnitDecays(staged.unitDecays());
+    staged.useDiffuseLevel(steppedLevel);
+    sim::HybridDiagnostics steppedDiagnostics;
+    stepped = staged.assemble(&steppedDiagnostics);
+    for (const auto& e : steppedDiagnostics.emitters)
+        for (const auto& u : diagnostics.emitters)
+            if (u.channel == e.channel)
+            {
+                out << "abx step: emitter " << e.channel << " tail-energy change set per band (dB):";
+                for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
+                {
+                    const double before = u.match.bandsTargetEnergy[b], after = e.match.bandsTargetEnergy[b];
+                    out << ' ' << (before > 0.0 && after > 0.0 ? 10.0 * std::log10(after / before) : 0.0);
+                }
+                out << "\n";
+            }
+    const auto bitIdentical = [](const sim::RoomIR& a, const sim::RoomIR& b) {
+        if (a.taps.size() != b.taps.size())
+            return false;
+        for (std::size_t c = 0; c < a.taps.size(); ++c)
+            if (a.taps[c].size() != b.taps[c].size()
+                || (!a.taps[c].empty()
+                    && std::memcmp(a.taps[c].data(), b.taps[c].data(), a.taps[c].size() * sizeof(float))
+                           != 0))
+                return false;
+        return true;
+    };
+    if (g == 0.0 && !bitIdentical(stepped, ir))
+    {
+        error = "--abx-step-db 0: the stepped IR is not bit-identical to the unstepped one";
+        return false;
+    }
     return true;
 }
 
@@ -695,6 +893,20 @@ std::string usage()
            "  --partition P  realtime emulation: partition size 128, 256 or 512 (default 512)\n"
            "  --switch-scene <json> --switch-every S  realtime emulation, listening demo: switch the IR\n"
            "               between --scene and this scene every S seconds (30 ms equal-power crossfade)\n"
+           "  --abx-step-db g  validation only (phase-07c-2 D-W2, the AX47 self-ABX), --mode omni: a "
+           "uniform\n"
+           "               g dB step of the tail energy in all 8 bands (a second IrSet of the same build "
+           "through\n"
+           "               the diffuse level; the early part unchanged). With --in/--out (needs\n"
+           "               --realtime-emulation, a fixed --block and --abx-step-sample N): the render starts "
+           "on\n"
+           "               the unstepped IR and fades to the stepped one from output sample N (a multiple "
+           "of\n"
+           "               P and of the block) with the shipped 30 ms equal-gain crossfade (AQ4). g = 0 is\n"
+           "               bit-identical to no flag; N = 0 renders the stepped IR alone. --ir writes the\n"
+           "               unstepped IR, --abx-stepped-ir <wav> the stepped one\n"
+           "  --w-multiplier m  validation only, --mode omni: the diffuse solve at W_scene = 2 m W_max\n"
+           "               (AX41; the D-W2 cap check at the candidate pins)\n"
            "  --automation not implemented until Phase 10\n"
            "\n"
            "exit codes: 0 ok, 1 usage error, 2 invalid scene, 3 I/O error, 4 internal error\n";
@@ -810,6 +1022,14 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
         build.mixingFloorAfterDirectS = *options.mixFloorMs * 1e-3;
     if (options.ensembleEmitter)
         build.onlyEmitterChannel = static_cast<int>(*options.ensembleEmitter);
+    // --w-multiplier (validation only): W_scene = 2 m W_max in place of the shipped 2 W_max (AX41).
+    sim::diffuse::DiffuseLimits wLimits;
+    if (options.wMultiplier)
+    {
+        wLimits.wScene = static_cast<std::int64_t>(std::llround(
+            *options.wMultiplier * 2.0 * static_cast<double>(sim::diffuse::kWMaxPerEmitterProvisional)));
+        build.diffuseLimitsOverride = &wLimits;
+    }
 
     if (!options.imagesPath.empty())
     {
@@ -829,7 +1049,32 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
         return kExitUsage;
     }
     sim::HybridDiagnostics diagnostics;
-    const sim::RoomIR ir = options.ensemble ? sim::RoomIR{} : sim::buildRoomIR(scene, build, &diagnostics);
+    sim::RoomIR ir;
+    std::optional<sim::RoomIR> steppedIr;
+    if (options.abxStepDb)
+    {
+        std::string error;
+        steppedIr.emplace();
+        if (!buildAbxStep(scene, build, *options.abxStepDb, ir, *steppedIr, diagnostics, out, error))
+        {
+            err << "render_cli: " << error << "\n";
+            return kExitUsage;
+        }
+        if (!options.abxSteppedIrPath.empty())
+        {
+            Audio steppedAudio;
+            steppedAudio.sampleRate = static_cast<std::uint32_t>(steppedIr->sampleRate);
+            steppedAudio.channels = steppedIr->taps;
+            if (!writeWavFloat32(options.abxSteppedIrPath, steppedAudio, error))
+            {
+                err << "render_cli: " << error << "\n";
+                return kExitIo;
+            }
+            out << "wrote stepped IR " << options.abxSteppedIrPath << "\n";
+        }
+    }
+    else if (!options.ensemble)
+        ir = sim::buildRoomIR(scene, build, &diagnostics);
 
     if (!options.diagnosticsPath.empty())
     {
@@ -894,8 +1139,11 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
         if (options.realtimeEmulation)
         {
             const sim::RoomIR other = switchScene ? sim::buildRoomIR(*switchScene, build) : sim::RoomIR{};
-            if (!renderRealtime(ir, switchScene ? &other : nullptr, options, input.channels,
-                                rendered.channels, error))
+            // g = 0 requests no second IrSet: the stepped IrSet is then bit-identical to the first (asserted
+            // by buildAbxStep), and an equal-gain fade between two equal IrSets need not round to them.
+            const bool step = steppedIr && *options.abxStepDb != 0.0;
+            if (!renderRealtime(ir, switchScene ? &other : nullptr, step ? &*steppedIr : nullptr, options,
+                                input.channels, rendered.channels, error))
             {
                 err << "render_cli: " << error << "\n";
                 return kExitInternal;
