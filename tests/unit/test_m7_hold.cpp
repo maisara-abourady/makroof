@@ -35,6 +35,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <string>
 #include <thread>
@@ -128,16 +129,19 @@ struct Probe
     std::atomic<std::uint64_t> armDecision{0};
     std::atomic<bool> armed{false};
     std::shared_ptr<const sim::conv::IrSet> armPtr;
+    std::mutex dbgM; std::string dbg;
 
     explicit Probe(plugin::ScenePipeline& pipe)
         : p(pipe)
     {
         p.setAfterSnapshotHook([this] {
             decisions.fetch_add(1);
+            { std::lock_guard<std::mutex> l(dbgM); dbg += " |D" + std::to_string(decisions.load()) + " y=" + std::to_string(p.parameter(module3d::kListenerY)) + " st=" + std::to_string(p.stats().interimSubmits) + "/" + std::to_string(p.stats().finalSubmits) + "/" + std::to_string(p.stats().discardedMidDrag); }
             inSolve.store(false);
         });
         p.setStageHook([this](plugin::ScenePipeline::BuildStage stage) {
             using S = plugin::ScenePipeline::BuildStage;
+            { std::lock_guard<std::mutex> l(dbgM); dbg += " " + std::to_string(static_cast<int>(stage)); }
             if (stage == S::Solve)
             {
                 solveDecision.store(decisions.load());
@@ -297,6 +301,7 @@ CaseResult runCase(const std::string& name, const contract::SceneDescription& sc
         const auto t0 = probe.editAndArm(nextY());
         const double hold = msBetween(t0, probe.waitHold());
         const auto st1 = p.stats();
+        { std::lock_guard<std::mutex> l(probe.dbgM); std::printf("DBG %s\n", probe.dbg.c_str()); probe.dbg.clear(); }
         r.midHoldMs.push_back(hold);
         std::printf("07c2-m7trial os=%s scene=%s m=%d edit %d at %.1f ms into the solve (u=%.3f of D_med %.1f ms%s): "
                     "hold %.1f ms [decisions +%llu, interim +%llu, final +%llu, discarded +%llu]\n",
