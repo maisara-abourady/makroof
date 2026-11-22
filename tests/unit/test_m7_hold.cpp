@@ -5,21 +5,29 @@
 // M7: the ISM hold of a position edit (setParameter on kListenerY) that arrives at a seeded random point of a
 // running builder solve: the time from the edit to the engine holding (submitIrSet, under stateMutex_) the
 // first IrSet built from a snapshot that contains the edit (the interim of the next decision, whose early
-// part is the edit's ISM; condition 4). From the code (C-1): the running solve is not abandoned by an edit
-// (ScenePipeline::setParameter only bumps dirty_), so the hold is the rest of the solve plus the next
-// decision's plan + interim. Baseline: the same edit with the builder idle.
+// part is the edit's ISM; condition 4). Baseline: the same edit with the builder idle.
+//
+// Under H-2c (phase-07c-2 scope 11, D-W3) the solve is a task on the gate's process-wide executor: the
+// builder is free during it, so the edit's decision runs at once (it sets the running solve's per-generation
+// token, the solve stops at its next stop point) and the hold is that decision's plan + interim alone, with
+// the superseded solve unwinding beside it (the H-0 hold was the rest of the solve plus the plan + interim;
+// file 9). The acceptance reading (scope 11 item 7): mid-solve hold <= 700 ms on the worst OS and flat in m;
+// here it should read about the idle hold at every m.
 //
 // The W multiplier m runs the pipeline at W_scene = 2 x m x kWMaxPerEmitterProvisional through the
 // validation-only seam ScenePipeline::setDiffuseLimitsForTest (W_scene = 2 W_max, AX41; n*_max, SE target,
 // pilot and the joint rule as shipped). One instance, the process-wide gate pool as shipped
-// (hardware_concurrency threads), 48 kHz.
+// (hardware_concurrency threads; a builder-class solve takes shares on hardware_concurrency - 1 of them under
+// H-2c), 48 kHz.
 //
-// M7b (record only, no cancel-on-edit rule is implemented; asked at m = 6, 8, printed at every m): from the
-// measured idle-edit timings, the fraction of solves that would complete before the next edit if every edit
-// cancelled the running solve, for an edit every 5 s (room size stepping 1 m) and every 100 ms (continuous
-// automation): a solve completes iff the time from its edit to the end of its solve (C = interim + gate entry
-// + solve) is below the edit interval. C is measured on position edits (10 per case) and on 2 room-size edits
-// (kRoomD +-1 m) per case at m = 6, 8.
+// M7b (record only; asked at m = 6, 8, printed at every m): under H-2c every edit cancels the running solve,
+// so a solve completes iff the time from its edit to the end of its solve (C = interim + gate entry + solve)
+// is below the edit interval. From the measured idle-edit timings, the fraction for an edit every 5 s (room
+// size stepping 1 m) and every 100 ms (continuous automation); C is measured on position edits (10 per case)
+// and on 2 room-size edits (kRoomD +-1 m) per case at m = 6, 8. Measured as well, at every m: continuous
+// automation (a position edit every 100 ms for kAutomationS): finals adopted during the motion (condition 4:
+// none expected), solves discarded (Stats::discardedMidDrag, the H-0 counter of file 9), the time from the
+// last edit to the final and the end step (Stats::lastStepDb).
 #include "DiffuseTestUtil.h"
 #include "PipelineTestUtil.h"
 
@@ -69,7 +77,9 @@ constexpr double kRate = 48000.0;
 constexpr int kMultipliers[] = {1, 4, 5, 6, 8};
 constexpr int kIdleEdits = 10;
 constexpr int kMidEdits = 10;
-constexpr int kRoomEdits = 2; // per case at m = 6, 8 (M7b)
+constexpr int kRoomEdits = 2;              // per case at m = 6, 8 (M7b)
+constexpr double kAutomationS = 2.0;       // M7b continuous automation: its length
+constexpr double kAutomationPeriodS = 0.1; // and its edit interval
 // Listener Y step per edit, in the parameter's normalised units (module3d: 0..1 over the room's inner range):
 // 0.001 = 3 cm in the 30 m layout, 10 cm in the 100 m cube; every edit is a new diffuse problem, never
 // clamped.
@@ -244,6 +254,10 @@ struct CaseResult
     std::string scene;
     int m = 0;
     std::vector<double> solveMs, idleHoldMs, midHoldMs, editToSolveEndMs, roomEditToSolveEndMs;
+    // M7b continuous automation (measured under H-2c)
+    int autoEdits = 0;
+    std::uint64_t autoFinalsInMotion = 0, autoDiscarded = 0;
+    double autoEndToFinalMs = 0.0, autoEndStepDb = 0.0;
 };
 
 CaseResult runCase(const std::string& name, const contract::SceneDescription& sc, int m, std::uint64_t seed)
@@ -315,6 +329,35 @@ CaseResult runCase(const std::string& name, const contract::SceneDescription& sc
     }
     waitSettled(p);
 
+    // M7b, measured: continuous automation, a position edit every kAutomationPeriodS for kAutomationS.
+    {
+        probe.armDecision.store(0);
+        const auto a0 = p.stats();
+        const int n = static_cast<int>(std::lround(kAutomationS / kAutomationPeriodS));
+        auto next = Clock::now();
+        for (int i = 0; i < n; ++i)
+        {
+            p.setParameter(module3d::kListenerY, nextY());
+            next += std::chrono::duration_cast<Clock::duration>(
+                std::chrono::duration<double>(kAutomationPeriodS));
+            std::this_thread::sleep_until(next);
+        }
+        const auto tEnd = Clock::now()
+                          - std::chrono::duration_cast<Clock::duration>(
+                              std::chrono::duration<double>(kAutomationPeriodS)); // the last edit
+        const auto a1 = p.stats();
+        REQUIRE(pipeline_test::waitFor([&] { return p.stats().finalSubmits > a1.finalSubmits; },
+                                       std::chrono::seconds(300)));
+        const auto tFinal = Clock::now();
+        waitSettled(p);
+        const auto a2 = p.stats();
+        r.autoEdits = n;
+        r.autoFinalsInMotion = a1.finalSubmits - a0.finalSubmits;
+        r.autoDiscarded = a2.discardedMidDrag - a0.discardedMidDrag;
+        r.autoEndToFinalMs = msBetween(tEnd, tFinal);
+        r.autoEndStepDb = a2.lastStepDb;
+    }
+
     // M7b: room-size edits (kRoomD by 1 m: grown in the 20 x 30 x 10 m layout, whose listener sits in a
     // corner; shrunk in the 100 m cube), m = 6 and 8 only.
     if (m == 6 || m == 8)
@@ -334,13 +377,15 @@ CaseResult runCase(const std::string& name, const contract::SceneDescription& sc
     }
     const auto sd = stats(r.solveMs), ih = stats(r.idleHoldMs), mh = stats(r.midHoldMs);
     std::printf(
-        "07c2-m7 os=%s scene=%s m=%d W_max/emitter=%lld pool=%u fs=48k | solve n=%zu median %.1f p95 %.1f "
+        "07c2-m7 os=%s scene=%s m=%d W_max/emitter=%lld pool=%u (builder-class shares %u) fs=48k | solve "
+        "n=%zu median %.1f p95 %.1f "
         "worst %.1f ms | idle-edit hold n=%zu median %.1f p95 %.1f worst %.1f ms | mid-solve hold n=%zu "
         "median %.1f p95 %.1f worst %.1f ms (%d landed after the solve ended)\n",
         kOsName, name.c_str(), m,
         static_cast<long long>(sim::diffuse::kWMaxPerEmitterProvisional * static_cast<std::int64_t>(m)),
-        p.gate().pool().size(), r.solveMs.size(), sd.median, sd.p95, sd.worst, r.idleHoldMs.size(), ih.median,
-        ih.p95, ih.worst, r.midHoldMs.size(), mh.median, mh.p95, mh.worst, late);
+        p.gate().pool().size(), p.gate().builderShareThreads(), r.solveMs.size(), sd.median, sd.p95, sd.worst,
+        r.idleHoldMs.size(), ih.median, ih.p95, ih.worst, r.midHoldMs.size(), mh.median, mh.p95, mh.worst,
+        late);
     return r;
 }
 
@@ -377,8 +422,9 @@ TEST_CASE("ScenePipeline: the M7 diffuse-limits seam defaults to the shipped Dif
     check(p.diffuseLimits(), x6);
 }
 
-TEST_CASE("records: M7 ISM hold of a position edit during a running builder solve, m = 1, 4, 5, 6, 8; M7b",
-          "[.][benchmark][m7-hold]")
+TEST_CASE(
+    "records: M7 ISM hold of a position edit during a running builder solve (H-2c), m = 1, 4, 5, 6, 8; M7b",
+    "[.][benchmark][m7-hold]")
 {
     const struct
     {
@@ -391,12 +437,19 @@ TEST_CASE("records: M7 ISM hold of a position edit during a running builder solv
     for (const auto& s : scenes)
         for (const int m : kMultipliers)
             all.push_back(runCase(s.name, s.scene, m, seed++));
-    // M7b: cancel-on-edit, from the measured edit-to-solve-end times (not implemented in shipped code).
+    // M7b: H-2c cancels on every edit; completion fractions from the measured edit-to-solve-end times.
     for (const auto& r : all)
     {
+        std::printf(
+            "07c2-m7b-auto os=%s scene=%s m=%d continuous automation (%d position edits, one every %.0f ms): "
+            "finals adopted during the motion %llu, solves discarded %llu, last edit -> final %.1f ms, end "
+            "step %.3f dB\n",
+            kOsName, r.scene.c_str(), r.m, r.autoEdits, 1000.0 * kAutomationPeriodS,
+            static_cast<unsigned long long>(r.autoFinalsInMotion),
+            static_cast<unsigned long long>(r.autoDiscarded), r.autoEndToFinalMs, r.autoEndStepDb);
         const auto c = stats(r.editToSolveEndMs);
         std::printf(
-            "07c2-m7b os=%s scene=%s m=%d cancel-on-edit (hypothetical): edit->solve end median %.1f worst "
+            "07c2-m7b os=%s scene=%s m=%d H-2c cancel-on-edit: edit->solve end median %.1f worst "
             "%.1f ms (n=%zu position edits); solves completing before the next edit: every 5 s %.0f%%, "
             "every 100 ms %.0f%%",
             kOsName, r.scene.c_str(), r.m, c.median, c.worst, r.editToSolveEndMs.size(),
