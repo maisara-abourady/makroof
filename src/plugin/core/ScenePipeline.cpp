@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -379,20 +380,31 @@ ScenePipeline::Level ScenePipeline::solveStage(sim::StagedBuild& build, Source s
     // Condition 12 (D-G1; AX38 (i): the gate is "held only around the solve"): the solve pool is passed only
     // while the gate is held; the RAII Scope releases it on every exit, a BuildCancelled thrown inside the
     // solve included. Nothing under the gate takes stateMutex_ (the hook was copied before).
+    double solveMs = 0.0, gateWaitMs = 0.0;
     if (build.needsSolve())
     {
+        const auto t0 = std::chrono::steady_clock::now();
         DiffuseSolveGate::Scope gate(*gate_, cls, abandon);
         if (!gate.entered())
             throw sim::BuildCancelled();
+        const auto t1 = std::chrono::steady_clock::now();
         if (hook)
             hook(BuildStage::Solve);
         build.solve(&gate_->pool());
+        const auto t2 = std::chrono::steady_clock::now();
+        gateWaitMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+        solveMs = std::chrono::duration<double, std::milli>(t2 - t1).count();
     }
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
         ++stats_.solves;
         if (source == Source::Synchronous)
             ++stats_.syncSolves;
+        stats_.lastSolveMs = solveMs;
+        stats_.totalSolveMs += solveMs;
+        stats_.totalGateWaitMs += gateWaitMs;
+        stats_.maxSolveMs = std::max(stats_.maxSolveMs, solveMs);
+        stats_.maxGateWaitMs = std::max(stats_.maxGateWaitMs, gateWaitMs);
     }
     Level level;
     level.bands = build.diffuseLevel().value_or(sim::EmitterBands{});

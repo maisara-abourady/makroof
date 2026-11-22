@@ -1144,6 +1144,17 @@ TEST_CASE("records: condition 12 (c) callback record at host buffer 64, B1-b ins
         rt.beginRestore();
         rt.restore(room, module3d::parameterValuesFromScene(room));
         REQUIRE(pipeline_test::waitFor([&] { return !rt.settling() && rt.builderIdle(); }));
+        // Phase-07c-2 scope 11 item 6: the churned builders' solve durations over this point (H-2c: the
+        // solves run as tasks on the gate executor, the gate wait excluded from the solve time).
+        std::uint64_t solves0 = 0;
+        double solveMs0 = 0.0, gateMs0 = 0.0;
+        for (int i = 0; i < builders; ++i)
+        {
+            const auto st = others[static_cast<std::size_t>(i)]->stats();
+            solves0 += st.solves;
+            solveMs0 += st.totalSolveMs;
+            gateMs0 += st.totalGateWaitMs;
+        }
         std::atomic<bool> stop{false};
         std::thread churn([&] {
             float x = 50.0f;
@@ -1212,6 +1223,26 @@ TEST_CASE("records: condition 12 (c) callback record at host buffer 64, B1-b ins
         stop.store(true);
         churn.join();
         REQUIRE(pipeline_test::waitFor(othersIdle, std::chrono::minutes(5)));
+        {
+            std::uint64_t solves1 = 0;
+            double solveMs1 = 0.0, gateMs1 = 0.0, maxSolve = 0.0;
+            for (int i = 0; i < builders; ++i)
+            {
+                const auto st = others[static_cast<std::size_t>(i)]->stats();
+                solves1 += st.solves;
+                solveMs1 += st.totalSolveMs;
+                gateMs1 += st.totalGateWaitMs;
+                maxSolve = std::max(maxSolve, st.maxSolveMs);
+            }
+            const auto n = solves1 - solves0;
+            std::printf(
+                "07c2-b1b solve duration, %d concurrent builder%s at 100 m: %llu solves completed in the "
+                "window, mean solve %.0f ms, mean gate wait %.0f ms (max solve since construction %.0f "
+                "ms); recorded only\n",
+                builders, builders == 1 ? "" : "s", static_cast<unsigned long long>(n),
+                n > 0 ? (solveMs1 - solveMs0) / static_cast<double>(n) : 0.0,
+                n > 0 ? (gateMs1 - gateMs0) / static_cast<double>(n) : 0.0, maxSolve);
+        }
         Point pt;
         pt.builders = builders;
         pt.callbacks = wall.size();

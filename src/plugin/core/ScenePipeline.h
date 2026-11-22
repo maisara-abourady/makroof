@@ -187,6 +187,13 @@ public:
         double lastStepDb = 0.0;     // AX47: max |level step| over bands and emitters of the last one
         double maxStepDb = 0.0;      // the largest since construction
         std::uint64_t heldSteps = 0; // of the steps, after a B1' hold or the D5 bridge (recorded only)
+        // Phase-07c-2 scope 11 item 6 (B1-b print): wall time of the last and the longest diffuse solve, the
+        // gate wait excluded, and the longest gate wait (recorded only; measured off the audio thread).
+        double lastSolveMs = 0.0;
+        double maxSolveMs = 0.0;
+        double maxGateWaitMs = 0.0;
+        double totalSolveMs = 0.0; // sums, for a mean over a window (solves delta)
+        double totalGateWaitMs = 0.0;
     };
     Stats stats() const;
     // Condition 6: the render log. A line is added (off the audio thread) when the host processes audio

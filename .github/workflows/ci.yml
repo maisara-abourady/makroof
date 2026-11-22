@@ -428,7 +428,7 @@ jobs:
             {
               echo "### Records, ${{ matrix.name }} (AX38 4c / (iv), K-e12, restore gate, 07c-2 M7 / M7b)"
               echo '```'
-              grep -E "^(05h|05i|07c1|07c1b)-records|^07c2-m7b? |^agree-full (gated|summary)|^agree-full pooled bias band [0-9] \[(CHECK, additive|record, per reference room)" build/benchmark.log || echo "(no record lines)"
+              grep -E "^(05h|05i|07c1|07c1b)-records|^07c2-(m7b?|b1b) |^agree-full (gated|summary)|^agree-full pooled bias band [0-9] \[(CHECK, additive|record, per reference room)" build/benchmark.log || echo "(no record lines)"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
             gate_warn=$(grep -E "^05h-records GATE .*warnings=(.* )?(MACTRIGGER|OVER30S|GROWTH|RATIO|RATIO-LOW|SOLVE)( |$)" build/benchmark.log | tr -d '\r' || true)
