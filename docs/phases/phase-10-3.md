@@ -57,7 +57,7 @@ All of the umbrella's ([phase-10](phase-10.md)); those bearing on this sub-phase
      "Raise with Maisara" item in phase-13.
   - **Research input:** RQ-W4-1 (published evidence on the audibility or annoyance of stepwise late-reverberation
     level changes during movement against one change after movement stops), researcher file
-    `docs/review/phase-07c-2/17-researcher-RQ-W4-1.md` (pending); this phase's loop reads it.
+    `docs/review/phase-07c-2/17-researcher-RQ-W4-1.md` (NOT READY: no published comparison found; the 10-3 listening item fills it); this phase's loop reads it.
 
 ## Out of scope
 

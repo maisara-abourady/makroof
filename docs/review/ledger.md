@@ -2450,7 +2450,7 @@ Placeholders `[07c-1b re-pin: …]` in AX38 4c and §6 are filled by a second `/
 Files under `docs/review/phase-07c-2/`: 1 (decider convening), 2 parts 1–3 (fact sheets: F1–F13, W sweep, M2 m* = 6), 3 and 7
 (researcher RQ-W1/W2, RQ-W2-6/7/9), 4-seat1…9 (round 1), 5 (decider round 1), 6 (interrogator on 5), 8 (decider rebuttal r2),
 10-seat1…9 (round 2), 11 (decider round 3), 12 (interrogator on 11), 13 (decider rebuttal r4), 14 (interrogator on 13),
-15 (decider rebuttal r5), 16 (interrogator on 15, with the orchestrator's application), 17 (researcher RQ-W4-1, pending).
+15 (decider rebuttal r5), 16 (interrogator on 15, with the orchestrator's application), 17 (researcher RQ-W4-1: NOT READY, no published comparison).
 
 | id | decision / item | outcome (final) | where applied |
 |---|---|---|---|
