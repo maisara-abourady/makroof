@@ -141,8 +141,8 @@ public:
     // Validation-only seam (phase-07c-2 M7, decider file 8 section 6): every later decision of this pipeline
     // solves with `limits` instead of the shipped sim::diffuse::DiffuseLimits{} (e.g. W_scene at m x the
     // shipped W_max). Never called by src/plugin; call it before prepare() (or with the builder idle). The
-    // AX48 key (engineKey()) keeps the shipped limits. diffuseLimits() returns what the solve uses (the shipped
-    // limits by default).
+    // AX48 key (engineKey()) keeps the shipped limits. diffuseLimits() returns what the solve uses (the
+    // shipped limits by default).
     void setDiffuseLimitsForTest(const sim::diffuse::DiffuseLimits& limits);
     sim::diffuse::DiffuseLimits diffuseLimits() const;
     // The base scene (non-parameter fields) and the current derived scene.

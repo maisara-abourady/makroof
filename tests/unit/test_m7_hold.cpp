@@ -1,10 +1,11 @@
-// Phase 07c-2, measurements M7 and M7b of docs/review/phase-07c-2/8-decider-rebuttal-r2.md section 6 (context:
-// docs/review/phase-07c-2/6-interrogator-on-file5.md row C-1). RECORDS ONLY: nothing here asserts a bound.
+// Phase 07c-2, measurements M7 and M7b of docs/review/phase-07c-2/8-decider-rebuttal-r2.md section 6
+// (context: docs/review/phase-07c-2/6-interrogator-on-file5.md row C-1). RECORDS ONLY: nothing here asserts a
+// bound.
 //
 // M7: the ISM hold of a position edit (setParameter on kListenerY) that arrives at a seeded random point of a
 // running builder solve: the time from the edit to the engine holding (submitIrSet, under stateMutex_) the
-// first IrSet built from a snapshot that contains the edit (the interim of the next decision, whose early part
-// is the edit's ISM; condition 4). From the code (C-1): the running solve is not abandoned by an edit
+// first IrSet built from a snapshot that contains the edit (the interim of the next decision, whose early
+// part is the edit's ISM; condition 4). From the code (C-1): the running solve is not abandoned by an edit
 // (ScenePipeline::setParameter only bumps dirty_), so the hold is the rest of the solve plus the next
 // decision's plan + interim. Baseline: the same edit with the builder idle.
 //
@@ -33,9 +34,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
-#include <cstdlib>
 #include <memory>
-#include <mutex>
 #include <random>
 #include <string>
 #include <thread>
@@ -67,11 +66,13 @@ constexpr const char* kOsName = "Linux";
 
 constexpr double kRate = 48000.0;
 constexpr int kMultipliers[] = {1, 4, 5, 6, 8};
-const int kOnlyCase = std::getenv("M7_ONLY") ? std::atoi(std::getenv("M7_ONLY")) : -1; // DEBUG
 constexpr int kIdleEdits = 10;
 constexpr int kMidEdits = 10;
-constexpr int kRoomEdits = 2;   // per case at m = 6, 8 (M7b)
-constexpr float kStepM = 0.05f; // listener y step per edit (every edit is a new diffuse problem)
+constexpr int kRoomEdits = 2; // per case at m = 6, 8 (M7b)
+// Listener Y step per edit, in the parameter's normalised units (module3d: 0..1 over the room's inner range):
+// 0.001 = 3 cm in the 30 m layout, 10 cm in the 100 m cube; every edit is a new diffuse problem, never
+// clamped.
+constexpr float kStepNorm = 0.001f;
 
 struct Stats
 {
@@ -100,7 +101,8 @@ contract::SceneDescription layout4Corner()
     alpha[4].fill(1.0); // layout 4: absorbing floor
     std::array<double, 6> s1{};
     s1.fill(1.0);
-    return diffuse_test::scene({20.0, 30.0, 10.0}, alpha, s1, {0.1, 0.1, 9.9}, {{7.0, 20.0, 2.0}, {13.0, 20.0, 2.0}});
+    return diffuse_test::scene({20.0, 30.0, 10.0}, alpha, s1, {0.1, 0.1, 9.9},
+                               {{7.0, 20.0, 2.0}, {13.0, 20.0, 2.0}});
 }
 contract::SceneDescription cubeLowAlphaS1()
 {
@@ -129,19 +131,16 @@ struct Probe
     std::atomic<std::uint64_t> armDecision{0};
     std::atomic<bool> armed{false};
     std::shared_ptr<const sim::conv::IrSet> armPtr;
-    std::mutex dbgM; std::string dbg;
 
     explicit Probe(plugin::ScenePipeline& pipe)
         : p(pipe)
     {
         p.setAfterSnapshotHook([this] {
             decisions.fetch_add(1);
-            { std::lock_guard<std::mutex> l(dbgM); dbg += " |D" + std::to_string(decisions.load()) + " y=" + std::to_string(p.parameter(module3d::kListenerY)) + " st=" + std::to_string(p.stats().interimSubmits) + "/" + std::to_string(p.stats().finalSubmits) + "/" + std::to_string(p.stats().discardedMidDrag); }
             inSolve.store(false);
         });
         p.setStageHook([this](plugin::ScenePipeline::BuildStage stage) {
             using S = plugin::ScenePipeline::BuildStage;
-            { std::lock_guard<std::mutex> l(dbgM); dbg += " " + std::to_string(static_cast<int>(stage)); }
             if (stage == S::Solve)
             {
                 solveDecision.store(decisions.load());
@@ -235,7 +234,8 @@ private:
 
 void waitSettled(const plugin::ScenePipeline& p)
 {
-    REQUIRE(pipeline_test::waitFor([&] { return !p.settling() && p.builderIdle(); }, std::chrono::seconds(300)));
+    REQUIRE(
+        pipeline_test::waitFor([&] { return !p.settling() && p.builderIdle(); }, std::chrono::seconds(300)));
 }
 
 struct CaseResult
@@ -262,7 +262,7 @@ CaseResult runCase(const std::string& name, const contract::SceneDescription& sc
     Probe probe(p);
     const float y0 = p.parameter(module3d::kListenerY);
     int k = 0;
-    const auto nextY = [&] { return y0 + kStepM * static_cast<float>(++k); };
+    const auto nextY = [&] { return y0 + kStepNorm * static_cast<float>(++k); };
 
     // Baseline: an edit with the builder idle; each runs one undisturbed solve (the solve durations).
     for (int i = 0; i < kIdleEdits; ++i)
@@ -292,8 +292,9 @@ CaseResult runCase(const std::string& name, const contract::SceneDescription& sc
         const auto seq = probe.solveSeq.load();
         const auto start = fromNs(probe.solveStartNs.load());
         const double u = uni(rng);
-        std::this_thread::sleep_until(start + std::chrono::duration_cast<Clock::duration>(
-                                                  std::chrono::duration<double, std::milli>(u * dMed)));
+        std::this_thread::sleep_until(start
+                                      + std::chrono::duration_cast<Clock::duration>(
+                                          std::chrono::duration<double, std::milli>(u * dMed)));
         const bool ended = probe.endSeq.load() == seq;
         late += ended ? 1 : 0;
         const auto st0 = p.stats();
@@ -301,16 +302,15 @@ CaseResult runCase(const std::string& name, const contract::SceneDescription& sc
         const auto t0 = probe.editAndArm(nextY());
         const double hold = msBetween(t0, probe.waitHold());
         const auto st1 = p.stats();
-        { std::lock_guard<std::mutex> l(probe.dbgM); std::printf("DBG %s\n", probe.dbg.c_str()); probe.dbg.clear(); }
         r.midHoldMs.push_back(hold);
-        std::printf("07c2-m7trial os=%s scene=%s m=%d edit %d at %.1f ms into the solve (u=%.3f of D_med %.1f ms%s): "
-                    "hold %.1f ms [decisions +%llu, interim +%llu, final +%llu, discarded +%llu]\n",
-                    kOsName, name.c_str(), m, i, msBetween(start, t0), u, dMed,
-                    ended ? ", solve already ended" : "", hold,
-                    static_cast<unsigned long long>(probe.decisions.load() - dec0),
-                    static_cast<unsigned long long>(st1.interimSubmits - st0.interimSubmits),
-                    static_cast<unsigned long long>(st1.finalSubmits - st0.finalSubmits),
-                    static_cast<unsigned long long>(st1.discardedMidDrag - st0.discardedMidDrag));
+        std::printf(
+            "07c2-m7trial os=%s scene=%s m=%d edit %d at %.1f ms into the solve (u=%.3f of D_med %.1f ms%s): "
+            "hold %.1f ms [decisions +%llu, interim +%llu, final +%llu, discarded +%llu]\n",
+            kOsName, name.c_str(), m, i, msBetween(start, t0), u, dMed, ended ? ", solve already ended" : "",
+            hold, static_cast<unsigned long long>(probe.decisions.load() - dec0),
+            static_cast<unsigned long long>(st1.interimSubmits - st0.interimSubmits),
+            static_cast<unsigned long long>(st1.finalSubmits - st0.finalSubmits),
+            static_cast<unsigned long long>(st1.discardedMidDrag - st0.discardedMidDrag));
     }
     waitSettled(p);
 
@@ -332,13 +332,14 @@ CaseResult runCase(const std::string& name, const contract::SceneDescription& sc
         }
     }
     const auto sd = stats(r.solveMs), ih = stats(r.idleHoldMs), mh = stats(r.midHoldMs);
-    std::printf("07c2-m7 os=%s scene=%s m=%d W_max/emitter=%lld pool=%u fs=48k | solve n=%zu median %.1f p95 %.1f "
-                "worst %.1f ms | idle-edit hold n=%zu median %.1f p95 %.1f worst %.1f ms | mid-solve hold n=%zu "
-                "median %.1f p95 %.1f worst %.1f ms (%d landed after the solve ended)\n",
-                kOsName, name.c_str(), m,
-                static_cast<long long>(sim::diffuse::kWMaxPerEmitterProvisional * static_cast<std::int64_t>(m)),
-                p.gate().pool().size(), r.solveMs.size(), sd.median, sd.p95, sd.worst, r.idleHoldMs.size(),
-                ih.median, ih.p95, ih.worst, r.midHoldMs.size(), mh.median, mh.p95, mh.worst, late);
+    std::printf(
+        "07c2-m7 os=%s scene=%s m=%d W_max/emitter=%lld pool=%u fs=48k | solve n=%zu median %.1f p95 %.1f "
+        "worst %.1f ms | idle-edit hold n=%zu median %.1f p95 %.1f worst %.1f ms | mid-solve hold n=%zu "
+        "median %.1f p95 %.1f worst %.1f ms (%d landed after the solve ended)\n",
+        kOsName, name.c_str(), m,
+        static_cast<long long>(sim::diffuse::kWMaxPerEmitterProvisional * static_cast<std::int64_t>(m)),
+        p.gate().pool().size(), r.solveMs.size(), sd.median, sd.p95, sd.worst, r.idleHoldMs.size(), ih.median,
+        ih.p95, ih.worst, r.midHoldMs.size(), mh.median, mh.p95, mh.worst, late);
     return r;
 }
 
@@ -382,30 +383,32 @@ TEST_CASE("records: M7 ISM hold of a position edit during a running builder solv
     {
         const char* name;
         contract::SceneDescription scene;
-    } scenes[] = {{"layout4_s1/listener_corner", layout4Corner()}, {"cube100_lowalpha0.05_s1", cubeLowAlphaS1()}};
+    } scenes[] = {{"layout4_s1/listener_corner", layout4Corner()},
+                  {"cube100_lowalpha0.05_s1", cubeLowAlphaS1()}};
     std::vector<CaseResult> all;
     std::uint64_t seed = 0x07C20007;
     for (const auto& s : scenes)
         for (const int m : kMultipliers)
-            if (kOnlyCase < 0 || kOnlyCase == m)
-                all.push_back(runCase(s.name, s.scene, m, seed++));
+            all.push_back(runCase(s.name, s.scene, m, seed++));
     // M7b: cancel-on-edit, from the measured edit-to-solve-end times (not implemented in shipped code).
     for (const auto& r : all)
     {
         if (r.m != 6 && r.m != 8)
             continue;
         const auto c = stats(r.editToSolveEndMs);
-        std::printf("07c2-m7b os=%s scene=%s m=%d cancel-on-edit (hypothetical): edit->solve end median %.1f worst "
-                    "%.1f ms (n=%zu position edits); solves completing before the next edit: every 5 s %.0f%%, "
-                    "every 100 ms %.0f%%",
-                    kOsName, r.scene.c_str(), r.m, c.median, c.worst, r.editToSolveEndMs.size(),
-                    100.0 * fractionBelow(r.editToSolveEndMs, 5000.0),
-                    100.0 * fractionBelow(r.editToSolveEndMs, 100.0));
+        std::printf(
+            "07c2-m7b os=%s scene=%s m=%d cancel-on-edit (hypothetical): edit->solve end median %.1f worst "
+            "%.1f ms (n=%zu position edits); solves completing before the next edit: every 5 s %.0f%%, "
+            "every 100 ms %.0f%%",
+            kOsName, r.scene.c_str(), r.m, c.median, c.worst, r.editToSolveEndMs.size(),
+            100.0 * fractionBelow(r.editToSolveEndMs, 5000.0),
+            100.0 * fractionBelow(r.editToSolveEndMs, 100.0));
         const auto rc = stats(r.roomEditToSolveEndMs);
-        std::printf(" | room size +-1 m (n=%zu): edit->solve end median %.1f worst %.1f ms; every 5 s %.0f%%, every "
-                    "100 ms %.0f%%\n",
-                    r.roomEditToSolveEndMs.size(), rc.median, rc.worst,
-                    100.0 * fractionBelow(r.roomEditToSolveEndMs, 5000.0),
-                    100.0 * fractionBelow(r.roomEditToSolveEndMs, 100.0));
+        std::printf(
+            " | room size +-1 m (n=%zu): edit->solve end median %.1f worst %.1f ms; every 5 s %.0f%%, every "
+            "100 ms %.0f%%\n",
+            r.roomEditToSolveEndMs.size(), rc.median, rc.worst,
+            100.0 * fractionBelow(r.roomEditToSolveEndMs, 5000.0),
+            100.0 * fractionBelow(r.roomEditToSolveEndMs, 100.0));
     }
 }

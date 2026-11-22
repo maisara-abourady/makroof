@@ -402,7 +402,8 @@ bool ScenePipeline::decide(Source source, bool load)
             return commit(source, gen, scene, b);
 
         const auto* abandon = source == Source::Builder ? &builderAbandon_ : nullptr;
-        sim::StagedBuild build = planStage(scene, source, stageHook, limitsForTest ? &*limitsForTest : nullptr);
+        sim::StagedBuild build = planStage(scene, source, stageHook,
+                                           limitsForTest ? &*limitsForTest : nullptr);
         const std::uint64_t p = build.problemHash();
         const std::uint64_t s = sceneKey(scene);
         // A level solved in this process for this very problem is final: a change of seed, output mode or
