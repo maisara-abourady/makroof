@@ -18,6 +18,12 @@
 //     submit; the offline drop (setNonRealtime(true), offline reset()) runs under stateMutex_ after the
 //     builder stopped accepting, so no submit reaches the engine during it (phase-07c-1 condition 10).
 //     None of them concurrently with process().
+//   - The realtime diffuse solve (phase-07c-2 scope 11, D-W3 H-2c): a task (SolveJob) on the gate's process-wide
+//     executor, never on the builder thread and never a thread per instance. It reads only its own immutable
+//     snapshot (the planned build, the generation read before the snapshot, the scene), dirty_ and the engine's
+//     constant IrSet parameters, counts its solve under stateMutex_, and writes its final into itself; the
+//     builder reads it after the task's `ready` flag and alone commits it. quiesce (prepare, release, restore,
+//     the destructor) cancels every task and orphans or waits for it; the offline entry cancels without waiting.
 //   - The decision state (last handled generation, last submitted IR, restore flag): under stateMutex_,
 //     taken by the builder, the host-thread calls and the offline process(). The realtime process()
 //     never takes a lock or allocates.
@@ -157,7 +163,11 @@ public:
 
     // ---- phase-07c-1 condition 4 / AX38 (iii), AX47, condition 6 ----
     // True while an interim IrSet plays or an update is pending (the UI shows "settling"). Any thread.
-    bool settling() const noexcept { return interimPlaying_.load(std::memory_order_acquire) || hasWork(); }
+    bool settling() const noexcept
+    {
+        return interimPlaying_.load(std::memory_order_acquire) || hasWork()
+               || inflightGen_.load(std::memory_order_acquire) != kNone;
+    }
     struct Stats
     {
         std::uint64_t interimSubmits = 0; // interim IrSets submitted (provisional tail, held level or bridge)
@@ -270,8 +280,30 @@ private:
     sim::StagedBuild planStage(const contract::SceneDescription& scene, Source source,
                                const std::function<void(BuildStage)>& hook,
                                const sim::diffuse::DiffuseLimits* limitsForTest);
+    // `abandon`: the flag a builder-class waiter leaves the gate on (the builder's own builderAbandon_, or a
+    // solve task's per-generation cancel token).
     Level solveStage(sim::StagedBuild& build, Source source, const std::function<void(BuildStage)>& hook,
-                     std::uint64_t p, std::uint64_t s);
+                     std::uint64_t p, std::uint64_t s, const std::atomic<bool>* abandon = nullptr);
+    // A final build's tail and IR over the level `lv` (the solve's own, or the held / saved one): the cached
+    // unit decays when they are this scene's (AQ4), else the exact synthesis. Touches no pipeline state.
+    static void finishExact(sim::StagedBuild& build, const Level& lv,
+                            const std::shared_ptr<const std::vector<sim::tail::UnitDecay>>& units,
+                            const std::function<void(BuildStage)>& hook, Built& b);
+    // Phase-07c-2 scope 11 (D-W3 H-2c): the realtime builder's diffuse solve as a task on the gate's
+    // process-wide executor. Input: the planned build (an immutable snapshot of the DiffuseProblem, with
+    // E_prec in its limits and E_model in the estimator), the generation read before the snapshot and the
+    // scene. Output: the final Built in the task (the shared-ownership mailbox), read by the builder only
+    // after `ready`; the builder alone commits it (ScenePipeline::commit). `cancel` is the per-generation
+    // token: set by the builder when dirty_ moved past `gen` (superseded) and by quiesce / cancel; it stops
+    // the solve at its next stop point (between estimator blocks, a fixed work count; never time) and every
+    // later cancel point of the assembly.
+    struct SolveJob;
+    void runSolveJob(SolveJob& job) noexcept;
+    // Cancels every solve task of this pipeline and orphans (not started) or waits for (running) each; with
+    // the builder quiesced. After it no task touches this pipeline.
+    void settleJobs();
+    // True when no solve task of this pipeline is queued or running.
+    bool jobsIdle() const;
     // Submits `b` (under stateMutex_). Returns true when the generation was recorded as handled.
     bool commit(Source source, std::uint64_t gen, const contract::SceneDescription& scene, Built& b);
     void watchHostRate() noexcept;
@@ -371,6 +403,15 @@ private:
     // Set while the builder is quiesced: a builder waiting at the gate leaves, a builder solve stops
     // between blocks (D6); cleared on restart.
     std::atomic<bool> builderAbandon_{false};
+    // Phase-07c-2 scope 11 (D-W3 H-2c): this pipeline's solve tasks. job_ is the current generation's (its
+    // generation in inflightGen_, kNone when none); retired_ holds superseded, cancelled or reaped tasks
+    // until they are done (quiesce waits for them). Under jobMutex_ (pointer operations only; never taken
+    // with stateMutex_ held, nor stateMutex_ with it). mailbox_: a current task's result awaits the builder.
+    mutable std::mutex jobMutex_;
+    std::shared_ptr<SolveJob> job_;
+    std::vector<std::shared_ptr<SolveJob>> retired_;
+    std::atomic<std::uint64_t> inflightGen_{kNone};
+    std::atomic<bool> mailbox_{false};
     // Last member: destroyed (stopped and joined) first, before the engine and the state it uses.
     std::unique_ptr<IrBuilderThread> builder_;
 };

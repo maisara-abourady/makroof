@@ -16,11 +16,13 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -142,6 +144,176 @@ TEST_CASE("Diffuse-solve gate: a builder waiter leaves the queue when its pipeli
     REQUIRE(gate.waiting(Class::Builder) == 0);
     gate.leave();
     REQUIRE(gate.solvesCompleted() == 1); // the abandoned waiter never solved
+}
+
+namespace {
+
+// A gate-executor task for the tests below: counts its runs and optionally blocks until released.
+struct TestTask final : plugin::DiffuseSolveGate::Task
+{
+    std::atomic<int> runs{0};
+    std::atomic<bool> started{false};
+    std::atomic<bool> release{true};
+
+protected:
+    void execute() noexcept override
+    {
+        started.store(true);
+        while (!release.load())
+            std::this_thread::sleep_for(1ms);
+        runs.fetch_add(1);
+    }
+};
+
+} // namespace
+
+TEST_CASE(
+    "Gate executor (phase-07c-2 scope 11): a task orphaned before it starts never runs; a running one is "
+    "waited for",
+    "[pipeline][gate][h2c]")
+{
+    plugin::DiffuseSolveGate gate(2);
+    // Occupy every executor thread, so the next task stays queued.
+    std::vector<std::shared_ptr<TestTask>> blockers;
+    for (unsigned i = 0; i < plugin::DiffuseSolveGate::kExecutorThreads; ++i)
+    {
+        auto b = std::make_shared<TestTask>();
+        b->release.store(false);
+        blockers.push_back(b);
+        gate.post(b);
+    }
+    for (const auto& b : blockers)
+        REQUIRE(pipeline_test::waitFor([&] { return b->started.load(); }));
+    auto queued = std::make_shared<TestTask>();
+    gate.post(queued);
+    std::this_thread::sleep_for(20ms);
+    REQUIRE_FALSE(queued->started.load());
+    REQUIRE_FALSE(queued->orphanOrWait()); // orphaned: it will never run
+    REQUIRE(queued->done());
+    // A running task: orphanOrWait() waits until it has returned.
+    std::atomic<bool> waited{false}, ran{false};
+    std::thread waiter([&] {
+        ran.store(blockers[0]->orphanOrWait());
+        waited.store(true);
+    });
+    std::this_thread::sleep_for(20ms);
+    REQUIRE_FALSE(waited.load());
+    for (const auto& b : blockers)
+        b->release.store(true);
+    waiter.join();
+    REQUIRE(ran.load());
+    REQUIRE(blockers[0]->runs.load() == 1);
+    REQUIRE(blockers[0]->done());
+    REQUIRE(blockers[1]->orphanOrWait());
+    // The orphaned task is dequeued but never run.
+    auto after = std::make_shared<TestTask>();
+    gate.post(after);
+    REQUIRE(pipeline_test::waitFor([&] { return after->runs.load() == 1; })); // the executor moved past it
+    REQUIRE(after->orphanOrWait());
+    REQUIRE(queued->runs.load() == 0);
+    REQUIRE_FALSE(queued->started.load());
+}
+
+TEST_CASE("Gate (phase-07c-2 scope 11): a builder-class solve takes shares on size() - 1 threads, the other "
+          "classes on all",
+          "[pipeline][gate][h2c]")
+{
+    for (const unsigned n : {1u, 2u, 4u})
+    {
+        CAPTURE(n);
+        plugin::DiffuseSolveGate gate(n);
+        REQUIRE(gate.builderShareThreads() == std::max(1u, n - 1));
+        for (const Class cls : {Class::Builder, Class::Synchronous, Class::Offline, Class::Builder})
+        {
+            plugin::DiffuseSolveGate::Scope scope(gate, cls);
+            REQUIRE(scope.entered());
+            REQUIRE(gate.pool().shareThreads() == (cls == Class::Builder ? std::max(1u, n - 1) : n));
+        }
+    }
+}
+
+TEST_CASE(
+    "Scope 11 (H-2c): a pipeline destroyed or quiesced with its solve task waiting at the gate or still "
+    "queued on the executor neither hangs nor leaves the task behind",
+    "[pipeline][gate][h2c]")
+{
+    const auto scene = pipeline_test::loadScene("dead_booth.json");
+    // The process-wide gate outlives the pipelines below (this reference).
+    const auto gate = plugin::DiffuseSolveGate::shared();
+    for (const bool destroy : {true, false})
+    {
+        CAPTURE(destroy);
+        DYNAMIC_SECTION("waiting at the gate, destroy " << destroy)
+        {
+            auto p = std::make_unique<plugin::ScenePipeline>();
+            REQUIRE(&p->gate() == gate.get());
+            restoreScene(*p, scene);
+            p->prepare(kRate, 256, false);
+            REQUIRE(pipeline_test::waitFor([&] { return p->builderIdle() && !p->settling(); }));
+            REQUIRE(gate->enter(Class::Synchronous)); // another instance's synchronous solve holds the gate
+            p->setParameter(module3d::kListenerY, p->parameter(module3d::kListenerY) + 0.3f);
+            REQUIRE(pipeline_test::waitFor([&] { return gate->waiting(Class::Builder) == 1; }));
+            REQUIRE(p->settling());
+            REQUIRE_FALSE(p->builderBusy()); // the builder is free: its ISM update is in
+            if (destroy)
+                p.reset(); // the task leaves the queue on its token and is waited for
+            else
+                p->release();
+            REQUIRE(gate->waiting(Class::Builder) == 0);
+            gate->leave();
+            if (!destroy)
+            {
+                REQUIRE_FALSE(p->builderBusy()); // released: the edit stays pending until the next prepare()
+                REQUIRE_FALSE(p->gate().held());
+                p->prepare(kRate, 256, false);
+                REQUIRE(pipeline_test::waitFor([&] { return p->builderIdle() && !p->settling(); }));
+                REQUIRE(p->handledGeneration() == p->dirtyGeneration());
+            }
+        }
+        DYNAMIC_SECTION("queued on the executor, destroy " << destroy)
+        {
+            std::vector<std::shared_ptr<TestTask>> blockers;
+            for (unsigned i = 0; i < plugin::DiffuseSolveGate::kExecutorThreads; ++i)
+            {
+                auto b = std::make_shared<TestTask>();
+                b->release.store(false);
+                blockers.push_back(b);
+            }
+            auto p = std::make_unique<plugin::ScenePipeline>();
+            restoreScene(*p, scene);
+            p->prepare(kRate, 256, false);
+            REQUIRE(pipeline_test::waitFor([&] { return p->builderIdle() && !p->settling(); }));
+            for (const auto& b : blockers)
+                gate->post(b);
+            for (const auto& b : blockers)
+                REQUIRE(pipeline_test::waitFor([&] { return b->started.load(); }));
+            const auto interims = p->stats().interimSubmits;
+            p->setParameter(module3d::kListenerY, p->parameter(module3d::kListenerY) + 0.3f);
+            REQUIRE(pipeline_test::waitFor([&] { return p->stats().interimSubmits == interims + 1; }));
+            REQUIRE(pipeline_test::waitFor([&] { return !p->builderBusy(); }));
+            REQUIRE_FALSE(p->builderIdle()); // its solve task is queued
+            if (destroy)
+                p.reset(); // orphaned: never runs
+            else
+                p->release();
+            for (const auto& b : blockers)
+                b->release.store(true);
+            for (const auto& b : blockers)
+                REQUIRE(b->orphanOrWait());
+            // The executor moves past the orphaned task without running it (it would touch the pipeline).
+            auto probe = std::make_shared<TestTask>();
+            gate->post(probe);
+            REQUIRE(pipeline_test::waitFor([&] { return probe->runs.load() == 1; }));
+            if (!destroy)
+            {
+                REQUIRE_FALSE(p->builderBusy()); // released: the edit stays pending until the next prepare()
+                REQUIRE_FALSE(p->gate().held());
+                p->prepare(kRate, 256, false);
+                REQUIRE(pipeline_test::waitFor([&] { return p->builderIdle() && !p->settling(); }));
+                REQUIRE(p->handledGeneration() == p->dirtyGeneration());
+            }
+        }
+    }
 }
 
 TEST_CASE("buildRoomIR throws BuildCancelled when the cancel flag is set (AX39 D6)", "[sim][hybrid][diffuse]")

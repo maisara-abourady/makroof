@@ -5,7 +5,9 @@
 // One std::thread that runs `decide` (build the scene's IR and submit it, or skip it) whenever `hasWork`
 // says the dirty generation differs from the last handled one. It never blocks the audio thread: the
 // parameter listener only increments an atomic counter, and the builder notices it by polling while it
-// is idle (kIdlePollS); non-audio callers can wake it at once with notify().
+// is idle (kIdlePollS); non-audio callers can wake it at once with notify(). Phase-07c-2 scope 11 (D-W3
+// H-2c): the realtime diffuse solve no longer runs inline here; ScenePipeline hands it to the gate's
+// process-wide executor and this thread commits its result, so it never waits for a solve.
 //
 // AX33 (the AQ4 20 ms cap): a minimum spacing of kMinBuildSpacingS between the STARTS of successive
 // builds. A request with no build running and none started in the last 20 ms starts at once (within the

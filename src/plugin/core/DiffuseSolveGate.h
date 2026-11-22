@@ -19,7 +19,14 @@
 // gate"). The process-wide gate is reference-counted: created with the first ScenePipeline, destroyed
 // (its workers joined) with the last one, on the host thread that deletes that instance, never in a
 // static destructor at library unload (a loader-lock deadlock on Windows, PR #27 review Q-1).
-// JUCE-free.
+//
+// Phase-07c-2 scope 11 (D-W3 H-2c, Seat 5): the gate also owns the process-wide solve EXECUTOR, on which
+// every realtime pipeline runs its builder-class diffuse solves as tasks (never a thread per instance), so
+// the IR builder never waits for a solve. kExecutorThreads threads, started with the first task; a task is
+// owned through shared_ptr by its pipeline and the executor queue, and its owner either orphans it before it
+// starts (it then never runs) or waits for it to finish (Task::orphanOrWait), so a task never outlives the
+// pipeline it reports to. While a builder-class solve holds the gate the pool takes shares on size() - 1
+// threads (the builder works alongside it; D4: never a different result). JUCE-free.
 #include "sim/diffuse/ThreadPool.h"
 
 #include <atomic>
@@ -28,6 +35,8 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <thread>
+#include <vector>
 
 namespace plugin {
 
@@ -62,6 +71,45 @@ public:
     static std::shared_ptr<DiffuseSolveGate> shared();
 
     sim::diffuse::ThreadPool& pool() noexcept { return pool_; }
+
+    // ---- the solve executor (phase-07c-2 scope 11) ----
+    static constexpr unsigned kExecutorThreads =
+        2; // one solving, one unwinding a superseded solve or assembling
+    // A unit of work on the executor. Its state is Queued until an executor thread starts it (Running, then
+    // Done) or its owner orphans it (Orphaned: it never runs and its execute() never touches the owner).
+    class Task
+    {
+    public:
+        virtual ~Task() = default;
+        // Called by the executor: runs execute() unless orphaned.
+        void runOnExecutor() noexcept;
+        // Owner: a task not started yet is orphaned (returns false); a running one is waited for (true).
+        // After the return the task never touches its owner again.
+        bool orphanOrWait();
+        // True once execute() has returned (or the task was orphaned).
+        bool done() const noexcept { return done_.load(std::memory_order_acquire); }
+
+    protected:
+        // Must not throw. Everything it does to its owner happens before it returns.
+        virtual void execute() noexcept = 0;
+
+    private:
+        enum class State
+        {
+            Queued,
+            Running,
+            Done,
+            Orphaned
+        };
+        std::mutex mutex_;
+        std::condition_variable cv_;
+        State state_ = State::Queued;
+        std::atomic<bool> done_{false};
+    };
+    // Queues `task` on the executor (FIFO). Any non-audio thread.
+    void post(std::shared_ptr<Task> task);
+    // The pool's share count for a builder-class solve: size() - 1 (at least 1).
+    unsigned builderShareThreads() const noexcept;
 
     // Blocks until this waiter may solve (the class order above). Returns false without entering when
     // `abandon` became true while waiting (builder class: the pipeline was quiesced); synchronous and
@@ -114,8 +162,16 @@ private:
     const Waiter* next() const noexcept;
     void remove(std::uint64_t ticket);
 
+    void executorLoop();
+
     sim::diffuse::ThreadPool pool_;
     std::atomic<std::uint64_t> synchronousFromRealtime_{0};
+    // The executor (its own mutex: never taken with mutex_ held, nor mutex_ with it).
+    std::mutex execMutex_;
+    std::condition_variable execCv_;
+    std::deque<std::shared_ptr<Task>> tasks_;
+    std::vector<std::thread> executors_;
+    bool execStop_ = false;
     mutable std::mutex mutex_;
     std::condition_variable cv_;
     bool held_ = false;
