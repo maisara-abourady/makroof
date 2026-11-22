@@ -76,3 +76,23 @@ and completed fraction 100 % in every row. Load pattern length at m = 6, N = 8: 
 The run concluded `success` (`ci ok` green). Artifacts: `listening-pack` (14764201808), `SpatialScene-{linux,macos,windows}`,
 `pluginval-{linux,macos,windows}`.
 
+
+## Run 45067467250 (9baf9e7): the run of record for PR #34
+PR #34's first CI run (45056870706, on c60902c) failed on macOS only: the M7b continuous-automation record
+(`tests/unit/test_m7_hold.cpp`) took its stats snapshot one edit period (100 ms) after the last edit, and on that runner
+the cube scene at m = 1 solves in a median 93 ms, so the last edit's final could be adopted before the snapshot and the
+300 s wait for a later final failed (pluginval and auval in that job failed only because the step before them had).
+A test race, not a product defect; fixed in 9baf9e7 (snapshot and `tEnd` taken at the last edit). Run 45067467250 on
+9baf9e7: all 36 jobs green, `ci ok` green. Nightly validation 45056870731 (BRAS) green on c60902c; `src/sim/` is
+unchanged since.
+
+M7 mid-solve hold, median / worst (ms), m = 1 / 4 / 5 / 6 / 8:
+
+| OS (job) | layout4_s1/listener_corner | cube100_lowalpha0.05_s1 |
+|---|---|---|
+| Linux (137346755791) | 22.3/39.1, 26.9/45.5, 26.2/30.4, 26.7/33.9, 27.7/30.5 | 51.1/69.6, 46.3/50.0, 49.3/58.0, 47.5/53.8, 49.8/56.2 |
+| macOS (137346755816) | 29.3/136.1, 33.0/55.5, 35.4/50.8, 34.8/42.4, 30.4/46.9 | 52.9/59.7, 53.8/77.0, 56.0/59.8, 54.9/61.8, 61.4/92.8 |
+| Windows (137346755803) | 40.5/48.6, 42.7/48.0, 46.0/47.4, 40.5/47.1, 45.0/52.0 | 85.7/87.0, 84.0/90.0, 84.7/86.0, 82.7/87.8, 83.1/89.0 |
+
+Worst over three OSes 136.1 ms (macOS, layout, m = 1) against 700; medians flat in m. Both runs (45045891476 on
+1b2f700 and 45067467250 on 9baf9e7) meet the criterion.
