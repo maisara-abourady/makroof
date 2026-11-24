@@ -60,17 +60,21 @@ sys.path.insert(0, str(REPO))
 from tools.acoustics import bands, clicks, metrics, render_cli, signals, wav  # noqa: E402
 
 # ---- Pre-registered numbers (file 13, "D-W2: final") ----
-SCORED_TRIALS = 16  # item 2: 16 scored trials per test
+# Phase-07c-2b M3-2 (decider file 6): each ABX scene is its own family (F1 S-W, F2 S-B*; F3, F4 at 08-3); the noise
+# chain runs 24 scored trials at >= 18/24 (0.011328) with 6 anchors, 3 in each half, a break after presentation 15;
+# the speech chain as below (R3). Per family alpha = noise + speech tails (union bound).
+SCORED_TRIALS = {"noise": 24, "speech": 16}  # M3-2: noise 24 (was file 13 item 2's 16); speech per R3
 ANCHOR_TRIALS = 6  # item 2: 6 interleaved anchor trials per block
 ANCHOR_DB = 3.0  # item 2: a uniform 3 dB tail step
 ANCHOR_PASS = 5  # item 2: pass at >= 5/6
-BLOCK_TRIALS = 22  # item 2: blocks of 22 trials
-BREAK_AFTER = 11  # item 2: a break at trial 11
+BLOCK_TRIALS = {c: n + ANCHOR_TRIALS for c, n in SCORED_TRIALS.items()}  # noise 30, speech 22 presentations
+BREAK_AFTER = {"noise": 15, "speech": 11}  # M3-2: after presentation 15 (noise); item 2: 11 (22-trial blocks)
+ANCHORS_PER_HALF = {"noise": 3}  # M3-2 (Seat 1): 3 anchors on each side of the break
 LEVELS_DB = (0.9, 0.5)  # item 3: 0.9 dB, then (only if detected) 0.5 dB
-CRITERION = {"noise": 12, "speech": 13}  # item 3: >= 12/16 (noise), >= 13/16 (speech)
-FAMILY_ALPHA = 0.049  # item 3 / 13: FWER <= 0.0490 (strong, union bound)
-POWER_AT_075 = {"noise": 0.63, "speech": 0.41}  # item 3 / 13 (0.405 rounded as item 13 writes it)
-UP_PER_BLOCK = 8  # item 7: 8 up and 8 down per block, in random order
+CRITERION = {"noise": 18, "speech": 13}  # M3-2: >= 18/24 (noise); item 3: >= 13/16 (speech)
+FAMILY_ALPHA = 0.021963  # M3-2: per family 190051/2^24 + 697/2^16 (union over the two chains)
+POWER_AT_075 = {"noise": 0.61, "speech": 0.41}  # M3-2 / item 13: 0.607 and 0.405, rounded as item 13 writes them
+UP_PER_BLOCK = {c: n // 2 for c, n in SCORED_TRIALS.items()}  # item 7: half up, half down, in random order
 POST_STEP_S = 2.0  # item 7: at least 2 s of programme after the step
 FS = 48000  # items 8-10: 48 kHz, no resampling
 PARTITION = 512  # item 5: P = 512
@@ -604,17 +608,24 @@ def band_level_db(x: np.ndarray, fs: float, start: int, n: int) -> float:
 
 
 def trial_plan(chain: str, level_db: float) -> list[dict]:
-    """One block: 16 scored trials at +-level (8 up, 8 down, random order) and 6 anchor trials at +-3 dB (3 up, 3
-    down) interleaved at seeded positions; 22 trials, a break after trial 11. Seeded (KEY_SEED_BLOCKS), so the plan is
-    reproducible; which of A and B is X is drawn at sealing, from a key the plan does not hold."""
+    """One block: SCORED_TRIALS[chain] scored trials at +-level (half up, half down, random order) and 6 anchor trials
+    at +-3 dB (3 up, 3 down) interleaved at seeded positions (noise: 3 on each side of the break, M3-2); a break after
+    BREAK_AFTER[chain]. Seeded (KEY_SEED_BLOCKS), so the plan is reproducible; which of A and B is X is drawn at
+    sealing, from a key the plan does not hold."""
     rng = np.random.default_rng([KEY_SEED_BLOCKS[chain], int(round(level_db * 100))])
-    scored = [+1] * UP_PER_BLOCK + [-1] * (SCORED_TRIALS - UP_PER_BLOCK)
+    n_scored, n_block, brk = SCORED_TRIALS[chain], BLOCK_TRIALS[chain], BREAK_AFTER[chain]
+    scored = [+1] * UP_PER_BLOCK[chain] + [-1] * (n_scored - UP_PER_BLOCK[chain])
     rng.shuffle(scored)
     anchors = [+1] * (ANCHOR_TRIALS // 2) + [-1] * (ANCHOR_TRIALS - ANCHOR_TRIALS // 2)
     rng.shuffle(anchors)
-    slots = sorted(rng.choice(BLOCK_TRIALS, size=ANCHOR_TRIALS, replace=False).tolist())
+    if chain in ANCHORS_PER_HALF:
+        k = ANCHORS_PER_HALF[chain]
+        slots = sorted(rng.choice(brk, size=k, replace=False).tolist()
+                       + (brk + rng.choice(n_block - brk, size=ANCHOR_TRIALS - k, replace=False)).tolist())
+    else:
+        slots = sorted(rng.choice(n_block, size=ANCHOR_TRIALS, replace=False).tolist())
     plan, si, ai = [], 0, 0
-    for t in range(BLOCK_TRIALS):
+    for t in range(n_block):
         if t in slots:
             kind, g = "anchor", anchors[ai] * ANCHOR_DB
             ai += 1
@@ -622,8 +633,8 @@ def trial_plan(chain: str, level_db: float) -> list[dict]:
             kind, g = "scored", scored[si] * level_db
             si += 1
         plan.append({"trial": t + 1, "kind": kind, "g_db": g, "direction": "up" if g > 0 else "down",
-                     "seed_index": t, "break_after": t + 1 == BREAK_AFTER})
-    assert len(plan) == BLOCK_TRIALS and si == SCORED_TRIALS and ai == ANCHOR_TRIALS
+                     "seed_index": t, "break_after": t + 1 == brk})
+    assert len(plan) == n_block and si == n_scored and ai == ANCHOR_TRIALS
     return plan
 
 
@@ -715,7 +726,7 @@ def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_f
     work = out / "_work"
     work.mkdir(exist_ok=True)
     manifest: dict = {"chain": chain, "preregistration": "phase-07c-2 decider file 13, D-W2 final items 1-16 and Q5",
-                      "criterion": f">= {CRITERION[chain]}/{SCORED_TRIALS}", "levels_db": list(levels),
+                      "criterion": f">= {CRITERION[chain]}/{SCORED_TRIALS[chain]}", "levels_db": list(levels),
                       "anchor": f"{ANCHOR_DB} dB, pass >= {ANCHOR_PASS}/{ANCHOR_TRIALS}", "fs": FS,
                       "partition": PARTITION, "block": BLOCK, "render_cli": str(binary), "blocks": {}, "ir_checks": {}}
     manifest["scene"] = check_scene(binary, scene_path, work, log, scene_name)
@@ -743,7 +754,7 @@ def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_f
             f"{h1k['delta_C80_db']:+.3f} dB (broadband {hb['delta_C80_db']:+.3f})")
     for level in levels:
         block = []
-        for t in trial_plan(chain, level)[: trials or BLOCK_TRIALS]:
+        for t in trial_plan(chain, level)[: trials or BLOCK_TRIALS[chain]]:
             x, onset, record = programme_for(t["seed_index"])
             rec = render_trial(binary, scene_path, x, onset, t["g_db"], out / f"{level:.1f}dB" / f"trial_{t['trial']:02d}")
             block.append({**t, **record, **rec})
@@ -1051,10 +1062,11 @@ def score_block(key_block: list[dict], answers: dict[int, str], chain: str, leve
         verdict, wording = "inconclusive", (f"inconclusive: anchor {ka}/{ANCHOR_TRIALS} < {ANCHOR_PASS}/{ANCHOR_TRIALS}; "
                                             "the block is void and gets one rerun (item 4)")
     elif k >= c:
-        verdict, wording = "detected", f"detected (>= {c}/16, family alpha {FAMILY_ALPHA})"
+        verdict, wording = "detected", f"detected (>= {c}/{SCORED_TRIALS[chain]}, family alpha {FAMILY_ALPHA})"
     else:
         verdict = "not detected"
-        wording = f"not detected in 16 trials by one listener (power {POWER_AT_075[chain]:.2f} at p = 0.75)"
+        wording = (f"not detected in {SCORED_TRIALS[chain]} trials by one listener (power {POWER_AT_075[chain]:.2f} "
+                   "at p = 0.75)")
     return {"chain": chain, "level_db": float(level), "k": k, "n": len(scored), "p_exact": binom_tail(k, len(scored)),
             "anchor_k": ka, "anchor_n": len(anchors), "verdict": verdict, "wording": wording}
 
