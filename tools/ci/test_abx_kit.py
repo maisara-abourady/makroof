@@ -100,6 +100,48 @@ def test_m2_gap_check() -> None:
         abx_kit.gap_check({"T30_1k_s": 2.0, "tail_T30_1k_s": [None, 1.2]}, 2.1, 2.0)
 
 
+def _synthetic_step(fs: int = 48000, g_db: float = 0.9, seed: int = 3):
+    """A noise 'unstepped' render a, its stepped twin b = a * 10^(g/20), and o = the exact AQ4 crossfade from a to
+    b at s0 (float32, two identical outputs), as render_cli's step writes it (companions (ii), (iii))."""
+    rng = np.random.default_rng(seed)
+    n, s0 = fs, fs // 2
+    a = (0.05 * rng.standard_normal(n)).astype(np.float32)
+    b = (a.astype(np.float64) * 10 ** (g_db / 20)).astype(np.float32)
+    L = int(round(abx_kit.CROSSFADE_S * fs))
+    j = np.arange(L, dtype=np.float64)
+    o = a.astype(np.float64).copy()
+    o[s0 : s0 + L] = (1 - j / L) * a[s0 : s0 + L] + (j / L) * b[s0 : s0 + L]
+    o[s0 + L :] = b[s0 + L :]
+    two = lambda x: np.stack([x, x], axis=1).astype(np.float32)  # noqa: E731
+    return two(o), two(a), two(b), s0, L
+
+
+def test_click_check_form_b_green_on_a_crossfade() -> None:
+    """M3 (phase-07c-2b; Seats 3 and 5): the residual against the crossfade model is at the float32 floor on an
+    exact crossfade of noise, where the old peak-frame comparison was blind or flaky (builder file 32, K5)."""
+    o, a, b, s0, _ = _synthetic_step()
+    rec = abx_kit.click_check(o, a, b, s0, 48000)
+    assert rec["events_in_step_region"] == 0
+    assert rec["residual_peak_dbfs"] < -110.0, rec
+    # deterministic (CLAUDE.md, Determinism)
+    assert rec == abx_kit.click_check(o, a, b, s0, 48000)
+
+
+@pytest.mark.parametrize("plant", ["hard_switch", "impulse"])
+def test_click_check_form_b_red_on_a_planted_transient(plant: str) -> None:
+    """The gate is shown red (the "N1 red asserted" precedent): a hard switch at s0 (L = 0) and a single-sample
+    impulse of -65 dBFS inside [s0, s0 + L) are both caught on noise. The measured floor of the check is a
+    single-sample spike of about -68 dBFS (caught at -68, missed at -70: clicks.py's -90 dBFS frame floor)."""
+    o, a, b, s0, L = _synthetic_step()
+    o = o.copy()
+    if plant == "hard_switch":
+        o[s0:] = b[s0:]
+    else:
+        o[s0 + L // 3] += np.float32(10 ** (-65 / 20))
+    with pytest.raises(AssertionError, match="click_check"):
+        abx_kit.click_check(o, a, b, s0, 48000)
+
+
 def test_family_error_and_power() -> None:
     # Item 3: FWER <= 0.0490 by the union bound over the two chains' first tests (the 0.5 dB tests inherit alpha
     # only after a detection, graphical procedure); power at p = 0.75 is 0.63 (noise) and 0.405 (speech).

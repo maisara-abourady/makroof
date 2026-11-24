@@ -23,7 +23,8 @@ useDiffuseLevel, faded in with the shipped AQ4 30 ms equal-gain crossfade (AX18)
 Assertions on every stimulus (item 6): early parts bit-identical (the IRs up to the tail's fade-in, and the render
 before the onset); 10 log10(E(stepped - unstepped)/E(unstepped)) = 20 log10|10^(g/20) - 1| over the tail window;
 the [ax47-midfade] checks (tests/unit/test_ax47_midfade.cpp: W-a windows and companions (i)-(iii)); the
-tools.acoustics click detector finds no event in the step region; the per-band wet-output change, the window's
+tools.acoustics click detector finds no event in the step region of the crossfade residual (A - B) - m (form (b),
+phase-07c-2b M3); the per-band wet-output change, the window's
 unscaled energy share (exact split, `window_unscaled_share`, asserted <= 2.3 %) and render_cli's E_target specular
 share (`target_specular_share`) are printed, each under its own name (decider file 27, amendment 1; file 31, item 6).
 Per g, on the heard IR pair: the tail-window share of the heard energy, Delta G and Delta C80 per band (Seat 1's
@@ -396,17 +397,45 @@ def midfade_checks(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: flo
     return out
 
 
-def click_check(o: np.ndarray, a: np.ndarray, s0: int, fs: float) -> dict:
-    """`tools.acoustics clicks` on the stepped stimulus: no event in the step region [s0 - 5 ms, s0 + L + 5 ms]
-    beyond those of the unstepped render (the detector is built for low tones, clicks.py's blind spots: on noise and
-    speech it compares the two renders rather than claiming an absolute 'no click')."""
+def crossfade_residual(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: float) -> np.ndarray:
+    """Channel 0 of r = (o - a) - m, with m the crossfade model of the step (o the stepped render, a the
+    unstepped render, b the stepped IR rendered alone from sample 0): m = 0 before s0, (j/L)(b - a) over
+    [s0, s0 + L) with j = t - s0, and b - a from s0 + L on. By companions (ii) and (iii) of `midfade_checks`,
+    |r| <= 8u(|a| + |b|) at every sample, so r holds nothing a crossfade does not explain."""
+    L = int(round(CROSSFADE_S * fs))
+    oc, ac, bc = (x[:, 0].astype(np.float64) for x in (o, a, b))
+    m = np.zeros_like(ac)
+    j = np.arange(L, dtype=np.float64)
+    m[s0 : s0 + L] = (j / L)[: max(0, min(L, m.size - s0))] * (bc - ac)[s0 : s0 + L]
+    m[s0 + L :] = (bc - ac)[s0 + L :]
+    return (oc - ac) - m
+
+
+def click_check(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: float) -> dict:
+    """Item 6's click gate, form (b) (phase-07c-2b M3; Seats 3 and 5, review files 1-seat3.md and 1-seat5.md):
+    `tools.acoustics clicks` on the crossfade residual r = (A - B) - m (`crossfade_residual`) rather than on A,
+    so the detector never judges a frame against a noise or speech baseline (clicks.py's blind spot; builder
+    file 32, K5). Pre-registered criterion: no detector event (2 kHz high-pass, 2 ms frames, absolute floor
+    -90 dBFS) on r in the step region [s0 - 5 ms, s0 + L + 5 ms). Red on a hard switch (L = 0) and on a
+    single-sample impulse in [s0, s0 + L) (tools/ci/test_abx_kit.py); measured floor: a spike of about -68 dBFS. Printed only, for continuity with 07c-2:
+    the old comparison of A's events against B's peak frames (`legacy_new_in_step_region`)."""
     L = int(round(CROSSFADE_S * fs))
     lo, hi = s0 - int(0.005 * fs), s0 + L + int(0.005 * fs)
+    r = crossfade_residual(o, a, b, s0, fs)
+    det = clicks.detect_clicks(r, fs)
+    hits = [ev for ev in det["events"] if lo <= ev["sample"] < hi]
+    hp = clicks.highpass(r, fs)[max(0, lo) : hi]
+    with np.errstate(divide="ignore"):
+        rec = {"form": "b: residual against the crossfade model",
+               "residual_peak_dbfs": float(20 * np.log10(max(float(np.max(np.abs(r[max(0, lo) : hi]))), 1e-30))),
+               "residual_hp_peak_dbfs": float(20 * np.log10(max(float(np.max(np.abs(hp))), 1e-30))),
+               "floor_dbfs": det["floor_dbfs"], "events_in_step_region": len(hits)}
+    frame = int(round(clicks.FRAME_S * fs))
     stepped = clicks.detect_clicks(o[:, 0].astype(np.float64), fs)["events"]
-    plain = {ev["sample"] // int(round(clicks.FRAME_S * fs)) for ev in clicks.detect_clicks(a[:, 0].astype(np.float64), fs)["events"]}
-    new = [ev for ev in stepped if lo <= ev["sample"] < hi and ev["sample"] // int(round(clicks.FRAME_S * fs)) not in plain]
-    assert not new, f"click detector: new events in the step region: {new}"
-    return {"events_stepped": len(stepped), "events_unstepped": len(plain), "new_in_step_region": 0}
+    plain = {ev["sample"] // frame for ev in clicks.detect_clicks(a[:, 0].astype(np.float64), fs)["events"]}
+    rec["legacy_new_in_step_region"] = sum(1 for ev in stepped if lo <= ev["sample"] < hi and ev["sample"] // frame not in plain)
+    assert not hits, f"click_check (b): detector events on the crossfade residual in the step region: {hits}"
+    return rec
 
 
 def wet_band_change(o: np.ndarray, a: np.ndarray, s0: int, fs: float) -> dict:
@@ -510,7 +539,7 @@ def render_trial(binary, scene_path, programme: np.ndarray, onset: int, g: float
     peak = 20 * math.log10(max(float(np.max(np.abs(A))), float(np.max(np.abs(B))), 1e-30))
     assert peak <= MAX_PEAK_DBFS, f"a stimulus peaks at {peak:.2f} dBFS > {MAX_PEAK_DBFS} (no normalisation, item 10)"
     mid = midfade_checks(A, B, E, onset, FS)
-    clk = click_check(A, B, onset, FS)
+    clk = click_check(A, B, E, onset, FS)
     return {"onset_sample": onset, "onset_s": onset / FS, "g_db": g, "peak_dbfs": peak, "midfade": mid, "clicks": clk,
             "wet_band_change_db": wet_band_change(A, B, onset, FS),
             "sha256": {"A": sha256_file(a_path), "B": sha256_file(b_path)}}
