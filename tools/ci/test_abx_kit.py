@@ -131,7 +131,7 @@ def test_click_check_form_b_green_on_a_crossfade() -> None:
 def test_click_check_form_b_red_on_a_planted_transient(plant: str) -> None:
     """The gate is shown red (the "N1 red asserted" precedent): a hard switch at s0 (L = 0) and a single-sample
     impulse of -65 dBFS inside [s0, s0 + L) are both caught on noise. The measured floor of the check is a
-    single-sample spike of about -68 dBFS (caught at -68, missed at -70: clicks.py's -90 dBFS frame floor)."""
+    single-sample spike of about -69.8 dBFS (-69.8 dBFS derived; the asserted bracket, caught at -68 and missed at -72, is test_click_check_form_b_spike_bracket)."""
     o, a, b, s0, L = _synthetic_step()
     o = o.copy()
     if plant == "hard_switch":

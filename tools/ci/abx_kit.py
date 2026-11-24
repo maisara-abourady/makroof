@@ -136,11 +136,33 @@ def sha256_file(path: pathlib.Path) -> str:
 # ---------------------------------------------------------------------------------------------------------
 
 
+# Item 9's label for S-A (phase-07c-2b decider file 5, D-M3g; interrogator file 6 corrections). It replaces the label
+# Seat 9 rated 3/3 (phase-07c-2 file 26); "hall" and "occupied" are gone. The Class line is the scene class item 13
+# scopes a non-detection to (D-M3e): a manifest is never built without one.
+SA_LABEL = "Direct-dominated test room, early reflections absent (AX21); not a validated preset"
+SA_LABEL_DETAIL = (
+    "20 x 30 x 10 m; floor alpha 1, other faces alpha 0.01; scattering s = 1 on every face; tailSeed 12345; "
+    "emitters 12.4 m from the listener.",
+    "D/R at 1 kHz +10.7 / +9.7 dB per emitter (heard L + R: +13.1 dB), against -10.8 dB at r/r_c 3.47 (Kuttruff "
+    "Eq. 5.44, Sabine A ~ 640 m^2: 600 + 16 m^2 of surfaces, 24 m^2 of air). Indicative only: with mean alpha ~ 0.28 "
+    "and one face at alpha 1 the field is far from diffuse, where Kuttruff (sections 5.6-5.7) calls these relations "
+    "questionable.",
+    "Early part -76.7 dB re direct: empty (AX21; Maisara decided on 2026-11-05 that the early part should contain "
+    "scattered energy; the plan's AX21 row defers that fix to the B11 promotion rule, so it is a known deficit, not "
+    "rendered here).",
+    "Heard-IR T30 2.009 s (ISO fit spanning the AX21 gap, not a decay rate); tail T30 1.254 / 1.274 s; Eyring target "
+    "1.291 s.",
+    "Class: direct-dominated, early part empty.",
+    "Stimulus scene, not a room prediction.",
+)
+assert any(line.startswith("Class: ") for line in SA_LABEL_DETAIL)  # D-M3e
+
+
 def scene_layout4_s1_default() -> dict:
     """`layout4_s1/default`: Kuttruff Table 5.2 layout 4 at s = 1 as tests/unit/test_diffuse_wsweep.cpp builds
     it (20 x 30 x 10 m, faces alpha 0.01, the floor alpha 1, scattering 1 on every face), listener R0 (10, 8, 1.7),
-    emitters S0 (7, 20, 2) and S1 (13, 20, 2), fixed tailSeed. Named "occupied mid-size hall envelope, not a
-    validated preset" (item 9)."""
+    emitters S0 (7, 20, 2) and S1 (13, 20, 2), fixed tailSeed. Item-9 label: SA_LABEL, with SA_LABEL_DETAIL
+    (phase-07c-2b decider files 2 and 5, D-M3g, as corrected by interrogator file 6)."""
     scene = json.loads((REPO / "tests" / "scenes" / "valid" / "medium_room.json").read_text())
     scene = copy.deepcopy(scene)
     scene["room"]["geometry"]["dimensions"] = [20.0, 30.0, 10.0]
@@ -162,7 +184,7 @@ def _run(binary: pathlib.Path, *args) -> str:
 
 def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Path, log=print) -> dict:
     """Item 9: capped at m = 6, 7 and 8 (asserted); r/r_c and D/R printed; T30(1 kHz) of the heard IR."""
-    out: dict = {"name": "layout4_s1/default", "label": "occupied mid-size hall envelope, not a validated preset",
+    out: dict = {"name": "layout4_s1/default", "label": SA_LABEL, "label_detail": list(SA_LABEL_DETAIL),
                  "scene_sha256": sha256_file(scene_path), "tailSeed": TAIL_SEED, "capped": {}}
     for m in W_CANDIDATES:
         diag = work / f"diag_m{m}.json"

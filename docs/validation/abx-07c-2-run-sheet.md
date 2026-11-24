@@ -53,7 +53,21 @@ ABX test.
   chain's minimum gap is 2.016 s against tail T30 1.254 / 1.274 s. The check matters for any other scene M3 or
   item 15(i) seals: T-a's harmlessness rests on the gap exceeding the tail's own decay, which fails on layout 5
   (heard 2.557–2.575 s against tail-alone 2.58–2.62 s, K4 fact 9).
-- **Scene:** `layout4_s1/default`, an "occupied mid-size hall envelope, not a validated preset" (item 9).
+- **Scene:** `layout4_s1/default` (S-A; the scene choice itself is M3, phase-07c-2b). Item-9 label (phase-07c-2b
+  decider file 5, D-M3g, with interrogator file 6's corrections): **"Direct-dominated test room, early reflections
+  absent (AX21); not a validated preset"**. Detail:
+  - 20 × 30 × 10 m; floor α 1, other faces α 0.01; scattering s = 1 on every face; tailSeed 12345; emitters 12.4 m
+    from the listener.
+  - D/R at 1 kHz +10.7 / +9.7 dB per emitter (heard L + R: +13.1 dB), against −10.8 dB at r/r_c 3.47 (Kuttruff
+    Eq. 5.44, Sabine A ≈ 640 m²: 600 + 16 m² of surfaces, 24 m² of air). Indicative only: with ᾱ ≈ 0.28 and one face
+    at α 1 the field is far from diffuse, where Kuttruff (§5.6–5.7) calls these relations questionable.
+  - Early part −76.7 dB re direct: empty (AX21; Maisara decided on 2026-11-05 that the early part should contain
+    scattered energy; the plan's AX21 row defers that fix to the B11 promotion rule, so it is a known deficit, not
+    rendered here).
+  - Heard-IR T30 2.009 s (ISO fit spanning the AX21 gap, not a decay rate); tail T30 1.254 / 1.274 s; Eyring target
+    1.291 s.
+  - Class: direct-dominated, early part empty.
+  - Stimulus scene, not a room prediction.
   - 20 × 30 × 10 m, with an absorbing floor and scattering 1 on every face.
   - Fixed tailSeed 12345 (**kit choice**: the value the scene template carries).
   - The kit asserts that the scene is capped at m = 6, 7 and 8, and prints r/r_c and D/R into the manifest: D/R
