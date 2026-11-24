@@ -141,7 +141,32 @@ PLACEMENTS = {
 # Kuttruff Table 5.2 layouts as test_diffuse_wsweep.cpp builds them: the one face at alpha 1.
 LAYOUT_FACE = {4: "floor", 5: "xMin"}
 DEFAULT_SCENE = "layout4_s1/default"
-SCENE_LABELS: dict[str, str] = {"layout4_s1/default": "occupied mid-size hall envelope, not a validated preset"}
+# Item 9 labels (phase-07c-2b M3-4, decider file 2; Seat 9's drafts, file 27's S-A text with the D/R corrected).
+# The superseded item-9 wording is gone everywhere (decider file 27; PRD L133: all spaces are empty).
+SCENE_LABELS: dict[str, str] = {
+    "layout4_s1/default": (
+        "layout4_s1/default: 20 x 30 x 10 m, walls and ceiling alpha 0.01, floor alpha 1, scattering 1 on every face. "
+        "Direct-dominated: D/R at 1 kHz +10.7 / +9.7 dB per emitter, +13.1 dB heard, against -10.8 dB in a diffuse "
+        "field at r/r_c 3.47 (Kuttruff Eq. 5.44, A ~ 640 m^2). Early part empty under AX21. Tail target is the Eyring "
+        "T60, 1.29 s at 1 kHz: a diffuse target, not a room prediction. Tail measured T30 1.25-1.27 s. Not a "
+        "validated preset."),
+    "layout4_s1/both_wall": (
+        "layout4_s1/both_wall: 20 x 30 x 10 m, 6,000 m^3, walls and ceiling alpha 0.01, floor alpha 1, scattering 1 on "
+        "every face. Listener 0.1 m from the y = 0 wall, emitter L 0.1 m from the y = 30 m wall; those wall "
+        "reflections are absent at s = 1 (AX21), so the direct sound's tone colour is not room-like and the scene "
+        "represents no seat. D/R at 1 kHz -7.7 / +5.2 dB per emitter (diffuse field -18.5 / -15.0 dB at r/r_c "
+        "8.4 / 5.6; Kuttruff Eq. 5.44, A ~ 640 m^2), -5.3 dB heard. Early part empty (AX21). Heard-IR T30 1.370 s. "
+        "Not a validated preset."),
+    "layout4_s0.7/default": (
+        "layout4_s0.7/default: 20 x 30 x 10 m, 6,000 m^3, walls and ceiling alpha 0.01, floor alpha 1, scattering 0.7 "
+        "on every face. D/R at 1 kHz +1.5 / +1.3 dB per emitter, +1.7 dB heard, against -10.8 dB in a diffuse field "
+        "at r/r_c 3.47 (Kuttruff Eq. 5.44, A ~ 640 m^2). Early part present but specular-only (partial AX21): first "
+        "image (ceiling) about 23.6 ms after the direct sound; broadband early energy -3.8 dB re direct; the step at "
+        "t_mix,e is printed. Tail target Eyring 1.29 s at 1 kHz, a diffuse target, not a room prediction; heard-IR "
+        "T30 1.831 s spans early part and tail. Not a validated preset."),
+}
+# The two scenes the AX47 self-ABX decides on (M3-1, V1-W), in sitting order: S-W, then S-B*.
+ABX_SCENES = ("layout4_s1/both_wall", "layout4_s0.7/default")
 
 
 def parse_scene_name(name: str) -> tuple[int, float, str]:
@@ -263,7 +288,25 @@ def emitter_ir_metrics(h: np.ndarray, fs: float, e: dict, diag: dict) -> dict:
     return {"DRR_dB_broadband": whole["broadband"].get("DRR"), "DRR_dB_1k": whole["bands"]["1000"].get("DRR"),
             "T30_1k_s": whole["bands"]["1000"]["T30"], "EDT_1k_s": whole["bands"]["1000"]["EDT"],
             "t_mix_s": float(e["mixS"]), "tail_T30_1k_s": tail["bands"]["1000"]["T30"],
-            "tail_EDT_1k_s": tail["bands"]["1000"]["EDT"], "target_T60_1k_s": float(diag["t60"][4])}
+            "tail_EDT_1k_s": tail["bands"]["1000"]["EDT"], "target_T60_1k_s": float(diag["t60"][4]),
+            "tmix_step_db": tmix_step_db(h, fs, mix)}
+
+
+def tmix_step_db(h: np.ndarray, fs: float, mix: int) -> dict:
+    """Print only (phase-07c-2b M3-1, Seats 2 and 3): the AX21 step / dip at t_mix,e, broadband and per octave band:
+    10 log10 of the energy over [t_mix,e + 2.5 ms, t_mix,e + 20 ms) against [t_mix,e - 20 ms, t_mix,e - 2.5 ms)
+    (positive: the tail onset is louder than the specular early part just before it)."""
+    g, w = int(round(0.0025 * fs)), int(round(0.020 * fs))
+    if mix - w < 0 or mix + w > h.size:
+        return {"broadband": None, "bands": {}}
+
+    def step(x: np.ndarray) -> float | None:
+        pre, post = float(np.sum(x[mix - w : mix - g] ** 2)), float(np.sum(x[mix + g : mix + w] ** 2))
+        return 10 * math.log10(post / pre) if pre > 0 and post > 0 else None
+
+    return {"broadband": step(h),
+            "bands": {bands.band_key(fc): step(bands.filter_band(h, fs, fc))
+                      for fc in bands.OCTAVE_BANDS_HZ}}
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -468,7 +511,11 @@ def hf_w_check(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: float) 
             eo, ea, eb = (float(np.sum(h[f0 : f0 + nf] ** 2)) for h in (ho, ha, hb))
             m = max(ea, eb)
             if m < nf * HFW_SKIP:
+                # Seat 5's condition D (round 2, file 4-seat5): a skipped frame must stay near-silent in o too, so
+                # a click in a near-silent frame (a speech pause) still fails
                 out["skipped"] += 1
+                assert eo <= beta * nf * HFW_SKIP, (f"HF-W: channel {ch} skipped frame s0{f0 - s0:+d}: E_o {eo:.4e} "
+                                                    f"> beta n_f 1e-9 {beta * nf * HFW_SKIP:.4e}")
                 continue
             out["frames"] += 1
             r = eo / m
@@ -793,9 +840,16 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         ir = tmp / "ir.wav"
-        _run(binary, "--scene", scene_path, "--mode", "omni", "--ir", ir)
+        dpath = tmp / "diag.json"
+        _run(binary, "--scene", scene_path, "--mode", "omni", "--ir", ir, "--diagnostics", dpath)
         h, fs = wav.read(ir)
         t30 = float(metrics.room_metrics(h[:, 0] + h[:, 2], fs)["bands"]["1000"]["T30"])
+        dd = json.loads(dpath.read_text())
+        # M3-1 (phase-07c-2b decider file 2, Seat 1): Q5's window counts from the latest *heard* end of speech. The
+        # programme feeds both emitters, so the far emitter's speech ends later by the difference of the direct
+        # delays in the aligned IR (0 when they are equal, as on S-A and layout4_s0.7/default).
+        direct = [int(round((e["directS"] - dd["alignmentShiftS"]) * fs)) for e in dd["emitters"]]
+        heard_extra = max(direct) - min(direct)
         # The rendered floor: TSP's own noise (looped past one IR length) through the room, steady state.
         reps = int(math.ceil((len(h) + 2 * FS) / len(parts["noise"])))
         noise = np.tile(parts["noise"], reps)
@@ -805,7 +859,7 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
         floor_db = band_level_db(rn[:, 0].astype(np.float64), FS, len(h) + FS // 2, FS)
     lead = LEAD_BLOCKS * PARTITION
     pause = int(math.ceil(t30 * FS))
-    eos = lead + parts["end_of_speech"]
+    eos = lead + parts["end_of_speech"] + heard_extra
     x = np.zeros(lead + len(s1) + pause + len(s2))
     x[lead : lead + len(s1)] = s1
     x[lead + len(s1) + pause :] = s2
@@ -821,7 +875,8 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
     assert boundaries[0] >= t30 * FS, "less than one T30 of programme before the earliest onset"
     rec_base = {"programme": "McGill TSP v2 speech", "speaker": speaker, "files": list(files),
                 "member_sha256": [h1, h2], "excerpt_sha256": hashlib.sha256(excerpt.getvalue()).hexdigest(),
-                "end_of_speech_s": eos / FS, "pause_s": pause / FS, "T30_1k_s": t30, "floor_db_1k": floor_db}
+                "end_of_speech_s": eos / FS, "heard_end_extra_samples": heard_extra,
+                "direct_delay_samples": direct, "pause_s": pause / FS, "T30_1k_s": t30, "floor_db_1k": floor_db}
     # The unstepped render does not depend on the onset: render it once for the Q5 measurement.
     with tempfile.TemporaryDirectory() as tmp:
         p, o = pathlib.Path(tmp) / "x.wav", pathlib.Path(tmp) / "y.wav"

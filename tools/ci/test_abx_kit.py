@@ -397,3 +397,18 @@ def test_hfw_n3_quantised_fade_fails_companion_ii() -> None:
     q[s0 : s0 + L] = seg.astype(np.float32)
     with pytest.raises(AssertionError, match="companion \\(ii\\)"):
         abx_kit.midfade_checks(q, a, b, s0, abx_kit.FS)
+
+
+def test_hfw_spike_in_a_skipped_frame_fails() -> None:
+    # Seat 5's condition D: a click in a near-silent (skipped) frame still fails HF-W
+    o, a, b, s0, L = _fade_triple()
+    nf = int(round(abx_kit.HFW_FRAME_S * abx_kit.FS))
+    t = s0 + L // 2
+    f0 = s0 + ((t - s0) // nf) * nf
+    for x in (o, a, b):
+        x[f0 - 400 : f0 + nf + 400] = 0.0  # a silent stretch around the frame (all three renders)
+    rec = abx_kit.hf_w_check(o, a, b, s0, abx_kit.FS)
+    assert rec["skipped"] >= 2  # the silent frame is skipped on both channels, and passes
+    o[t, :] += np.float32(0.01)
+    with pytest.raises(AssertionError, match="skipped frame"):
+        abx_kit.hf_w_check(o, a, b, s0, abx_kit.FS)
