@@ -6,8 +6,9 @@ its section "Q5: TSP step placement (pre-registered)"; interrogator file 14 (D-W
 sheet is docs/validation/abx-07c-2-run-sheet.md. Every number this kit fixes from file 13 is a module constant
 below, with its item.
 
-    # noise chain (CI: tools/ci/listening_pack.py --phase phase-07c-2 calls build_noise_chain)
-    python tools/ci/abx_kit.py noise  --out build/abx-07c-2
+    # noise chain (CI: tools/ci/listening_pack.py --phase phase-07c-2 calls build_noise_chain); the scene is
+    # layout5_s0.9/emitter_wall (phase-07c-2b decider file 8, M3-S); --scene-name picks a registered fallback
+    python tools/ci/abx_kit.py noise  --out build/abx-07c-2 [--scene-name layout5_s0.8/emitter_wall]
     # speech chain: local only (McGill TSP v2 is downloaded by our own SHA-256; no audio is ever committed)
     python tools/ci/abx_kit.py speech --out build/abx-07c-2 --speaker MA --files MA01_01 MA01_02
     # blinding (item 11): writes the session folder (A, B, X per trial) and the sealed key; prints the hashes
@@ -28,10 +29,14 @@ phase-07c-2b M3); the per-band wet-output change, the window's
 unscaled energy share (exact split, `window_unscaled_share`, asserted <= 2.3 %) and render_cli's E_target specular
 share (`target_specular_share`) are printed, each under its own name (decider file 27, amendment 1; file 31, item 6).
 Per g, on the heard IR pair: the tail-window share of the heard energy, Delta G and Delta C80 per band (Seat 1's
-condition, file 27). M2 (files 31, 34): the manifest carries the heard-IR T30 with Seat 9's label, the tail T30
-beside it and the minimum gap, and asserts minimum gap >= tail T30.
+condition, file 27). M2 (files 31, 34) under M3-G (phase-07c-2b decider file 8): every gap, pause and item-7 lead
+is built from T = max(heard-IR T30, every tail T30) at 1 kHz; the manifest carries the heard-IR T30 with Seat 9's
+label, the tail T30 beside it and the minimum heard gap, and asserts it >= T and >= every tail T30. Phase-07c-2b
+M3-C 6-7: M1's per-band step identity asserted at <= 0.05 dB; B and E nulled within -120 dB against an offline
+reference on every stimulus; the gap-cue print (E - B re B at 1 kHz over 100 and 300 ms after N; max per-band
+Delta G).
 
-Speech (Q5): the onset <= 0.43 T30(1 kHz) after the end of speech, the rendered tail
+Speech (Q5): the onset <= 0.43 x the heard-IR T30(1 kHz) after the end of speech, the rendered tail
 >= the rendered floor (TSP's own noise) + 20 dB at the onset (1 kHz band, 50 ms window); a failing seeded onset
 is replaced by the next seed index and the replacement recorded.
 """
@@ -54,6 +59,7 @@ import urllib.request
 import zipfile
 
 import numpy as np
+from scipy import signal as sps
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
@@ -103,6 +109,12 @@ HEARD_T30_LABEL = "heard-IR T30, ISO fit spanning the AX21 gap, not a decay rate
 # spike's energy above 2 kHz in one frame (about 22/24); asserted bracket (tools/ci/test_abx_kit.py)
 SPIKE_CAUGHT_DBFS = -68.0
 SPIKE_MISSED_DBFS = -72.0
+# Decider file 8, M3-C 7 (Seat 3's pre-seal conditions): M1's per-band step identity (the step measured per band over
+# [t_mix,e, L) equals g) asserted at <= 0.05 dB, inside file 34 item 1's 0.1 dB window tolerance; B and E nulled
+# within -120 dB against an offline reference on every noise and speech stimulus (D-M3a, decider file 5).
+BAND_STEP_TOL_DB = 0.05
+NULL_MAX_DB = -120.0
+GAP_CUE_WINDOWS_S = (0.100, 0.300)  # M3-C 6 (Seat 1): the 1 kHz level of E - B re B over [N, N + w), print only
 
 
 def SPIKE_FLOOR_DBFS_AT(n_frame: int) -> float:  # noqa: N802 (a derived constant)
@@ -138,7 +150,8 @@ def sha256_file(path: pathlib.Path) -> str:
 
 # Item 9's label for S-A (phase-07c-2b decider file 5, D-M3g; interrogator file 6 corrections). It replaces the label
 # Seat 9 rated 3/3 (phase-07c-2 file 26); "hall" and "occupied" are gone. The Class line is the scene class item 13
-# scopes a non-detection to (D-M3e): a manifest is never built without one.
+# scopes a non-detection to (D-M3e): a manifest is never built without one. The case-4 line is decider file 8, M3-C 5
+# (Seat 9's C-c).
 SA_LABEL = "Direct-dominated test room, early reflections absent (AX21); not a validated preset"
 SA_LABEL_DETAIL = (
     "20 x 30 x 10 m; floor alpha 1, other faces alpha 0.01; scattering s = 1 on every face; tailSeed 12345; "
@@ -152,27 +165,153 @@ SA_LABEL_DETAIL = (
     "rendered here).",
     "Heard-IR T30 2.009 s (ISO fit spanning the AX21 gap, not a decay rate); tail T30 1.254 / 1.274 s; Eyring target "
     "1.291 s.",
+    "Kuttruff Table 5.2 case 4 (floor α 1, others 0): iteration 1.21 s against Eyring 1.38 s; the engine's tail "
+    "follows Eyring.",
     "Class: direct-dominated, early part empty.",
     "Stimulus scene, not a room prediction.",
 )
-assert any(line.startswith("Class: ") for line in SA_LABEL_DETAIL)  # D-M3e
+
+# Item 9's label for E = layout5_s0.9/emitter_wall (phase-07c-2b decider file 8, M3-S, verbatim, with the ITDG line
+# replaced by decider file 10 Part B's (interrogator file 11 correction 1, S0's floor image); Class line M3-S's, D-M3e).
+E_LABEL = ("Tail-dominated stress placement, one absorbing side wall, source 0.1 m from a wall, specular-only early "
+           "reflections (s 0.9, AX21); not a validated preset")
+E_LABEL_DETAIL = (
+    "S0 22.1 m away; direct-path difference 28.4 ms.",
+    "D/R −12.7 / −5.0 dB, heard −9.5 dB, against −18.6 / −13.5 dB at r/r_c 8.46 / 4.74 (Sabine A ≈ 343 m²). "
+    "Indicative only: ᾱ ≈ 0.145 and one face at α 1; Kuttruff §5.6–5.7 says these relations are questionable when ᾱ "
+    "is not small, and one fully absorbing face is a severe deviation from diffuse conditions.",
+    "ITDG 0.6 ms (S0's wall image, notch ≈ 860 Hz), 0.89 ms (S0's floor image, notch ≈ 560 Hz) and 1.6 ms (S1's floor "
+    "image, notch ≈ 320 Hz), all inside the ±2.5 ms direct window and counted as direct; specular amplitude "
+    "√(0.99 × 0.1) = 0.315 (+2.4 / −3.3 dB at the wall image).",
+    "Near-wall emitter; its LF image is under-represented (one broadband s).",
+    "Early part −8.6 dB re direct; the scattered early energy is absent (AX21; the fix is deferred to the B11 rule).",
+    "Tail share 0.852 at 1 kHz.",
+    "Heard-IR T30 2.560 s, labelled \"ISO fit spanning the early part, not a decay rate\"; tail T30 2.582 / 2.600 s; "
+    "Eyring 2.61 s.",
+    "Kuttruff Table 5.2 case 5: iteration 3.06 s against Eyring 2.99 s; the engine's tail follows Eyring.",
+    "Gaps are built from max(heard, tail) T30.",
+    "Class: tail-dominated (heard −9.5 dB, tail share 0.85), partial early part",
+    "Stimulus scene, not a room prediction.",
+)
+
+# Fallback labels (decider file 8, M3-S: D, then B), Seat 9's file 7 text at s 0.8 ("as above" written out; every
+# label carries Seat 9's D/R qualifier and the "Stimulus scene" line, as Seat 9 states for every label).
+_L5_DR_QUALIFIER = ("Indicative only: ᾱ ≈ 0.145 and one face at α 1; Kuttruff §5.6–5.7: relations questionable when ᾱ "
+                    "is not small, severe deviation from diffuse conditions.")
+_L5_CASE5 = "Kuttruff Table 5.2 case 5: iteration 3.06 s against Eyring 2.99 s. The engine's tail follows Eyring."
+D_LABEL = ("Tail-dominated stress placement, one absorbing side wall, source 0.1 m from a wall, specular-only early "
+           "reflections (s 0.8, AX21); not a validated preset")
+D_LABEL_DETAIL = (
+    "S0 22.1 m away; direct-path difference 28.4 ms.",
+    "D/R −12.9 / −4.5 dB, heard −9.5 dB, against −18.6 / −13.5 dB at r/r_c 8.46 / 4.74. " + _L5_DR_QUALIFIER,
+    "ITDG 0.6 / 1.6 ms, counted as direct.",
+    "Early part −5.2 dB. Tail share 0.834.",
+    "Heard T30 2.561 s, below tail T30 2.582 / 2.600 s. " + _L5_CASE5,
+    "Class: tail-dominated (heard −9.5 dB, tail share 0.83), partial early part.",
+    "Stimulus scene, not a room prediction.",
+)
+B_LABEL = ("Test room with one absorbing side wall, specular-only early reflections (s 0.8, AX21); not a validated "
+           "preset")
+B_LABEL_DETAIL = (
+    "x = 0 wall (30 × 10 m) α 1, others 0.01; s one value in all bands. Listener at (10, 8, 1.7); emitters 12.4 m "
+    "away.",
+    "D/R −3.6 / −4.4 dB, heard −1.4 dB, against −13.5 dB at r/r_c 4.74 (Sabine A ≈ 343 m²). " + _L5_DR_QUALIFIER,
+    "ITDG 1.6 ms (floor), counted as direct: comb with its first notch about 320 Hz, +3.1 / −4.8 dB. The ceiling "
+    "follows at about 23.6 ms.",
+    "Early part −6.9 dB. Tail share 0.485.",
+    "Heard-IR T30 2.556 s, below tail T30 2.617 / 2.600 s; Eyring 2.61 s.",
+    _L5_CASE5,
+    "Gaps are built from max(heard, tail) T30.",
+    "Class: near-balanced D/R (heard −1.4 dB, tail share 0.49), partial early part.",
+    "Stimulus scene, not a room prediction.",
+)
+
+FACES = ("xMin", "xMax", "yMin", "yMax", "floor", "ceiling")
 
 
 def scene_layout4_s1_default() -> dict:
-    """`layout4_s1/default`: Kuttruff Table 5.2 layout 4 at s = 1 as tests/unit/test_diffuse_wsweep.cpp builds
+    """`layout4_s1/default` (S-A): Kuttruff Table 5.2 layout 4 at s = 1 as tests/unit/test_diffuse_wsweep.cpp builds
     it (20 x 30 x 10 m, faces alpha 0.01, the floor alpha 1, scattering 1 on every face), listener R0 (10, 8, 1.7),
     emitters S0 (7, 20, 2) and S1 (13, 20, 2), fixed tailSeed. Item-9 label: SA_LABEL, with SA_LABEL_DETAIL
-    (phase-07c-2b decider files 2 and 5, D-M3g, as corrected by interrogator file 6)."""
+    (phase-07c-2b decider files 2 and 5, D-M3g, as corrected by interrogator file 6; case-4 line, file 8 M3-C 5)."""
     scene = json.loads((REPO / "tests" / "scenes" / "valid" / "medium_room.json").read_text())
     scene = copy.deepcopy(scene)
     scene["room"]["geometry"]["dimensions"] = [20.0, 30.0, 10.0]
-    for face in ("xMin", "xMax", "yMin", "yMax", "floor", "ceiling"):
+    for face in FACES:
         scene["room"]["surfaces"][face] = {"absorption": [1.0 if face == "floor" else 0.01] * 8, "scattering": 1.0}
     scene["listener"]["position"] = [10.0, 8.0, 1.7]
     scene["emitters"][0]["position"] = [7.0, 20.0, 2.0]
     scene["emitters"][1]["position"] = [13.0, 20.0, 2.0]
     scene["render"]["tailSeed"] = TAIL_SEED
     return scene
+
+
+def scene_layout5(s: float, placement: str) -> dict:
+    """Layout 5 (Kuttruff Table 5.2 case 5 geometry, phase-07c-2b builder file 4): S-A's room with xMin (the x = 0
+    wall, 30 x 10 m) at alpha 1, every other face alpha 0.01, scattering s on every face in every band; tailSeed
+    12345; listener (10, 8, 1.7); S1 (13, 20, 2); S0 (7, 20, 2) at `default` or (7, 29.9, 2) at `emitter_wall`
+    (tests/unit/test_diffuse_wsweep.cpp placements). Built the way builder file 4's make_scene built it, so the JSON
+    (and its SHA-256) is the measured one."""
+    scene = scene_layout4_s1_default()
+    for face in FACES:
+        scene["room"]["surfaces"][face] = {"absorption": [1.0 if face == "xMin" else 0.01] * 8, "scattering": s}
+    scene["listener"]["position"] = [10.0, 8.0, 1.7]
+    scene["emitters"][0]["position"] = {"default": [7.0, 20.0, 2.0], "emitter_wall": [7.0, 29.9, 2.0]}[placement]
+    scene["emitters"][1]["position"] = [13.0, 20.0, 2.0]
+    scene["render"]["tailSeed"] = TAIL_SEED
+    return scene
+
+
+class AbxScene:
+    """One registered ABX scene (item 9): its name, builder, item-9 label and detail lines, and the committed JSON
+    (tools/ci/abx_scenes/, asserted equal to the builder) when the scene is the sealed one."""
+
+    def __init__(self, name: str, build, label: str, label_detail: tuple[str, ...], committed: str | None = None):
+        self.name, self.build, self.label, self.label_detail = name, build, label, tuple(label_detail)
+        self.committed = None if committed is None else ABX_SCENES_DIR / committed
+
+    def text(self) -> str:
+        return json.dumps(self.build(), indent=1)
+
+
+ABX_SCENES_DIR = REPO / "tools" / "ci" / "abx_scenes"
+SCENE_E = "layout5_s0.9/emitter_wall"
+# Decider file 8, M3-S: E, then (if any pre-seal check fails) D, then B. S-A stays registered (07c-2's scene).
+SCENES = {
+    SCENE_E: AbxScene(SCENE_E, lambda: scene_layout5(0.9, "emitter_wall"), E_LABEL, E_LABEL_DETAIL,
+                      "layout5_s0.9_emitter_wall.json"),
+    "layout5_s0.8/emitter_wall": AbxScene("layout5_s0.8/emitter_wall", lambda: scene_layout5(0.8, "emitter_wall"),
+                                          D_LABEL, D_LABEL_DETAIL),
+    "layout5_s0.8/default": AbxScene("layout5_s0.8/default", lambda: scene_layout5(0.8, "default"), B_LABEL,
+                                     B_LABEL_DETAIL),
+    "layout4_s1/default": AbxScene("layout4_s1/default", scene_layout4_s1_default, SA_LABEL, SA_LABEL_DETAIL),
+}
+DEFAULT_SCENE = SCENE_E
+FALLBACK_ORDER = (SCENE_E, "layout5_s0.8/emitter_wall", "layout5_s0.8/default")
+
+
+def scene_file_name(name: str) -> str:
+    return "scene_" + name.replace("/", "_") + ".json"
+
+
+def write_scene(entry: AbxScene, path: pathlib.Path) -> pathlib.Path:
+    """Writes the scene JSON the kit renders. For a committed scene, the committed file's bytes, after asserting
+    they equal the builder's output (so the manifest's scene_sha256 is the committed file's)."""
+    text = entry.text()
+    if entry.committed is not None:
+        committed = entry.committed.read_text(encoding="utf-8")
+        if committed != text:
+            raise RuntimeError(f"{entry.committed} differs from the builder of {entry.name}: regenerate it knowingly")
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def require_class_line(entry: AbxScene) -> str:
+    """D-M3e (decider file 5): every sealed scene's label carries a Class line; no manifest is built without one."""
+    lines = [x for x in entry.label_detail if x.startswith("Class: ")]
+    if not lines:
+        raise RuntimeError(f"{entry.name}: the item-9 label has no 'Class: ' line (D-M3e); the kit builds no manifest")
+    return lines[0]
 
 
 def _run(binary: pathlib.Path, *args) -> str:
@@ -182,10 +321,18 @@ def _run(binary: pathlib.Path, *args) -> str:
     return r.stdout
 
 
-def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Path, log=print) -> dict:
-    """Item 9: capped at m = 6, 7 and 8 (asserted); r/r_c and D/R printed; T30(1 kHz) of the heard IR."""
-    out: dict = {"name": "layout4_s1/default", "label": SA_LABEL, "label_detail": list(SA_LABEL_DETAIL),
+def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Path, log=print,
+                entry: AbxScene | None = None) -> dict:
+    """Item 9: capped at m = 6, 7 and 8 (asserted); r/r_c and D/R printed; T30(1 kHz) of the heard IR; the tail T30
+    per emitter; the construction T = max(heard-IR T30, every tail T30) at 1 kHz (decider file 8, M3-G). Refuses a
+    scene whose label has no Class line (D-M3e)."""
+    entry = entry or SCENES[DEFAULT_SCENE]
+    class_line = require_class_line(entry)
+    name = entry.name
+    out: dict = {"name": name, "label": entry.label, "label_detail": list(entry.label_detail), "class": class_line,
                  "scene_sha256": sha256_file(scene_path), "tailSeed": TAIL_SEED, "capped": {}}
+    if entry.committed is not None:
+        out["scene_file"] = entry.committed.relative_to(REPO).as_posix()
     for m in W_CANDIDATES:
         diag = work / f"diag_m{m}.json"
         _run(binary, "--scene", scene_path, "--mode", "omni", "--w-multiplier", m, "--diagnostics", diag)
@@ -193,8 +340,8 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
         hits = [bool(e["diffuse"]["capHit"]) for e in d["emitters"]]
         out["capped"][str(m)] = hits
         if not all(hits):
-            raise RuntimeError(f"layout4_s1/default is not capped at m = {m} (cap hit per emitter {hits}): item 9 "
-                               "says to use listener_wall instead; the kit stops")
+            raise RuntimeError(f"{name} is not capped at m = {m} (cap hit per emitter {hits}): item 9 fails; the kit "
+                               f"stops (decider file 8, M3-S: fall back in the order {', '.join(FALLBACK_ORDER)})")
     diag = work / "diag.json"
     ir_path = work / "ir.wav"
     _run(binary, "--scene", scene_path, "--mode", "omni", "--diagnostics", diag, "--ir", ir_path)
@@ -222,6 +369,12 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
                                 **emitter_ir_metrics(ir[:, e["channel"] * 2], fs, e, d)})
     out["r_c_m"] = rc
     out["tail_T30_1k_s"] = [x["tail_T30_1k_s"] for x in out["emitters"]]  # per emitter, from t_mix,e (beside T30_1k_s)
+    if any(x is None for x in out["tail_T30_1k_s"]):
+        raise RuntimeError(f"tail T30(1 kHz) not measured on every emitter ({out['tail_T30_1k_s']}): M3-G cannot run")
+    # M3-G (decider file 8): every gap, pause and item-7 lead is built from T = max(heard-IR T30, every tail T30);
+    # Q5's ceiling stays 0.43 x the heard-IR T30.
+    out["construction_T_s"] = max(float(t30), *out["tail_T30_1k_s"])
+    out["heard_delays_samples"] = heard_delays(d)
     # The heard IR (both emitters summed): at equal r the two direct sounds coincide and add coherently, the tails
     # do not, so this D/R is about 3 dB above each emitter's own (decider file 21, 2b; file 22). The per-emitter D/R
     # (single-emitter IR, AX13) is the one to set against r/r_c.
@@ -229,8 +382,9 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
     out["DRR_dB_broadband"] = m["broadband"].get("DRR")
     out["DRR_dB_1k"] = m["bands"]["1000"].get("DRR")
     out["diagnostics"] = d
-    log(f"scene layout4_s1/default: capped at m = 6, 7, 8 ({out['capped']}); T30(1 kHz) {t30:.3f} s "
-        f"({HEARD_T30_LABEL}; tail T30 {', '.join(_fmt(x, 3) for x in out['tail_T30_1k_s'])} s) "
+    log(f"scene {name}: capped at m = 6, 7, 8 ({out['capped']}); T30(1 kHz) {t30:.3f} s "
+        f"({HEARD_T30_LABEL}; tail T30 {', '.join(_fmt(x, 3) for x in out['tail_T30_1k_s'])} s; construction T "
+        f"{out['construction_T_s']:.3f} s) "
         f"(Eyring T60 {out['T60_eyring_1k_s']:.3f} s); r_c {rc:.2f} m ({out['r_c_m_T30']:.2f} m from the heard T30); "
         + "; ".join(f"emitter {x['id']} r {x['r_m']:.2f} m r/r_c {x['r_over_rc']:.2f} D/R {_fmt(x['DRR_dB_broadband'])} dB "
                     f"(1 kHz {_fmt(x['DRR_dB_1k'])} dB), tail-alone T30(1 kHz) {_fmt(x['tail_T30_1k_s'], 3)} s"
@@ -352,6 +506,17 @@ def ir_band_shares(unstepped: np.ndarray, stepped: np.ndarray, diag: dict, g: fl
                                                 "target_specular_share": None if shares is None else shares[i]}
         out.append(row)
     return out
+
+
+def band_step_check(band_rows: list[dict], g: float) -> dict:
+    """M1's per-band step identity (decider file 8, M3-C 7; Seat 3): per emitter and band, the step `step_db` that
+    `ir_band_shares` measures over [t_mix,e, L) equals g within BAND_STEP_TOL_DB. Asserted; the worst error printed."""
+    errs = [(row["emitter"], band, b["step_db"] - g) for row in band_rows for band, b in row["bands"].items()]
+    worst = max(errs, key=lambda e: abs(e[2]))
+    rec = {"tol_db": BAND_STEP_TOL_DB, "max_abs_err_db": abs(worst[2]), "worst": {"emitter": worst[0], "band": worst[1],
+                                                                                  "err_db": worst[2]}}
+    assert abs(worst[2]) <= BAND_STEP_TOL_DB, f"M1 per-band step identity: {rec} (g {g:+.2f} dB)"
+    return rec
 
 
 def _c80_db(x: np.ndarray, early_end: int) -> float:
@@ -489,6 +654,46 @@ def wet_band_change(o: np.ndarray, a: np.ndarray, s0: int, fs: float) -> dict:
     return out
 
 
+def offline_reference(programme: np.ndarray, ir: np.ndarray) -> np.ndarray:
+    """`sim::renderOffline` emulated (OfflineRender.cpp L133-171; phase-07c-2b builder file 4, fact 5, where it nulls
+    against render_cli's own offline render at -219 dB or better): out_o = sum_e x_e * ir(e, o) in double, then
+    float32; input channel e feeds emitter e. The offline reference for E (render_cli refuses --abx-step-db with
+    --in/--out and no --realtime-emulation): the programme convolved with the stepped IR from --abx-stepped-ir."""
+    outs = []
+    for o in range(2):
+        acc = None
+        for e in range(2):
+            part = sps.fftconvolve(programme[:, e].astype(np.float64), ir[:, 2 * e + o].astype(np.float64))
+            acc = part if acc is None else acc + part
+        outs.append(acc.astype(np.float32))
+    return np.stack(outs, axis=1)
+
+
+def null_db(x: np.ndarray, ref: np.ndarray) -> float:
+    """10 log10(E(x - ref)/E(ref)) over the whole file (both outputs); the lengths must match."""
+    assert x.shape == ref.shape, f"null: shapes differ ({x.shape} against {ref.shape})"
+    r = x.astype(np.float64) - ref.astype(np.float64)
+    e_r, e_ref = float(np.sum(r**2)), float(np.sum(ref.astype(np.float64) ** 2))
+    return 10 * math.log10(max(e_r, 1e-300) / e_ref)
+
+
+def gap_cue(e: np.ndarray, b: np.ndarray, onset: int, fs: float, delta_g_bands: dict | None = None) -> dict:
+    """Print only (decider file 8, M3-C 6; Seat 1): the 1 kHz level of E - B relative to B over [N, N + 100 ms) and
+    [N, N + 300 ms) (E the stepped IR rendered alone, B the unstepped render), and the per-band maximum of the heard
+    pair's Delta G at the stimulus's g (largest magnitude, with its band)."""
+    d = bands.filter_band(e[:, 0].astype(np.float64) - b[:, 0].astype(np.float64), fs, Q5_BAND_HZ)
+    r = bands.filter_band(b[:, 0].astype(np.float64), fs, Q5_BAND_HZ)
+    out: dict = {}
+    for w in GAP_CUE_WINDOWS_S:
+        n = int(round(w * fs))
+        ed, er = float(np.sum(d[onset : onset + n] ** 2)), float(np.sum(r[onset : onset + n] ** 2))
+        out[f"E_minus_B_re_B_1k_db_{int(round(w * 1000))}ms"] = 10 * math.log10(max(ed, 1e-300) / max(er, 1e-300))
+    if delta_g_bands:
+        band = max(delta_g_bands, key=lambda k: abs(delta_g_bands[k]))
+        out["delta_G_band_max_db"] = {"band": band, "delta_G_db": delta_g_bands[band]}
+    return out
+
+
 def band_level_db(x: np.ndarray, fs: float, start: int, n: int) -> float:
     y = bands.filter_band(x, fs, Q5_BAND_HZ)[start : start + n]
     return 10 * math.log10(max(float(np.mean(y**2)), 1e-30))
@@ -539,7 +744,8 @@ def noise_programme(t30_s: float, seed_index: int, chain_seed: int,
                     delays: tuple[int, ...] | list[int] = (0,)) -> tuple[np.ndarray, int, dict]:
     """Pulsed pink noise, two bursts before the step (>= one T30 of programme before it, item 7), then a heard
     silence and a burst after it (>= 2 s). Placed as heard (decider file 5, D-M3b; interrogator file 6): with d the
-    emitters' heard delays, Delta = max d - min d and T = the heard-IR T30 (M2 T-a), the gap between bursts 1 and 2
+    emitters' heard delays, Delta = max d - min d and T = max(heard-IR T30, every tail T30) (decider file 8, M3-G;
+    `t30_s` is that T), the gap between bursts 1 and 2
     is ceil((T fs + Delta)/P) P, so every heard gap is >= T; the onset N is the first partition boundary at or after
     the heard end of burst 2 (input end + max d); burst 3 starts at N + ceil(T fs/P) P, so the heard silence after N
     is >= T. The lead-in silence is LEAD_BLOCKS + a seeded 0..31 partitions (item 5). Returns the programme, N and
@@ -586,72 +792,107 @@ def _render(binary, scene_path, prog_path, out_path, g=None, onset=None):
     return wav.read_float32(out_path)[0]
 
 
-def render_trial(binary, scene_path, programme: np.ndarray, onset: int, g: float, trial_dir: pathlib.Path) -> dict:
+def render_trial(binary, scene_path, programme: np.ndarray, onset: int, g: float, trial_dir: pathlib.Path,
+                 stepped_ir: np.ndarray, delta_g_bands: dict | None = None) -> dict:
     """A (the step at the onset) and B (unstepped, held throughout) of one trial, with every item-6 assertion on
-    them. Returns the trial's record (hashes, measured values)."""
+    them, and Seat 3's nulls (decider file 8, M3-C 7): B against render_cli's offline render of the same programme,
+    E (the stepped IR rendered alone) against the programme convolved offline with the stepped IR (`stepped_ir`, from
+    --abx-stepped-ir), each <= NULL_MAX_DB. Returns the trial's record (hashes, measured values, the gap-cue print)."""
     trial_dir.mkdir(parents=True, exist_ok=True)
     prog = trial_dir / "programme_dry.wav"
     wav.write_float32(prog, signals.to_stereo(programme), FS)
     a_path, b_path = trial_dir / "A.wav", trial_dir / "B.wav"
     with tempfile.TemporaryDirectory() as tmp:
-        end_path = pathlib.Path(tmp) / "stepped_alone.wav"
+        end_path, off_path = pathlib.Path(tmp) / "stepped_alone.wav", pathlib.Path(tmp) / "B_offline.wav"
         A = _render(binary, scene_path, prog, a_path, g, onset)
         B = _render(binary, scene_path, prog, b_path)
         E = _render(binary, scene_path, prog, end_path, g, 0)
+        _run(binary, "--scene", scene_path, "--mode", "omni", "--in", prog, "--out", off_path)
+        B_off = wav.read_float32(off_path)[0]
+    prog_f32 = wav.read_float32(prog)[0]
     prog.unlink()
     assert np.array_equal(A[:, 0].view(np.uint32), A[:, 1].view(np.uint32)), "omni: both outputs must be the same (diotic)"
     peak = 20 * math.log10(max(float(np.max(np.abs(A))), float(np.max(np.abs(B))), 1e-30))
     assert peak <= MAX_PEAK_DBFS, f"a stimulus peaks at {peak:.2f} dBFS > {MAX_PEAK_DBFS} (no normalisation, item 10)"
     mid = midfade_checks(A, B, E, onset, FS)
     clk = click_check(A, B, E, onset, FS)
+    nulls = {"B_vs_offline_db": null_db(B, B_off), "E_vs_offline_stepped_ir_db": null_db(E, offline_reference(prog_f32, stepped_ir)),
+             "max_db": NULL_MAX_DB}
+    assert nulls["B_vs_offline_db"] <= NULL_MAX_DB and nulls["E_vs_offline_stepped_ir_db"] <= NULL_MAX_DB, \
+        f"null against the offline reference above {NULL_MAX_DB} dB: {nulls} (M3-C 7; goes back to Seats 3 and 5)"
     return {"onset_sample": onset, "onset_s": onset / FS, "g_db": g, "peak_dbfs": peak, "midfade": mid, "clicks": clk,
+            "nulls": nulls, "gap_cue": gap_cue(E, B, onset, FS, delta_g_bands), "duration_s": len(A) / FS,
             "wet_band_change_db": wet_band_change(A, B, onset, FS),
             "sha256": {"A": sha256_file(a_path), "B": sha256_file(b_path)}}
 
 
-def gap_check(scene: dict, min_gap_s: float, gap_t30_s: float) -> dict:
-    """M2 debt check (decider file 34, item 3): T-a's gaps and pauses are >= the heard-IR T30, which is harmless only
-    while the minimum gap also exceeds the tail's own decay (true on S-A, false on layout 5). Printed: the minimum
-    gap, the heard-IR T30 (Seat 9's label) and the tail T30 per emitter; asserted: minimum gap >= every tail T30."""
+def gap_check(scene: dict, min_gap_s: float, construction_t_s: float) -> dict:
+    """M2 debt check (decider file 34, item 3), under M3-G (phase-07c-2b decider file 8): every gap, pause and item-7
+    lead is built from T = max(heard-IR T30, every tail T30) at 1 kHz. Printed: the minimum heard gap or silence,
+    T, the heard-IR T30 (Seat 9's label) and the tail T30 per emitter; asserted: T is that maximum, and the minimum
+    heard gap or silence is >= T and >= every tail T30."""
     tail = scene["tail_T30_1k_s"]
     if any(t is None for t in tail):
         raise RuntimeError(f"tail T30(1 kHz) not measured on every emitter ({tail}): the M2 gap check cannot run")
-    assert abs(gap_t30_s - scene["T30_1k_s"]) <= 1e-9, (gap_t30_s, scene["T30_1k_s"])  # the gaps use the heard T30
-    rec = {"min_gap_s": float(min_gap_s), "heard_T30_1k_s": scene["T30_1k_s"], "heard_T30_label": HEARD_T30_LABEL,
-           "tail_T30_1k_s": tail, "min_gap_ge_tail_T30": bool(min_gap_s >= max(tail))}
+    expected = max(scene["T30_1k_s"], *tail)
+    assert abs(construction_t_s - expected) <= 1e-9, (construction_t_s, expected)  # M3-G: T = max(heard, tails)
+    rec = {"min_gap_s": float(min_gap_s), "construction_T_s": float(construction_t_s),
+           "construction_rule": "max(heard-IR T30, every tail T30) at 1 kHz (decider file 8, M3-G)",
+           "heard_T30_1k_s": scene["T30_1k_s"], "heard_T30_label": HEARD_T30_LABEL, "tail_T30_1k_s": tail,
+           "min_gap_ge_tail_T30": bool(min_gap_s >= max(tail)), "min_gap_ge_construction_T": bool(min_gap_s >= construction_t_s)}
     assert rec["min_gap_ge_tail_T30"], f"M2: minimum gap {min_gap_s:.3f} s < tail T30 {max(tail):.3f} s (file 34 item 3)"
+    assert rec["min_gap_ge_construction_T"], f"M3-G: minimum gap {min_gap_s:.3f} s < T {construction_t_s:.3f} s"
     return rec
 
 
-def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_for, log=print, levels=LEVELS_DB,
-                trials: int | None = None, min_gap_s: float | None = None, gap_t30_s: float | None = None) -> dict:
-    """Both blocks of one chain (0.9 dB and 0.5 dB: every stimulus is sealed before the run, item 11) plus the
-    familiarisation pairs; `programme_for(seed_index) -> (x, onset, record)`. `trials` limits each block (tests).
-    `min_gap_s`, `gap_t30_s`: the programme's shortest gap or pause and the T30 it was built from (the M2 check)."""
+def prepare_scene(out: pathlib.Path, binary: pathlib.Path, scene_name: str = DEFAULT_SCENE, log=print):
+    """Writes the selected scene (item 9; committed JSON where there is one) and runs `check_scene` once. Returns
+    (entry, scene_path, scene record, diagnostics); the work folder `out/_work` keeps the scene's IR (ir.wav)."""
+    if scene_name not in SCENES:
+        raise ValueError(f"unknown ABX scene {scene_name!r}; registered: {', '.join(SCENES)}")
+    entry = SCENES[scene_name]
+    require_class_line(entry)  # D-M3e: before anything is rendered
     out.mkdir(parents=True, exist_ok=True)
-    scene_path = out / "scene_layout4_s1_default.json"
-    scene_path.write_text(json.dumps(scene_layout4_s1_default(), indent=1))
+    scene_path = write_scene(entry, out / scene_file_name(entry.name))
     work = out / "_work"
     work.mkdir(exist_ok=True)
+    sc = check_scene(binary, scene_path, work, log, entry)
+    diag = sc.pop("diagnostics")
+    return entry, scene_path, sc, diag
+
+
+def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_for, scene, log=print, levels=LEVELS_DB,
+                trials: int | None = None, min_gap_s: float | None = None, construction_t_s: float | None = None) -> dict:
+    """Both blocks of one chain (0.9 dB and 0.5 dB: every stimulus is sealed before the run, item 11) plus the
+    familiarisation pairs; `programme_for(seed_index) -> (x, onset, record)`; `scene` is `prepare_scene`'s result.
+    `trials` limits each block (tests). `min_gap_s`, `construction_t_s`: the programme's shortest heard gap or
+    silence and the T it was built from (the M2 check, M3-G)."""
+    entry, scene_path, sc, diag = scene
+    work = out / "_work"
     manifest: dict = {"chain": chain, "preregistration": "phase-07c-2 decider file 13, D-W2 final items 1-16 and Q5",
+                      "scene_selection": "phase-07c-2b decider file 8, M3-S (fallbacks in order: "
+                                         + ", ".join(FALLBACK_ORDER[1:]) + ")",
                       "criterion": f">= {CRITERION[chain]}/{SCORED_TRIALS}", "levels_db": list(levels),
                       "anchor": f"{ANCHOR_DB} dB, pass >= {ANCHOR_PASS}/{ANCHOR_TRIALS}", "fs": FS,
                       "partition": PARTITION, "block": BLOCK, "render_cli": str(binary), "blocks": {}, "ir_checks": {}}
-    manifest["scene"] = check_scene(binary, scene_path, work, log)
-    diag = manifest["scene"].pop("diagnostics")
-    manifest["m2_gap_check"] = gap_check(manifest["scene"], min_gap_s, gap_t30_s)
+    manifest["scene"] = sc
+    manifest["m2_gap_check"] = gap_check(sc, min_gap_s, construction_t_s)
     gc = manifest["m2_gap_check"]
-    log(f"{chain}: M2 gap check: minimum gap {gc['min_gap_s']:.3f} s >= tail T30(1 kHz) "
-        f"{', '.join(f'{x:.3f}' for x in gc['tail_T30_1k_s'])} s; T30(1 kHz) {gc['heard_T30_1k_s']:.3f} s ({HEARD_T30_LABEL})")
+    log(f"{chain}: M2 gap check (M3-G): minimum heard gap {gc['min_gap_s']:.3f} s >= T {gc['construction_T_s']:.3f} s "
+        f"= max(heard T30 {gc['heard_T30_1k_s']:.3f} s, tail T30(1 kHz) {', '.join(f'{x:.3f}' for x in gc['tail_T30_1k_s'])} s)")
+    stepped_irs: dict[str, np.ndarray] = {}
     for g in sorted({s * x for x in (*levels, ANCHOR_DB) for s in (1, -1)}):
         u, s, target_share = ir_pair(binary, scene_path, g, work)
-        rec = {**ir_assertions(u, s, diag, g), "bands": ir_band_shares(u, s, diag, g, target_share),
+        band_rows = ir_band_shares(u, s, diag, g, target_share)
+        rec = {**ir_assertions(u, s, diag, g), "bands": band_rows, "band_step_check": band_step_check(band_rows, g),
                "heard": heard_pair_metrics(u, s, float(diag["sampleRate"]), g)}
+        stepped_irs[f"{g:+.1f}"] = s
         manifest["ir_checks"][f"{g:+.1f}"] = rec
         hb, h1k = rec["heard"]["broadband"], rec["heard"]["bands"]["1000"]
         log(f"{chain}: IR step {g:+.1f} dB: tail alone "
             + ", ".join(f"{r['tail_alone']['step_db']:+.4f}" for r in rec["rows"])
-            + " dB; window_unscaled_share (s_w, <= 2.3 %) "
+            + f" dB; per-band step error max {rec['band_step_check']['max_abs_err_db']:.2e} dB (<= {BAND_STEP_TOL_DB})"
+            + "; window_unscaled_share (s_w, <= 2.3 %) "
             + ", ".join(f"{r['ax47_window']['window_unscaled_share']:.2e}" for r in rec["rows"])
             + "; per band (max over bands) "
             + ", ".join(f"{max(b['window_unscaled_share'] for b in r['bands'].values()):.2e}" for r in rec["bands"])
@@ -660,23 +901,43 @@ def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_f
             + f"; heard: tail share 1 kHz {h1k['tail_share_of_heard']:.3f} (broadband {hb['tail_share_of_heard']:.3f}), "
             f"delta G 1 kHz {h1k['delta_G_db']:+.3f} dB (broadband {hb['delta_G_db']:+.3f}), delta C80 1 kHz "
             f"{h1k['delta_C80_db']:+.3f} dB (broadband {hb['delta_C80_db']:+.3f})")
+
+    def one(seed_index: int, g: float, trial_dir: pathlib.Path) -> tuple[dict, dict]:
+        x, onset, record = programme_for(seed_index)
+        key = f"{g:+.1f}"
+        dg = {k: v["delta_G_db"] for k, v in manifest["ir_checks"][key]["heard"]["bands"].items()}
+        rec = render_trial(binary, scene_path, x, onset, g, trial_dir, stepped_irs[key], dg)
+        cue = rec["gap_cue"]
+        log(f"{chain} {trial_dir.parent.name}/{trial_dir.name} ({g:+.1f} dB): onset {onset / FS:.3f} s, peak "
+            f"{rec['peak_dbfs']:.1f} dBFS, mid-fade windows {rec['midfade']['windows']}, nulls B "
+            f"{rec['nulls']['B_vs_offline_db']:.1f} / E {rec['nulls']['E_vs_offline_stepped_ir_db']:.1f} dB; gap cue "
+            f"E - B re B (1 kHz) {cue['E_minus_B_re_B_1k_db_100ms']:+.2f} dB [N, N + 100 ms), "
+            f"{cue['E_minus_B_re_B_1k_db_300ms']:+.2f} dB [N, N + 300 ms); max |delta G| "
+            f"{cue['delta_G_band_max_db']['delta_G_db']:+.3f} dB at {cue['delta_G_band_max_db']['band']} Hz")
+        return record, rec
+
     for level in levels:
         block = []
         for t in trial_plan(chain, level)[: trials or BLOCK_TRIALS]:
-            x, onset, record = programme_for(t["seed_index"])
-            rec = render_trial(binary, scene_path, x, onset, t["g_db"], out / f"{level:.1f}dB" / f"trial_{t['trial']:02d}")
+            record, rec = one(t["seed_index"], t["g_db"], out / f"{level:.1f}dB" / f"trial_{t['trial']:02d}")
             block.append({**t, **record, **rec})
-            log(f"{chain} {level:.1f} dB trial {t['trial']:02d} ({t['kind']}, {t['g_db']:+.1f} dB): onset "
-                f"{onset / FS:.3f} s, peak {rec['peak_dbfs']:.1f} dBFS, mid-fade windows {rec['midfade']['windows']}")
         manifest["blocks"][f"{level:.1f}"] = block
     # Familiarisation (item 2, mandatory before any scored block): labelled A/B pairs, the anchor and each level, up
     # and down; never scored. Feedback during familiarisation is Seat 1's design choice (not set by this kit).
     fam = []
     for i, g in enumerate((ANCHOR_DB, -ANCHOR_DB, *[s * x for x in levels for s in (1, -1)])):
-        x, onset, record = programme_for(100 + i)
-        rec = render_trial(binary, scene_path, x, onset, g, out / "familiarisation" / f"pair_{i + 1:02d}_{g:+.1f}dB")
+        record, rec = one(100 + i, g, out / "familiarisation" / f"pair_{i + 1:02d}_{g:+.1f}dB")
         fam.append({"pair": i + 1, "g_db": g, **record, **rec})
     manifest["familiarisation"] = fam
+    stims = [*(t for blk in manifest["blocks"].values() for t in blk), *fam]
+    manifest["summary"] = {
+        "stimuli": len(stims), "peak_dbfs_max": max(t["peak_dbfs"] for t in stims),
+        "null_B_worst_db": max(t["nulls"]["B_vs_offline_db"] for t in stims),
+        "null_E_worst_db": max(t["nulls"]["E_vs_offline_stepped_ir_db"] for t in stims),
+        "residual_hp_peak_max_dbfs": max(t["clicks"]["residual_hp_peak_dbfs"] for t in stims),
+        "band_step_err_max_db": max(r["band_step_check"]["max_abs_err_db"] for r in manifest["ir_checks"].values()),
+        "duration_s_mean": float(np.mean([t["duration_s"] for t in stims])),
+        "duration_s_blocks_mean": float(np.mean([t["duration_s"] for blk in manifest["blocks"].values() for t in blk]))}
     for p in work.iterdir():
         p.unlink()
     work.rmdir()
@@ -684,30 +945,22 @@ def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_f
     return manifest
 
 
-def build_noise_chain(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | None = None) -> dict:
-    """The noise chain (CI, the listening pack): pulsed pink noise through layout4_s1/default."""
-    holder: dict = {}
+def build_noise_chain(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | None = None,
+                      scene_name: str = DEFAULT_SCENE) -> dict:
+    """The noise chain (CI, the listening pack): pulsed pink noise through the selected scene (default E)."""
+    scene = prepare_scene(out, binary, scene_name, log)
+    sc = scene[2]
+    t_con, delays = sc["construction_T_s"], sc["heard_delays_samples"]
 
     def programme_for(seed_index: int):
-        if "t30" not in holder:
-            raise RuntimeError("T30 not measured yet")
-        x, onset, heard = noise_programme(holder["t30"], seed_index, KEY_SEED_BLOCKS["noise"], holder["delays"])
+        x, onset, heard = noise_programme(t_con, seed_index, KEY_SEED_BLOCKS["noise"], delays)
         return x, onset, {"programme": "pulsed pink noise", "noise_level_dbfs": NOISE_LEVEL_DBFS, "heard": heard}
 
-    # T30 is needed for the gaps before any programme: measure it once on the scene first.
-    out.mkdir(parents=True, exist_ok=True)
-    tmp_scene = out / "scene_layout4_s1_default.json"
-    tmp_scene.write_text(json.dumps(scene_layout4_s1_default(), indent=1))
-    with tempfile.TemporaryDirectory() as tmp:
-        ir, dpath = pathlib.Path(tmp) / "ir.wav", pathlib.Path(tmp) / "diag.json"
-        _run(binary, "--scene", tmp_scene, "--mode", "omni", "--ir", ir, "--diagnostics", dpath)
-        h, fs = wav.read(ir)
-        holder["t30"] = float(metrics.room_metrics(h[:, 0] + h[:, 2], fs)["bands"]["1000"]["T30"])
-        holder["delays"] = heard_delays(json.loads(dpath.read_text()))
     # M2 (D-M3b assertion 4): the shortest heard silence (gaps and the silence after N; equal on every seed index)
-    _, _, heard = noise_programme(holder["t30"], 0, KEY_SEED_BLOCKS["noise"], holder["delays"])
+    _, _, heard = noise_programme(t_con, 0, KEY_SEED_BLOCKS["noise"], delays)
     gap_s = min(*heard["heard_gaps_s"], heard["heard_silence_after_onset_s"])
-    return build_chain("noise", binary, out, programme_for, log, trials=trials, min_gap_s=gap_s, gap_t30_s=holder["t30"])
+    return build_chain("noise", binary, out, programme_for, scene, log, trials=trials, min_gap_s=gap_s,
+                       construction_t_s=t_con)
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -782,24 +1035,55 @@ def q5_window_record(boundaries: list[int], passing: list[int], eos: int, t30_sa
             "q5_expected_replaced_per_stimulus": (n - k) / (k + 1)}
 
 
+def speech_layout(len_s1: int, len_s2: int, end_of_speech: int, t_heard_s: float, t_con_s: float,
+                  delays: list[int] | tuple[int, ...]) -> dict:
+    """Where the speech programme puts things (decider file 8, M3-G, as restated in file 10 Part B): sentence 1 after
+    the lead-in; sentence 2 at the input end of sentence 1 + ceil((0.43 T_heard + T) fs) + Delta (T = max(heard,
+    tail) T30, Delta = max d - min d); onset boundaries at or after the heard end of sentence 1 (input end + max d)
+    and no later than 0.43 T_heard after the end of speech (Q5, unchanged). Asserted: a boundary exists; the heard
+    pause >= T; the heard silence after the latest boundary >= T (so after every onset); at least T of programme
+    before the earliest onset and 2 s after the latest (item 7)."""
+    lead = LEAD_BLOCKS * PARTITION
+    d_min, d_max = min(delays), max(delays)
+    delta = d_max - d_min
+    t_fs = t_con_s * FS
+    pause = int(math.ceil((Q5_ONSET_MAX_T30 * t_heard_s + t_con_s) * FS)) + delta
+    s1_end = lead + len_s1
+    s2_start = s1_end + pause
+    eos = lead + end_of_speech
+    s1_heard_end = s1_end + d_max  # the file's end, heard (TSP's trailing silence included)
+    first = -(-max(eos + 1, s1_heard_end) // PARTITION) * PARTITION
+    last_allowed = eos + int(math.floor(Q5_ONSET_MAX_T30 * t_heard_s * FS))
+    boundaries = list(range(first, last_allowed + 1, PARTITION))
+    total = s2_start + len_s2
+    rec = {"lead": lead, "pause": pause, "s1_end": s1_end, "s2_start": s2_start, "eos": eos, "total": total,
+           "boundaries": boundaries, "delta": delta,
+           "heard_pause": (s2_start + d_min) - s1_heard_end,
+           "heard_silence_after_latest_onset": (s2_start + d_min) - boundaries[-1] if boundaries else None}
+    assert boundaries, "no partition boundary inside the Q5 window at or after the heard end of sentence 1"
+    assert rec["heard_pause"] >= t_fs, rec  # M3-G: heard pause >= T
+    assert rec["heard_silence_after_latest_onset"] >= t_fs, rec  # M3-G: heard silence after the onset >= T
+    assert total - boundaries[-1] >= POST_STEP_S * FS, "less than 2 s of programme after the latest onset"
+    assert boundaries[0] >= t_fs, "less than one T of programme before the earliest onset"
+    return rec
+
+
 def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, files: tuple[str, str],
-                       cache: pathlib.Path, log=print, trials: int | None = None) -> dict:
-    """The speech chain: TSP sentence 1, a pause >= T30, sentence 2 (item 8); the onset in the pause, <= 0.43 T30
-    after the end of speech, at a seeded partition boundary; the Q5 assertion on every stimulus."""
+                       cache: pathlib.Path, log=print, trials: int | None = None, scene_name: str = DEFAULT_SCENE) -> dict:
+    """The speech chain: TSP sentence 1, a pause, sentence 2 (item 8); the onset in the pause, <= 0.43 heard-IR T30
+    after the end of speech, at a seeded partition boundary; the Q5 assertion on every stimulus. The pause is
+    lengthened so that the heard pause and the heard silence after the onset are each >= T = max(heard, tail) T30
+    (decider file 8, M3-G; `speech_layout`)."""
     zip_path = fetch_tsp(cache, log)
     s1, h1 = read_tsp_member(zip_path, speaker, files[0])
     s2, h2 = read_tsp_member(zip_path, speaker, files[1])
-    out.mkdir(parents=True, exist_ok=True)
-    scene_path = out / "scene_layout4_s1_default.json"
-    scene_path.write_text(json.dumps(scene_layout4_s1_default(), indent=1))
+    scene = prepare_scene(out, binary, scene_name, log)
+    _, scene_path, sc, _ = scene
     parts = speech_parts(s1, s2)
+    t30, t_con, delays = sc["T30_1k_s"], sc["construction_T_s"], sc["heard_delays_samples"]
+    h, fs = wav.read(out / "_work" / "ir.wav")
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
-        ir, dpath = tmp / "ir.wav", tmp / "diag.json"
-        _run(binary, "--scene", scene_path, "--mode", "omni", "--ir", ir, "--diagnostics", dpath)
-        h, fs = wav.read(ir)
-        t30 = float(metrics.room_metrics(h[:, 0] + h[:, 2], fs)["bands"]["1000"]["T30"])
-        delays = heard_delays(json.loads(dpath.read_text()))
         # The rendered floor: TSP's own noise (looped past one IR length) through the room, steady state.
         reps = int(math.ceil((len(h) + 2 * FS) / len(parts["noise"])))
         noise = np.tile(parts["noise"], reps)
@@ -807,34 +1091,23 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
         wav.write_float32(npath, signals.to_stereo(noise), FS)
         rn = _render(binary, scene_path, npath, nout)
         floor_db = band_level_db(rn[:, 0].astype(np.float64), FS, len(h) + FS // 2, FS)
-    lead = LEAD_BLOCKS * PARTITION
-    # D-M3b (decider file 5, speech rule as corrected by interrogator file 6): the input pause is >= T fs + Delta, so
-    # the heard pause is >= T; onsets lie at or after the heard end of sentence 1; the heard silence after the onset
-    # is >= every tail T30 (M2, asserted by `gap_check` on the latest onset). Q5 itself is unchanged.
-    d_min, d_max = min(delays), max(delays)
-    pause = int(math.ceil(t30 * FS + (d_max - d_min)))
-    eos = lead + parts["end_of_speech"]
-    x = np.zeros(lead + len(s1) + pause + len(s2))
-    x[lead : lead + len(s1)] = s1
-    x[lead + len(s1) + pause :] = s2
+    lay = speech_layout(len(s1), len(s2), parts["end_of_speech"], t30, t_con, delays)
+    lead, pause, eos, boundaries = lay["lead"], lay["pause"], lay["eos"], lay["boundaries"]
+    x = np.zeros(lay["total"])
+    x[lead : lay["s1_end"]] = s1
+    x[lay["s2_start"] :] = s2
     excerpt = io.BytesIO()
     import soundfile as sf
 
     sf.write(excerpt, x.astype(np.float32), FS, subtype="FLOAT", format="WAV")
-    s1_heard_end = lead + len(s1) + d_max  # the file's end, heard (TSP's trailing silence included)
-    first_boundary = -(-max(eos + 1, s1_heard_end) // PARTITION) * PARTITION
-    last_allowed = eos + int(math.floor(Q5_ONSET_MAX_T30 * t30 * FS))
-    boundaries = list(range(first_boundary, last_allowed + 1, PARTITION))
-    assert boundaries, "no partition boundary inside the Q5 window"
-    assert len(x) - boundaries[-1] >= POST_STEP_S * FS, "less than 2 s of programme after the latest onset"
-    assert boundaries[0] >= t30 * FS, "less than one T30 of programme before the earliest onset"
+    d_min = min(delays)
     rec_base = {"programme": "McGill TSP v2 speech", "speaker": speaker, "files": list(files),
                 "member_sha256": [h1, h2], "excerpt_sha256": hashlib.sha256(excerpt.getvalue()).hexdigest(),
-                "end_of_speech_s": eos / FS, "pause_s": pause / FS, "T30_1k_s": t30, "floor_db_1k": floor_db,
-                "heard": {"heard_delays_samples": delays, "delta_samples": d_max - d_min,
-                          "heard_pause_s": (pause - (d_max - d_min)) / FS,
-                          "heard_silence_after_latest_onset_s": (lead + len(s1) + pause + d_min - boundaries[-1]) / FS}}
-    assert rec_base["heard"]["heard_pause_s"] * FS >= t30 * FS - 1e-6, rec_base["heard"]
+                "end_of_speech_s": eos / FS, "pause_s": pause / FS, "T30_1k_s": t30, "construction_T_s": t_con,
+                "pause_rule": "ceil((0.43 T_heard + T) fs) + Delta (decider file 8, M3-G)", "floor_db_1k": floor_db,
+                "heard": {"heard_delays_samples": delays, "delta_samples": lay["delta"],
+                          "heard_pause_s": lay["heard_pause"] / FS,
+                          "heard_silence_after_latest_onset_s": lay["heard_silence_after_latest_onset"] / FS}}
     # The unstepped render does not depend on the onset: render it once for the Q5 measurement.
     with tempfile.TemporaryDirectory() as tmp:
         p, o = pathlib.Path(tmp) / "x.wav", pathlib.Path(tmp) / "y.wav"
@@ -860,12 +1133,16 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
             onset = boundaries[int(k)]
             tail_db = band_level_db(unstepped, FS, onset, int(round(Q5_WINDOW_S * FS)))
             if tail_db >= floor_db + Q5_MARGIN_DB:
+                silence = lay["s2_start"] + d_min - onset
+                assert silence >= t_con * FS and lay["heard_pause"] >= t_con * FS, (silence, lay["heard_pause"])  # M3-G
                 return x, onset, {**rec_base, "q5_tail_db_1k": tail_db, "q5_margin_db": tail_db - floor_db,
-                                  "onset_after_eos_T30": (onset - eos) / FS / t30, "replaced_onsets": replaced}
+                                  "onset_after_eos_T30": (onset - eos) / FS / t30, "replaced_onsets": replaced,
+                                  "heard_silence_after_onset_s": silence / FS}
             replaced.append({"onset_sample": onset, "tail_db_1k": tail_db})
         raise RuntimeError(f"seed index {seed_index}: no onset in the Q5 window meets tail >= floor + {Q5_MARGIN_DB} dB")
 
-    log(f"speech: {speaker} {files}, end of speech {eos / FS:.3f} s, pause {pause / FS:.3f} s, T30(1 kHz) {t30:.3f} s, "
+    log(f"speech: {speaker} {files}, end of speech {eos / FS:.3f} s, pause {pause / FS:.3f} s (heard "
+        f"{lay['heard_pause'] / FS:.3f} s >= T {t_con:.3f} s), T30(1 kHz) {t30:.3f} s, "
         f"floor {floor_db:.1f} dB (1 kHz), {len(boundaries)} onset boundaries in the Q5 window, {len(passing)} of them "
         f"with tail >= floor + {Q5_MARGIN_DB:g} dB (latest at {rec_base['q5_latest_passing_after_eos_T30']:.3f} T30); "
         f"realised onset window [{rec_base['q5_realised_window_T30'][0]:.3f}, {rec_base['q5_realised_window_T30'][1]:.3f}]"
@@ -873,7 +1150,9 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
         f"{rec_base['q5_passing_contiguous_from_first']}; replacement: first draw replaced with p "
         f"{rec_base['q5_first_draw_replaced_p']:.3f}, {rec_base['q5_expected_replaced_per_stimulus']:.2f} replaced "
         "onsets per stimulus expected")
-    manifest = build_chain("speech", binary, out, programme_for, log, trials=trials, min_gap_s=min(rec_base["heard"]["heard_pause_s"], rec_base["heard"]["heard_silence_after_latest_onset_s"]), gap_t30_s=t30)
+    manifest = build_chain("speech", binary, out, programme_for, scene, log, trials=trials,
+                           min_gap_s=min(rec_base["heard"]["heard_pause_s"], rec_base["heard"]["heard_silence_after_latest_onset_s"]),
+                           construction_t_s=t_con)
     manifest["tsp"] = {"url": TSP_URL, "sha256": TSP_SHA256, "notice": TSP_NOTICE, **{k: v for k, v in rec_base.items()}}
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1, default=float))
     (out / "NOTICE-TSP.txt").write_text(TSP_NOTICE + "\n")
@@ -1025,6 +1304,9 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--out", type=pathlib.Path, default=REPO / "build" / "abx-07c-2")
         p.add_argument("--render-cli", type=pathlib.Path, default=None)
         p.add_argument("--trials", type=int, default=None, help="limit each block (smoke runs only)")
+        p.add_argument("--scene-name", choices=tuple(SCENES), default=DEFAULT_SCENE,
+                       help="the registered ABX scene (decider file 8, M3-S: E, fallbacks in order "
+                            + ", ".join(FALLBACK_ORDER[1:]) + ")")
         if name == "speech":
             p.add_argument("--speaker", required=True, help="adult TSP speaker, fixed in the pre-registration (item 8)")
             p.add_argument("--files", nargs=2, required=True, metavar=("SENTENCE1", "SENTENCE2"),
@@ -1050,9 +1332,10 @@ def main(argv: list[str] | None = None) -> int:
             print("abx_kit.py: render_cli not found (cmake --preset cli && cmake --build --preset cli)", file=sys.stderr)
             return 1
         if args.cmd == "noise":
-            build_noise_chain(args.out / "noise", binary, trials=args.trials)
+            build_noise_chain(args.out / "noise", binary, trials=args.trials, scene_name=args.scene_name)
         else:
-            build_speech_chain(args.out / "speech", binary, args.speaker, tuple(args.files), args.cache, trials=args.trials)
+            build_speech_chain(args.out / "speech", binary, args.speaker, tuple(args.files), args.cache, trials=args.trials,
+                               scene_name=args.scene_name)
         print(f"written to {args.out / args.cmd}")
     elif args.cmd == "seal":
         record = seal(args.pack, args.session, args.key)

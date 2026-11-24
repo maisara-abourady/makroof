@@ -430,8 +430,9 @@ def _phase_05h(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
 
 
 def _phase_07c2(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
-    """Phase-07c-2 D-W2: the AX47 self-ABX noise chain (tools/ci/abx_kit.py). The speech chain (McGill TSP v2) is
-    built locally only (D-W2 item 12) and never enters this pack."""
+    """Phase-07c-2 D-W2: the AX47 self-ABX noise chain (tools/ci/abx_kit.py) on the kit's default scene (phase-07c-2b
+    decider file 8, M3-S: layout5_s0.9/emitter_wall). The speech chain (McGill TSP v2) is built locally only (D-W2
+    item 12) and never enters this pack."""
     from tools.ci import abx_kit
 
     pack.mkdir(parents=True, exist_ok=True)
@@ -449,13 +450,20 @@ def _phase_07c2(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
             "drawn at sealing. Omni, diotic (both channels identical), 48 kHz, not normalised. familiarisation/ holds "
             "labelled A/B pairs (3 dB anchor, 0.9 dB, 0.5 dB, up and down) for the mandatory familiarisation.", 78),
         "",
-        f"Scene: layout4_s1/default ({sc['label']}), tailSeed {sc['tailSeed']}, capped at m = 6, 7, 8: {sc['capped']}.",
-        f"T30(1 kHz) {sc['T30_1k_s']:.3f} s (Eyring T60 {sc['T60_eyring_1k_s']:.3f} s); r_c {sc['r_c_m']:.2f} m; "
+        f"Scene: {sc['name']} ({sc['label']}), tailSeed {sc['tailSeed']}, scene SHA-256 {sc['scene_sha256']}, "
+        f"capped at m = 6, 7, 8: {sc['capped']}.",
+        sc["class"],
+        f"Heard-IR T30(1 kHz) {sc['T30_1k_s']:.3f} s; tail T30 "
+        + " / ".join(f"{x:.3f}" for x in sc["tail_T30_1k_s"])
+        + f" s; gaps built from T = {sc['construction_T_s']:.3f} s (max of the two, M3-G) "
+        f"(Eyring T60 {sc['T60_eyring_1k_s']:.3f} s); r_c {sc['r_c_m']:.2f} m; "
         + "; ".join(f"{e['id']}: r {e['r_m']:.2f} m, r/r_c {e['r_over_rc']:.2f}" for e in sc["emitters"])
         + f"; D/R broadband {sc['DRR_dB_broadband']:.1f} dB, 1 kHz {sc['DRR_dB_1k']:.1f} dB.",
         "",
         "Every stimulus passed the item-6 assertions (early part bit-identical, the tail step, the AX47 mid-fade checks,",
-        "no new click in the step region); noise/manifest.json holds the measured values and every SHA-256.",
+        "no click on the crossfade residual in the step region), M1's per-band step identity (<= 0.05 dB) and the",
+        "nulls of B and E against the offline reference (<= -120 dB); noise/manifest.json holds the measured values,",
+        "the scene's label lines and every SHA-256.",
     ]
     (pack / "README.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

@@ -6,9 +6,12 @@
   unseal a 0.5 dB block unless 0.9 dB was detected in that chain (item 11).
 - Item 6's prints (decider files 27, 31): the exact split N = (a u - s)/(a - 1) behind `window_unscaled_share`,
   render_cli's `target_specular_share` parsed under its own name, and the heard-pair tail share, Delta G and Delta C80.
-- M2 (files 31, 34): Seat 9's T30 label, the tail T30 beside it, and the minimum gap >= tail T30 assertion.
-- End to end (render_cli needed; skipped without it unless SPATIAL_REQUIRE_RENDER_CLI=1): one noise trial with every
-  item-6 assertion, and g = 0 bit-identical to no flag.
+- M2 (files 31, 34) under M3-G (phase-07c-2b decider file 8): Seat 9's T30 label, the tail T30 beside it, gaps built
+  from T = max(heard, every tail T30), and the minimum heard gap >= T and >= every tail T30.
+- Phase-07c-2b M3: the scene registry (E, the fallbacks D and B, S-A; E's committed JSON), the Class-line refusal
+  (D-M3e), M1's per-band step identity at <= 0.05 dB, the offline reference for the nulls, the speech layout.
+- End to end (render_cli needed; skipped without it unless SPATIAL_REQUIRE_RENDER_CLI=1): one noise trial per block on
+  E with every item-6 assertion and the M3-C 7 nulls, and g = 0 bit-identical to no flag.
 """
 
 from __future__ import annotations
@@ -88,16 +91,121 @@ def test_heard_pair_metrics_synthetic() -> None:
 
 
 def test_m2_gap_check() -> None:
-    # File 34 item 3: minimum gap, heard-IR T30 (labelled) and tail T30 printed; minimum gap >= tail T30 asserted.
+    # File 34 item 3 under M3-G (phase-07c-2b decider file 8): the construction T is max(heard-IR T30, every tail T30);
+    # the minimum heard gap or silence is asserted >= T and >= every tail T30.
     scene = {"T30_1k_s": 2.009, "tail_T30_1k_s": [1.254, 1.274]}
     rec = abx_kit.gap_check(scene, 2.016, 2.009)
-    assert rec == {"min_gap_s": 2.016, "heard_T30_1k_s": 2.009, "heard_T30_label": abx_kit.HEARD_T30_LABEL,
-                   "tail_T30_1k_s": [1.254, 1.274], "min_gap_ge_tail_T30": True}
-    # layout 5 (K4 fact 9): heard 2.557 s against tail-alone 2.58-2.62 s fails
+    assert rec == {"min_gap_s": 2.016, "construction_T_s": 2.009,
+                   "construction_rule": "max(heard-IR T30, every tail T30) at 1 kHz (decider file 8, M3-G)",
+                   "heard_T30_1k_s": 2.009, "heard_T30_label": abx_kit.HEARD_T30_LABEL,
+                   "tail_T30_1k_s": [1.254, 1.274], "min_gap_ge_tail_T30": True, "min_gap_ge_construction_T": True}
+    # E (builder file 4): heard 2.560 s below the tail's 2.600 s; T = 2.600 s, heard gap 2.603 s passes
+    e = {"T30_1k_s": 2.560, "tail_T30_1k_s": [2.582, 2.600]}
+    assert abx_kit.gap_check(e, 2.603, 2.600)["construction_T_s"] == 2.600
+    # red: gaps built from the heard T30 (the old M2 T-a rule) are refused on layout 5
     with pytest.raises(AssertionError):
-        abx_kit.gap_check({"T30_1k_s": 2.557, "tail_T30_1k_s": [2.58, 2.62]}, 2.560, 2.557)
+        abx_kit.gap_check(e, 2.603, 2.560)
+    # red: a heard gap shorter than a tail T30 (K7 fact 7: 2.574 s against 2.600 s)
+    with pytest.raises(AssertionError):
+        abx_kit.gap_check(e, 2.574, 2.600)
     with pytest.raises(RuntimeError):
         abx_kit.gap_check({"T30_1k_s": 2.0, "tail_T30_1k_s": [None, 1.2]}, 2.1, 2.0)
+
+
+def test_scene_registry() -> None:
+    """Decider file 8, M3-S: E is the default scene, D and B the fallbacks in order, S-A stays registered. E's JSON is
+    committed beside the kit, equals the builder, and is the scene builder file 4 measured (its SHA-256)."""
+    import hashlib
+    import json
+
+    assert abx_kit.DEFAULT_SCENE == "layout5_s0.9/emitter_wall"
+    assert abx_kit.FALLBACK_ORDER == ("layout5_s0.9/emitter_wall", "layout5_s0.8/emitter_wall", "layout5_s0.8/default")
+    assert set(abx_kit.SCENES) == {*abx_kit.FALLBACK_ORDER, "layout4_s1/default"}
+    e = abx_kit.SCENES[abx_kit.DEFAULT_SCENE]
+    assert e.committed == REPO / "tools" / "ci" / "abx_scenes" / "layout5_s0.9_emitter_wall.json"
+    assert e.committed.read_text(encoding="utf-8") == e.text()
+    assert hashlib.sha256(e.committed.read_bytes()).hexdigest() == \
+        "95d46224756e27edf5c587308ba3b4cb20dd3fd86ebbba65d32d08090778a7a6"  # build/k7/layout5_s0.9__emitter_wall
+    s = json.loads(e.committed.read_text())
+    assert s["room"]["geometry"]["dimensions"] == [20.0, 30.0, 10.0]
+    for face, surf in s["room"]["surfaces"].items():
+        assert surf == {"absorption": [1.0 if face == "xMin" else 0.01] * 8, "scattering": 0.9}, face
+    assert s["render"]["tailSeed"] == 12345 and s["listener"]["position"] == [10.0, 8.0, 1.7]
+    assert [x["position"] for x in s["emitters"]] == [[7.0, 29.9, 2.0], [13.0, 20.0, 2.0]]
+    for name, entry in abx_kit.SCENES.items():
+        assert entry.name == name
+        assert abx_kit.require_class_line(entry).startswith("Class: ")  # D-M3e
+        assert "hall" not in entry.label.lower()
+    # labels (M3-S; decider file 10 Part B's ITDG line; M3-C 5's case-4 line on S-A)
+    assert e.label == ("Tail-dominated stress placement, one absorbing side wall, source 0.1 m from a wall, "
+                       "specular-only early reflections (s 0.9, AX21); not a validated preset")
+    assert "Class: tail-dominated (heard −9.5 dB, tail share 0.85), partial early part" in e.label_detail
+    assert any(x.startswith("ITDG 0.6 ms (S0's wall image, notch ≈ 860 Hz), 0.89 ms (S0's floor image") for x in e.label_detail)
+    assert "Gaps are built from max(heard, tail) T30." in e.label_detail
+    assert ("Kuttruff Table 5.2 case 4 (floor α 1, others 0): iteration 1.21 s against Eyring 1.38 s; the engine's "
+            "tail follows Eyring.") in abx_kit.SCENES["layout4_s1/default"].label_detail
+
+
+def test_class_line_required(tmp_path: pathlib.Path) -> None:
+    """D-M3e: the kit refuses to build a manifest for a scene whose label has no Class line, before rendering."""
+    entry = abx_kit.AbxScene("no_class/x", abx_kit.scene_layout4_s1_default, "label",
+                             ("Stimulus scene, not a room prediction.",))
+    scene = tmp_path / "scene.json"
+    scene.write_text(entry.text())
+    with pytest.raises(RuntimeError, match="Class"):
+        abx_kit.check_scene(tmp_path / "no_render_cli", scene, tmp_path, entry=entry)
+    abx_kit.SCENES["no_class/x"] = entry
+    try:
+        with pytest.raises(RuntimeError, match="Class"):
+            abx_kit.prepare_scene(tmp_path / "out", tmp_path / "no_render_cli", "no_class/x")
+    finally:
+        del abx_kit.SCENES["no_class/x"]
+    with pytest.raises(ValueError):
+        abx_kit.prepare_scene(tmp_path / "out", tmp_path / "no_render_cli", "not/registered")
+
+
+def test_band_step_check() -> None:
+    """M3-C 7 (Seat 3): M1's per-band step identity asserted at <= 0.05 dB, per emitter and band; red at 0.06 dB."""
+    assert abx_kit.BAND_STEP_TOL_DB == 0.05
+    rows = [{"emitter": e, "bands": {k: {"step_db": 0.9 + 1e-3} for k in ("63", "1000")}} for e in (0, 1)]
+    rec = abx_kit.band_step_check(rows, 0.9)
+    assert abs(rec["max_abs_err_db"] - 1e-3) < 1e-12
+    rows[1]["bands"]["1000"]["step_db"] = 0.9 - 0.06
+    with pytest.raises(AssertionError, match="per-band step"):
+        abx_kit.band_step_check(rows, 0.9)
+
+
+def test_offline_reference_and_null() -> None:
+    """M3-C 7's offline reference (renderOffline emulated, builder file 4 fact 5) is the direct convolution
+    out_o = sum_e x_e * ir(e, o); the null is its energy ratio; the lengths must match."""
+    rng = np.random.default_rng(5)
+    prog = rng.standard_normal((300, 2)).astype(np.float32)
+    ir = rng.standard_normal((40, 4)).astype(np.float32)
+    ref = abx_kit.offline_reference(prog, ir)
+    for o in range(2):
+        direct = sum(np.convolve(prog[:, e].astype(np.float64), ir[:, 2 * e + o].astype(np.float64)) for e in range(2))
+        assert np.allclose(ref[:, o], direct, rtol=1e-5, atol=1e-5)
+    assert abx_kit.null_db(ref, ref) <= -300
+    assert abs(abx_kit.null_db(ref * np.float32(1.1), ref) - 20 * np.log10(0.1)) < 1e-3
+    with pytest.raises(AssertionError):
+        abx_kit.null_db(ref[:-1], ref)
+    assert abx_kit.NULL_MAX_DB == -120.0
+
+
+def test_speech_layout_e() -> None:
+    """M3-G (decider file 8, restated in file 10 Part B): sentence 2 at the input end of sentence 1 +
+    ceil((0.43 T_heard + T) fs) + Delta; on E (T_heard 2.560 s, T 2.600 s, Delta 1363) the pause is 3.729 s; the heard
+    pause and the heard silence after every onset are >= T; onsets at or after the heard end of sentence 1."""
+    t_h, t, delays = 2.5597945976385454, 2.600119578366251, [1395, 32]
+    lay = abx_kit.speech_layout(150000, 150000, 140000, t_h, t, delays)
+    assert lay["pause"] == int(np.ceil((0.43 * t_h + t) * 48000)) + 1363 == 179003
+    assert lay["heard_pause"] == lay["pause"] - 1363 >= t * 48000
+    assert lay["heard_silence_after_latest_onset"] >= t * 48000
+    assert lay["boundaries"][0] >= lay["s1_end"] + max(delays) and lay["boundaries"][0] % abx_kit.PARTITION == 0
+    assert lay["boundaries"][-1] <= lay["eos"] + 0.43 * t_h * 48000  # Q5's ceiling stays 0.43 x heard T30
+    # red: no boundary when the heard end of sentence 1 lies past the Q5 ceiling
+    with pytest.raises(AssertionError, match="no partition boundary"):
+        abx_kit.speech_layout(150000, 150000, 40000, t_h, t, delays)
 
 
 def _synthetic_step(fs: int = 48000, g_db: float = 0.9, seed: int = 3):
@@ -161,9 +269,23 @@ def test_click_check_form_b_spike_bracket(where: str) -> None:
             assert abx_kit.click_check(o, a, b, s0, 48000)["events_in_step_region"] == 0
 
 
+def test_speech_layout_item7_lead_on_e_with_ma01_01() -> None:
+    """Finding (phase-07c-2b builder file 12): with TSP MA01_01 (114221 samples, end of speech at 108480) the earliest
+    onset boundary at or after the heard end of sentence 1 is 119808 (2.496 s from the file start), below one T of
+    programme (item 7) on E: T = 2.600 s under M3-G, and also below the heard-IR T30 2.560 s of the old rule. The kit
+    stops; nothing is loosened. On S-A (T 2.009 s, delays 32/32) the same sentence passes."""
+    with pytest.raises(AssertionError, match="one T of programme"):
+        abx_kit.speech_layout(114221, 111954, 108480, 2.5597945976385454, 2.600119578366251, [1395, 32])
+    with pytest.raises(AssertionError, match="one T of programme"):
+        abx_kit.speech_layout(114221, 111954, 108480, 2.5597945976385454, 2.5597945976385454, [1395, 32])
+    lay = abx_kit.speech_layout(114221, 111954, 108480, 2.009, 2.009, [32, 32])
+    assert lay["boundaries"][0] == 118784 >= 2.009 * 48000
+
+
 @pytest.mark.parametrize("t30, delays, gap, heard_gap, after", [
     (2.009, [32, 32], 96768, 96768, 96800),        # S-A: Delta 0, N moves one partition (decider file 5)
     (1.370, [32, 1407], 67584, 66209, 66080),      # both_wall: Delta 1375 (interrogator file 6 arithmetic)
+    (2.600119578366251, [1395, 32], 126464, 125101, 124960),  # E under M3-G: T = 2.600 s (interrogator file 11)
 ])
 def test_noise_programme_as_heard(t30, delays, gap, heard_gap, after) -> None:
     """D-M3b (decider file 5; interrogator file 6): gaps ceil((T fs + Delta)/P) P, the onset at the first partition
@@ -303,47 +425,49 @@ def test_noise_trial_end_to_end(tmp_path: pathlib.Path) -> None:
 
     m = abx_kit.build_noise_chain(tmp_path / "noise", binary, log=lambda *_: None, trials=1)
     sc = m["scene"]
+    # E (decider file 8, M3-S): the committed scene, its label and Class line, capped at m = 6, 7, 8
+    e = abx_kit.SCENES[abx_kit.SCENE_E]
+    assert sc["name"] == abx_kit.SCENE_E and sc["label"] == e.label and sc["label_detail"] == list(e.label_detail)
+    assert sc["class"] == abx_kit.require_class_line(e)
+    assert sc["scene_sha256"] == abx_kit.sha256_file(e.committed)
+    assert sc["scene_file"] == "tools/ci/abx_scenes/layout5_s0.9_emitter_wall.json"
     assert all(all(v) for v in sc["capped"].values())
-    # Decider file 21, 2b (file 22): D/R per emitter, on that emitter's own IR, beside the heard (L + R) one. At equal
-    # r the two direct sounds add coherently and the uncorrelated tails do not: the heard D/R is about 3 dB higher.
-    # The tail alone decays at the diffuse target's T60; the whole-IR T30 reads longer (AX21 empty early part).
     em = sc["emitters"]
-    assert len(em) == 2 and abs(em[0]["r_m"] - em[1]["r_m"]) < 1e-9
-    per_emitter = 10 * np.log10(np.mean([10 ** (e["DRR_dB_1k"] / 10) for e in em]))
-    assert 2.0 <= sc["DRR_dB_1k"] - per_emitter <= 4.0, (sc["DRR_dB_1k"], [e["DRR_dB_1k"] for e in em])
-    for e in em:
-        assert abs(e["tail_T30_1k_s"] / e["target_T60_1k_s"] - 1.0) <= 0.10, e
-        assert e["T30_1k_s"] > 1.3 * e["tail_T30_1k_s"], e
-    # M2 (files 31, 34): Seat 9's label on the heard-IR T30, the tail T30 beside it, the gap check passed on S-A
+    assert len(em) == 2 and abs(em[0]["r_m"] - 22.11) < 0.01 and abs(em[1]["r_m"] - 12.37) < 0.01
+    for x in em:
+        assert abs(x["tail_T30_1k_s"] / x["target_T60_1k_s"] - 1.0) <= 0.10, x
+    # M3-G: T = max(heard, every tail T30); on E the tail is longer than the heard IR's T30 (builder file 4)
     assert sc["T30_1k_s_label"] == abx_kit.HEARD_T30_LABEL
-    assert sc["tail_T30_1k_s"] == [e["tail_T30_1k_s"] for e in em]
+    assert sc["construction_T_s"] == max(sc["T30_1k_s"], *sc["tail_T30_1k_s"]) > sc["T30_1k_s"]
     gc = m["m2_gap_check"]
-    assert gc["heard_T30_1k_s"] == sc["T30_1k_s"] and gc["heard_T30_label"] == abx_kit.HEARD_T30_LABEL
-    assert gc["min_gap_s"] >= sc["T30_1k_s"] and gc["min_gap_s"] >= max(gc["tail_T30_1k_s"]) and gc["min_gap_ge_tail_T30"]
+    assert gc["construction_T_s"] == sc["construction_T_s"] and gc["heard_T30_1k_s"] == sc["T30_1k_s"]
+    assert gc["min_gap_s"] >= gc["construction_T_s"] and gc["min_gap_ge_tail_T30"] and gc["min_gap_ge_construction_T"]
     keys = {"63", "125", "250", "500", "1000", "2000", "4000", "8000"}
     for g, rec in m["ir_checks"].items():
         gd = float(g)
-        a = 10 ** (gd / 20)
+        assert rec["band_step_check"]["max_abs_err_db"] <= abx_kit.BAND_STEP_TOL_DB  # M3-C 7
         for row in rec["rows"]:
             assert abs(row["tail_alone"]["step_db"] - gd) <= 0.01
-            # item 6 print fix (file 27): the exact split, not the inferred specular_share; s_w <= 2.3 % (file 34)
             assert "specular_share" not in row["ax47_window"]
             assert 0.0 <= row["ax47_window"]["window_unscaled_share"] <= abx_kit.S_W_MAX
-            assert row["ax47_window"]["window_unscaled_share"] < 1e-9  # S-A: no images in the window (K3, K4)
         for br in rec["bands"]:
-            assert br["window_unscaled_share_broadband"] < 1e-9 and set(br["bands"]) == keys
-            for b in br["bands"].values():
-                assert b["window_unscaled_share"] < 1e-9
-                assert b["target_specular_share"] == 0.0  # render_cli's own print; 0 on layout4_s1/default
-        # Seat 1's condition (file 27): per band and broadband on the heard pair; S-A's 1 kHz values are K4's (file 29)
+            assert set(br["bands"]) == keys
+        # s < 1: E_target has a specular share, so M1's reversal condition is live (decider file 8, file 34's clause)
+        assert max(b["target_specular_share"] for b in rec["bands"][0]["bands"].values()) > 0.0
         h = rec["heard"]
         assert set(h["bands"]) == keys
-        for x in (h["broadband"], *h["bands"].values()):
-            assert abs(x["delta_G_db"] - 10 * np.log10(1 + x["tail_share_of_heard"] * (a * a - 1))) <= 1e-6
-            assert abs(x["delta_C80_db"] + gd) <= 0.01  # [0, 80 ms) holds only the direct sound (63 Hz rings most)
-        for x in (h["broadband"], h["bands"]["1000"]):
-            assert abs(x["delta_C80_db"] + gd) <= 1e-6
-        assert round(h["bands"]["1000"]["tail_share_of_heard"], 3) == 0.046
+        # (S-A's identity Delta G = 10 log10(1 + share (a^2 - 1)) holds only when the scaled and unscaled parts are
+        # disjoint; on E the ISM fade-out overlaps the tail's fade-in, so it is not asserted here.)
+        assert round(h["bands"]["1000"]["tail_share_of_heard"], 3) == 0.852  # builder file 4, E
+        assert abs(h["bands"]["1000"]["delta_G_db"] - (0.778 if gd == 0.9 else h["bands"]["1000"]["delta_G_db"])) < 5e-4
+    stims = [*(t for blk in m["blocks"].values() for t in blk), *m["familiarisation"]]
+    for t in stims:
+        # M3-C 7: B and E nulled against the offline reference; M3-C 6's gap-cue print present
+        assert t["nulls"]["B_vs_offline_db"] <= -120.0 and t["nulls"]["E_vs_offline_stepped_ir_db"] <= -120.0
+        assert set(t["gap_cue"]) == {"E_minus_B_re_B_1k_db_100ms", "E_minus_B_re_B_1k_db_300ms", "delta_G_band_max_db"}
+        assert t["heard"]["heard_silence_after_onset_s"] >= sc["construction_T_s"]
+        assert min(t["heard"]["heard_gaps_s"]) >= sc["construction_T_s"]
+    assert m["summary"]["stimuli"] == len(stims) == 8
     for level, block in m["blocks"].items():
         (t,) = block
         assert t["midfade"]["windows"] > 0
