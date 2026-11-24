@@ -80,7 +80,11 @@ def _repo_files() -> list[pathlib.Path]:
 def _allowed(rel: str) -> bool:
     if rel in ("src/cli/Cli.cpp", "tools/ci/abx_kit.py", "tools/ci/listening_pack.py"):
         return True
-    if rel.startswith("docs/") or rel.startswith("tests/unit/") or rel.endswith(".md"):  # prose and unit tests
+    # The flag's own C++ tests only (interrogator file 22, B1): the rest of tests/unit/ holds golden-producing and
+    # golden-asserting code, which must never name the flags (Seat 1's L-a1).
+    if rel == "tests/unit/test_cli_provisional.cpp":
+        return True
+    if rel.startswith("docs/") or rel.endswith(".md"):  # prose
         return True
     return rel.startswith("tools/ci/test_") and rel.endswith(".py")
 
