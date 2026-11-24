@@ -1,0 +1,2 @@
+# The ABX kit pins the SHA-256 of these committed scene files (phase-07c-2b, test_abx_kit.py); keep LF on every OS.
+tools/ci/abx_scenes/*.json text eol=lf
