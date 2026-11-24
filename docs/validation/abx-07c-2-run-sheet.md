@@ -214,9 +214,9 @@ ABX test.
      any blind result; no pair is ever chosen by listening.
    - Our SHA-256 of `48k.zip` and of each excerpt is recorded (item 12).
    - The children CA and CB are excluded (the kit refuses them, `tools/ci/abx_kit.py` L983–984).
-   - Open before the seal, on every sealed scene (Seat 3, M3-C 7; decider file 10 M3-T): the unstepped render B
-     nulled within −120 dB against the offline render on every speech stimulus (builder file 4 fact 5 nulled B on
-     noise only); the stepped render E is already nulled on speech (−130.0 dB or better).
+   - B and E nulled within −120 dB against the offline render on every speech stimulus (Seat 3, M3-C 7; decider
+     file 10 M3-T): **closed on E's pair** (builder file 39: B −130.6 dB, E −130.4 dB, all 50 stimuli; also B
+     −130.3 dB on MA01_01/02, builder file 12); it stays a pre-seal check on any fallback scene.
 3. **Build the stimuli** on a machine with `render_cli` built (`cmake --preset cli && cmake --build --preset cli`).
    - Noise chain: `python tools/ci/abx_kit.py noise --out build/abx-07c-2`. The CI `listening-pack` artifact
      (`phase-07c-2/noise/`) holds the same files.
@@ -453,7 +453,7 @@ L_p < L; L_f, L_p, L and the per-band T60 are printed.
    not asserted" (63 Hz: 18.47 dB);
 8. B's share past L_f is at most 0.0134 per band: K17′'s bound counted from emission (the energy past L_f over the
    whole decay), not the drop from t_mix,e. With the measured t_mix,e,max 0.08017 s (60 × 0.08017/7.9955 = 0.60 dB):
-   model 10^(−(18.72 + 0.60)/10) = 0.0117, realisation 10^(−(18.47 + 0.60)/10) = 0.0124 (= measured), both ≤ 0.0134
+   model 10^(−(18.72 + 0.60)/10) = 0.0117, realisation 10^(−(18.47 + 0.60)/10) = 0.0124; measured maximum 0.0124 (emitter 0, 125 Hz), heard IR 0.01169 (125 Hz; builder files 26, 43); all ≤ 0.0134
    (interrogator file 42);
 9. print: the A/B level difference over the held part, per band;
 10. the silence after the release is at least L;
@@ -493,8 +493,8 @@ L_p < L; L_f, L_p, L and the per-band T60 are printed.
 - **Sittings (L4-T, Seat 7; D1 hours, decider file 21; decided by decider file 38 (5), interrogator file 42):** K6 is
   redone on the sealed L4 stimuli, counting the worst case: scene E's second sitting, plus the primary L4 block, plus
   the rerun block (the rerun is not inside the existing K6, which covers only the AX47 chains). That worst case is
-  about 74 + 74 = 148 min, over 2 h, so **L4 runs in its own third dated sitting**: the primary block, plus the rerun
-  block if the anchor fails (74 min at a typical pace, 113.6 min slow, within 2 h). E's two sittings are unchanged.
+  about 74.5 + 72.9 = 147.4 min (builder file 43), over 2 h, so **L4 runs in its own third dated sitting**: the primary block, plus the rerun
+  block if the anchor fails (72.9 min at a typical pace, 112.0 min slow, within 2 h; builder file 43). E's two sittings are unchanged.
   The dates go into the brief before any seal. If a rerun would push a sitting past 2 h, it opens the next sitting
   instead. L4 is sealed with E, before the session (§3 item 4).
 
