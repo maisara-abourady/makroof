@@ -127,21 +127,60 @@ def sha256_file(path: pathlib.Path) -> str:
 # ---------------------------------------------------------------------------------------------------------
 
 
-def scene_layout4_s1_default() -> dict:
-    """`layout4_s1/default`: Kuttruff Table 5.2 layout 4 at s = 1 as tests/unit/test_diffuse_wsweep.cpp builds
-    it (20 x 30 x 10 m, faces alpha 0.01, the floor alpha 1, scattering 1 on every face), listener R0 (10, 8, 1.7),
-    emitters S0 (7, 20, 2) and S1 (13, 20, 2), fixed tailSeed. Named "occupied mid-size hall envelope, not a
-    validated preset" (item 9)."""
-    scene = json.loads((REPO / "tests" / "scenes" / "valid" / "medium_room.json").read_text())
-    scene = copy.deepcopy(scene)
+# K4's candidate placements (decider file 29; tests/unit/test_diffuse_wsweep.cpp L75-107): listener, emitter S0, or
+# None for the default position (listener R0 (10, 8, 1.7), emitters S0 (7, 20, 2) and S1 (13, 20, 2)).
+PLACEMENTS = {
+    "default": (None, None),
+    "listener_wall": ((10.0, 0.1, 1.7), None),
+    "listener_edge": ((0.1, 0.1, 1.7), None),
+    "listener_corner": ((0.1, 0.1, 9.9), None),
+    "emitter_wall": (None, (7.0, 29.9, 2.0)),
+    "both_wall": ((10.0, 0.1, 1.7), (7.0, 29.9, 2.0)),
+    "both_corner": ((0.1, 0.1, 0.1), (19.9, 29.9, 9.9)),
+}
+# Kuttruff Table 5.2 layouts as test_diffuse_wsweep.cpp builds them: the one face at alpha 1.
+LAYOUT_FACE = {4: "floor", 5: "xMin"}
+DEFAULT_SCENE = "layout4_s1/default"
+SCENE_LABELS: dict[str, str] = {"layout4_s1/default": "occupied mid-size hall envelope, not a validated preset"}
+
+
+def parse_scene_name(name: str) -> tuple[int, float, str]:
+    """`layout<4|5>_s<s>/<placement>`, e.g. layout4_s0.7/default, layout4_s1/both_wall."""
+    head, placement = name.split("/")
+    layout, s = head.split("_s")
+    lay = int(layout.removeprefix("layout"))
+    if lay not in LAYOUT_FACE or placement not in PLACEMENTS:
+        raise ValueError(f"unknown ABX scene {name!r}")
+    return lay, float(s), placement
+
+
+def make_scene(name: str) -> dict:
+    """An ABX candidate scene (K4, file 29): 20 x 30 x 10 m, every face alpha 0.01 except the layout's face at
+    alpha 1, uniform scattering s on every face, medium_room.json's other fields, fixed tailSeed."""
+    lay, s_coef, placement = parse_scene_name(name)
+    scene = copy.deepcopy(json.loads((REPO / "tests" / "scenes" / "valid" / "medium_room.json").read_text()))
     scene["room"]["geometry"]["dimensions"] = [20.0, 30.0, 10.0]
     for face in ("xMin", "xMax", "yMin", "yMax", "floor", "ceiling"):
-        scene["room"]["surfaces"][face] = {"absorption": [1.0 if face == "floor" else 0.01] * 8, "scattering": 1.0}
-    scene["listener"]["position"] = [10.0, 8.0, 1.7]
-    scene["emitters"][0]["position"] = [7.0, 20.0, 2.0]
+        scene["room"]["surfaces"][face] = {"absorption": [1.0 if face == LAYOUT_FACE[lay] else 0.01] * 8,
+                                           "scattering": s_coef}
+    lst, s0 = PLACEMENTS[placement]
+    scene["listener"]["position"] = list(lst or (10.0, 8.0, 1.7))
+    scene["emitters"][0]["position"] = list(s0 or (7.0, 20.0, 2.0))
     scene["emitters"][1]["position"] = [13.0, 20.0, 2.0]
     scene["render"]["tailSeed"] = TAIL_SEED
     return scene
+
+
+def scene_layout4_s1_default() -> dict:
+    """`layout4_s1/default` (S-A): Kuttruff Table 5.2 layout 4 at s = 1 (the floor alpha 1)."""
+    return make_scene(DEFAULT_SCENE)
+
+
+def scene_label(name: str) -> str:
+    """Item 9's label for a sealed scene (decided in phase-07c-2b M3); a scene without one cannot be built."""
+    if name not in SCENE_LABELS:
+        raise RuntimeError(f"{name}: no item-9 label decided for this scene (M3); the kit stops")
+    return SCENE_LABELS[name]
 
 
 def _run(binary: pathlib.Path, *args) -> str:
@@ -151,9 +190,10 @@ def _run(binary: pathlib.Path, *args) -> str:
     return r.stdout
 
 
-def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Path, log=print) -> dict:
+def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Path, log=print,
+                name: str = DEFAULT_SCENE) -> dict:
     """Item 9: capped at m = 6, 7 and 8 (asserted); r/r_c and D/R printed; T30(1 kHz) of the heard IR."""
-    out: dict = {"name": "layout4_s1/default", "label": "occupied mid-size hall envelope, not a validated preset",
+    out: dict = {"name": name, "label": scene_label(name),
                  "scene_sha256": sha256_file(scene_path), "tailSeed": TAIL_SEED, "capped": {}}
     for m in W_CANDIDATES:
         diag = work / f"diag_m{m}.json"
@@ -162,8 +202,7 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
         hits = [bool(e["diffuse"]["capHit"]) for e in d["emitters"]]
         out["capped"][str(m)] = hits
         if not all(hits):
-            raise RuntimeError(f"layout4_s1/default is not capped at m = {m} (cap hit per emitter {hits}): item 9 "
-                               "says to use listener_wall instead; the kit stops")
+            raise RuntimeError(f"{name} is not capped at m = {m} (cap hit per emitter {hits}): item 9; the kit stops")
     diag = work / "diag.json"
     ir_path = work / "ir.wav"
     _run(binary, "--scene", scene_path, "--mode", "omni", "--diagnostics", diag, "--ir", ir_path)
@@ -198,7 +237,7 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
     out["DRR_dB_broadband"] = m["broadband"].get("DRR")
     out["DRR_dB_1k"] = m["bands"]["1000"].get("DRR")
     out["diagnostics"] = d
-    log(f"scene layout4_s1/default: capped at m = 6, 7, 8 ({out['capped']}); T30(1 kHz) {t30:.3f} s "
+    log(f"scene {name}: capped at m = 6, 7, 8 ({out['capped']}); T30(1 kHz) {t30:.3f} s "
         f"({HEARD_T30_LABEL}; tail T30 {', '.join(_fmt(x, 3) for x in out['tail_T30_1k_s'])} s) "
         f"(Eyring T60 {out['T60_eyring_1k_s']:.3f} s); r_c {rc:.2f} m ({out['r_c_m_T30']:.2f} m from the heard T30); "
         + "; ".join(f"emitter {x['id']} r {x['r_m']:.2f} m r/r_c {x['r_over_rc']:.2f} D/R {_fmt(x['DRR_dB_broadband'])} dB "
@@ -531,20 +570,21 @@ def gap_check(scene: dict, min_gap_s: float, gap_t30_s: float) -> dict:
 
 
 def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_for, log=print, levels=LEVELS_DB,
-                trials: int | None = None, min_gap_s: float | None = None, gap_t30_s: float | None = None) -> dict:
+                trials: int | None = None, min_gap_s: float | None = None, gap_t30_s: float | None = None,
+                scene_name: str = DEFAULT_SCENE) -> dict:
     """Both blocks of one chain (0.9 dB and 0.5 dB: every stimulus is sealed before the run, item 11) plus the
     familiarisation pairs; `programme_for(seed_index) -> (x, onset, record)`. `trials` limits each block (tests).
     `min_gap_s`, `gap_t30_s`: the programme's shortest gap or pause and the T30 it was built from (the M2 check)."""
     out.mkdir(parents=True, exist_ok=True)
-    scene_path = out / "scene_layout4_s1_default.json"
-    scene_path.write_text(json.dumps(scene_layout4_s1_default(), indent=1))
+    scene_path = out / "scene.json"
+    scene_path.write_text(json.dumps(make_scene(scene_name), indent=1))
     work = out / "_work"
     work.mkdir(exist_ok=True)
     manifest: dict = {"chain": chain, "preregistration": "phase-07c-2 decider file 13, D-W2 final items 1-16 and Q5",
                       "criterion": f">= {CRITERION[chain]}/{SCORED_TRIALS}", "levels_db": list(levels),
                       "anchor": f"{ANCHOR_DB} dB, pass >= {ANCHOR_PASS}/{ANCHOR_TRIALS}", "fs": FS,
                       "partition": PARTITION, "block": BLOCK, "render_cli": str(binary), "blocks": {}, "ir_checks": {}}
-    manifest["scene"] = check_scene(binary, scene_path, work, log)
+    manifest["scene"] = check_scene(binary, scene_path, work, log, scene_name)
     diag = manifest["scene"].pop("diagnostics")
     manifest["m2_gap_check"] = gap_check(manifest["scene"], min_gap_s, gap_t30_s)
     gc = manifest["m2_gap_check"]
@@ -591,8 +631,9 @@ def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_f
     return manifest
 
 
-def build_noise_chain(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | None = None) -> dict:
-    """The noise chain (CI, the listening pack): pulsed pink noise through layout4_s1/default."""
+def build_noise_chain(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | None = None,
+                      scene_name: str = DEFAULT_SCENE) -> dict:
+    """The noise chain (CI, the listening pack): pulsed pink noise through the ABX scene `scene_name`."""
     holder: dict = {}
 
     def programme_for(seed_index: int):
@@ -603,15 +644,16 @@ def build_noise_chain(out: pathlib.Path, binary: pathlib.Path, log=print, trials
 
     # T30 is needed for the gaps before any programme: measure it once on the scene first.
     out.mkdir(parents=True, exist_ok=True)
-    tmp_scene = out / "scene_layout4_s1_default.json"
-    tmp_scene.write_text(json.dumps(scene_layout4_s1_default(), indent=1))
+    tmp_scene = out / "scene.json"
+    tmp_scene.write_text(json.dumps(make_scene(scene_name), indent=1))
     with tempfile.TemporaryDirectory() as tmp:
         ir = pathlib.Path(tmp) / "ir.wav"
         _run(binary, "--scene", tmp_scene, "--mode", "omni", "--ir", ir)
         h, fs = wav.read(ir)
         holder["t30"] = float(metrics.room_metrics(h[:, 0] + h[:, 2], fs)["bands"]["1000"]["T30"])
     gap_s = int(math.ceil(holder["t30"] * FS / PARTITION)) * PARTITION / FS  # noise_programme's gap (all gaps equal)
-    return build_chain("noise", binary, out, programme_for, log, trials=trials, min_gap_s=gap_s, gap_t30_s=holder["t30"])
+    return build_chain("noise", binary, out, programme_for, log, trials=trials, min_gap_s=gap_s, gap_t30_s=holder["t30"],
+                       scene_name=scene_name)
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -687,15 +729,16 @@ def q5_window_record(boundaries: list[int], passing: list[int], eos: int, t30_sa
 
 
 def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, files: tuple[str, str],
-                       cache: pathlib.Path, log=print, trials: int | None = None) -> dict:
+                       cache: pathlib.Path, log=print, trials: int | None = None,
+                       scene_name: str = DEFAULT_SCENE) -> dict:
     """The speech chain: TSP sentence 1, a pause >= T30, sentence 2 (item 8); the onset in the pause, <= 0.43 T30
     after the end of speech, at a seeded partition boundary; the Q5 assertion on every stimulus."""
     zip_path = fetch_tsp(cache, log)
     s1, h1 = read_tsp_member(zip_path, speaker, files[0])
     s2, h2 = read_tsp_member(zip_path, speaker, files[1])
     out.mkdir(parents=True, exist_ok=True)
-    scene_path = out / "scene_layout4_s1_default.json"
-    scene_path.write_text(json.dumps(scene_layout4_s1_default(), indent=1))
+    scene_path = out / "scene.json"
+    scene_path.write_text(json.dumps(make_scene(scene_name), indent=1))
     parts = speech_parts(s1, s2)
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
@@ -767,7 +810,8 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
         f"{rec_base['q5_passing_contiguous_from_first']}; replacement: first draw replaced with p "
         f"{rec_base['q5_first_draw_replaced_p']:.3f}, {rec_base['q5_expected_replaced_per_stimulus']:.2f} replaced "
         "onsets per stimulus expected")
-    manifest = build_chain("speech", binary, out, programme_for, log, trials=trials, min_gap_s=pause / FS, gap_t30_s=t30)
+    manifest = build_chain("speech", binary, out, programme_for, log, trials=trials, min_gap_s=pause / FS, gap_t30_s=t30,
+                           scene_name=scene_name)
     manifest["tsp"] = {"url": TSP_URL, "sha256": TSP_SHA256, "notice": TSP_NOTICE, **{k: v for k, v in rec_base.items()}}
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1, default=float))
     (out / "NOTICE-TSP.txt").write_text(TSP_NOTICE + "\n")
@@ -919,6 +963,7 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--out", type=pathlib.Path, default=REPO / "build" / "abx-07c-2")
         p.add_argument("--render-cli", type=pathlib.Path, default=None)
         p.add_argument("--trials", type=int, default=None, help="limit each block (smoke runs only)")
+        p.add_argument("--scene", default=DEFAULT_SCENE, help="the ABX scene, layout<4|5>_s<s>/<placement> (M3)")
         if name == "speech":
             p.add_argument("--speaker", required=True, help="adult TSP speaker, fixed in the pre-registration (item 8)")
             p.add_argument("--files", nargs=2, required=True, metavar=("SENTENCE1", "SENTENCE2"),
@@ -944,9 +989,10 @@ def main(argv: list[str] | None = None) -> int:
             print("abx_kit.py: render_cli not found (cmake --preset cli && cmake --build --preset cli)", file=sys.stderr)
             return 1
         if args.cmd == "noise":
-            build_noise_chain(args.out / "noise", binary, trials=args.trials)
+            build_noise_chain(args.out / "noise", binary, trials=args.trials, scene_name=args.scene)
         else:
-            build_speech_chain(args.out / "speech", binary, args.speaker, tuple(args.files), args.cache, trials=args.trials)
+            build_speech_chain(args.out / "speech", binary, args.speaker, tuple(args.files), args.cache, trials=args.trials,
+                               scene_name=args.scene)
         print(f"written to {args.out / args.cmd}")
     elif args.cmd == "seal":
         record = seal(args.pack, args.session, args.key)
