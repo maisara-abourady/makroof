@@ -45,9 +45,12 @@ def test_pinned_numbers() -> None:
     assert abs(abx_kit.binom_tail(12, 16, 0.75) - 0.630) < 5e-4 and k.L4_POWER == 0.63
     assert k.WORDING_DETECTED == ("detected: AX49's Reversal fires (worst case: provisional current through the "
                                   "whole free decay)")
-    # decider file 13 (L4-COV E): the null scoped to the bands where the cut is exposed
-    assert k.WORDING_NULL == ("not detected in 16 trials by one listener (power 0.63), T60 8 s, held chord, omni "
-                              "diotic; cut exposed at 63 Hz–2 kHz; at 4 kHz the tail is 40 dB down at L_f")
+    # decider file 21 (L4-COV revised): Seat 9's null wording, verbatim
+    assert k.WORDING_NULL == (
+        "not detected in 16 trials by one listener (power 0.63); ax49_l4_cube, T60 8.0 s at 63 Hz–1 kHz and 6.5 s at "
+        "2 kHz, held chord, omni diotic; cut exposed at 63 Hz–2 kHz; no claim at 4 kHz and above, where this scene's "
+        "tail (T60 3.7 s, mostly air absorption in 10⁶ m³) has by L_f decayed 40 dB from its own onset, against 19 dB "
+        "at 63 Hz–1 kHz.")
     # decision item 3 (Seat 1's chord, verbatim)
     assert k.L4_NOTES == (("C2", 65.406), ("G2", 97.999), ("C3", 130.813), ("E3", 164.814), ("G3", 195.998))
     assert (k.L4_CHORD_VERSION, k.L4_CHORD_SEED, k.PARTIAL_MAX_HZ) == ("l4-chord-v1", 4901, 5000.0)
@@ -336,6 +339,8 @@ def test_full_build(binary: pathlib.Path, tmp_path: pathlib.Path) -> None:
     assert man["stimulus_length_s"] >= 16.53  # L4-L4
     bc = man["stimulus_checks"]["band_coverage"]
     assert bc["a_steady_state"]["ok"] and bc["b_cut_window"]["ok"]
+    bm = bc["b_cut_window_vs_median"]  # decider file 21: printed beside the asserted form, never asserted
+    assert set(bm["re_median_db"]) >= set(bc["b_cut_window"]["bands"]) and "print only" in bm["reference"]
     # decider file 13: Seat 1's original clause (63 Hz-4 kHz) still reads -22.94 dB, red, on this deterministic build
     orig = bc["original_clause_63_4k"]
     assert not orig["ok"] and orig["weakest"] == "4000" and round(orig["weakest_db"], 2) == -22.94

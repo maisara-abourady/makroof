@@ -28,6 +28,7 @@ The design is decider file 6 (docs/review/phase-07c-2b/6-decider-m3-r2.md), "M3-
     python tools/ci/ax49_l4.py seal  --pack build/abx-07c-2b/l4 --session <dir> --key <file outside it>
     python tools/ci/ax49_l4.py score --key <file> --responses <csv> [--session <dir>] [--rerun]
     python tools/ci/ax49_l4.py blank --out <csv>
+    python tools/ci/ax49_l4.py ensemble --out build/abx-07c-2b --seeds 16   # one-off print (decider file 21)
 
 Output time. render_cli removes the real-time engine's P-sample latency (Cli.cpp renderRealtime), so output sample n
 lines up with input sample n through the aligned IR (tap 0 = alignmentShiftS after emission). Seat 3's partition-grid
@@ -84,6 +85,7 @@ import pathlib
 import re
 import shutil
 import sys
+import tempfile
 import time
 
 import numpy as np
@@ -177,8 +179,11 @@ L4_ANCHOR_DB = -3.0  # the anchor: exact with the tail at -3 dB (item 5's method
 L4_PLAN_SEED = 4902  # kit choice: the anchor slots' seed
 LEVEL_KEY = "L4"  # manifest["blocks"]["L4"]; trial folders L4dB/trial_NN (abx_kit.seal's layout)
 WORDING_DETECTED = "detected: AX49's Reversal fires (worst case: provisional current through the whole free decay)"
-WORDING_NULL = ("not detected in 16 trials by one listener (power 0.63), T60 8 s, held chord, omni diotic; cut exposed "
-                "at 63 Hz–2 kHz; at 4 kHz the tail is 40 dB down at L_f")  # decider file 13, L4-COV
+# decider file 21 (L4-COV revised; Seat 9's wording)
+WORDING_NULL = ("not detected in 16 trials by one listener (power 0.63); ax49_l4_cube, T60 8.0 s at 63 Hz–1 kHz and 6.5 s at "
+                "2 kHz, held chord, omni diotic; cut exposed at 63 Hz–2 kHz; no claim at 4 kHz and above, where this "
+                "scene's tail (T60 3.7 s, mostly air absorption in 10⁶ m³) has by L_f decayed 40 dB from its own onset, "
+                "against 19 dB at 63 Hz–1 kHz.")
 
 TIMING_RE = re.compile(r"ax49 provisional: t_mix,e,max ([0-9.e+-]+) s, T60_max ([0-9.e+-]+) s, L_f ([0-9.e+-]+) s, "
                        r"L_p ([0-9.e+-]+) s, L ([0-9.e+-]+) s, provisional (yes|no)")
@@ -714,7 +719,15 @@ def band_coverage(bb: dict, m: dict, lf_aligned_s: float) -> dict:
     a = coverage(steady, COVERAGE_BANDS_HZ)
     b = coverage(band_levels(bb, *cut_window(m, lf_aligned_s)), COVERAGE_BANDS_HZ)
     orig = coverage(steady, ORIGINAL_COVERAGE_BANDS_HZ)
-    return {"a_steady_state": a, "b_cut_window": b, "original_clause_63_4k": orig,
+    # decider file 21: (b) also printed against the median of the 63 Hz-1 kHz band levels in the cut window (print
+    # only; the assert keeps the strongest-band reference, no fallback)
+    lb = b["level_db"]
+    med = float(np.median([lb[bands.band_key(fc)] for fc in COVERAGE_BANDS_HZ[:T60_BANDS]]))
+    re_med = {kk: v - med for kk, v in lb.items()}
+    weak = min(b["bands"], key=lambda kk: re_med[kk])
+    b_med = {"reference": "median of the 63 Hz-1 kHz band levels in the cut window (print only)",
+             "median_db": med, "re_median_db": re_med, "weakest": weak, "margin_db": re_med[weak] + COVERAGE_DB}
+    return {"a_steady_state": a, "b_cut_window": b, "b_cut_window_vs_median": b_med, "original_clause_63_4k": orig,
             "cut_window_samples": list(cut_window(m, lf_aligned_s)), "ok": bool(a["ok"] and b["ok"])}
 
 
@@ -1024,6 +1037,10 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
     log(f"L4 coverage (b) cut window [{bc['cut_window_samples'][0] / FS:.4f}, {bc['cut_window_samples'][1] / FS:.4f}) s, "
         "63 Hz-2 kHz re strongest: " + ", ".join(f"{k} {cb['re_strongest_db'][k]:+.2f}" for k in cb["bands"])
         + f" dB; weakest {cb['weakest']} Hz, margin {cb['margin_db']:.2f} dB (asserted >= -20 dB)")
+    bm = bc["b_cut_window_vs_median"]
+    log("L4 coverage (b) re the median of 63 Hz-1 kHz (print only): " + ", ".join(
+        f"{kk} {bm['re_median_db'][kk]:+.2f}" for kk in cb["bands"]) + f" dB; weakest {bm['weakest']} Hz, margin "
+        f"{bm['margin_db']:.2f} dB")
     log("L4 coverage, printed: " + "; ".join(
         f"{bands.band_key(fc)} Hz steady {ca['re_strongest_db'][bands.band_key(fc)]:+.2f} dB, cut window "
         f"{cb['re_strongest_db'][bands.band_key(fc)]:+.2f} dB, depth at L_f {depth[bands.band_key(fc)]:.2f} dB"
@@ -1076,6 +1093,57 @@ def build(out: pathlib.Path, binary: pathlib.Path, log=print) -> dict:
         man["check_failed"] = str(e)
         (l4 / "check_failed.json").write_text(json.dumps(man, indent=1, default=float))
         raise
+
+
+# ---------------------------------------------------------------------------------------------------------
+# Seed ensemble (decider file 21, builder items: print only, never asserted, not a CI step)
+# ---------------------------------------------------------------------------------------------------------
+
+
+def ensemble(out: pathlib.Path, binary: pathlib.Path, seeds: int = 16, log=print) -> dict:
+    """The exact arm for `seeds` further tailSeeds (TAIL_SEED + 1 ..), scene otherwise S', the sealed build's chord and
+    gain (read from <out>/l4/manifest.json); coverage (a) and (b) margins per seed and their min / median / max, (b)
+    also against the median reference. Writes <out>/l4/ensemble.json. Print only: nothing here is asserted."""
+    t0 = time.monotonic()
+    l4 = out / "l4"
+    man = json.loads((l4 / "manifest.json").read_text())
+    gain, s_in = float(man["chord"]["gain"]), int(man["input_scaling"]["chord_s"])
+    lf_al = float(man["scene"]["L_f_s"]) - float(man["scene"]["alignmentShiftS"])
+    free = int(round(man["chord"]["envelope_s"]["free_decay"] * FS))
+    raw, m = chord_signal(free)
+    x_pre = ((raw * gain).astype(np.float32).astype(np.float64)) * 2.0**-s_in
+    rows = []
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = pathlib.Path(tmp)
+        in_path = tmp / "in.wav"
+        write_wav(in_path, signals.to_stereo(x_pre), FS)
+        _require(abx_kit.sha256_file(in_path) == man["sha256"]["chord_dry.wav"],
+                 "ensemble: the chord input is not the sealed build's chord_dry.wav")
+        for seed in range(TAIL_SEED + 1, TAIL_SEED + 1 + seeds):
+            sp = tmp / f"scene_{seed}.json"
+            sp.write_text(json.dumps(make_l4_scene(seed), indent=1))
+            y = undo_prescale(render(binary, sp, in_path, tmp / "out.wav"), s_in)[: m["total"]]
+            bc = band_coverage(band_signals(y), m, lf_al)
+            row = {"tailSeed": seed, "a_margin_db": bc["a_steady_state"]["margin_db"],
+                   "a_weakest": bc["a_steady_state"]["weakest"], "b_margin_db": bc["b_cut_window"]["margin_db"],
+                   "b_weakest": bc["b_cut_window"]["weakest"],
+                   "b_vs_median_margin_db": bc["b_cut_window_vs_median"]["margin_db"],
+                   "original_4k_db": bc["original_clause_63_4k"]["re_strongest_db"]["4000"]}
+            rows.append(row)
+            log(f"L4 ensemble tailSeed {seed}: (a) margin {row['a_margin_db']:.2f} dB ({row['a_weakest']} Hz), (b) margin "
+                f"{row['b_margin_db']:.2f} dB ({row['b_weakest']} Hz), (b) vs median {row['b_vs_median_margin_db']:.2f} dB")
+    stats = {}
+    for key in ("a_margin_db", "b_margin_db", "b_vs_median_margin_db"):
+        v = np.array([r[key] for r in rows])
+        stats[key] = {"min": float(v.min()), "median": float(np.median(v)), "max": float(v.max())}
+        log(f"L4 ensemble {key}: min {v.min():.2f}, median {np.median(v):.2f}, max {v.max():.2f} dB")
+    rec = {"purpose": "decider file 21 builder items: coverage (a)/(b) margins over further tailSeeds; print only, "
+                      "never asserted, not a CI step", "sealed_build_tailSeed": TAIL_SEED, "seeds": rows,
+           "stats": stats, "chord_gain": gain, "prescale_s": s_in, "manifest_sha256": man["sha256"],
+           "seconds": time.monotonic() - t0}
+    (l4 / "ensemble.json").write_text(json.dumps(rec, indent=1, default=float))
+    log(f"L4 ensemble: {seeds} seeds in {rec['seconds']:.1f} s; {l4 / 'ensemble.json'}")
+    return rec
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -1154,6 +1222,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--rerun", action="store_true", help="this block is the one rerun after a void block")
     p = sub.add_parser("blank")
     p.add_argument("--out", type=pathlib.Path, required=True)
+    p = sub.add_parser("ensemble", help="one-off, print only (decider file 21): the exact arm over further tailSeeds")
+    p.add_argument("--out", type=pathlib.Path, default=REPO / "build" / "abx-07c-2b")
+    p.add_argument("--seeds", type=int, default=16)
+    p.add_argument("--render-cli", type=pathlib.Path, default=None)
     args = ap.parse_args(argv)
     if args.cmd == "build":
         binary = args.render_cli or render_cli.find_render_cli()
@@ -1176,6 +1248,12 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(score_l4(args.key, read_responses_l4(args.responses), args.rerun)))
     elif args.cmd == "blank":
         blank_response_csv(args.out)
+    elif args.cmd == "ensemble":
+        binary = args.render_cli or render_cli.find_render_cli()
+        if binary is None or not binary.is_file():
+            print("ax49_l4.py: render_cli not found", file=sys.stderr)
+            return 1
+        ensemble(args.out, binary, args.seeds)
     return 0
 
 
