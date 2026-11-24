@@ -57,3 +57,15 @@ The kit, with HF-W (M3-3, Seat 5's condition D included) and the M3-4 labels, bu
 
 Method: scratchpad script (not committed) importing `abx_kit.make_scene`, `render_cli --mode omni --ir --diagnostics`
 per scene, `bands.filter_band(·, 1000)`, energies summed over the stated windows of the aligned IR.
+
+## HF-W per scene (Seat 3's condition (a), round-2 addendum)
+
+From each scene's `manifest.json` in `build/listening-pack/phase-07c-2b/noise/<scene>/` (local build of
+`listening_pack.py --phase phase-07c-2b`, exit 0; every stimulus of both chains, 44 block trials + 6 familiarisation
+pairs per scene). Worst ratio = max over stimuli, channels and frames of E_o / max(E_a, E_b); margin = 10 log10(β /
+worst).
+
+| scene | stimuli | HF-W worst ratio | β | margin (dB) | skipped frames | frames checked | peaks (dBFS) | Seat 5 (a) subset record fails |
+|---|---|---|---|---|---|---|---|---|
+| layout4_s0.7/default | 50 | 1.0003 | 1.1378 | 0.559 | 0 | 2100 | -7.8 to -6.0 | 0 |
+| layout4_s1/both_wall | 50 | 1.0002 | 1.1378 | 0.560 | 0 | 2100 | -16.0 to -12.2 | 0 |

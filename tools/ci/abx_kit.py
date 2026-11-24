@@ -711,7 +711,9 @@ def build_chain(chain: str, binary: pathlib.Path, out: pathlib.Path, programme_f
             rec = render_trial(binary, scene_path, x, onset, t["g_db"], out / f"{level:.1f}dB" / f"trial_{t['trial']:02d}")
             block.append({**t, **record, **rec})
             log(f"{chain} {level:.1f} dB trial {t['trial']:02d} ({t['kind']}, {t['g_db']:+.1f} dB): onset "
-                f"{onset / FS:.3f} s, peak {rec['peak_dbfs']:.1f} dBFS, mid-fade windows {rec['midfade']['windows']}")
+                f"{onset / FS:.3f} s, peak {rec['peak_dbfs']:.1f} dBFS, mid-fade windows {rec['midfade']['windows']}, "
+                f"HF-W worst ratio {rec['hf_w']['worst_ratio']:.4f} (margin {_fmt(rec['hf_w']['margin_db'], 3)} dB, "
+                f"skipped {rec['hf_w']['skipped']})")
         manifest["blocks"][f"{level:.1f}"] = block
     # Familiarisation (item 2, mandatory before any scored block): labelled A/B pairs, the anchor and each level, up
     # and down; never scored. Feedback during familiarisation is Seat 1's design choice (not set by this kit).

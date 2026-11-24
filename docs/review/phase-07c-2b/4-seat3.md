@@ -104,3 +104,49 @@ Files read:
 - /home/user/makroof/docs/review/phase-07c-2b/2-decider-m3.md
 - /home/user/makroof/docs/review/phase-07c-2/13-decider-rebuttal-r4.md
 - /home/user/makroof/docs/validation/abx-07c-2-run-sheet.md
+
+
+## Addendum (interrogator file 3, question 3): HF-W rated
+
+Saved verbatim from the seat's follow-up report.
+
+ADDENDUM: Seat 3 on interrogator question 3 (HF-W as decided in M3-3, with Seat 5's condition D). To append to docs/review/phase-07c-2b/4-seat3.md. I had read-only access, so I have not written it to the file.
+
+My rating of HF-W: **1 now, 1 later**, as long as condition (a) under point 6 is met.
+
+SEAT 3 POSITION
+
+**1. Reading.** Rate HF-W as it now stands in `abx_kit.hf_w_check` (`tools/ci/abx_kit.py` L481–520), with condition D added. The cue from my §4 is state discontinuity in the step's fade path.
+
+**2. Ranking.** HF-W with condition D: **prefer.** It is my round-1 design, and condition D makes it stricter. A click in a near-silent frame, such as a speech pause, used to pass silently. Now it fails.
+
+**3. Tension now: 1.**
+- From the code: the bound β = (1 + n_f/L)²(1 + 1e−5) = 1.1378 is derived, not fitted to data.
+- Each skipped frame now asserts E_o ≤ β·n_f·1e−9.
+- N1 to N3 and the skipped-frame spike test (`tools/ci/test_abx_kit.py` L326–414) each make it fail by construction.
+- The residual 1 is the evidence gap below.
+
+**4. Tension later: 1.**
+- HF-W gates every rebuild the M3-8 trigger forces, including the one O4 is expected to fire.
+- If a clean stimulus ever fails, the registered reversal sends it back to Seats 3 and 5. Undoing it is a code change in the kit only, with no `src/sim` change.
+- The commutator assumption (that the 2 kHz high-pass and the 30 ms ramp commute to a negligible error) stays `[Hyp]` until the confirming numbers are in the record.
+
+**5. Evidence.**
+- **What file 5 supports.** `docs/review/phase-07c-2b/5-builder-tail-spread.md` L45–50 says that all 50 both_wall stimuli passed every item-6 assertion, HF-W included.
+- **What I could not find.**
+  - I could not find the figures "worst ratio 1.0003, no skipped frames, 100 stimuli" in file 5.
+  - For s0.7, file 5 (L51–53) defers the full results to "the build log and `manifest.json`, cited in the brief once complete".
+- **What this means for β.** A worst ratio of 1.0003 against β = 1.1378 would mean the commutator error is no more than about 0.001 dB, while the margin is 0.56 dB. That is consistent with my `[Hyp]`. But for the record I hold the figure as reported by the coordinator, not as sourced.
+
+**6. Conditions** (to keep the rating at 1/1):
+- **(a)** The manifest or brief cites the per-scene worst ratio, its margin in dB and the skipped-frame count for both scenes (50 + 50 stimuli). With that cited, the commutator assumption moves from `[Hyp]` to measured, on these two scenes only.
+- **(b)** Every rebuild under the M3-8 trigger prints the same three fields.
+
+**7. Hand-offs.** The CI plumbing and condition D's threshold go to Seat 5.
+
+**8. Premortem.** HF-W can miss a defect whose high-frequency energy stays under 0.56 dB of the larger end point in every frame. Companion (ii) catches such a defect exactly, so it would surface there first and not by ear.
+
+Files checked:
+- /home/user/makroof/tools/ci/abx_kit.py
+- /home/user/makroof/tools/ci/test_abx_kit.py
+- /home/user/makroof/docs/review/phase-07c-2b/5-builder-tail-spread.md
