@@ -60,3 +60,11 @@ In every seed the weakest band is 2 kHz, for both (a) and (b).
 - `build` replaces `<out>/l4`, so any rebuild deletes `ensemble.json`. Run the ensemble again after the final build if its output is to go into the pre-registration commit.
 - **Sealed build rerun:** exit 0, every check passed, 28.8 s. All 8 SHA-256s match the previous build.
 - **Pytest:** `SPATIAL_REQUIRE_RENDER_CLI=1 pytest -q tools/ci/test_ax49_l4_kit.py tools/ci/test_ax49_l4.py` gives **18 passed in 40.5 s**. `test_full_build` also checks that the median print is present and marked print only.
+
+## Source of the "2.5 s Release" figure (interrogator file 23, Q5)
+
+Orchestrator's local run, this session, 2026-11-24: `build/release/tests/unit/spatial_tests "[ax49-l4]" --durations yes`
+on the session's Linux container (Release preset, `-DSPATIAL_BUILD_PLUGIN=OFF`, branch `claude/trusting-hypatia-j2rt6d`
+at the commit that made `[ax49-l4]` non-hidden): "2.528 s: AX49 L4: the provisional unit decays are c_b times the
+exact ones, faded by the raised cosine (S')", 216 assertions passed; wall time 3.97 s for the process. Not a CI
+figure; the CI figure comes from the 'AX49 L4 gate (release)' step's `--durations` output on the first manual run.
