@@ -56,6 +56,31 @@ Phase 06 convolver (headphone rendering, `outputMode = binaural`).
    header's set identity string of the build it was listened through; this phase's checklist does the
    same. (phase-08 scope 7, last sentence; shared, umbrella)
 
+- **AX47 self-ABX binaural rerun (item 15; phase-07c-2b decider files 2 D-M3h 2, 5 D-M3h 2(c)–(d), 8 M3-S and
+  M3-C 2, 3, 8, 10 Part B; interrogator files 3, 6, 11, 13).** "The AX47 self-ABX is rerun on the binaural chain at
+  the bound in force, before Phase 08's goldens freeze, on the sealed 07c-2b scene and tailSeed (its omni twin),
+  under Seat 4's L5 condition. It is its own family." The scene is E, `layout5_s0.9/emitter_wall` (tailSeed 12345;
+  run sheet `docs/validation/abx-07c-2-run-sheet.md` §1), rendered binaurally beside its sealed omni twin, run with
+  the run sheet's procedure before the 08-4 freeze. AX47 counts it as the second of 2 families (union ≤ 0.098).
+  - **Seat 4's L5** (M3-C 3): label "isotropic tail, anisotropic room: absorber at xMin, 10 m to the listener's left;
+    tail ILD 0 by construction (AX44)". Printed per ear and per octave: the energy of [direct + 2.5 ms, t_mix,e) and
+    of [t_mix,e, end), each with its ILD; the tail ILD = 0 is asserted, the early-part ILD recorded. The L4 and L5
+    checklist items below are not judged on this scene, and it is never cited for lateralisation or envelopment.
+    L5 is voided if an anisotropic tail lands.
+  - **Listeners within 0.1 m of a face are barred** from any item-15 scene (D-M3h 2(a), extended by M3-C 2).
+  - **Per ear** (D-M3h 2(b)): peak ≤ −1 dBFS; item 6 with form (b) (`click_check` on each ear, D-M3a); M1's identity
+    assertion (live on E, whose E_target specular share is 0.022 / 0.001).
+  - **Omni twins** (D-M3h 2(c)): phase-07c-2 file 26-seat4 (a), "same scene and tailSeed … the chain is the only
+    variable", applies to each 08-3 scene sealed in omni at 07c-2b; 26-seat4 (b)–(d) apply to every 08-3 scene, with
+    (c)'s wording fitted to the scene's Class line. A scene with no omni twin is recorded "binaural only, no omni
+    twin; its result stands alone".
+  - **A detection** (D-M3h 2(d)) is a reversal trigger for O10 and O4: a class (c) board round, a W_max re-pin and a
+    second golden round, through a `/fix-plan` to phase-07c-2b item 8's one-golden-round rule with a §6 row, decided
+    before the 08-4 freeze; no golden is regenerated before it.
+  - **Two dated sittings** (D-M3h 2(e), Seat 7).
+  - **Threshold-edge confirmatory ABX** (D-M3c, moved by M3-C 8): a reversal that fires in exactly one family at
+    exactly its threshold gets its confirmatory ABX before the 08-4 freeze (it replaces "before Phase 13").
+
 ## Out of scope
 
 The umbrella's out-of-scope list ([phase-08](phase-08.md)) applies. Grouping, timing records, the restore
@@ -131,6 +156,8 @@ through (scope 7). (phase-08 L0; shared, umbrella)
       "Thin" that persists in the anechoic render is therefore checked against the converter's LF
       response (the `--diagnostics` curve below 400 Hz) before it is assigned to room or headphones.
       (phase-08 L6)
+- [ ] **AX47 self-ABX binaural rerun (item 15, scope above):** a person runs it on scene E in two dated sittings
+      before the 08-4 freeze; results recorded as the run sheet's §6 states, with the L5 label and prints.
 - [ ] **Hand-off to Phase 11 (Seat 6):** one line in the PR for the output-mode tooltip or manual, a
       default-experience note (what a listener may hear through the generic head: inside or behind for
       some), with no head name. (phase-08 L7)

@@ -138,6 +138,11 @@ step 5) applies, with the umbrella's checklist preamble (phase-08 L0).
   settle whether the analysis filter or the tail causes it. The result (cause, numbers) is cited before any golden
   is frozen; if it has not been run, it is this phase's first work (`tools/acoustics` only, no `src/sim/` change).
   If the tail is the cause, it returns to the board before the freeze; nothing is tuned for the scene.
+  Beside it, a **report only** (phase-07c-2b decider file 8 M3-C 9 as corrected in file 10 Part B; interrogator files
+  11 and 13; NFR-8; Seats 2, 3 and 9): the engine's Eyring tail on floor-absorbing layouts is inferred to run about
+  14 % long. That comes from Kuttruff Table 5.2 case 4 (1.38/1.21, with the other faces at α 0 and diffusely
+  reflecting walls), carried over to layout 4 (α 0.01 plus air) as an inference [Inf; Seat 9]. It is reported with
+  the 8 kHz result; nothing is tuned.
 
 ## Definition of done
 

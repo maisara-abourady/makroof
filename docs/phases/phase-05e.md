@@ -140,6 +140,13 @@ b. **CR4:** CR4 extraction work and everything that needs CR4 belong to `docs/ph
    - Reversal: if Maisara accepts the two-room label, B12/B11 may proceed on two rooms (CR4 stays
      selected and pending; the acceptance goes through /fix-plan as a phase-05.md change,
      bras_mapping.md §1); otherwise they wait for phase-05f.
+   - **ABX void rule** (phase-07c-2b decider file 2 D-M3h 1, with Seat 9's C-b, decider file 8 M3-C 4; BUILD_PLAN
+     §5 B11): when the deferred B11 promotion is taken, it, or any other change that makes AX21's statement false,
+     moves t_mix,e or changes the tail's decay target (e.g. non-Eyring for non-diffuse rooms), voids the sealed AX47
+     self-ABX stimuli. They are rebuilt and must pass item 6 (with form (b)), the cap check, the peak check, Q5,
+     s_w ≤ 2.3 % and the M2 gap assertion before sealing (s_w over 2.3 %: the kit refuses and the scene returns to the
+     board); earlier results are kept as "pre-promotion engine"; if no listening session follows before the 08-4
+     freeze or the beta, the promoting phase schedules item 15 (the 08-3 binaural rerun).
 c. **Baseline and nightly gate:** create `tests/golden/validation_baseline.json` through
    `tools/ci/update_goldens.py` with a reason, and make the nightly gate (phase-05.md scope 4) and the
    `MAKROOF_TEST_BIAS_T60` test green.

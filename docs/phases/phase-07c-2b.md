@@ -87,7 +87,8 @@ The numbered items run in this order.
      item 15(i) declared as a second family). Thresholds, α per family, trial counts and item 4 are unchanged unless
      the round's decision says otherwise.
    - **V3's /fix-plan:** if V3 is chosen, AX47's Reversal "capped layout-4 scene" becomes "capped layout-4 or layout-5
-     scene" through `/fix-plan` (file 31), with a §6 row.
+     scene" through `/fix-plan` (file 31), with a §6 row. **Applied 2026-11-24** for scene E, a layout-5 scene
+     (phase-07c-2b decider file 8 M3-F, file 10 Part B M3-F; §6 row).
    - Seat 9's 0.43 ceiling, rated 1/1 on every option, goes in the decision's debt register (file 31), with its
      premise corrected on the record (Seat 9, file 26 §5; decider file 40, 2a): the 26/60 premise assumed D/R ≤ 0;
      the corrected bound is t ≤ hold + (SNR − 20 − L_drop)/60 · T60_tail, L_drop = 10·log10(1 + 10^(D/R/10)), which
@@ -109,6 +110,14 @@ The numbered items run in this order.
      (file 26) and "hall" and "occupied" are removed everywhere (file 27). It is replaced by M3's item-9 label in all
      three before any seal; no stimulus is sealed under it, and the 07c-2 listening-pack artifact that still prints
      it is marked superseded in 07c-2's PR listening checklist (decider file 40, 2b; interrogator file 41).
+     **Applied 2026-11-24** (phase-07c-2b decider files 8 and 10 Part B, M3-S and M3-F; interrogator files 11 and 13):
+     item 9 is scene E, `layout5_s0.9/emitter_wall`, with its label, r/r_c 8.46 / 4.74 and diffuse-field D/R
+     −18.6 / −13.5 dB (Kuttruff Eq. 5.44, Sabine A ≈ 343 m²), replacing S-A's numbers above; item 13 is D-M3e's
+     wording (phase-07c-2b decider file 5), the class being the scene label's Class line; item 15 is M3-S's text (the
+     same scene rerun binaurally at 08-3, its own family; 2 families, union ≤ 0.098). Homes: the run sheet §1
+     "Scene", its §6 wording and its §7 item-15 entry; `docs/phases/phase-08-3.md`; AX47 (Reversal widened to
+     layout 5, α sentence). The speech pair is fixed (M3-T: MA01_01 + MA01_02, run sheet §3 item 2), and AX49 L4
+     enters the kit (run sheet §8).
    - **Before any seal: M1's reversal condition and s_w** (decider file 34 item 2): M1 reverses if item 6's identity
      assertions fail on a rendered A/B pair of any scene with E_target specular share > 0 (10·log10(E(stepped −
      unstepped)/E(unstepped)) = 20·log10|10^(g/20) − 1| over the tail window; the per-band step equals g);
@@ -122,9 +131,15 @@ The numbered items run in this order.
      15(i), before each seal: for each sealed scene, the manifest prints the minimum gap, the heard-IR T30 and the tail
      T30, asserts minimum gap ≥ tail T30, and passes Q5's ≥ 20 dB onset assertion (Seat 1 row); the manifest carries
      Seat 9's label, and the Seat 1 row's gap-versus-tail-T30 assertion passes on that scene (Seat 9 row).
+     **M3-G** (phase-07c-2b decider files 8 and 10 Part B; interrogator files 11 and 13) replaces file 34 item 3's
+     construction premise: every gap, pause and the item-7 lead is built from T = max(heard-IR T30, every tail T30)
+     at 1 kHz, on heard quantities (noise gaps ⌈(T·fs + Δ)/P⌉·P; speech pause ⌈(0.43·T_heard + T)·fs⌉ + Δ), and the
+     checks run on the heard quantities (run sheet §1, assertions 1–5); Q5's ceiling stays 0.43 × the heard-IR T30.
+     The review files are not edited.
 3. **Seal, then the ABX run by a person (O9)**, per `docs/validation/abx-07c-2-run-sheet.md` (§3 before the session:
    listener named, speech material fixed, stimuli built, each chain sealed and `prereg_hashes.json` committed before
-   the run; §4 procedure; §6 record). The AX49 L4 ABX is run too, with its own stimuli (file 13 item 14; run sheet §7).
+   the run; §4 procedure; §6 record). The AX49 L4 ABX is run too, with its own stimuli (file 13 item 14; run sheet §8,
+   phase-07c-2b decider file 10).
    About 2 h of listening per scene (builder file 32, K6: range 1.3 to 2.8 h by pace). **This is a person's action:
    the session hands it to Maisara** (file 13 item 16; Raise item 2). Done when (O9): a person's results (trials,
    correct counts) recorded in the session brief and the review folder (`docs/validation/abx-07c-2-results.md`, run
@@ -159,7 +174,10 @@ The numbered items run in this order.
 8. **One golden round (O6)** (phase-07c-2 AC 1): goldens changed by the W_max raise updated once. Done when: one
    `tools/ci/update_goldens.py --reason …` invocation (CHANGELOG entry); §6 row; the D5 golden's per-case n\*/N asserted
    on all three OSes in a green CI run (run id, same run as O4's); realised-work / W_scene guard re-registered as AX41
-   requires.
+   requires. **Exception (D-M3h 2(d), phase-07c-2b decider file 5; interrogator file 6):** an 08-3 detection (item 15,
+   the binaural rerun) is a reversal trigger for O10 and O4; its undo (a class (c) board round, a W_max re-pin, a
+   second golden round) reopens O10/O4 through a `/fix-plan` to this one-golden-round rule with a §6 row, decided
+   before the 08-4 freeze. Until then no golden is regenerated.
 9. **Follow-on checks (O7)** (phase-07c-2 scope 8, AC 2): Phase 12 (ii) preset check; Phase 08 goldens tolerance.
    Done when: Phase 12 has not run (§0 12-1/12-2 `not started`): the phase-12-x line that has Phase 12 run it at 07c's
    W_max, quoted if present or added through `/fix-plan`; Phase 08 goldens not frozen (08-x `not started`): stated in

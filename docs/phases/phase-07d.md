@@ -110,6 +110,14 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
    done with the commit. **Done in phase-07c-2** (its first code commit, 5b65864, 2026-11-22): the flag, comment
    line, CHANGELOG line and T1, T4, T8 landed there; nothing remains for this phase under this item.
 
+## Follow-ups from phase-07c-2b (AX49 L4)
+
+- **Seat 1's optional remedy parameters** (the provisional's fade length and the L_f fraction): not adopted in
+  phase-07c-2b; used here only if the L4 ABX detects the cut (phase-07c-2b decider file 10 L4-D, "Not adopted").
+- **The handover ghost:** whether it needs its own ABX is put to Seat 1 here, after Maisara has heard the
+  listening-pack "L4 handover demo (unscored)"; inputs: the L4 ghost print (AX49 Reversal) and the demo render
+  (decider file 10 L4-D, future-debt register row Seats 3, 6).
+
 ## Out of scope
 
 - Everything decided in phase-07c-1's loop outside the long-T60 corner (AX47–AX49 as written); the class (c) and
