@@ -71,6 +71,11 @@ struct Options
     std::optional<double> abxStepDb;
     std::optional<std::uint64_t> abxStepSample;
     std::string abxSteppedIrPath;
+    // Phase-07c-2b M3-L4 (AX49 listening item L4), validation only: build the IR through
+    // StagedBuild::assembleProvisional (the AX49 provisional tail) instead of the exact one. --mode omni; refused
+    // unless this scene has a provisional (L_p < L); with --in/--out only through --realtime-emulation with a
+    // fixed --block (decider file 6, F1-F6). The plugin never links src/cli and never names it.
+    bool ax49Provisional = false;
     std::optional<double>
         wMultiplier; // validation only: W_scene = 2 m W_max (the D-W2 cap check at m = 6, 7, 8)
     std::optional<double> rate;
@@ -141,6 +146,11 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
         if (arg == "--realtime-emulation")
         {
             options.realtimeEmulation = true;
+            continue;
+        }
+        if (arg == "--ax49-provisional")
+        {
+            options.ax49Provisional = true;
             continue;
         }
 
@@ -372,6 +382,16 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
                 return "--abx-step-sample must be 0 or a multiple of the partition and of the block, "
                        "at least one partition";
         }
+    }
+    if (options.ax49Provisional)
+    {
+        // F1, F2 as composed, F2' (phase-07c-2b decider file 6; Seat 5, file 8-seat5)
+        if (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni)
+            return "--ax49-provisional needs --mode omni (the hybrid IR)";
+        if (options.ensemble || options.abxStepDb || options.tailLevelAx16 || !options.switchScenePath.empty())
+            return "--ax49-provisional excludes --ensemble, --abx-step-db, --tail-level ax16 and --switch-scene";
+        if (!options.inPath.empty() && (!options.realtimeEmulation || (options.block && *options.block == 0)))
+            return "--ax49-provisional with --in/--out needs --realtime-emulation and a fixed --block";
     }
     if (options.rate && !sim::isSupportedSampleRate(*options.rate))
         return "--rate must be one of 44100, 48000, 88200, 96000 (AX6)";
@@ -907,6 +927,11 @@ std::string usage()
            "               unstepped IR, --abx-stepped-ir <wav> the stepped one\n"
            "  --w-multiplier m  validation only, --mode omni: the diffuse solve at W_scene = 2 m W_max\n"
            "               (AX41; the D-W2 cap check at the candidate pins)\n"
+           "  --ax49-provisional  validation only (phase-07c-2b, AX49 listening item L4), --mode omni: build\n"
+           "               the IR with the AX49 provisional tail (StagedBuild::assembleProvisional); refused\n"
+           "               unless the scene has one (L_p < L); prints L_f, L_p and L. With --in/--out it needs\n"
+           "               --realtime-emulation and a fixed --block; excludes --ensemble, --abx-step-db,\n"
+           "               --tail-level ax16 and --switch-scene\n"
            "  --automation not implemented until Phase 10\n"
            "\n"
            "exit codes: 0 ok, 1 usage error, 2 invalid scene, 3 I/O error, 4 internal error\n";
@@ -1072,6 +1097,21 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
             }
             out << "wrote stepped IR " << options.abxSteppedIrPath << "\n";
         }
+    }
+    else if (options.ax49Provisional)
+    {
+        // Phase-07c-2b M3-L4: the AX49 provisional IR (validation only; offline and the plugin never use it here)
+        auto staged = sim::StagedBuild::plan(scene, build);
+        const sim::ProvisionalTiming timing = staged.provisionalTiming();
+        out << "ax49 provisional: t_mix,e,max " << timing.mixMaxS << " s, T60_max " << timing.t60MaxS
+            << " s, L_f " << timing.fadeStartS << " s, L_p " << timing.endS << " s, L " << timing.exactS
+            << " s, provisional " << (timing.provisional ? "yes" : "no") << "\n";
+        if (!timing.provisional)
+        {
+            err << "render_cli: --ax49-provisional: this scene has no provisional tail (L_p >= L)\n";
+            return kExitUsage;
+        }
+        ir = staged.assembleProvisional(&diagnostics);
     }
     else if (!options.ensemble)
         ir = sim::buildRoomIR(scene, build, &diagnostics);
