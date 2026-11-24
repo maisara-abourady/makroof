@@ -240,6 +240,8 @@ def test_noise_trial_end_to_end(tmp_path: pathlib.Path) -> None:
         assert e["T30_1k_s"] > 1.3 * e["tail_T30_1k_s"], e
     # M2 (files 31, 34): Seat 9's label on the heard-IR T30, the tail T30 beside it, the gap check passed on S-A
     assert sc["T30_1k_s_label"] == abx_kit.HEARD_T30_LABEL
+    assert sc["label"] == abx_kit.scene_label(sc["name"])  # M3-4: the manifest carries the decided item-9 label
+    assert "tail_spread" in sc and not sc["tail_spread"]["exceeds_1db"]  # M3-1 (a): printed at every seal
     assert sc["tail_T30_1k_s"] == [e["tail_T30_1k_s"] for e in em]
     gc = m["m2_gap_check"]
     assert gc["heard_T30_1k_s"] == sc["T30_1k_s"] and gc["heard_T30_label"] == abx_kit.HEARD_T30_LABEL
@@ -412,3 +414,18 @@ def test_hfw_spike_in_a_skipped_frame_fails() -> None:
     o[t, :] += np.float32(0.01)
     with pytest.raises(AssertionError, match="skipped frame"):
         abx_kit.hf_w_check(o, a, b, s0, abx_kit.FS)
+
+
+def test_abx_scene_labels_are_the_decided_texts() -> None:
+    # phase-07c-2b M3-4 (decider file 6): the two ABX scenes, their labels, and no superseded wording
+    assert abx_kit.ABX_SCENES == ("layout4_s1/both_wall", "layout4_s0.7/default")
+    for name in abx_kit.ABX_SCENES:
+        label = abx_kit.scene_label(name)
+        assert label.startswith(name + ": 20 × 30 × 10 m, 6,000 m³")
+        assert "indicative only: ᾱ ≈ 0.28 is not small, Kuttruff §5.6" in label
+        assert label.endswith("Not a validated preset.")
+        assert "hall" not in label.lower() and "occupied" not in label.lower()
+    assert "represents no seat" in abx_kit.scene_label("layout4_s1/both_wall")
+    assert "partial AX21" in abx_kit.scene_label("layout4_s0.7/default")
+    with pytest.raises(RuntimeError, match="no item-9 label"):
+        abx_kit.scene_label("layout4_s1/both_corner")  # a fallback is labelled only once Seat 9 confirms its text

@@ -141,7 +141,7 @@ PLACEMENTS = {
 # Kuttruff Table 5.2 layouts as test_diffuse_wsweep.cpp builds them: the one face at alpha 1.
 LAYOUT_FACE = {4: "floor", 5: "xMin"}
 DEFAULT_SCENE = "layout4_s1/default"
-# Item 9 labels (phase-07c-2b M3-4, decider file 2; Seat 9's drafts, file 27's S-A text with the D/R corrected).
+# Item 9 labels (phase-07c-2b M3-4, decider files 2 and 6; Seat 9's drafts, file 27's S-A text with the D/R corrected).
 # The superseded item-9 wording is gone everywhere (decider file 27; PRD L133: all spaces are empty).
 SCENE_LABELS: dict[str, str] = {
     "layout4_s1/default": (
@@ -150,20 +150,28 @@ SCENE_LABELS: dict[str, str] = {
         "field at r/r_c 3.47 (Kuttruff Eq. 5.44, A ~ 640 m^2). Early part empty under AX21. Tail target is the Eyring "
         "T60, 1.29 s at 1 kHz: a diffuse target, not a room prediction. Tail measured T30 1.25-1.27 s. Not a "
         "validated preset."),
+    # M3-4 final texts (phase-07c-2b decider file 6), verbatim.
     "layout4_s1/both_wall": (
-        "layout4_s1/both_wall: 20 x 30 x 10 m, 6,000 m^3, walls and ceiling alpha 0.01, floor alpha 1, scattering 1 on "
-        "every face. Listener 0.1 m from the y = 0 wall, emitter L 0.1 m from the y = 30 m wall; those wall "
-        "reflections are absent at s = 1 (AX21), so the direct sound's tone colour is not room-like and the scene "
-        "represents no seat. D/R at 1 kHz -7.7 / +5.2 dB per emitter (diffuse field -18.5 / -15.0 dB at r/r_c "
-        "8.4 / 5.6; Kuttruff Eq. 5.44, A ~ 640 m^2), -5.3 dB heard. Early part empty (AX21). Heard-IR T30 1.370 s. "
-        "Not a validated preset."),
+        'layout4_s1/both_wall: 20 × 30 × 10 m, 6,000 m³, walls and ceiling α 0.01, floor α 1, scattering 1 on '
+        'every face. Listener 0.1 m from the y = 0 wall, emitter L 0.1 m from the y = 30 m wall; '
+        'listener–emitter 29.95 / 20.13 m (L / R). The reflections off those faces (delay about 0.58 ms; '
+        'first interference notch near 0.86 kHz) are absent at s = 1 (AX21; Kuttruff Eq. 8.59), so the direct '
+        "sound's tone colour is not room-like and the scene represents no seat. D/R at 1 kHz −7.7 / +5.2 dB "
+        "per emitter, −5.3 dB heard (emitter L's direct arrives 28.6 ms after R's and counts as reflected); "
+        'diffuse field −18.5 / −15.0 dB at r/r_c 8.39 / 5.64 (r_c 3.57 m, A ≈ 640 m²; Kuttruff Eqs. '
+        '5.44–5.45; indicative only: ᾱ ≈ 0.28 is not small, Kuttruff §5.6). Tail onsets t_mix,e 0.165 / 0.380 '
+        's; at equal times the two tails agree within 0.05 dB at 1 kHz, and the tail share 0.667 at 1 kHz '
+        "rests on L's earlier onset. Early part empty (AX21). Heard-IR T30 1.370 s, tail T30 1.313 / 1.274 s. "
+        'Not a validated preset.'),
     "layout4_s0.7/default": (
-        "layout4_s0.7/default: 20 x 30 x 10 m, 6,000 m^3, walls and ceiling alpha 0.01, floor alpha 1, scattering 0.7 "
-        "on every face. D/R at 1 kHz +1.5 / +1.3 dB per emitter, +1.7 dB heard, against -10.8 dB in a diffuse field "
-        "at r/r_c 3.47 (Kuttruff Eq. 5.44, A ~ 640 m^2). Early part present but specular-only (partial AX21): first "
-        "image (ceiling) about 23.6 ms after the direct sound; broadband early energy -3.8 dB re direct; the step at "
-        "t_mix,e is printed. Tail target Eyring 1.29 s at 1 kHz, a diffuse target, not a room prediction; heard-IR "
-        "T30 1.831 s spans early part and tail. Not a validated preset."),
+        'layout4_s0.7/default: 20 × 30 × 10 m, 6,000 m³, walls and ceiling α 0.01, floor α 1 (no floor '
+        'reflection, unlike a real floor), scattering 0.7 on every face. D/R at 1 kHz +1.5 / +1.3 dB per '
+        'emitter, +1.7 dB heard, against −10.8 dB in a diffuse field at r/r_c 3.47 (r_c 3.57 m, A ≈ 640 m²; '
+        'Kuttruff Eqs. 5.44–5.45; indicative only: ᾱ ≈ 0.28 is not small, Kuttruff §5.6). Early part present '
+        'but specular-only (partial AX21): first image (ceiling) about 23.6 ms after the direct sound; '
+        'broadband early energy −3.8 dB re direct; the step at t_mix,e is printed. Tail target Eyring 1.29 s '
+        'at 1 kHz, a diffuse target, not a room prediction; heard-IR T30 1.831 s spans early part and tail; '
+        'tail T30 1.254 / 1.274 s. Not a validated preset.'),
 }
 # The two scenes the AX47 self-ABX decides on (M3-1, V1-W), in sitting order: S-W, then S-B*.
 ABX_SCENES = ("layout4_s1/both_wall", "layout4_s0.7/default")
@@ -254,6 +262,16 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
         out["emitters"].append({"id": e["id"], "r_m": r, "r_over_rc": r / rc, "capHit_shipped": e["diffuse"]["capHit"],
                                 **emitter_ir_metrics(ir[:, e["channel"] * 2], fs, e, d)})
     out["r_c_m"] = rc
+    out["r_c_forms"] = ("r_c_m: Kuttruff Eq. 5.44's approximate form 0.057 sqrt(V / T) with the Eyring T60; the item-9 "
+                        "labels use r_c = sqrt(A / 16 pi) with A ~ 640 m^2 (3.57 m), decider file 6 M3-4")
+    out["tail_spread"] = tail_spread(ir, fs, d)
+    ts = out["tail_spread"]
+    log(f"scene {name}: tail spread (1 kHz, emitter {ts['emitters'][0]} - {ts['emitters'][1]}) "
+        + ", ".join(f"[{w[0]}, {w[1]}) s {v:+.2f} dB" for w, v in zip(ts["windows_s"], ts["L_minus_R_db"]))
+        + f"; t_mix,e {', '.join(f'{x:.3f}' for x in ts['t_mix_s'])} s")
+    if ts["exceeds_1db"] and SPREAD_CLAUSE not in out["label"]:
+        raise RuntimeError(f"{name}: emitter tails differ by more than 1 dB at equal times ({ts['L_minus_R_db']}); the "
+                           "label's SPREAD clause and an NFR-8 report to Seat 2 are required (decider file 6, M3-1 (a))")
     out["tail_T30_1k_s"] = [x["tail_T30_1k_s"] for x in out["emitters"]]  # per emitter, from t_mix,e (beside T30_1k_s)
     # The heard IR (both emitters summed): at equal r the two direct sounds coincide and add coherently, the tails
     # do not, so this D/R is about 3 dB above each emitter's own (decider file 21, 2b; file 22). The per-emitter D/R
@@ -274,6 +292,25 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
 
 def _fmt(x, digits: int = 1) -> str:
     return "None" if x is None else f"{x:.{digits}f}"
+
+
+SPREAD_WINDOWS_S = ((0.45, 0.65), (0.8, 1.0))  # file 5's absolute windows, after every layout-4 t_mix,e
+SPREAD_CLAUSE = "Emitter tails at the listener differ by"  # Seat 9's SPREAD clause (decider file 6, M3-4 template)
+
+
+def tail_spread(ir: np.ndarray, fs: float, diag: dict) -> dict:
+    """M3-1 (a) (phase-07c-2b decider file 6): the two emitters' diffuse tails at the listener at equal absolute times,
+    1 kHz octave, over file 5's windows; > 1 dB (Vorlaender Table 6.1, the jnd for G) fires the SPREAD clause."""
+    em = diag["emitters"][:2]
+    lv = []
+    for e in em:
+        b = bands.filter_band(ir[:, e["channel"] * 2].astype(np.float64), fs, 1000)
+        lv.append([10 * math.log10(float(np.sum(b[int(w0 * fs) : int(w1 * fs)] ** 2)) + 1e-300)
+                   for w0, w1 in SPREAD_WINDOWS_S])
+    diff = [a - b for a, b in zip(lv[0], lv[1])]
+    return {"emitters": [e["id"] for e in em], "t_mix_s": [float(e["mixS"]) for e in em],
+            "windows_s": [list(w) for w in SPREAD_WINDOWS_S], "L_minus_R_db": diff,
+            "exceeds_1db": bool(max(abs(x) for x in diff) > 1.0)}
 
 
 def emitter_ir_metrics(h: np.ndarray, fs: float, e: dict, diag: dict) -> dict:
