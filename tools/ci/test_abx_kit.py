@@ -441,3 +441,14 @@ def test_abx_scene_labels_are_the_decided_texts() -> None:
     assert "partial AX21" in abx_kit.scene_label("layout4_s0.7/default")
     with pytest.raises(RuntimeError, match="no item-9 label"):
         abx_kit.scene_label("layout4_s1/both_corner")  # a fallback is labelled only once Seat 9 confirms its text
+
+
+def test_kit_labels_equal_the_run_sheet_texts() -> None:
+    # M3-4 (steward round 4, G13): each ABX scene's kit label (the manifest's scene.label) equals, word for word, the
+    # decided item-9 text the /fix-plan wrote into the run sheet §1 (line breaks and quote markers flattened)
+    import re
+
+    sheet = (REPO / "docs" / "validation" / "abx-07c-2-run-sheet.md").read_text(encoding="utf-8")
+    flat = re.sub(r"\s*\n\s*(>\s*)?", " ", sheet)
+    for name in abx_kit.ABX_SCENES:
+        assert abx_kit.scene_label(name) in flat, name

@@ -44,8 +44,9 @@ NFR-8 L112 ("Any valid scene renders correctly; no environment-specific code pat
 | H2-c: a named scope inside 07d (Lead Seat 2) | 1/2 as worded (1/1 if it also gates 08-3 item 15) | 1/2 (07d's closure rests on runner timing; would hold the freeze) | 1/1 | 2 | — |
 | H1: an item in phase-13-2, just before release | 0/2 | 0/2 | 0/2 | 2 | — |
 
-**Decider's recommendation (file 17, FOR MAISARA M3-H): H4.** With Seat 5's conditions G1–G3 it is the only option at
-max 1 and the lowest sum. Seat 2 and Seat 5 both prefer it; Seat 7 proposed it.
+**Decider's recommendation (file 17, FOR MAISARA M3-H): H4.** G1–G3 are Seat 5's conditions (22-seat5), given after the
+decider's ruling and not yet adopted by a decider note; with them, H4 is the only option at max 1 and the lowest sum
+(3–4; Seat 7's H4 later cell is a range, 0–1, as Seat 7 gave it). Seat 2 and Seat 5 both prefer H4; Seat 7 proposed it.
 
 **Interrogator (file 20):** H4's ruling failed on convening and one premise, not on its substance; the corrections (R2
 → G3; K16 corrected) are carried into this summary.
@@ -59,6 +60,6 @@ max 1 and the lowest sum. Seat 2 and Seat 5 both prefer it; Seat 7 proposed it.
 
 ## Recommended answer
 
-**H4 with G1–G3.** If you choose it, the plan edits are file 17 §6 items 6–8 plus G1 (08-4 *Depends on*), G2 (07d
+**H4, with Seat 5's conditions G1–G3** (the decider recommended H4; G1–G3 are Seat 5's). If you choose it, the plan edits are file 17 §6 items 6–8 plus G1 (08-4 *Depends on*), G2 (07d
 scope 8 waits on 07e / any fix; a late fix carries its own re-pin) and G3 (pytest bit-identical on the producing
 OS/architecture, AX5 bound elsewhere).

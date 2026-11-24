@@ -144,7 +144,7 @@ P4P5 measure(const Built& bt, const std::vector<sim::tail::UnitDecay>& prUnits)
                 prevHat = gHat;
             }
             for (std::size_t j = lp; j < pr.size(); ++j)
-                if (pr[j] != 0.0)
+                if (std::fpclassify(pr[j]) != FP_ZERO)
                     r.zeroAfter = false;
         }
     }
