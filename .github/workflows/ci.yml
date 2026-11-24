@@ -403,6 +403,20 @@ jobs:
       - name: Build (release)
         run: cmake --build --preset release
 
+      # Phase 07c-2b M3-L4 (decider file 13 R5; Seat 5, file 16-seat5, option (c)): the AX49 L4 seal gate, P4 / P5
+      # at 1e-9 on S', asserted in the shipped Release build on every OS (ctest also runs it in Debug and ASan). A
+      # gate, not a record: a red fails the job.
+      - name: AX49 L4 gate (release)
+        shell: bash
+        run: |
+          BIN=build/release/tests/unit/spatial_tests
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then BIN="$BIN.exe"; fi
+          if [[ "${RUNNER_OS}" == "Linux" ]]; then
+            xvfb-run -a "$BIN" "[ax49-l4]" --durations yes
+          else
+            "$BIN" "[ax49-l4]" --durations yes
+          fi
+
       # Phase 03/04: ISM and hybrid-IR benchmarks (AQ10 target: IR rebuild <= 50 ms, 20 x 30 x 10 m).
       # Hidden test case, run from the Release build so the number means something; printed to the log.
       # Phase 05h (D-H3 (c), K-c4): the direct denormal detector probe runs after it on every OS, a standing record;
