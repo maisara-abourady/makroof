@@ -32,8 +32,12 @@ ABX test.
     > - (c) a band with a specular-only tail, i.e. E_spec ≠ 0 with E_diff ≤ 0 or no diffuse reference, when g ≠ 0
     >   (L762, L781–786).
     >
-    > [S-A only, as long as layout4_s1/default is the ABX scene:] On layout4_s1/default the share is 0 in every band,
-    > so this equals scaling E_b alone (file 5's wording).
+    > [Scenes with s = 1 on every face:] There E_target's specular share is 0 in every band (AX21; file 29 fact 7),
+    > so this equals scaling E_b alone (file 5's wording). On an s < 1 scene (the ABX scene E,
+    > `layout5_s0.9/emitter_wall`: share 0.022 / 0.001) it does not, and M1's reversal condition (file 34 item 2) is
+    > live there.
+
+    (Clause from phase-07c-2b decider file 2, D-M3f; it replaces the S-A-only clause.)
 
   - **What the manifest prints for it** (item 6; decider file 27, amendment 1 and "specular_share print", applied
     under file 31): per emitter and output, `window_unscaled_share` (s_w, the exact split N = (a·u − s)/(a − 1),
@@ -153,11 +157,12 @@ ABX test.
    selection grounds):
    - Speaker: **MA** (an adult; TSP's documentation records it)  Files: **MA01_01** and **MA01_02**, at 48 kHz.
    - Selection grounds (to be stated in the pre-registration): the pair was fixed for its measured Q5, form-(b) and
-     scene-E null results, before any blind result.
+     E-render null results, before any blind result.
    - Our SHA-256 of `48k.zip` and of each excerpt is recorded (item 12).
    - The children CA and CB are excluded (the kit refuses them, `tools/ci/abx_kit.py` L983–984).
-   - Open before the seal (Seat 3, M3-C 7; decider file 10 M3-T): `layout5_s0.8/default` (fallback B) must be
-     nulled within −120 dB on every speech stimulus; it has been nulled on noise only. Scene E is nulled on speech.
+   - Open before the seal, on every sealed scene (Seat 3, M3-C 7; decider file 10 M3-T): the unstepped render B
+     nulled within −120 dB against the offline render on every speech stimulus (builder file 4 fact 5 nulled B on
+     noise only); the stepped render E is already nulled on speech (−130.0 dB or better).
 3. **Build the stimuli** on a machine with `render_cli` built (`cmake --preset cli && cmake --build --preset cli`).
    - Noise chain: `python tools/ci/abx_kit.py noise --out build/abx-07c-2`. The CI `listening-pack` artifact
      (`phase-07c-2/noise/`) holds the same files.
@@ -167,7 +172,17 @@ ABX test.
    - Each build runs every item-6 assertion on every stimulus, and stops if any fails. The assertions are: early
      parts bit-identical, the stated tail step, the window's unscaled share s_w ≤ 2.3 %, the `[ax47-midfade]`
      checks, no new click at the step, and, for speech, Q5's tail ≥ floor + 20 dB at the onset. It also stops if
-     M2 debt check (§1, assertions 1–5 on heard quantities) fails.
+     the M2 debt check (§1, assertions 1–5 on heard quantities) fails.
+   - **No new click at the step: `click_check` form (b)** (D-M3a, phase-07c-2b decider files 2 and 5; interrogator
+     file 6 SURVIVES): no `tools.acoustics clicks` event on r = (A − B) − m over [N − 5 ms, N + L + 5 ms), with the
+     model m = (j/L)(E − B) on [N, N + L) and E − B after it, L = 1440; detector unchanged (2 kHz zero-phase
+     high-pass, 2 ms frames, 20 dB over the median, absolute floor −90 dBFS); on channel 0 in omni (the two outputs
+     asserted identical), on each ear at 08-3. Red tests: a hard switch at N (L = 0); a −65 dBFS single-sample
+     impulse inside [N, N + L); the bracket, caught at −68 dBFS and missed at −72 dBFS, mid-frame and on a frame
+     boundary. Printed: `spike_floor_dbfs` and the bracket, the detector event counts on A, B and E, and the legacy
+     comparison of A's events against B.
+   - **Pre-seal set, on every stimulus** (M3-C 7, Seat 3): form (b) green; B and E nulled within −120 dB against
+     their offline references on every noise and speech stimulus; M1's per-band step identity within 0.05 dB.
    - `manifest.json` records the measured values, every stimulus's SHA-256 and, for speech, the excerpt's SHA-256
      and every replaced onset.
 4. **Seal** each chain: `python tools/ci/abx_kit.py seal --pack build/abx-07c-2/<chain> --session <session dir> --key <key file>`.

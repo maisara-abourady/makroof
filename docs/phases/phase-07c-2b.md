@@ -126,7 +126,9 @@ The numbered items run in this order.
    - **Before any seal: `click_check` made robust** (builder file 32, "Follow-up for the decider"): `click_check`
      compares per-frame flags, with each render judged against B's threshold, or runs on A − B against the crossfade
      model. Either is a kit change under item 6, not an `src/` change. Which one, and whether it is needed, is Seat 3's
-     and Seat 5's call; both read the outcome on the chosen scene(s) before the seal.
+     and Seat 5's call; both read the outcome on the chosen scene(s) before the seal. **Decided:** form (b), on
+     A − B against the crossfade model (D-M3a, phase-07c-2b decider files 2 and 5; interrogator file 6 SURVIVES),
+     with its criterion and red tests as file 5 states them (run sheet §3 item 3).
    - **The M2 debt checks on whatever scene M3 picks** (decider file 34 item 3), at M3's scene choice and at item
      15(i), before each seal: for each sealed scene, the manifest prints the minimum gap, the heard-IR T30 and the tail
      T30, asserts minimum gap ≥ tail T30, and passes Q5's ≥ 20 dB onset assertion (Seat 1 row); the manifest carries

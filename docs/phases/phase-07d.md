@@ -121,7 +121,7 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
 ## Out of scope
 
 - Everything decided in phase-07c-1's loop outside the long-T60 corner (AX47–AX49 as written); the class (c) and
-  load-fallback decisions and the AX47 / L4 ABX runs ([phase-07c-2](phase-07c-2.md)).
+  load-fallback decisions and the AX47 / L4 ABX runs ([phase-07c-2b](phase-07c-2b.md)).
 - AX49's "Recorded for Phase 10" alternatives (D5 within 5 %, D6): [phase-10-2](phase-10-2.md).
 
 ## Acceptance criteria — automated
