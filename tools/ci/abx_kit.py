@@ -1237,13 +1237,13 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
     item7 = item7_branch(lay, scene_name, speaker, files)
     pause, eos, boundaries = lay["pause"], lay["eos"], lay["boundaries"]
     x = speech_programme(s1, s2, lay)
-    excerpt = io.BytesIO()
-    import soundfile as sf
-
-    sf.write(excerpt, x.astype(np.float32), FS, subtype="FLOAT", format="WAV")
+    # The excerpt's SHA-256 is over its float32 little-endian samples, not over WAV bytes: libsndfile writes a
+    # timestamped PEAK chunk into float WAVs, so two writes of the same samples hash differently (builder file 43).
+    excerpt_digest = hashlib.sha256(np.ascontiguousarray(x, dtype="<f4").tobytes()).hexdigest()
     d_min = min(delays)
     rec_base = {"programme": "McGill TSP v2 speech", "speaker": speaker, "files": list(files),
-                "member_sha256": [h1, h2], "excerpt_sha256": hashlib.sha256(excerpt.getvalue()).hexdigest(),
+                "member_sha256": [h1, h2], "excerpt_sha256": excerpt_digest,
+                "excerpt_sha256_basis": "float32 LE samples",
                 "end_of_speech_s": eos / FS, "pause_s": pause / FS, "T30_1k_s": t30, "construction_T_s": t_con,
                 "pause_rule": "ceil((0.43 T_heard + T) fs) + Delta (decider file 8, M3-G)", "item7": item7,
                 "heard": {"heard_delays_samples": delays, "delta_samples": lay["delta"],
