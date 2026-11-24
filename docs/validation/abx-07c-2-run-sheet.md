@@ -332,9 +332,12 @@ dated item. Do not commit audio, and do not make a public copy of the speech sti
 ## 8. AX49 L4: held-chord ABX, provisional against exact tail
 
 Source: phase-07c-2b decider file 10 Part A (L4-P, L4-S, L4-D, L4-T), interrogator file 13 (SURVIVES WITH
-CORRECTIONS), Seat 5 file 14 (its conditions on the flags are implementation requirements of L4-P). It tests whether
+CORRECTIONS), Seat 5 file 14 (its conditions on the flags are implementation requirements of L4-P); the anchor,
+wording, void and session rules from decider files 17 (D1, P1, P8) and 21 (P8-3, P8-S, D1 corrections), interrogator
+files 18 and 22; measured timing from builder file 15. It tests whether
 a listener hears the AX49 provisional tail (the one every user hears while a long-decay scene loads) against the
-exact tail. L4 is its own family (AX49), not one of the AX47 families of §4.
+exact tail. L4 is its own family (AX49), not one of the AX47 families of §4 and not added to the AX47 union
+(≤ 0.098): it tests a different reversal on a different claim (P1).
 
 **Stimulus flags (validation only, `src/cli`).** `render_cli --provisional-ir` (off by default; omni only),
 `--provisional-timing <json>` and `--provisional-handover-sample N`, with refusals r1–r5 and tests 1–8 of L4-P (file
@@ -344,7 +347,7 @@ those tests are green in CI on Linux, macOS and Windows.
 **Scene (L4-S).** `tests/scenes/valid/stone_box.json` with every band's α multiplied by one common factor k (start
 0.844); the builder adjusts k until `--provisional-timing` reports T60_max = 8.0 ± 0.1 s. 20 × 12 × 10 m; listener
 (10, 8, 1.7); emitters (8, 3, 1.7) and (12, 3, 1.7); s 0.1; tailSeed 106; 48 kHz. k **[measured at build]** is
-recorded; the scene JSON and its SHA-256 are committed with the kit. Asserted before the seal: provisional is true,
+recorded (builder file 15 measured k = 0.84: T60_max 7.9955 s, t_mix,e,max 0.08017 s, L_f 2.5748 s, L_p 2.6748 s); the scene JSON and its SHA-256 are committed with the kit. Asserted before the seal: provisional is true,
 L_p < L; L_f, L_p, L and the per-band T60 are printed.
 - `label`: **"Long-decay test room, hard stone box with uniform absorption, T60_max 8 s; provisional-vs-exact tail
   test (provisional tail, validation-only flag); not a validated preset"** (Seat 9 confirms it before the seal).
@@ -355,7 +358,7 @@ L_p < L; L_f, L_p, L and the per-band T60 are printed.
   3. D/R at 1 kHz **[measured at build]** against **[measured at build]** dB at r/r_c **[measured at build]**
      (Kuttruff Eq. 5.44, Sabine A **[measured at build]** m²). ᾱ ≈ **[measured at build]** (expected 0.04–0.07) is
      small, so §5.6's ᾱ caveat does not apply.
-  4. t_mix,e,max, L_f, L_p **[measured at build]** and L (12.0 s).
+  4. t_mix,e,max, L_f, L_p **[measured at build]** and L **[measured at build]** (11.993 s at k = 0.84).
   5. Cut depth per band: 10·log10(E_B[L_f, L)/E_B[0, L)) **[measured at build]**, printed beside the chord's band
      energy.
   6. The early reflections are identical in A and B.
@@ -401,10 +404,22 @@ L_p < L; L_f, L_p, L and the per-band T60 are printed.
   feedback. Each trial as in §4. There is no 0.5 dB block.
 - **Anchor:** B against B with the tail stepped ±3 dB (`--abx-step-db ±3 --abx-step-sample 0`), on the L4 scene and
   chord.
-- **Criteria:** detection at ≥ 12/16; anchor pass at ≥ 5/6. Its own family.
-- **Sittings (L4-T, Seat 7):** K6 is redone on the sealed L4 stimuli. L4 runs as its own block, with its own anchor,
-  in scene E's second sitting if that sitting stays within 2 h; otherwise a third dated sitting goes into the brief
-  before any seal. L4 is sealed with E, before the session (§3 item 4).
+- **Criteria:** detection at ≥ 12/16 (family α 0.038 = 2517/65536); anchor pass at ≥ 5/6. Its own family.
+- **Failed anchor (D1, rule (a); decider file 17, exact wording):** "L4 anchor (6 trials, ±3 dB tail step, pass
+  ≥ 5/6). If the anchor fails, the block is void: its scored trials are not unsealed or scored, and the void is
+  recorded. One rerun follows, using a second block (its own seeded key, trial order and anchor positions) that was
+  built and sealed with the first, before the session. A voided result is never recorded as 'not detected'. A
+  non-detection is never a reason to rerun. If the rerun's anchor also fails, the record reads 'inconclusive (anchor
+  failed twice)', and AX49's L4 reversal stays unread; the board treats that as an unread reversal at 07d (debt row
+  below)." The kit builds and seals two blocks (primary and pre-built rerun) together; the scoring script scores the
+  anchor trials first and refuses to unseal a block's scored trials if that block's anchor failed (as it refuses a
+  0.5 dB AX47 block without a 0.9 dB detection). The debt row is file 17's future-debt register (Seats 1, 6, 7).
+- **Sittings (L4-T, Seat 7; D1 hours, decider file 21):** K6 is redone on the sealed L4 stimuli, counting the worst
+  case: scene E's second sitting, plus the primary L4 block, plus the rerun block (the rerun is not inside the
+  existing K6, which covers only the AX47 chains). L4 runs as its own block, with its own anchor, in scene E's second
+  sitting if that worst case stays within 2 h; otherwise a third dated sitting goes into the brief. The third-sitting
+  decision is made on the worst case before the seal and written into the brief with dates. If a rerun would push a
+  sitting past 2 h, it opens the next sitting instead. L4 is sealed with E, before the session (§3 item 4).
 
 **Response table (L4).**
 
@@ -419,13 +434,38 @@ L_p < L; L_f, L_p, L and the per-band T60 are printed.
 | X = | | | | | | | | | | | |
 
 **Record (§6 table, one row "L4", tailSeed 106).** Wording (Seats 9 and 6):
-- detected: "detected (≥ 12/16)";
+- detected: "detected (≥ 12/16, family α 0.038)";
 - not detected: "not detected in 16 trials by one listener (power 0.63 at p = 0.75); covers a cut ≥
   **[measured at build]** dB below the full-IR energy in the T60_max band at T60_max 8 s". The cut is the label's
   detail line 5 in the T60_max band;
-- "inconclusive" if the anchor failed. Whether a block with a failed anchor gets one rerun, as §4 rule 3 gives the
-  AX47 blocks, is **open** (decider file 10 does not set it);
-- never "inaudible", and never "at T60 8 s" alone.
+- anchor failed twice: "inconclusive (anchor failed twice)" (D1);
+- never "inaudible", never "at T60 8 s" alone, and no public copy.
+- Beside AX47's union rate (≤ 0.098) the record states that L4 is its own family, not in the AX47 union (P1).
 
 A detection meets AX49's reversal ("the L4 ABX detects the cut"): it goes back to the board with 07d's candidates
 first, and the ghost print is among 07d's inputs.
+
+**Void rule for sealed L4 stimuli (P8, decider file 17; item 3 and the manifest print, P8-3, decider file 21).**
+Sealed L4 stimuli are void for the next listening session if any of these happens:
+1. any change that makes AX21's statement false or moves t_mix,e: a B11 promotion, an early-diffuse method, or a
+   change to the AX22 rule;
+2. any change to the tail's decay target, such as non-Eyring decay for non-diffuse rooms (C-b);
+3. any change to AX49's provisional construction: the 0.312 fraction, the 0.1 s fade, the normalisation, or L's rule
+   (1.5·T60_max, capped at 12 s). The L4 manifest prints, for each stimulus, the constants it was built with: f, fade
+   length, normalisation, L rule (Seat 3's O5);
+4. a hash mismatch, as a backstop for any cause: the manifest records the SHA-256 of A's IR (`--provisional-ir --ir`)
+   and B's IR (`--ir`) on the L4 scene, with the platform; before the session the kit rebuilds both on the same
+   platform (AX5) and compares; any mismatch voids the stimuli.
+
+After a void, the stimuli are rebuilt and must pass §8's assertions 1–13, L4-P's tests 1–8 and Seat 9's label check
+before they are sealed again. Results already recorded stay attached to their commit and scene hash, marked
+"pre-change engine".
+
+**When an L4 session is owed (P8-S, decider file 21, exact wording with interrogator file 22's correction to its last
+sentence):** "Voids under P8 items 1–4 force a rebuild and reseal only. An L4 session is owed once per decision
+point: before any board decision that reads AX49's L4 reversal, L4 is run on stimuli built with the constants then
+in force. Changes between two sessions collapse into one session on the latest constants. When the change is 07d's
+own remedy of AX49 (f, fade, normalisation, L rule), 07d decides the remedy provisionally, rebuilds the L4 stimuli
+with those constants, and runs L4 before reaching `done`; 07d may not be `done` while its L4 stimuli are void or
+unscored. If that L4 detects the cut, the remedy returns to the board with Seat 3 as its owner: one L4 session per
+board round. Every 07d L4 session, including those after a detection, is dated before the Phase 08-4 freeze."

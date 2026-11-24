@@ -146,7 +146,9 @@ b. **CR4:** CR4 extraction work and everything that needs CR4 belong to `docs/ph
      self-ABX stimuli. They are rebuilt and must pass item 6 (with form (b)), the cap check, the peak check, Q5,
      s_w ≤ 2.3 % and the M2 gap assertion before sealing (s_w over 2.3 %: the kit refuses and the scene returns to the
      board); earlier results are kept as "pre-promotion engine"; if no listening session follows before the 08-4
-     freeze or the beta, the promoting phase schedules item 15 (the 08-3 binaural rerun).
+     freeze or the beta, the promoting phase schedules item 15 (the 08-3 binaural rerun). The same changes void the
+     sealed AX49 L4 stimuli (phase-07c-2b decider file 17 P8; rebuild, reseal and session rules in
+     `docs/validation/abx-07c-2-run-sheet.md` §8, decider file 21 P8-S).
 c. **Baseline and nightly gate:** create `tests/golden/validation_baseline.json` through
    `tools/ci/update_goldens.py` with a reason, and make the nightly gate (phase-05.md scope 4) and the
    `MAKROOF_TEST_BIAS_T60` test green.

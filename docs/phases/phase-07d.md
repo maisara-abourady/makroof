@@ -117,6 +117,22 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
 - **The handover ghost:** whether it needs its own ABX is put to Seat 1 here, after Maisara has heard the
   listening-pack "L4 handover demo (unscored)"; inputs: the L4 ghost print (AX49 Reversal) and the demo render
   (decider file 10 L4-D, future-debt register row Seats 3, 6).
+- **Ordering for this phase's own AX49 remedy** (P8-S, phase-07c-2b decider file 21, with interrogator file 22's
+  correction; AX49 Reversal): if the remedy changes AX49's provisional construction (f = 0.312, the 0.1 s fade, the
+  normalisation, L's rule), 07d decides the remedy provisionally, rebuilds the L4 stimuli with those constants, and
+  runs L4 before reaching `done`; 07d may not be `done` while its L4 stimuli are void or unscored. If that L4 detects
+  the cut, the remedy returns to the board with Seat 3 as its owner, one L4 session per board round. Every 07d L4
+  session, including those after a detection, is dated before the Phase 08-4 freeze. Rebuild, reseal and void rules:
+  `docs/validation/abx-07c-2-run-sheet.md` §8.
+- **Inputs to this phase's own board round on the remedy** (not decided in 07c-2b; decider file 21, interrogator
+  file 22):
+  - Seat 3's O1 (validation-only overrides of f and the fade, under L-a's guard, so each candidate is ABXed before the
+    remedy decision), O2 (the pinned remedy closed by a hash check against the candidate it heard) and O4 (the
+    candidate order pre-registered by ascending L_p cost, the cheapest candidate not detected chosen)
+    (`docs/review/phase-07c-2b/20-seat3-p8.md`). They need Seat 1's α for a candidate sequence, Seat 5's guard,
+    Seat 2's L_p per candidate and Seat 7's cap on hours.
+  - Seat 7's hand-off to Seat 1: whether a provisional-then-confirm ordering is valid for the reversal
+    (`docs/review/phase-07c-2b/19-seat7-p8.md` §7).
 
 ## Out of scope
 
