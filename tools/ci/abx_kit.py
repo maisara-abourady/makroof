@@ -272,6 +272,7 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
     ts = out["tail_spread"]
     log(f"scene {name}: tail spread (1 kHz, emitter {ts['emitters'][0]} - {ts['emitters'][1]}) "
         + ", ".join(f"[{w[0]}, {w[1]}) s {v:+.2f} dB" for w, v in zip(ts["windows_s"], ts["L_minus_R_db"]))
+        + f"; from each emitter's own t_mix,e {ts['own_onset_L_minus_R_db']:+.2f} dB"
         + f"; t_mix,e {', '.join(f'{x:.3f}' for x in ts['t_mix_s'])} s")
     if ts["exceeds_1db"] and SPREAD_CLAUSE not in out["label"]:
         raise RuntimeError(f"{name}: emitter tails differ by more than 1 dB at equal times ({ts['L_minus_R_db']}); the "
@@ -312,8 +313,15 @@ def tail_spread(ir: np.ndarray, fs: float, diag: dict) -> dict:
         lv.append([10 * math.log10(float(np.sum(b[int(w0 * fs) : int(w1 * fs)] ** 2)) + 1e-300)
                    for w0, w1 in SPREAD_WINDOWS_S])
     diff = [a - b for a, b in zip(lv[0], lv[1])]
+    # Seat 9's measure (R3, file 8-seat9 C-b (i)): 1 kHz tail energy integrated from each emitter's own t_mix,e
+    own = []
+    for e in em:
+        b = bands.filter_band(ir[:, e["channel"] * 2].astype(np.float64), fs, 1000)
+        mix = int(math.ceil((e["mixS"] - diag["alignmentShiftS"]) * fs))
+        own.append(10 * math.log10(float(np.sum(b[mix:] ** 2)) + 1e-300))
     return {"emitters": [e["id"] for e in em], "t_mix_s": [float(e["mixS"]) for e in em],
             "windows_s": [list(w) for w in SPREAD_WINDOWS_S], "L_minus_R_db": diff,
+            "own_onset_L_minus_R_db": own[0] - own[1],
             "exceeds_1db": bool(max(abs(x) for x in diff) > 1.0)}
 
 
