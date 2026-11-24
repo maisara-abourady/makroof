@@ -468,9 +468,42 @@ def _phase_07c2(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
     (pack / "README.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _phase_07c2b(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
+    """Phase-07c-2b, AX49 L4-D item 14 (Seat 6; Seat 5 file 14 (vi)): one UNSCORED render, "L4 handover demo (unscored;
+    interim then handover, as at project load)": the L4 chord on the L4 scene (tools/ci/abx_scenes/stone_box_l4.json),
+    released at t_r, the provisional tail until the first partition boundary at or after t_r + L_p + 1 s, then the
+    shipped 30 ms equal-gain crossfade to the exact tail (render_cli --provisional-ir --provisional-handover-sample N,
+    explicit --block). It is never sealed or scored; "unscored" is in its file name and in this index. The L4 ABX
+    stimuli themselves are built locally (python tools/ci/abx_kit.py l4) and never enter this pack."""
+    from tools.ci import abx_kit
+
+    pack.mkdir(parents=True, exist_ok=True)
+    rec = abx_kit.l4_handover_demo(pack, binary, log=log)
+    lines = [
+        "SPATIAL SCENE LISTENING PACK - phase-07c-2b (AX49 L4 handover demo, UNSCORED)",
+        "=" * 60,
+        "",
+        f"{rec['file']}: {rec['title']}. UNSCORED: never sealed, never scored, not one of the L4 ABX stimuli.",
+        "",
+        textwrap.fill(
+            "What you hear: a held chord (C2-G2-C3-E3-G3-C4) in a long-decay stone test room (T60_max 8 s; "
+            f"provisional tail, validation-only flag). It is released at {rec['release_sample'] / abx_kit.FS:.3f} s. "
+            f"The interim (provisional) tail plays, as when a project loads, and is faded out {rec['L_p_s']:.3f} s "
+            "(L_p) after emission; at "
+            f"{rec['handover_sample'] / abx_kit.FS:.3f} s ({rec['handover_after_release_s']:.3f} s after the release) the "
+            "exact tail takes over with the shipped 30 ms equal-gain crossfade. Listen for the tail coming back at the "
+            "handover (the 'ghost'). The handover time here is fixed for the demo; in the plugin it is whenever the "
+            "exact tail is ready.", 78),
+        "",
+        f"Omni, diotic, 48 kHz, block {rec['block']}, partition {rec['partition']}; not normalised (the L4 chord's fixed "
+        f"level); peak {rec['peak_dbfs']:.1f} dBFS; {rec['duration_s']:.2f} s.",
+    ]
+    (pack / "README.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 # phase-05f: the same A/B pack, now with the CR4 pair (CR4 accepted in phase-05f).
 SPECIAL_BUILDERS = {"phase-05e": _phase_05e, "phase-05f": _phase_05e, "phase-06": _phase_06, "phase-05h": _phase_05h,
-                    "phase-07c-2": _phase_07c2}
+                    "phase-07c-2": _phase_07c2, "phase-07c-2b": _phase_07c2b}
 
 
 def build(out_root: pathlib.Path, phase: str, binary: pathlib.Path, log=print) -> pathlib.Path:

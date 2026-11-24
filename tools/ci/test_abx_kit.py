@@ -521,3 +521,340 @@ def test_zero_step_is_bit_identical(tmp_path: pathlib.Path) -> None:
     assert render_cli.run(binary, *common, "--out", tmp_path / "zero.wav", "--abx-step-db", "0",
                           "--abx-step-sample", "25088").returncode == 0
     assert (tmp_path / "plain.wav").read_bytes() == (tmp_path / "zero.wav").read_bytes()
+
+
+# ---------------------------------------------------------------------------------------------------------
+# AX49 L4 (run sheet section 8; phase-07c-2b decider files 10 Part A, 17, 21; builder file 15)
+# ---------------------------------------------------------------------------------------------------------
+
+
+def test_l4_preregistered_numbers() -> None:
+    import math
+
+    assert (abx_kit.L4_SCORED, abx_kit.L4_ANCHORS, abx_kit.L4_BLOCK_TRIALS, abx_kit.L4_BREAK_AFTER) == (16, 6, 22, 11)
+    assert (abx_kit.L4_CRITERION, abx_kit.L4_ANCHOR_DB, abx_kit.L4_ANCHOR_PASS) == (12, 3.0, 5)
+    assert abx_kit.binom_tail(12, 16) == abx_kit.L4_FAMILY_ALPHA_EXACT == 2517 / 65536  # P1, R-L1
+    assert round(abx_kit.L4_FAMILY_ALPHA_EXACT, 3) == abx_kit.L4_FAMILY_ALPHA == 0.038
+    assert round(abx_kit.binom_tail(12, 16, 0.75), 2) == abx_kit.L4_POWER_AT_075 == 0.63
+    assert round(abx_kit.L4_PREFIX_DB, 2) == -18.27  # AX47 (b)
+    assert abx_kit.L4_STEP_TOL_DB == 0.05 and abx_kit.L4_DECAY_MIN_DB == 18.7
+    assert round(math.exp(-13.82 * 0.312), 4) == abx_kit.L4_SHARE_MAX == 0.0134  # AX49 K17'
+    assert (abx_kit.AX49_F, abx_kit.AX49_FADE_S, abx_kit.AX49_L_RULE) == (0.312, 0.1, "L = min(1.5 T60_max, 12 s)")
+    assert abx_kit.L4_MAX_PEAK_DBFS == -3.0 and abx_kit.L4_SILENCE_MARGIN_S == 0.5
+    assert abx_kit.L4_GHOST_OFFSETS_S == (0.0, 1.0, 2.0, 5.0)
+    assert abx_kit.L4_GHOST_LABEL == "noise-excitation (Schroeder) estimate"
+    assert abx_kit.L4_FLAG_NOTE == "provisional tail, validation-only flag"
+    assert abx_kit.L4_BLOCKS == ("primary", "rerun") and len(set(abx_kit.L4_KEY_SEEDS.values())) == 2
+
+
+def test_l4_scene_committed() -> None:
+    """L4-S: stone_box.json with every band's absorption x 0.84, committed beside the kit, equal to its builder and
+    to the scene tools/ci/test_provisional_flag.py measured k on; its SHA-256 pinned."""
+    import hashlib
+    import json
+
+    from tools.ci import test_provisional_flag
+
+    e = abx_kit.L4_SCENE
+    assert e.committed == REPO / "tools" / "ci" / "abx_scenes" / "stone_box_l4.json"
+    assert e.committed.read_text(encoding="utf-8") == e.text()
+    assert hashlib.sha256(e.committed.read_bytes()).hexdigest() == \
+        "ac1427e4708884ca2ca5402b1b196e9d9d8d14fb9fe1edda7fe35d740af14c5d"
+    assert abx_kit.L4_K == test_provisional_flag.K_L4 == 0.84
+    assert json.loads(e.text()) == test_provisional_flag.l4_scene()
+    stone = json.loads((REPO / "tests" / "scenes" / "valid" / "stone_box.json").read_text())
+    s = json.loads(e.text())
+    for face, surf in s["room"]["surfaces"].items():
+        assert surf["absorption"] == [a * 0.84 for a in stone["room"]["surfaces"][face]["absorption"]]
+        assert surf["scattering"] == 0.1
+    assert s["render"]["tailSeed"] == 106 and s["room"]["geometry"]["dimensions"] == [20.0, 12.0, 10.0]
+    assert e.label == ("Long-decay test room, hard stone box with uniform absorption, T60_max 8 s; provisional-vs-exact "
+                       "tail test (provisional tail, validation-only flag); not a validated preset")
+    assert abx_kit.require_class_line(e).startswith("Class: long-decay, {dr_class} (heard D/R")
+    assert "Stimulus scene, not a room prediction." in e.label_detail
+    assert abx_kit.L4_SCENE.name not in abx_kit.SCENES  # never an AX47 chain's scene
+
+
+def test_l4_class_line_required(tmp_path: pathlib.Path, monkeypatch) -> None:
+    """Red (D-M3e on the L4 scene): an L4 label without its Class line is refused before anything is rendered, and a
+    label field left unfilled is refused."""
+    no_class = abx_kit.AbxScene("stone_box_l4", abx_kit.scene_stone_box_l4, abx_kit.L4_LABEL,
+                                tuple(x for x in abx_kit.L4_LABEL_DETAIL if not x.startswith("Class: ")),
+                                "stone_box_l4.json")
+    monkeypatch.setattr(abx_kit, "L4_SCENE", no_class)
+    with pytest.raises(RuntimeError, match="Class"):
+        abx_kit.build_l4(tmp_path / "l4", tmp_path / "no_render_cli")
+    assert not (tmp_path / "l4").exists()
+    with pytest.raises(RuntimeError, match="Class"):
+        abx_kit.fill_l4_label(no_class, {})
+    with pytest.raises(KeyError):
+        abx_kit.fill_l4_label(abx_kit.AbxScene("x", dict, "x", ("Class: {missing}",)), {})
+
+
+def test_dr_class() -> None:
+    # Seat 9's bands (review file 7-seat9): direct-dominated >= +3 dB, near-balanced between, tail-dominated <= -3 dB
+    assert [abx_kit.dr_class(v) for v in (3.0, 2.9, -2.9, -3.0, -10.4)] == \
+        ["direct-dominated", "near-balanced", "near-balanced", "tail-dominated", "tail-dominated"]
+
+
+def test_engine_band_firs() -> None:
+    """The kit's copy of sim::ism::OctaveFilterbank: complementary (the bands sum to a centred unit impulse), and
+    maxHalf at 48 kHz from BandRenderer.cpp's Kaiser formula (the 63/125 Hz crossover's taps)."""
+    firs, half = abx_kit.engine_band_firs(48000.0)
+    assert len(firs) == 8 and all(len(h) == 2 * half + 1 for h in firs)
+    assert half == 7849
+    total = np.sum(firs, axis=0)
+    delta = np.zeros_like(total)
+    delta[half] = 1.0
+    assert np.max(np.abs(total - delta)) < 1e-12
+    x = np.random.default_rng(1).standard_normal(4000)
+    assert np.allclose(np.sum(abx_kit.engine_bands(x, 48000.0), axis=0), x, atol=1e-10)
+
+
+def test_l4_chord() -> None:
+    """L4-D's chord: deterministic, the six equal-tempered notes with partials to 8 kHz, the fixed peak, the onset
+    and release, silence before and after."""
+    x, rec = abx_kit.l4_chord(48000 * 4, 48000 * 6)
+    y, _ = abx_kit.l4_chord(48000 * 4, 48000 * 6)
+    assert np.array_equal(x, y)
+    assert abs(20 * np.log10(np.max(np.abs(x))) - abx_kit.L4_CHORD_GAIN_DB) < 1e-9
+    lead, rs, re = abx_kit.L4_LEAD_SAMPLES, rec["release_start_sample"], rec["release_end_sample"]
+    assert np.all(x[:lead] == 0) and np.all(x[re:] == 0) and rs == lead + 48000 * 4 and re - rs == 480
+    assert rec["max_partial_hz"] <= 8000.0 and rec["midi"] == [36, 43, 48, 52, 55, 60]
+    spec = np.abs(np.fft.rfft(x[lead + 4800 : lead + 4800 + 48000] * np.hanning(48000)))
+    f = np.fft.rfftfreq(48000, 1 / 48000)
+    low = (f > 40) & (f < 80)
+    assert abs(f[low][np.argmax(spec[low])] - 65.0) <= 1.0  # C2 = 65.41 Hz (1 Hz bins)
+    assert np.max(spec[f < 40]) < 1e-3 * spec.max()  # nothing below C2
+    # partials stop at 8 kHz: C2's 122nd (7979.6 Hz) is the highest kept
+    assert 7979 < rec["max_partial_hz"] <= 8000.0
+
+
+def test_l4_trial_plan() -> None:
+    plans = {b: abx_kit.l4_trial_plan(b) for b in abx_kit.L4_BLOCKS}
+    for block, plan in plans.items():
+        assert len(plan) == 22 and [t["trial"] for t in plan if t["break_after"]] == [11]
+        scored = [t for t in plan if t["kind"] == "scored"]
+        anchors = [t for t in plan if t["kind"] == "anchor"]
+        assert len(scored) == 16 and all((t["A"], t["B"]) == ("A", "B") for t in scored)
+        assert sorted(t["g_db"] for t in anchors) == [-3.0] * 3 + [3.0] * 3
+        assert all(t["A"] == ("anchor_up" if t["g_db"] > 0 else "anchor_down") and t["B"] == "B" for t in anchors)
+        assert plan == abx_kit.l4_trial_plan(block)  # seeded, reproducible
+    # D1: the rerun block has its own anchor positions and order
+    pos = {b: [(t["trial"], t["g_db"]) for t in p if t["kind"] == "anchor"] for b, p in plans.items()}
+    assert pos["primary"] != pos["rerun"]
+
+
+def _l4_key(tmp_path: pathlib.Path, cut: float = -21.74) -> pathlib.Path:
+    import json
+
+    key = {"chain": "l4", "seed": 1, "l4": {"cut_depth_T60max_band_db": cut, "T60_max_band": "63"}, "blocks": {}}
+    for block in abx_kit.L4_BLOCKS:
+        key["blocks"][block] = [{"trial": t["trial"], "kind": t["kind"], "g_db": t["g_db"],
+                                 "X": "A" if t["trial"] % 3 else "B"} for t in abx_kit.l4_trial_plan(block)]
+    path = tmp_path / "l4key.json"
+    path.write_text(json.dumps(key))
+    return path
+
+
+def test_l4_wording() -> None:
+    """P1 (decider file 17; run sheet section 8): exact record wording; the cut is rounded down so '>=' holds."""
+    w = abx_kit.l4_wording(-21.74)
+    assert w["detected"] == "detected (≥ 12/16, family α 0.038)"
+    assert w["not detected"] == ("not detected in 16 trials by one listener (power 0.63 at p = 0.75); covers a cut ≥ "
+                                 "21.7 dB below the full-IR energy in the T60_max band at T60_max 8 s")
+    assert w["inconclusive"] == "inconclusive (anchor failed twice)"
+    assert "not in the AX47 union" in w["family"]
+    assert "inaudible" not in " ".join(w.values())
+
+
+def test_l4_scoring_anchor_first_and_refusals(tmp_path: pathlib.Path) -> None:
+    """D1, red: the anchor is scored first; a block whose anchor failed is void and its scored trials are never
+    unsealed (l4_unseal_scored refuses); the pre-sealed rerun is scored the same way, and a second failure reads
+    'inconclusive (anchor failed twice)'; a passed anchor refuses the rerun (a non-detection is never a reason to
+    rerun); a voided result is never 'not detected'."""
+    import json
+
+    key = _l4_key(tmp_path)
+    blocks = json.loads(key.read_text())["blocks"]
+
+    def answers(block: str, wrong_scored: int, wrong_anchor: int, drop_scored: bool = False) -> dict[int, str]:
+        out, ws, wa = {}, wrong_scored, wrong_anchor
+        for t in blocks[block]:
+            flip = False
+            if t["kind"] == "scored" and ws > 0:
+                flip, ws = True, ws - 1
+            if t["kind"] == "anchor" and wa > 0:
+                flip, wa = True, wa - 1
+            if drop_scored and t["kind"] == "scored":
+                continue
+            out[t["trial"]] = ("B" if t["X"] == "A" else "A") if flip else t["X"]
+        return out
+
+    # detected at 12/16, not detected at 11/16 (with the cut scope)
+    r = abx_kit.score_l4(key, {"primary": answers("primary", 4, 1)})
+    assert len(r) == 1 and r[0]["verdict"] == "detected" and r[0]["k"] == 12
+    assert r[0]["wording"] == "detected (≥ 12/16, family α 0.038)"
+    r = abx_kit.score_l4(key, {"primary": answers("primary", 5, 0)})
+    assert r[0]["verdict"] == "not detected" and r[0]["wording"].startswith("not detected in 16 trials")
+    # a passed anchor refuses the rerun block
+    with pytest.raises(PermissionError, match="never a reason to rerun"):
+        abx_kit.score_l4(key, {"primary": answers("primary", 5, 0), "rerun": answers("rerun", 0, 0)})
+    # a failed anchor (4/6): void, scored trials never unsealed (even with no scored answers at all)
+    r = abx_kit.score_l4(key, {"primary": answers("primary", 0, 2, drop_scored=True)})
+    assert r[0]["verdict"] == "void" and r[0]["k"] is None and r[0]["anchor_k"] == 4
+    assert "not detected" not in r[0]["wording"]
+    anchor = abx_kit.l4_score_anchor(blocks["primary"], answers("primary", 0, 2), "primary")
+    with pytest.raises(PermissionError, match="anchor failed"):
+        abx_kit.l4_unseal_scored(blocks["primary"], answers("primary", 0, 2), anchor)
+    # the rerun is scored after a void: pass -> a real result; fail -> inconclusive (anchor failed twice)
+    r = abx_kit.score_l4(key, {"primary": answers("primary", 0, 2), "rerun": answers("rerun", 3, 1)})
+    assert [x["verdict"] for x in r] == ["void", "detected"] and r[1]["block"] == "rerun" and r[1]["k"] == 13
+    r = abx_kit.score_l4(key, {"primary": answers("primary", 0, 3), "rerun": answers("rerun", 0, 2, drop_scored=True)})
+    assert [x["verdict"] for x in r] == ["void", "inconclusive"]
+    assert r[1]["wording"] == "inconclusive (anchor failed twice)" and r[1]["k"] is None
+    # missing anchor answers are an error, not a pass or a fail
+    a = answers("primary", 0, 0)
+    del a[next(t["trial"] for t in blocks["primary"] if t["kind"] == "anchor")]
+    with pytest.raises(ValueError, match="anchor"):
+        abx_kit.score_l4(key, {"primary": a})
+    # an AX47 key is refused
+    with pytest.raises(ValueError):
+        abx_kit.score_l4(_fake_key(tmp_path, "noise"), {})
+
+
+def test_l4_blank_and_responses(tmp_path: pathlib.Path) -> None:
+    path = tmp_path / "l4.csv"
+    abx_kit.blank_response_csv(path, "l4")
+    rows = list(csv.DictReader(open(path, newline="")))
+    assert len(rows) == 44 and {r["block"] for r in rows} == {"primary", "rerun"}
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["block", "trial", "answer"])
+        w.writerow(["primary", 1, "a"])
+        w.writerow(["primary", 2, ""])
+    assert abx_kit.read_l4_responses(path) == {"primary": {1: "A"}}
+
+
+def test_l4_seal_two_blocks_together(tmp_path: pathlib.Path) -> None:
+    """D1: seal writes both blocks into one session folder with one key; each block has its own seeded key; the
+    session is verified against the committed record; the AX47 trial paths are unchanged."""
+    import json
+
+    from tools.acoustics import wav
+
+    pack = tmp_path / "pack"
+    stim = {"A": 0.1, "B": 0.2, "anchor_up": 0.3, "anchor_down": 0.4}
+    manifest = {"chain": "l4", "scene": {"cut_depth_T60max_band_db": -21.7, "T60_max_band": "63", "scene_sha256": "x"},
+                "ir_hashes": {"platform": "test"}, "blocks": {}}
+    for block in abx_kit.L4_BLOCKS:
+        full = abx_kit.l4_trial_plan(block)
+        first_anchor = next(t for t in full if t["kind"] == "anchor")
+        plan = [t for t in full if t["trial"] <= 4 or t is first_anchor]
+        manifest["blocks"][block] = plan
+        for t in plan:
+            for side in ("A", "B"):
+                d = pack / abx_kit.trial_rel("l4", block, t["trial"])
+                d.mkdir(parents=True, exist_ok=True)
+                wav.write_float32(d / f"{side}.wav", np.full((8, 2), stim[t[side]], np.float32), 48000)
+    (pack / "manifest.json").write_text(json.dumps(manifest))
+    rec = abx_kit.seal(pack, tmp_path / "session", tmp_path / "key.json", key_seed=11)
+    key = json.loads((tmp_path / "key.json").read_text())
+    assert set(key["blocks"]) == {"primary", "rerun"} and key["block_seeds"] == {"primary": 12, "rerun": 13}
+    assert key["l4"]["cut_depth_T60max_band_db"] == -21.7
+    assert len(rec["stimuli_salted_sha256"]) == 3 * sum(len(b) for b in manifest["blocks"].values())
+    assert all(k.startswith(("primary/trial_", "rerun/trial_")) for k in rec["stimuli_salted_sha256"])
+    abx_kit.verify_session(tmp_path / "key.json", tmp_path / "session")
+    for block in key["blocks"].values():
+        for t in block:
+            assert t["X"] in ("A", "B") and t["A"] in stim
+    assert abx_kit.trial_rel("noise", "0.9", 3) == "0.9dB/trial_03"
+
+
+@pytest.fixture(scope="module")
+def l4_irs(tmp_path_factory):
+    """A's and B's IRs on the L4 scene by the P8 commands, built twice (L4-D 12), with the timing and diagnostics."""
+    binary = _binary()
+    if binary is None:
+        pytest.skip("render_cli not built")
+    import json
+
+    from tools.acoustics import wav
+
+    d = tmp_path_factory.mktemp("l4irs")
+    scene = abx_kit.write_scene(abx_kit.L4_SCENE, d / "scene.json")
+    h1, a, b = abx_kit.l4_ir_hashes(binary, scene, d)
+    (d / "again").mkdir()
+    h2, _, _ = abx_kit.l4_ir_hashes(binary, scene, d / "again")
+    abx_kit._run(binary, "--scene", scene, "--mode", "omni", "--provisional-ir", "--provisional-timing", d / "t.json")
+    abx_kit._run(binary, "--scene", scene, "--mode", "omni", "--diagnostics", d / "diag.json")
+    return {"binary": binary, "scene": scene, "dir": d, "hashes": (h1, h2), "A": wav.read_float32(a)[0],
+            "B": wav.read_float32(b)[0], "timing": json.loads((d / "t.json").read_text()),
+            "diag": json.loads((d / "diag.json").read_text())}
+
+
+def test_l4_ir_checks_on_the_scene(l4_irs) -> None:
+    """L4-S and L4-D 2-8, 12, 13 on the shipped IRs: provisional, L_p < L, T60_max 8.0 +/- 0.1 s; the IR hashes
+    reproduce (P8 item 4); every IR-level assertion passes with its measured value recorded."""
+    t = l4_irs["timing"]
+    assert t["provisional"] is True and t["endS"] < t["exactS"] and abs(t["t60MaxS"] - 8.0) <= 0.1
+    h1, h2 = l4_irs["hashes"]
+    assert h1 == h2 and h1["platform"] and len(h1["A_provisional_ir_sha256"]) == 64
+    rec = abx_kit.l4_ir_checks(l4_irs["A"], l4_irs["B"], t, l4_irs["diag"])
+    assert min(rec["2_ir"]["first_differing_tap"]) >= rec["2_ir"]["earliest_tail_fade_start_tap"]
+    assert rec["3_prefix"]["worst_db"] <= abx_kit.L4_PREFIX_DB
+    assert rec["4_step"]["max_abs_err_db"] <= abx_kit.L4_STEP_TOL_DB
+    assert set(rec["13_ghost"]["bands"]) == {"63", "125", "250", "500", "1000", "2000", "4000", "8000"}
+    assert rec["13_ghost"]["label"] == "noise-excitation (Schroeder) estimate"
+    assert -23.0 < rec["cut_depth_db"]["63"] < -20.0  # builder file 26: -21.7 dB in the T60_max band
+    print(f"L4 IR checks: prefix {rec['3_prefix']['worst_db']:.1f} dB, step error {rec['4_step']['max_abs_err_db']:.4f} "
+          f"dB, cut 63 Hz {rec['cut_depth_db']['63']:.2f} dB")
+
+
+@pytest.mark.parametrize("fault", ["tail_gain", "late_A"])
+def test_l4_ir_checks_red(l4_irs, fault: str) -> None:
+    """Red: a provisional IR whose tail is 1.2 dB hot fails the prefix (3); one that is not zero past L_p fails 5."""
+    A = l4_irs["A"].copy()
+    rec = abx_kit.l4_ir_checks(A, l4_irs["B"], l4_irs["timing"], l4_irs["diag"])
+    if fault == "tail_gain":
+        A[rec["2_ir"]["earliest_tail_fade_start_tap"] + 2000 :] *= np.float32(10 ** (1.2 / 20))
+        with pytest.raises(AssertionError, match="L4-D 3"):
+            abx_kit.l4_ir_checks(A, l4_irs["B"], l4_irs["timing"], l4_irs["diag"])
+    else:
+        A = np.concatenate([A, np.full((10, 4), 1e-3, np.float32)])
+        with pytest.raises(AssertionError, match="L4-D 5"):
+            abx_kit.l4_ir_checks(A, l4_irs["B"], l4_irs["timing"], l4_irs["diag"])
+
+
+def test_l4_build_stops_at_the_down_anchor(l4_irs, tmp_path: pathlib.Path) -> None:
+    """Finding (phase-07c-2b builder file 26): on the L4 scene E_target's specular share is about 0.83 in every band,
+    and render_cli --abx-step-db changes only the diffuse part, so the -3 dB anchor of L4-D cannot be built (render_cli
+    refuses any step below about -0.82 dB). The kit stops before rendering any stimulus; nothing is substituted. The
+    +3 dB step is buildable."""
+    with pytest.raises(RuntimeError, match="L4 anchor: the -3 dB tail step"):
+        abx_kit.build_l4(tmp_path / "l4", l4_irs["binary"], log=lambda *_: None, trials=1)
+    assert not (tmp_path / "l4" / "stimuli" / "A.wav").exists()
+    r = abx_kit.render_cli.run(l4_irs["binary"], "--scene", l4_irs["scene"], "--mode", "omni", "--abx-step-db", "-3",
+                               "--ir", tmp_path / "u.wav", "--abx-stepped-ir", tmp_path / "s.wav")
+    assert r.returncode == 1 and "negative diffuse energy" in r.stderr
+    out = abx_kit._run(l4_irs["binary"], "--scene", l4_irs["scene"], "--mode", "omni", "--abx-step-db", "3",
+                       "--ir", tmp_path / "u.wav", "--abx-stepped-ir", tmp_path / "s3.wav")
+    shares = abx_kit.parse_target_specular_share(out)
+    assert 0.80 < min(min(v) for v in shares.values()) and max(max(v) for v in shares.values()) < 0.85
+
+
+def test_l4_handover_demo_unscored(l4_irs, tmp_path: pathlib.Path) -> None:
+    """L4-D 14 (Seat 5 file 14 (vi)): the one unscored render; 'unscored' in the file name and the pack index; the
+    handover at the first partition boundary at or after t_r + L_p + 1 s; bit-identical run to run."""
+    from tools.ci import listening_pack
+
+    listening_pack.build(tmp_path / "pack", "phase-07c-2b", l4_irs["binary"])
+    pack = tmp_path / "pack" / "phase-07c-2b"
+    files = sorted(p.name for p in pack.iterdir())
+    assert files == ["L4_handover_demo_unscored.wav", "README.txt"]
+    index = (pack / "README.txt").read_text(encoding="utf-8")
+    assert "L4 handover demo (unscored; interim then handover, as at project load)" in index and "UNSCORED" in index
+    rec = abx_kit.l4_handover_demo(tmp_path / "again", l4_irs["binary"], log=lambda *_: None)
+    n, t_r = rec["handover_sample"], rec["release_sample"]
+    assert n % abx_kit.PARTITION == 0 and n >= t_r + (rec["L_p_s"] + 1.0) * 48000 > n - abx_kit.PARTITION
+    assert (pack / rec["file"]).read_bytes() == (tmp_path / "again" / rec["file"]).read_bytes()

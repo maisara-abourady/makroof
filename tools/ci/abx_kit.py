@@ -15,6 +15,11 @@ below, with its item.
     python tools/ci/abx_kit.py seal   --pack build/abx-07c-2/noise --session <dir> --key <file outside it>
     # scoring (items 3, 4, 13): refuses to unseal a 0.5 dB block unless 0.9 dB was detected in that chain
     python tools/ci/abx_kit.py score  --key <file> --responses <csv> --chain noise
+    # AX49 L4 (run sheet section 8): the held-chord provisional-against-exact pack (primary + pre-built rerun block),
+    # sealed and scored as above (--chain l4: the anchor first, a failed anchor's block never unsealed); before a
+    # session, l4-verify rebuilds A's and B's IRs and compares their SHA-256 (P8 item 4)
+    python tools/ci/abx_kit.py l4 --out build/abx-07c-2b/l4
+    python tools/ci/abx_kit.py l4-verify --pack build/abx-07c-2b/l4
 
 What is stepped (item 5): render_cli --abx-step-db g (validation only, like --no-air-absorption, AX4): a change
 of g dB in the tail energy, uniform across the 8 bands, from a second IrSet of the same StagedBuild through
@@ -46,12 +51,14 @@ from __future__ import annotations
 import argparse
 import copy
 import csv
+import functools
 import hashlib
 import io
 import json
 import math
 import os
 import pathlib
+import platform
 import secrets
 import sys
 import tempfile
@@ -1160,6 +1167,696 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
 
 
 # ---------------------------------------------------------------------------------------------------------
+# AX49 L4: held-chord ABX, provisional against exact tail (run sheet section 8)
+# ---------------------------------------------------------------------------------------------------------
+# Phase-07c-2b decider file 10 Part A (L4-S, L4-D 1-14, L4-T), interrogator file 13, Seat 5 file 14; decider file 17
+# (D1: a primary and a pre-built rerun block sealed together, the anchor scored first and a failed anchor voiding its
+# block unread; P1: the wording; P8: the void rule and the IR-hash record) and file 21 (P8-3: the manifest prints the
+# AX49 constants each stimulus was built with); builder file 15 (render_cli --provisional-ir, --provisional-timing,
+# --provisional-handover-sample; k = 0.84). Every stimulus is rendered by the shipped engine through render_cli; A
+# under the validation-only --provisional-ir flag ("provisional tail, validation-only flag"), B without it.
+
+L4_K = 0.84  # L4-S: every band's absorption x k; builder file 15 measured T60_max 7.9955 s at k = 0.84
+L4_T60_MAX_S, L4_T60_MAX_TOL_S = 8.0, 0.1  # L4-S: k is chosen so that T60_max = 8.0 +/- 0.1 s
+L4_TAIL_SEED = 106  # stone_box.json's tailSeed (L4-S)
+L4_SCORED, L4_ANCHORS, L4_BLOCK_TRIALS, L4_BREAK_AFTER = 16, 6, 22, 11  # L4-D trials
+L4_CRITERION = 12  # >= 12/16 (P1)
+L4_FAMILY_ALPHA_EXACT = 2517 / 65536  # P(K >= 12), K ~ Bin(16, 1/2) = 0.0384 (decider file 17, R-L1)
+L4_FAMILY_ALPHA = 0.038
+L4_POWER_AT_075 = 0.63
+L4_ANCHOR_DB, L4_ANCHOR_PASS = 3.0, 5  # B against B with the tail stepped +-3 dB; pass >= 5/6
+L4_BLOCKS = ("primary", "rerun")  # D1: both built and sealed together, before the session
+L4_KEY_SEEDS = {"primary": 7101, "rerun": 7102}  # each block's own seeded trial order and anchor positions (D1)
+L4_MAX_PEAK_DBFS = -3.0  # L4-D: peak <= -3 dBFS
+L4_SILENCE_MARGIN_S = 0.5  # L4-D: at least L + 0.5 s of silent input after the release
+L4_PREFIX_DB = 20.0 * math.log10(10.0 ** (1.0 / 20.0) - 1.0)  # AX47 (b): -18.27 dB
+L4_STEP_TOL_DB = 0.05  # L4-D 4
+L4_DECAY_MIN_DB = 18.7  # L4-D 7 (AX49)
+L4_SHARE_MAX = 0.0134  # L4-D 8: e^(-13.82 x 0.312) (AX49 K17')
+L4_GHOST_OFFSETS_S = (0.0, 1.0, 2.0, 5.0)  # L4-D 13: release + L_p + {0, 1, 2, 5} s
+L4_GHOST_LABEL = "noise-excitation (Schroeder) estimate"
+L4_DEMO_DELAY_S = 1.0  # L4-D 14: handover at the first partition boundary at or after t_r + L_p + 1 s
+L4_FLAG_NOTE = "provisional tail, validation-only flag"
+# AX49's provisional construction (P8 item 3, P8-3): the constants each stimulus is built with, printed per stimulus;
+# f, the fade and L's rule are checked against render_cli's --provisional-timing at every build.
+AX49_F = 0.312
+AX49_FADE_S = 0.1
+AX49_L_RULE = "L = min(1.5 T60_max, 12 s)"
+AX49_NORMALISATION = ("each band divided by sqrt(E_p,b / f_b), E_p,b its realised energy over [0, L_f), f_b = (1 - "
+                      "e^(-13.82 L_f / T60_b)) / (1 - e^(-13.82 L / T60_b)); never scaled up for the energy past L_p")
+ENERGY_DECAY_PER_T60 = 13.815510557964274  # tail::kEnergyDecayPerT60 = ln(10^6)
+TAIL_FADE_HALF_S = 0.0025  # tail::kCrossfadeHalfS: the ISM -> tail crossfade [t_mix - 2.5 ms, t_mix + 2.5 ms]
+
+# The chord (L4-D, Seat 1), versioned: deterministic additive synthesis, open voicing C2-G2-C3-E3-G3-C4 in equal
+# temperament (A4 = 440 Hz), harmonic partials up to 8 kHz tilted -3 dB/octave (amplitude n^-1/2 against the
+# fundamental), no vibrato, a 50 ms raised-cosine onset and a 10 ms raised-cosine release. Partial phases are fixed
+# by a seeded draw (a sum of zero-phase partials would peak needlessly). One fixed, recorded gain for every file.
+L4_CHORD_VERSION = 1
+L4_CHORD_MIDI = (36, 43, 48, 52, 55, 60)
+L4_CHORD_MAX_HZ = 8000.0
+L4_CHORD_TILT_DB_PER_OCT = -3.0
+L4_CHORD_ONSET_S, L4_CHORD_RELEASE_S = 0.050, 0.010
+L4_CHORD_PHASE_SEED = 4049
+L4_CHORD_GAIN_DB = -12.0  # the dry chord's peak level (dBFS), fixed for all files (L4-D "no normalisation")
+L4_LEAD_SAMPLES = LEAD_BLOCKS * PARTITION  # silent lead-in (also > the 30 ms anchor fade from sample 0)
+
+L4_LABEL = ("Long-decay test room, hard stone box with uniform absorption, T60_max 8 s; provisional-vs-exact tail test "
+            "(provisional tail, validation-only flag); not a validated preset")
+# L4-S's detail lines (Seat 9's template with Seat 2's wording); the fields are measured at build. Seat 9's D/R class
+# bands (phase-07c-2b review file 7-seat9): direct-dominated >= +3 dB, near-balanced between, tail-dominated <= -3 dB.
+L4_LABEL_DETAIL = (
+    "Geometry {dims} m, listener {listener}, emitters {emitters}; α = k × stone_box per band (k = {k}); s 0.1 "
+    "(early part specular only, AX21); tailSeed {seed}; {fs_khz:g} kHz; emitters {r} m away.",
+    "T60 per band {t60s} s; T60_max {t60max:.4f} s in band {t60max_band} Hz.",
+    "D/R at 1 kHz {drr_1k} dB against {drr_diffuse:+.1f} dB at r/r_c {r_over_rc:.2f} (Kuttruff Eq. 5.44, Sabine A "
+    "{sabine_a:.1f} m²). ᾱ ≈ {abar:.3f} (expected 0.04–0.07) is small, so §5.6's ᾱ caveat does not apply.",
+    "t_mix,e,max {mix:.5f} s, L_f {lf:.4f} s, L_p {lp:.4f} s and L {L:.3f} s.",
+    "Cut depth per band, 10·log10(E_B[L_f, L)/E_B[0, L)) on B's heard IR (dB): {cuts}; the chord's band energy "
+    "beside it (dB re its total): {chord_bands}.",
+    "The early reflections are identical in A and B.",
+    "Stimulus scene, not a room prediction.",
+    "Class: long-decay, {dr_class} (heard D/R {drr_heard:+.1f} dB), cut {cut:.1f} dB in the T60_max band",
+)
+
+
+def scene_stone_box_l4(k: float = L4_K) -> dict:
+    """L4-S: tests/scenes/valid/stone_box.json with every band's absorption times k (built as
+    tools/ci/test_provisional_flag.py's l4_scene builds it, so the timing it measured is this scene's)."""
+    scene = json.loads((REPO / "tests" / "scenes" / "valid" / "stone_box.json").read_text(encoding="utf-8"))
+    for surface in scene["room"]["surfaces"].values():
+        surface["absorption"] = [a * k for a in surface["absorption"]]
+    scene["extensions"] = {"notes": f"L4 (phase-07c-2b decider file 10): stone_box with absorption x {k}"}
+    return scene
+
+
+L4_SCENE = AbxScene("stone_box_l4", scene_stone_box_l4, L4_LABEL, L4_LABEL_DETAIL, "stone_box_l4.json")
+
+
+def dr_class(drr_db: float) -> str:
+    """Seat 9's D/R class (review file 7-seat9, 'Class bands'), applied to the measured heard D/R."""
+    if drr_db >= 3.0:
+        return "direct-dominated"
+    if drr_db > -3.0:
+        return "near-balanced"
+    return "tail-dominated"
+
+
+def fill_l4_label(entry: AbxScene, values: dict) -> list[str]:
+    """The L4 detail lines with the measured values; refuses a template without a Class line (D-M3e) and any field
+    left unfilled."""
+    require_class_line(entry)
+    lines = [t.format(**values) for t in entry.label_detail]
+    left = [x for x in lines if "{" in x or "[measured" in x]
+    if left:
+        raise RuntimeError(f"L4 label lines left unfilled: {left}")
+    return lines
+
+
+@functools.lru_cache(maxsize=4)
+def engine_band_firs(fs: float) -> tuple[tuple[np.ndarray, ...], int]:
+    """sim::ism::OctaveFilterbank (src/sim/ism/BandRenderer.cpp) in numpy: 7 linear-phase Kaiser-windowed-sinc
+    low-passes at sqrt(2) x the band centres (transition +-1/8 octave, 80 dB stopband), complementary band filters
+    B_b = P_b - P_(b-1), centred, length 2 maxHalf + 1. The filterbank the tail generator and the ISM use, and the
+    one tests/unit/test_interim.cpp splits the AX47 (b) prefix with; h = 2 maxHalf (generator + analysis)."""
+    stop_db, trans_oct = 80.0, 0.125
+    beta = 0.1102 * (stop_db - 8.7)
+    lows = []
+    for fc in bands.OCTAVE_BANDS_HZ[:-1]:
+        fx = bands.exact_centre_hz(fc) * math.sqrt(2.0)
+        transition = fx * (2.0**trans_oct - 2.0**-trans_oct)
+        taps = int(math.ceil((stop_db - 8.0) / (2.285 * (2.0 * math.pi * transition / fs))))
+        half = (taps + 1) // 2
+        m = np.arange(-half, half + 1, dtype=np.float64)
+        window = np.i0(beta * np.sqrt(np.maximum(0.0, 1.0 - (m / half) ** 2))) / np.i0(beta)
+        wc = 2.0 * fx / fs
+        h = wc * np.sinc(wc * m) * window
+        lows.append(h / np.sum(h))
+    max_half = max((len(h) - 1) // 2 for h in lows)
+    out = []
+    for b in range(len(bands.OCTAVE_BANDS_HZ)):
+        f = np.zeros(2 * max_half + 1)
+        for k, sign in ((b, 1.0), (b - 1, -1.0)):
+            if 0 <= k < len(lows):
+                off = max_half - (len(lows[k]) - 1) // 2
+                f[off : off + len(lows[k])] += sign * lows[k]
+        if b == len(lows):
+            f[max_half] += 1.0
+        out.append(f)
+    return tuple(out), max_half
+
+
+def engine_bands(x: np.ndarray, fs: float) -> list[np.ndarray]:
+    """x split into the engine's 8 bands (centred, so zero-phase; the output has x's length)."""
+    firs, half = engine_band_firs(float(fs))
+    x = np.asarray(x, dtype=np.float64)
+    return [sps.oaconvolve(x, h)[half : half + len(x)] for h in firs]
+
+
+def l4_chord(hold_samples: int, total_samples: int, fs: int = FS) -> tuple[np.ndarray, dict]:
+    """The L4 chord (L4_CHORD_*), starting at L4_LEAD_SAMPLES: the 50 ms onset and the steady part fill the hold H
+    (onset start to release start), then the 10 ms release; zeros to `total_samples`. Peak = L4_CHORD_GAIN_DB."""
+    rng = np.random.default_rng(L4_CHORD_PHASE_SEED)
+    n_on, n_rel = int(round(L4_CHORD_ONSET_S * fs)), int(round(L4_CHORD_RELEASE_S * fs))
+    n = hold_samples + n_rel
+    t = np.arange(n, dtype=np.float64) / fs
+    y = np.zeros(n)
+    partials = []
+    for midi in L4_CHORD_MIDI:
+        f0 = 440.0 * 2.0 ** ((midi - 69) / 12.0)
+        for h in range(1, int(L4_CHORD_MAX_HZ // f0) + 1):
+            amp = 10.0 ** (L4_CHORD_TILT_DB_PER_OCT * math.log2(h) / 20.0)
+            y += amp * np.sin(2.0 * np.pi * h * f0 * t + rng.uniform(0.0, 2.0 * np.pi))
+            partials.append(h * f0)
+    env = np.ones(n)
+    env[:n_on] = 0.5 * (1.0 - np.cos(np.pi * (np.arange(n_on) + 0.5) / n_on))
+    env[hold_samples:] = 0.5 * (1.0 + np.cos(np.pi * (np.arange(n_rel) + 0.5) / n_rel))
+    y *= env
+    y *= signals.db_to_amp(L4_CHORD_GAIN_DB) / np.max(np.abs(y))
+    x = np.zeros(total_samples)
+    x[L4_LEAD_SAMPLES : L4_LEAD_SAMPLES + n] = y
+    rec = {"version": L4_CHORD_VERSION, "midi": list(L4_CHORD_MIDI), "notes": "C2 G2 C3 E3 G3 C4 (equal-tempered, A4 440 Hz)",
+           "partials": len(partials), "max_partial_hz": max(partials), "tilt_db_per_octave": L4_CHORD_TILT_DB_PER_OCT,
+           "onset_s": L4_CHORD_ONSET_S, "release_s": L4_CHORD_RELEASE_S, "phase_seed": L4_CHORD_PHASE_SEED,
+           "gain": f"dry peak {L4_CHORD_GAIN_DB} dBFS, one fixed gain for every file (no normalisation)",
+           "lead_samples": L4_LEAD_SAMPLES, "hold_samples": hold_samples, "release_start_sample": L4_LEAD_SAMPLES + hold_samples,
+           "release_end_sample": L4_LEAD_SAMPLES + n, "total_samples": total_samples}
+    return x, rec
+
+
+def _ir_band_energies(h: np.ndarray, fs: float, start: int, stop: int) -> list[float]:
+    """Per engine band, the energy of the IR gated to [start, stop) (the gate applied before the band split)."""
+    g = np.zeros(len(h))
+    g[start:stop] = h[start:stop]
+    return [float(np.sum(b**2)) for b in engine_bands(g, fs)]
+
+
+def _band_dict(values) -> dict[str, float]:
+    return {bands.band_key(fc): float(v) for fc, v in zip(bands.OCTAVE_BANDS_HZ, values)}
+
+
+def l4_ir_checks(A: np.ndarray, B: np.ndarray, timing: dict, diag: dict) -> dict:
+    """L4-D's IR-level assertions on A (the provisional IR, --provisional-ir --ir) and B (the exact IR, --ir), float32
+    arrays (taps x 4: emitter e, output o at column 2e + o). Times are emission times; IR tap n is emission time
+    n/fs + alignmentShiftS (unit-decay index n + offset, offset = round(shift fs)).
+    2. A and B bit-identical before the earliest tail crossfade start (t_mix,e - 2.5 ms, the earliest emitter);
+    3. per emitter and band, 10 log10(E(A - B)/E(B)) <= -18.27 dB over [t_mix,e, L_f - h), h = 2 maxHalf of the
+       engine filterbank (the prefix split as tests/unit/test_interim.cpp splits it);
+    4. per emitter and band, the A/B energy over [t_mix,e,max + 2.5 ms, L_f) equals AX47 (b)'s step,
+       +10 log10(1 + (1 - f_b) delta_b) (A against B; the provisional-to-exact step is its negative), within 0.05 dB,
+       delta_b the realised remainder's deviation measured on B (below);
+    5. A is zero from L_p on; 6. B is L long; 7. the decay from t_mix,e,max to L_f, 60 (L_f - t_mix,e,max)/T60_b,
+    is >= 18.7 dB in every band (B's Schroeder drop printed beside it); 8. B's share past L_f <= 0.0134 per band."""
+    fs = float(timing["sampleRate"])
+    shift = float(diag["alignmentShiftS"])
+    offset = int(round(shift * fs))
+    lf_unit = int(math.ceil(timing["fadeStartS"] * fs))
+    lp_unit = int(math.ceil(timing["endS"] * fs))
+    l_unit = int(math.ceil(timing["exactS"] * fs))
+    lf_tap, lp_tap, l_tap = lf_unit - offset, lp_unit - offset, l_unit - offset
+    mixes = [float(e["mixS"]) for e in diag["emitters"]]
+    mix_max = float(timing["mixMaxS"])
+    assert abs(mix_max - max(mixes)) <= 1e-12, (mix_max, mixes)
+    firs, half = engine_band_firs(fs)
+    h_prefix = 2 * half
+    t60 = [float(v) for v in timing["bandsT60S"]]
+    rec: dict = {"alignment_shift_s": shift, "offset_samples": offset, "lf_tap": lf_tap, "lp_tap": lp_tap, "l_tap": l_tap,
+                 "h_samples": h_prefix, "engine_filterbank_max_half": half}
+    # 2. the first tap with a tail weight > 0 per emitter: n/fs + shift > t_mix,e - 2.5 ms
+    fade_starts = [int(math.floor((m - TAIL_FADE_HALF_S - shift) * fs)) + 1 for m in mixes]
+    k0 = min(fade_starts)
+    first = []
+    for c in range(A.shape[1]):
+        n = min(len(A), len(B))
+        d = np.flatnonzero(A[:n, c].view(np.uint32) != B[:n, c].view(np.uint32))
+        first.append(int(d[0]) if d.size else n)
+    rec["2_ir"] = {"earliest_tail_fade_start_tap": k0, "tail_fade_start_taps": fade_starts, "first_differing_tap": first}
+    assert min(first) >= k0, f"L4-D 2: A and B differ at tap {min(first)} < the earliest tail fade start {k0}"
+    # 3. prefix
+    prefix = []
+    for e, m in enumerate(mixes):
+        c = 2 * e
+        frm = int(round((m - shift) * fs))
+        to = int(round((timing["fadeStartS"] - shift) * fs)) - h_prefix
+        assert to > frm, (frm, to)
+        n = to + half
+        ab, bb = engine_bands(A[:n, c].astype(np.float64), fs), engine_bands(B[:n, c].astype(np.float64), fs)
+        row = {}
+        for i, fc in enumerate(bands.OCTAVE_BANDS_HZ):
+            diff = float(np.sum((ab[i][frm:to] - bb[i][frm:to]) ** 2))
+            ref = float(np.sum(bb[i][frm:to] ** 2))
+            row[bands.band_key(fc)] = 10 * math.log10(max(diff, 1e-300) / ref)
+        prefix.append({"emitter": e, "from_tap": frm, "to_tap": to, "db": row})
+        worst = max(row.values())
+        assert worst <= L4_PREFIX_DB, f"L4-D 3 (prefix): emitter {e} {row} > {L4_PREFIX_DB:.2f} dB"
+    rec["3_prefix"] = {"bound_db": L4_PREFIX_DB, "rows": prefix,
+                       "worst_db": max(max(r["db"].values()) for r in prefix)}
+    # 4. the A/B step over [t_mix,e,max + 2.5 ms, L_f) against AX47 (b)'s prediction
+    w0 = int(math.ceil((mix_max + TAIL_FADE_HALF_S - shift) * fs))
+    t0_em = (w0 + offset) / fs  # the window start as emission time (unit-decay index / fs)
+    lf_em, l_em = lf_unit / fs, l_unit / fs
+    steps = []
+    for e in range(len(mixes)):
+        c = 2 * e
+        a, b = A[:, c].astype(np.float64), B[:, c].astype(np.float64)
+        ea, eb = _ir_band_energies(a, fs, w0, lf_tap), _ir_band_energies(b, fs, w0, lf_tap)
+        rb = _ir_band_energies(b, fs, lf_tap, len(b))
+        row = {}
+        for i, fc in enumerate(bands.OCTAVE_BANDS_HZ):
+            k = ENERGY_DECAY_PER_T60 / t60[i]
+            norm = 1.0 - math.exp(-k * l_em)
+            f_b = (1.0 - math.exp(-k * timing["fadeStartS"])) / (1.0 - math.exp(-k * timing["exactS"]))
+            p0_model = (1.0 - math.exp(-k * t0_em)) / norm
+            w_model = (math.exp(-k * t0_em) - math.exp(-k * lf_em)) / norm
+            p0_est = eb[i] * p0_model / w_model  # [0, t0) is masked by the early part: taken at the model's share
+            rho = (p0_est + eb[i]) / (p0_est + eb[i] + rb[i])  # B's realised share of its decay over [0, L_f)
+            # 1 + (1 - f_b) delta = f_b / rho; delta is printed only where the remainder is not negligible
+            predicted = 10 * math.log10(f_b / rho)
+            delta = (f_b / rho - 1.0) / (1.0 - f_b) if 1.0 - f_b >= 1e-6 else None
+            measured = 10 * math.log10(ea[i] / eb[i])
+            row[bands.band_key(fc)] = {"measured_db": measured, "predicted_db": predicted, "err_db": measured - predicted,
+                                       "f_b": f_b, "delta": delta, "provisional_to_exact_step_db": -predicted}
+            assert abs(measured - predicted) <= L4_STEP_TOL_DB, \
+                f"L4-D 4: emitter {e} band {fc}: A/B {measured:+.4f} dB against AX47 (b)'s {predicted:+.4f} dB"
+        steps.append({"emitter": e, "window_taps": [w0, lf_tap], "bands": row})
+    rec["4_step"] = {"tol_db": L4_STEP_TOL_DB, "window_emission_s": [t0_em, lf_em], "rows": steps,
+                     "max_abs_err_db": max(abs(b["err_db"]) for r in steps for b in r["bands"].values())}
+    # 5. A is zero from L_p on
+    nz = np.flatnonzero(np.any(A != 0.0, axis=1))
+    a_last = int(nz[-1]) if nz.size else -1
+    rec["5_A_zero_from_Lp"] = {"A_length": len(A), "last_nonzero_tap": a_last, "lp_tap": lp_tap}
+    assert a_last < lp_tap and len(A) <= lp_tap, f"L4-D 5: A nonzero at tap {a_last} >= L_p tap {lp_tap}"
+    # 6. B is L long
+    nzb = np.flatnonzero(np.any(B != 0.0, axis=1))
+    rec["6_B_length"] = {"B_length": len(B), "l_tap": l_tap, "B_length_s_emission": (len(B) + offset) / fs,
+                         "L_s": timing["exactS"], "last_nonzero_tap": int(nzb[-1])}
+    assert len(B) == l_tap and int(nzb[-1]) >= l_tap - int(0.01 * fs), f"L4-D 6: B is not L long: {rec['6_B_length']}"
+    # 7. the decay from t_mix,e,max to L_f
+    heard_b = B[:, 0].astype(np.float64) + B[:, 2].astype(np.float64)
+    bb = engine_bands(heard_b, fs)
+    mix_tap = int(round((mix_max - shift) * fs))
+    decay = {}
+    for i, fc in enumerate(bands.OCTAVE_BANDS_HZ):
+        model = 60.0 * (timing["fadeStartS"] - mix_max) / t60[i]
+        edc = np.cumsum((bb[i] ** 2)[::-1])[::-1]
+        drop = 10 * math.log10(edc[mix_tap] / edc[lf_tap])
+        decay[bands.band_key(fc)] = {"model_db": model, "B_schroeder_drop_db": drop}
+        assert model >= L4_DECAY_MIN_DB, f"L4-D 7: band {fc}: decay {model:.2f} dB < {L4_DECAY_MIN_DB} dB"
+    rec["7_decay"] = {"min_db": L4_DECAY_MIN_DB, "bands": decay}
+    # 8. B's share past L_f, per emitter and band (and the heard IR); the cut depth is its log (label line 5)
+    share = {}
+    for name, h in (("emitter_0", B[:, 0]), ("emitter_1", B[:, 2]), ("heard", heard_b)):
+        hb = engine_bands(np.asarray(h, dtype=np.float64), fs) if name != "heard" else bb
+        share[name] = _band_dict(float(np.sum(x[lf_tap:] ** 2) / np.sum(x**2)) for x in hb)
+        worst = max(share[name].values())
+        assert worst <= L4_SHARE_MAX, f"L4-D 8: B's share past L_f {share[name]} > {L4_SHARE_MAX} ({name})"
+    rec["8_share_past_Lf"] = {"max": L4_SHARE_MAX, **share}
+    rec["cut_depth_db"] = {k: 10 * math.log10(v) for k, v in share["heard"].items()}
+    # 13. the ghost print (print only): the re-onset level, re steady state, from B's backward-integrated curve at
+    # release + L_p + {0, 1, 2, 5} s (Kuttruff Eq. 8.29: after an interrupted steady excitation the decay is the
+    # backward-integrated IR)
+    ghost = {}
+    for i, fc in enumerate(bands.OCTAVE_BANDS_HZ):
+        edc = np.cumsum((bb[i] ** 2)[::-1])[::-1]
+        row = {}
+        for dt in L4_GHOST_OFFSETS_S:
+            tap = int(round((timing["endS"] + dt) * fs))
+            row[f"+{dt:g}s"] = 10 * math.log10(edc[tap] / edc[0]) if tap < len(edc) and edc[tap] > 0 else None
+        ghost[bands.band_key(fc)] = row
+    rec["13_ghost"] = {"label": L4_GHOST_LABEL, "print_only": True,
+                       "basis": "B's heard IR (emitters L + R), dB re the steady state, at release + L_p + dt",
+                       "bands": ghost}
+    return rec
+
+
+def l4_anchor_feasibility(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Path) -> dict:
+    """L4-D's anchor is B against B with the tail stepped +-3 dB through render_cli --abx-step-db, which changes only
+    the diffuse part of E_target (`useDiffuseLevel`): a step of g < 0 needs E_target's specular share <= 10^(g/10)
+    in every band of every emitter, else render_cli refuses ("would need a negative diffuse energy"). Checked before
+    any stimulus is rendered; the kit stops if the -3 dB anchor cannot be built (nothing is substituted)."""
+    u, s = work / "anchor_check_u.wav", work / "anchor_check_s.wav"
+    stdout = _run(binary, "--scene", scene_path, "--mode", "omni", "--abx-step-db", repr(L4_ANCHOR_DB), "--ir", u,
+                  "--abx-stepped-ir", s)
+    shares = parse_target_specular_share(stdout)
+    worst = max(max(v) for v in shares.values())
+    need = 10.0 ** (-L4_ANCHOR_DB / 10.0)
+    rec = {"target_specular_share": shares, "max_share": worst, "max_share_for_down_step": need,
+           "largest_feasible_down_step_db": 10.0 * math.log10(worst)}
+    if worst > need:
+        raise RuntimeError(
+            f"L4 anchor: the -{L4_ANCHOR_DB:g} dB tail step (--abx-step-db -{L4_ANCHOR_DB:g}) cannot be built on the L4 "
+            f"scene: E_target's specular share is up to {worst:.4f} (> {need:.4f} = 10^(-0.3)), and --abx-step-db "
+            f"scales only the diffuse part, so render_cli refuses any step below {rec['largest_feasible_down_step_db']:.3f} "
+            "dB. The +3 dB anchor is buildable. The kit stops: the L4-D anchor (3 up, 3 down) is impossible as written "
+            "(back to the decider; nothing substituted)")
+    return rec
+
+
+def l4_trial_plan(block: str) -> list[dict]:
+    """One L4 block (L4-D): 16 scored trials (A provisional, B exact) and 6 anchor trials (3 up, 3 down: A = B with
+    the tail stepped +-3 dB, B = B) at seeded positions; 22 trials, a break after trial 11. Each block has its own
+    seed (D1: its own trial order and anchor positions); X is drawn at sealing from the block's own key."""
+    rng = np.random.default_rng([L4_KEY_SEEDS[block], 49])
+    anchors = [+1] * (L4_ANCHORS // 2) + [-1] * (L4_ANCHORS - L4_ANCHORS // 2)
+    rng.shuffle(anchors)
+    slots = sorted(rng.choice(L4_BLOCK_TRIALS, size=L4_ANCHORS, replace=False).tolist())
+    plan, ai = [], 0
+    for t in range(L4_BLOCK_TRIALS):
+        if t in slots:
+            g = anchors[ai] * L4_ANCHOR_DB
+            ai += 1
+            plan.append({"trial": t + 1, "kind": "anchor", "g_db": g, "A": "anchor_up" if g > 0 else "anchor_down",
+                         "B": "B", "break_after": t + 1 == L4_BREAK_AFTER})
+        else:
+            plan.append({"trial": t + 1, "kind": "scored", "g_db": None, "A": "A", "B": "B",
+                         "break_after": t + 1 == L4_BREAK_AFTER})
+    assert ai == L4_ANCHORS and sum(t["kind"] == "scored" for t in plan) == L4_SCORED
+    return plan
+
+
+def _platform() -> str:
+    return f"{sys.platform} {platform.machine()}"
+
+
+def l4_ir_hashes(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Path) -> tuple[dict, pathlib.Path, pathlib.Path]:
+    """P8 item 4: A's IR (render_cli --provisional-ir --ir) and B's IR (--ir) on the L4 scene, their SHA-256 and the
+    platform (AX5: bit-identity holds on one platform only)."""
+    a_ir, b_ir = work / "A_provisional_ir.wav", work / "B_exact_ir.wav"
+    _run(binary, "--scene", scene_path, "--mode", "omni", "--provisional-ir", "--ir", a_ir)
+    _run(binary, "--scene", scene_path, "--mode", "omni", "--ir", b_ir)
+    return ({"A_provisional_ir_sha256": sha256_file(a_ir), "B_exact_ir_sha256": sha256_file(b_ir),
+             "A_command": "render_cli --scene <L4 scene> --mode omni --provisional-ir --ir A.wav",
+             "B_command": "render_cli --scene <L4 scene> --mode omni --ir B.wav", "platform": _platform(),
+             "render_cli_sha256": sha256_file(binary)}, a_ir, b_ir)
+
+
+def l4_verify(pack: pathlib.Path, binary: pathlib.Path, log=print) -> dict:
+    """P8 item 4, before a session: rebuilds A's and B's IRs from the pack's scene on this platform and compares
+    their SHA-256 with the manifest's. Any mismatch (or another platform) voids the sealed L4 stimuli."""
+    manifest = json.loads((pack / "manifest.json").read_text())
+    rec = manifest["ir_hashes"]
+    scene_path = pack / manifest["scene"]["file_in_pack"]
+    if sha256_file(scene_path) != manifest["scene"]["scene_sha256"]:
+        raise RuntimeError(f"{scene_path}: SHA-256 differs from the manifest's")
+    with tempfile.TemporaryDirectory() as tmp:
+        now, _, _ = l4_ir_hashes(binary, scene_path, pathlib.Path(tmp))
+    out = {"platform_sealed": rec["platform"], "platform_now": now["platform"],
+           "A_match": now["A_provisional_ir_sha256"] == rec["A_provisional_ir_sha256"],
+           "B_match": now["B_exact_ir_sha256"] == rec["B_exact_ir_sha256"]}
+    out["platform_match"] = out["platform_sealed"] == out["platform_now"]
+    out["void"] = not (out["A_match"] and out["B_match"] and out["platform_match"])
+    out["verdict"] = ("VOID (P8 item 4): rebuild, rerun section 8's assertions 1-13, L4-P's tests 1-8 and Seat 9's label "
+                      "check, then reseal" if out["void"] else "hashes match: the sealed L4 stimuli stand")
+    log(json.dumps(out, indent=1))
+    return out
+
+
+def _l4_render(binary, scene_path, prog_path, out_path, provisional: bool = False, step_db: float | None = None,
+               extra: tuple = ()) -> np.ndarray:
+    args = ["--scene", scene_path, "--mode", "omni", "--in", prog_path, "--out", out_path, "--realtime-emulation",
+            "--block", BLOCK, "--partition", PARTITION, *extra]
+    if provisional:
+        args.append("--provisional-ir")
+    if step_db is not None:
+        args += ["--abx-step-db", repr(float(step_db)), "--abx-step-sample", 0]
+    _run(binary, *args)
+    return wav.read_float32(out_path)[0]
+
+
+def _link_or_copy(src: pathlib.Path, dst: pathlib.Path) -> None:
+    import shutil
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if dst.exists():
+        dst.unlink()
+    try:
+        os.link(src, dst)
+    except OSError:
+        shutil.copyfile(src, dst)
+
+
+def k6_l4(stim_s: float, fam_files: int, trials_per_block: int = L4_BLOCK_TRIALS) -> dict:
+    """K6 on the L4 stimuli (L4-T; decider file 21, D1 corrections): builder file 32's pace model (plays x stimulus
+    length + overhead per trial, a 2 min break per block, familiarisation f plays of each labelled file), for the
+    primary block alone and for the worst case primary + rerun. Audio floor: every file heard once, no overhead."""
+    paces = {"brisk": (3, 5.0, 1), "typical": (5, 8.0, 2), "slow": (8, 10.0, 3)}
+    out = {"stimulus_s": stim_s, "audio_floor_min_per_block": trials_per_block * 3 * stim_s / 60.0}
+    for name, (plays, overhead, f) in paces.items():
+        block = (trials_per_block * (plays * stim_s + overhead) + 120.0) / 60.0
+        fam = f * fam_files * stim_s / 60.0
+        out[name] = {"block_min": block, "familiarisation_min": fam, "primary_min": fam + block,
+                     "primary_plus_rerun_min": fam + 2 * block}
+    return out
+
+
+def build_l4(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | None = None) -> dict:
+    """The AX49 L4 pack (run sheet section 8): the scene (committed JSON, asserted equal to its builder), A and B
+    rendered from the chord, the anchors, the IR- and stimulus-level assertions 1-13, the two blocks (primary and
+    pre-built rerun) and the familiarisation pairs, the manifest (P8 items 3-4). `trials` limits each block (tests)."""
+    import time
+
+    t_start = time.monotonic()
+    entry = L4_SCENE
+    require_class_line(entry)  # D-M3e: before anything is rendered
+    out.mkdir(parents=True, exist_ok=True)
+    scene_path = write_scene(entry, out / scene_file_name(entry.name))
+    work = out / "_work"
+    work.mkdir(exist_ok=True)
+    scene = json.loads(scene_path.read_text())
+    # L4-S: provisional, L_p < L, T60_max 8.0 +/- 0.1 s; the AX49 constants as built (P8-3)
+    tpath = work / "timing.json"
+    stdout = _run(binary, "--scene", scene_path, "--mode", "omni", "--provisional-ir", "--provisional-timing", tpath)
+    assert L4_FLAG_NOTE in stdout, stdout  # L4-D 1: render_cli prints it
+    timing = json.loads(tpath.read_text())
+    assert timing["validationOnly"] == L4_FLAG_NOTE and timing["provisional"] is True, timing
+    assert timing["endS"] < timing["exactS"], f"L4-S: L_p {timing['endS']} >= L {timing['exactS']}"
+    assert abs(timing["t60MaxS"] - L4_T60_MAX_S) <= L4_T60_MAX_TOL_S, f"L4-S: T60_max {timing['t60MaxS']} s"
+    assert int(timing["sampleRate"]) == FS
+    constants = {"f": (timing["fadeStartS"] - timing["mixMaxS"]) / timing["t60MaxS"],
+                 "fade_s": timing["endS"] - timing["fadeStartS"],
+                 "L_over_rule": timing["exactS"] / min(1.5 * timing["t60MaxS"], 12.0)}
+    assert abs(constants["f"] - AX49_F) <= 1e-9 and abs(constants["fade_s"] - AX49_FADE_S) <= 1e-9 \
+        and abs(constants["L_over_rule"] - 1.0) <= 1e-9, f"AX49 constants differ from the kit's (P8 item 3): {constants}"
+    ax49 = {"f": AX49_F, "fade_s": AX49_FADE_S, "normalisation": AX49_NORMALISATION, "L_rule": AX49_L_RULE,
+            "checked_against_provisional_timing": constants}
+    log(f"l4: {L4_FLAG_NOTE}; k {L4_K}; t_mix,e,max {timing['mixMaxS']:.5f} s, T60_max {timing['t60MaxS']:.4f} s, "
+        f"L_f {timing['fadeStartS']:.4f} s, L_p {timing['endS']:.4f} s, L {timing['exactS']:.4f} s; T60 per band "
+        + " ".join(f"{v:.4f}" for v in timing["bandsT60S"]) + " s")
+    # B's diagnostics (alignment, t_mix,e, direct times), then the IRs by the plain P8 commands
+    dpath = work / "diag.json"
+    _run(binary, "--scene", scene_path, "--mode", "omni", "--diagnostics", dpath)
+    diag = json.loads(dpath.read_text())
+    hashes, a_ir_path, b_ir_path = l4_ir_hashes(binary, scene_path, work)
+    a_ir, b_ir = wav.read_float32(a_ir_path)[0], wav.read_float32(b_ir_path)[0]
+    (work / "rebuild").mkdir(exist_ok=True)
+    hashes2, _, _ = l4_ir_hashes(binary, scene_path, work / "rebuild")
+    assert hashes2 == hashes, "L4-D 12: two IR builds differ"
+    irc = l4_ir_checks(a_ir, b_ir, timing, diag)
+    log(f"l4: IR checks: first differing tap {min(irc['2_ir']['first_differing_tap'])} >= earliest tail fade start "
+        f"{irc['2_ir']['earliest_tail_fade_start_tap']}; prefix worst {irc['3_prefix']['worst_db']:.1f} dB "
+        f"(<= {L4_PREFIX_DB:.2f}); step error max {irc['4_step']['max_abs_err_db']:.4f} dB (<= {L4_STEP_TOL_DB}); "
+        f"A last nonzero tap {irc['5_A_zero_from_Lp']['last_nonzero_tap']} < L_p tap {irc['lp_tap']}; B length "
+        f"{irc['6_B_length']['B_length']} = L tap {irc['l_tap']}; share past L_f (heard, max) "
+        f"{max(irc['8_share_past_Lf']['heard'].values()):.5f} (<= {L4_SHARE_MAX})")
+    # Scene facts for the label (L4-S): D/R at 1 kHz per emitter and heard (AX13), r/r_c (Kuttruff Eq. 5.44 with
+    # Sabine A from the engine's 1 kHz T60), the surfaces' mean alpha at 1 kHz
+    dims = scene["room"]["geometry"]["dimensions"]
+    volume = dims[0] * dims[1] * dims[2]
+    area = 2 * (dims[0] * dims[1] + dims[0] * dims[2] + dims[1] * dims[2])
+    face_area = {"floor": dims[0] * dims[1], "ceiling": dims[0] * dims[1], "xMin": dims[1] * dims[2],
+                 "xMax": dims[1] * dims[2], "yMin": dims[0] * dims[2], "yMax": dims[0] * dims[2]}
+    abar = sum(face_area[f] * s["absorption"][4] for f, s in scene["room"]["surfaces"].items()) / area
+    assert 0.04 <= abar <= 0.07, f"L4-S label: mean alpha {abar} outside the expected 0.04-0.07"
+    t60_1k = float(timing["bandsT60S"][4])
+    sabine_a = 0.161 * volume / t60_1k
+    rc = math.sqrt(sabine_a / (16.0 * math.pi))
+    lst = np.asarray(scene["listener"]["position"])
+    r = [float(np.linalg.norm(np.asarray(em["position"]) - lst)) for em in scene["emitters"]]
+    drr = [metrics.room_metrics(b_ir[:, 2 * e].astype(np.float64), FS)["bands"]["1000"].get("DRR") for e in range(2)]
+    heard_b = b_ir[:, 0].astype(np.float64) + b_ir[:, 2].astype(np.float64)
+    drr_heard = metrics.room_metrics(heard_b, FS)["bands"]["1000"].get("DRR")
+    if drr_heard is None or any(x is None for x in drr):
+        raise RuntimeError(f"L4-S label: D/R at 1 kHz not measured ({drr}, heard {drr_heard})")
+    t60s = [float(v) for v in timing["bandsT60S"]]
+    i_max = int(np.argmax(t60s))
+    band_max = bands.band_key(bands.OCTAVE_BANDS_HZ[i_max])
+    # the chord's band energy (dry, engine bands) beside the cut depth (label line 5)
+    hold = max(int(math.ceil(timing["endS"] * FS)), int(math.ceil(0.5 * timing["t60MaxS"] * FS)))
+    n_rel = int(round(L4_CHORD_RELEASE_S * FS))
+    silence = int(math.ceil((timing["exactS"] + L4_SILENCE_MARGIN_S) * FS))
+    total = -(-(L4_LEAD_SAMPLES + hold + n_rel + silence) // PARTITION) * PARTITION
+    x, chord = l4_chord(hold, total)
+    cb = [float(np.sum(b**2)) for b in engine_bands(x, FS)]
+    chord["band_energy_db_re_total"] = _band_dict(10 * math.log10(v / sum(cb)) for v in cb)
+    chord["band_energy_dbfs_samples"] = _band_dict(10 * math.log10(v) for v in cb)
+    chord["hold_rule"] = "H = max(L_p, 0.5 T60_max)"
+    chord["hold_s"] = hold / FS
+    values = {"dims": " × ".join(f"{d:g}" for d in dims), "listener": tuple(scene["listener"]["position"]),
+              "emitters": " and ".join(str(tuple(e["position"])) for e in scene["emitters"]), "k": L4_K,
+              "seed": scene["render"]["tailSeed"], "fs_khz": FS / 1000, "r": " / ".join(f"{x:.2f}" for x in r),
+              "t60s": " ".join(f"{bands.band_key(fc)}: {v:.3f}" for fc, v in zip(bands.OCTAVE_BANDS_HZ, t60s)),
+              "t60max": timing["t60MaxS"], "t60max_band": band_max,
+              "drr_1k": " / ".join(f"{v:+.1f}" for v in drr) + f" (heard L + R {drr_heard:+.1f})",
+              "drr_diffuse": 20 * math.log10(rc / r[0]), "r_over_rc": r[0] / rc, "sabine_a": sabine_a, "abar": abar,
+              "mix": timing["mixMaxS"], "lf": timing["fadeStartS"], "lp": timing["endS"], "L": timing["exactS"],
+              "cuts": ", ".join(f"{k}: {v:.1f}" for k, v in irc["cut_depth_db"].items()),
+              "chord_bands": ", ".join(f"{k}: {v:.1f}" for k, v in chord["band_energy_db_re_total"].items()),
+              "dr_class": dr_class(drr_heard), "drr_heard": drr_heard, "cut": irc["cut_depth_db"][band_max]}
+    label_detail = fill_l4_label(entry, values)
+    class_line = next(x for x in label_detail if x.startswith("Class: "))
+    sc = {"name": entry.name, "label": entry.label, "label_detail": label_detail, "class": class_line,
+          "seat9_label_check": "Seat 9 confirms the label before the seal (L4-S)",
+          "scene_file": entry.committed.relative_to(REPO).as_posix(), "file_in_pack": scene_path.name,
+          "scene_sha256": sha256_file(scene_path), "k": L4_K, "tailSeed": scene["render"]["tailSeed"],
+          "timing": timing, "T60_max_band": band_max, "volume_m3": volume, "surface_m2": area,
+          "mean_alpha_1k": abar, "sabine_A_1k_m2": sabine_a, "A_over_S_1k": sabine_a / area, "r_c_m": rc, "r_m": r,
+          "r_over_rc": [x / rc for x in r], "DRR_1k_db": drr, "DRR_1k_heard_db": drr_heard,
+          "DRR_diffuse_db": [20 * math.log10(rc / x) for x in r], "cut_depth_db": irc["cut_depth_db"],
+          "cut_depth_T60max_band_db": irc["cut_depth_db"][band_max]}
+    for line in label_detail:
+        log(f"l4 label: {line}")
+
+    anchor_rec = l4_anchor_feasibility(binary, scene_path, work)
+    # Stimuli (L4-D): A provisional, B exact, the anchors B with the tail +-3 dB from sample 0; each rendered twice
+    # (L4-D 12), then cut to the input's length after asserting that nothing follows it (the whole exact decay fits)
+    prog = work / "chord_dry.wav"
+    wav.write_float32(prog, signals.to_stereo(x), FS)
+    stim_dir = out / "stimuli"
+    stim_dir.mkdir(exist_ok=True)
+    specs = {"A": {"provisional": True}, "B": {}, "anchor_up": {"step_db": +L4_ANCHOR_DB},
+             "anchor_down": {"step_db": -L4_ANCHOR_DB}}
+    stims: dict[str, np.ndarray] = {}
+    stim_rec: dict = {}
+    for name, kw in specs.items():
+        y1 = _l4_render(binary, scene_path, prog, work / f"{name}_1.wav", **kw)
+        y2 = _l4_render(binary, scene_path, prog, work / f"{name}_2.wav", **kw)
+        identical = sha256_file(work / f"{name}_1.wav") == sha256_file(work / f"{name}_2.wav")
+        assert identical, f"L4-D 12: two builds of {name} differ"
+        assert np.all(y1[total:] == 0.0), f"L4-D: {name} continues past the input (the exact decay does not fit)"
+        y = np.ascontiguousarray(y1[:total])
+        assert np.array_equal(y[:, 0].view(np.uint32), y[:, 1].view(np.uint32)), f"{name}: not diotic"
+        wav.write_float32(stim_dir / f"{name}.wav", y, FS)
+        stims[name] = y
+        peak = 20 * math.log10(max(float(np.max(np.abs(y))), 1e-30))
+        assert peak <= L4_MAX_PEAK_DBFS, f"L4-D 11: {name} peaks at {peak:.2f} dBFS > {L4_MAX_PEAK_DBFS}"
+        stim_rec[name] = {"file": f"stimuli/{name}.wav", "sha256": sha256_file(stim_dir / f"{name}.wav"),
+                          "samples": total, "duration_s": total / FS, "peak_dbfs": peak, "two_builds_identical": identical,
+                          "render": ("render_cli --mode omni --in chord --out --realtime-emulation --block 512 "
+                                     "--partition 512" + (" --provisional-ir" if kw.get("provisional") else "")
+                                     + (f" --abx-step-db {kw['step_db']:+g} --abx-step-sample 0" if "step_db" in kw else "")),
+                          "provisional": bool(kw.get("provisional")), "ax49_constants": ax49}
+    A, B = stims["A"], stims["B"]
+    assert A.shape == B.shape  # L4-D: A and B are the same length
+    # 2. on the renders: bit-identical before the earliest tail fade start (the partition-convolved output can
+    # differ only from the partition boundary at or below it: the convolver mixes whole partitions)
+    s_on = L4_LEAD_SAMPLES
+    k0 = s_on + irc["2_ir"]["earliest_tail_fade_start_tap"]
+    k0_block = (k0 // PARTITION) * PARTITION
+    d = np.flatnonzero(A[:, 0].view(np.uint32) != B[:, 0].view(np.uint32))
+    first_render = int(d[0]) if d.size else len(A)
+    assert first_render >= k0_block, f"L4-D 2: the renders differ at {first_render} < {k0_block}"
+    # 5. A is zero from L_p after the release (stimulus)
+    rel_end = chord["release_end_sample"]
+    nz = np.flatnonzero(A[:, 0] != 0.0)
+    a_last = int(nz[-1])
+    assert a_last < rel_end + len(a_ir) + PARTITION, (a_last, rel_end, len(a_ir))
+    # 9. print: the A/B level difference over the held part, per band
+    held = slice(s_on + int(round(L4_CHORD_ONSET_S * FS)), chord["release_start_sample"])
+    ab = engine_bands(A[:, 0].astype(np.float64), FS)
+    bbb = engine_bands(B[:, 0].astype(np.float64), FS)
+    held_db = _band_dict(10 * math.log10(np.sum(a[held] ** 2) / np.sum(b[held] ** 2)) for a, b in zip(ab, bbb))
+    # 10. the silence after the release
+    sil = (total - rel_end) / FS
+    assert sil >= timing["exactS"] + L4_SILENCE_MARGIN_S - 1.0 / FS and sil >= timing["exactS"], f"L4-D 10: {sil} s"
+    stim_checks = {"1_flag": {"recorded": True, "note": L4_FLAG_NOTE},
+                   "2_render": {"first_differing_sample": first_render, "chord_onset_sample": s_on,
+                                "earliest_tail_fade_start_sample": k0, "asserted_from_partition_boundary": k0_block},
+                   "5_render": {"A_last_nonzero_sample": a_last, "release_end_sample": rel_end,
+                                "A_last_minus_release_end_s": (a_last - rel_end) / FS, "L_p_s": timing["endS"]},
+                   "9_held_A_over_B_db": held_db, "9_print_only": True,
+                   "10_silence_after_release_s": sil,
+                   "11_peak_dbfs_max": max(v["peak_dbfs"] for v in stim_rec.values()),
+                   "12_two_builds_identical": all(v["two_builds_identical"] for v in stim_rec.values()) and hashes2 == hashes}
+    log(f"l4: stimuli {total / FS:.3f} s; renders identical before sample {first_render} (asserted from {k0_block}); A "
+        f"last nonzero {(a_last - rel_end) / FS:.4f} s after the release end; held-part A/B (dB) "
+        + ", ".join(f"{k}: {v:+.4f}" for k, v in held_db.items())
+        + f"; silence after the release {sil:.3f} s; peak max {stim_checks['11_peak_dbfs_max']:.2f} dBFS")
+    log("l4: ghost print (" + L4_GHOST_LABEL + ", dB re steady state at release + L_p + dt): "
+        + "; ".join(f"{k}: " + " ".join(f"{dt} {v:.1f}" if v is not None else f"{dt} -" for dt, v in row.items())
+                    for k, row in irc["13_ghost"]["bands"].items()))
+    # Blocks (D1): primary and the pre-built rerun, both built (and later sealed) together
+    blocks = {}
+    for block in L4_BLOCKS:
+        plan = l4_trial_plan(block)[: trials or L4_BLOCK_TRIALS]
+        for t in plan:
+            tdir = out / block / f"trial_{t['trial']:02d}"
+            _link_or_copy(stim_dir / f"{t['A']}.wav", tdir / "A.wav")
+            _link_or_copy(stim_dir / f"{t['B']}.wav", tdir / "B.wav")
+        blocks[block] = plan
+    fam_dir = out / "familiarisation"
+    fam = [("pair_01_A_provisional.wav", "A"), ("pair_01_B_exact.wav", "B"),
+           ("pair_02_anchor_tail_+3dB.wav", "anchor_up"), ("pair_02_B_exact.wav", "B"),
+           ("pair_03_anchor_tail_-3dB.wav", "anchor_down"), ("pair_03_B_exact.wav", "B")]
+    for fname, src in fam:
+        _link_or_copy(stim_dir / f"{src}.wav", fam_dir / fname)
+    stim_s = total / FS
+    k6 = k6_l4(stim_s, len(fam))
+    for p in sorted(work.rglob("*"), reverse=True):
+        p.unlink() if p.is_file() else p.rmdir()
+    work.rmdir()
+    manifest = {
+        "chain": "l4", "provisional": True, "flag_note": L4_FLAG_NOTE,
+        "preregistration": ("run sheet section 8; phase-07c-2b decider files 10 Part A (L4-S, L4-D, L4-T), 17 (D1, P1, "
+                            "P8), 21 (P8-3, P8-S); interrogator files 13, 18, 22; Seat 5 file 14; builder file 15"),
+        "family": ("L4 is its own family (AX49), not in the AX47 union (<= 0.098): detection at >= 12/16, family alpha "
+                   f"{L4_FAMILY_ALPHA} (2517/65536)"),
+        "criterion": f">= {L4_CRITERION}/{L4_SCORED}", "anchor": f"+-{L4_ANCHOR_DB} dB tail step, pass >= {L4_ANCHOR_PASS}/{L4_ANCHORS}",
+        "fs": FS, "partition": PARTITION, "block": BLOCK, "render_cli": str(binary), "scene": sc,
+        "ax49_constants": ax49, "anchor_feasibility": anchor_rec, "ir_hashes": hashes, "chord": chord, "ir_checks": irc, "stimulus_checks": stim_checks,
+        "stimuli": stim_rec, "blocks": blocks, "familiarisation": [{"file": f"familiarisation/{f}", "stimulus": s} for f, s in fam],
+        "k6": k6, "build_seconds": time.monotonic() - t_start}
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=1, default=float))
+    log(f"l4: K6 (typical pace) primary {k6['typical']['primary_min']:.1f} min, primary + rerun "
+        f"{k6['typical']['primary_plus_rerun_min']:.1f} min; built in {manifest['build_seconds']:.0f} s")
+    return manifest
+
+
+def l4_handover_demo(out_dir: pathlib.Path, binary: pathlib.Path, log=print) -> dict:
+    """L4-D 14 (Seat 6; Seat 5 file 14 (vi)): one UNSCORED render, never sealed or scored: the L4 chord released at
+    t_r, the provisional IR until the first partition boundary at or after t_r + L_p + 1 s, then the shipped AQ4 30 ms
+    equal-gain crossfade to the exact IR (render_cli --provisional-ir --provisional-handover-sample N, with an
+    explicit --block). "unscored" is in its file name and in the pack index."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = pathlib.Path(tmp)
+        scene_path = write_scene(L4_SCENE, tmp / scene_file_name(L4_SCENE.name))
+        tpath = tmp / "timing.json"
+        _run(binary, "--scene", scene_path, "--mode", "omni", "--provisional-ir", "--provisional-timing", tpath)
+        timing = json.loads(tpath.read_text())
+        hold = max(int(math.ceil(timing["endS"] * FS)), int(math.ceil(0.5 * timing["t60MaxS"] * FS)))
+        n_rel = int(round(L4_CHORD_RELEASE_S * FS))
+        silence = int(math.ceil((timing["exactS"] + L4_SILENCE_MARGIN_S) * FS))
+        total = -(-(L4_LEAD_SAMPLES + hold + n_rel + silence) // PARTITION) * PARTITION
+        x, chord = l4_chord(hold, total)
+        t_r = chord["release_start_sample"]
+        target = t_r + int(math.ceil((timing["endS"] + L4_DEMO_DELAY_S) * FS))
+        n = -(-target // PARTITION) * PARTITION
+        prog = tmp / "chord.wav"
+        wav.write_float32(prog, signals.to_stereo(x), FS)
+        name = "L4_handover_demo_unscored.wav"
+        _l4_render(binary, scene_path, prog, out_dir / name, provisional=True,
+                   extra=("--provisional-handover-sample", n))
+    y, _ = wav.read_float32(out_dir / name)
+    rec = {"file": name, "title": "L4 handover demo (unscored; interim then handover, as at project load)",
+           "unscored": True, "release_sample": t_r, "handover_sample": n,
+           "handover_after_release_s": (n - t_r) / FS, "L_p_s": timing["endS"], "block": BLOCK, "partition": PARTITION,
+           "peak_dbfs": 20 * math.log10(max(float(np.max(np.abs(y))), 1e-30)), "duration_s": len(y) / FS,
+           "flag_note": L4_FLAG_NOTE}
+    log(f"l4 demo: release {t_r / FS:.3f} s, handover at {n / FS:.3f} s (t_r + {(n - t_r) / FS:.3f} s; L_p "
+        f"{timing['endS']:.4f} s), peak {rec['peak_dbfs']:.1f} dBFS")
+    return rec
+
+
+# ---------------------------------------------------------------------------------------------------------
 # Blinding and scoring (items 4, 11, 13)
 # ---------------------------------------------------------------------------------------------------------
 
@@ -1167,6 +1864,11 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
 def prereg_path(key_path: pathlib.Path) -> pathlib.Path:
     """Where seal writes the record to commit before the run: beside the key, never in the session folder."""
     return key_path.with_name(key_path.stem + "-prereg.json")
+
+
+def trial_rel(chain: str, block: str, trial: int) -> str:
+    """A trial's folder inside a pack and a session: `<level>dB/trial_NN` (AX47 chains), `<block>/trial_NN` (L4)."""
+    return f"{block}/trial_{trial:02d}" if chain == "l4" else f"{block}dB/trial_{trial:02d}"
 
 
 def salted_sha256(salt_hex: str, path: pathlib.Path) -> str:
@@ -1188,14 +1890,25 @@ def seal(pack: pathlib.Path, session: pathlib.Path, key_path: pathlib.Path, key_
     manifest = json.loads((pack / "manifest.json").read_text())
     if key_path.resolve().is_relative_to(session.resolve()):
         raise ValueError("the key must not be inside the session folder")
+    chain = manifest["chain"]
     seed = int(key_seed if key_seed is not None else secrets.randbits(63))
     rng = np.random.default_rng(seed)
-    key: dict = {"chain": manifest["chain"], "seed": seed, "blocks": {}}
-    record: dict = {"chain": manifest["chain"], "stimuli_salted_sha256": {}}
+    key: dict = {"chain": chain, "seed": seed, "blocks": {}}
+    record: dict = {"chain": chain, "stimuli_salted_sha256": {}}
+    if chain == "l4":
+        # D1: every block has its own seeded key (and its own trial order and anchor positions, from the plan); both
+        # are sealed here together, before the session. The non-detection wording carries the measured cut (P1).
+        key["block_seeds"] = {b: int(secrets.randbits(63)) if key_seed is None else int(key_seed) + 1 + i
+                              for i, b in enumerate(manifest["blocks"])}
+        key["l4"] = {"cut_depth_T60max_band_db": manifest["scene"]["cut_depth_T60max_band_db"],
+                     "T60_max_band": manifest["scene"]["T60_max_band"], "scene_sha256": manifest["scene"]["scene_sha256"],
+                     "ir_hashes": manifest["ir_hashes"]}
     for level, block in manifest["blocks"].items():
         key["blocks"][level] = []
+        if chain == "l4":
+            rng = np.random.default_rng(key["block_seeds"][level])
         for t in block:
-            rel = f"{level}dB/trial_{t['trial']:02d}"
+            rel = trial_rel(chain, level, t["trial"])
             src, dst = pack / rel, session / rel
             dst.mkdir(parents=True, exist_ok=True)
             x = "A" if rng.integers(0, 2) == 0 else "B"
@@ -1207,6 +1920,8 @@ def seal(pack: pathlib.Path, session: pathlib.Path, key_path: pathlib.Path, key_
                 record["stimuli_salted_sha256"][f"{rel}/{name}.wav"] = salted_sha256(salts[name], dst / f"{name}.wav")
             key["blocks"][level].append({"trial": t["trial"], "kind": t["kind"], "g_db": t["g_db"], "X": x,
                                          "salts": salts})
+            if chain == "l4":
+                key["blocks"][level][-1].update({"A": t["A"], "B": t["B"]})
     text = json.dumps(key, indent=1, sort_keys=True)
     key_path.write_text(text)
     record["key_sha256"] = hashlib.sha256(text.encode()).hexdigest()
@@ -1223,7 +1938,7 @@ def verify_session(key_path: pathlib.Path, session: pathlib.Path) -> None:
     key = json.loads(text)
     for level, block in key["blocks"].items():
         for t in block:
-            rel = f"{level}dB/trial_{t['trial']:02d}"
+            rel = trial_rel(key["chain"], level, t["trial"])
             for name in ("A", "B", "X"):
                 if salted_sha256(t["salts"][name], session / rel / f"{name}.wav") != record["stimuli_salted_sha256"][
                         f"{rel}/{name}.wav"]:
@@ -1284,7 +1999,103 @@ def score(key_path: pathlib.Path, responses: dict[str, dict[int, str]], chain: s
     return results
 
 
+def l4_wording(cut_db: float) -> dict[str, str]:
+    """P1 (decider file 17; run sheet section 8, Seats 9 and 6). The cut is label line 5 in the T60_max band, its
+    magnitude rounded down to 0.1 dB so that "a cut >= X dB" holds."""
+    depth = math.floor(-cut_db * 10.0) / 10.0
+    return {"detected": f"detected (≥ {L4_CRITERION}/{L4_SCORED}, family α {L4_FAMILY_ALPHA})",
+            "not detected": (f"not detected in {L4_SCORED} trials by one listener (power {L4_POWER_AT_075} at p = 0.75); "
+                             f"covers a cut ≥ {depth:.1f} dB below the full-IR energy in the T60_max band at T60_max 8 s"),
+            "inconclusive": "inconclusive (anchor failed twice)",
+            "family": "L4 is its own family (AX49), not in the AX47 union (≤ 0.098)"}
+
+
+def l4_score_anchor(key_block: list[dict], answers: dict[int, str], block: str) -> dict:
+    """D1: a block's anchor trials are scored first (pass >= 5/6)."""
+    anchors = [t for t in key_block if t["kind"] == "anchor"]
+    missing = [t["trial"] for t in anchors if t["trial"] not in answers]
+    if missing:
+        raise ValueError(f"L4 {block}: no answer for anchor trials {missing}")
+    ka = sum(answers[t["trial"]] == t["X"] for t in anchors)
+    return {"block": block, "anchor_k": ka, "anchor_n": len(anchors), "passed": ka >= L4_ANCHOR_PASS}
+
+
+def l4_unseal_scored(key_block: list[dict], answers: dict[int, str], anchor: dict) -> dict:
+    """The scored trials of one block, unsealed only after its anchor passed (D1: refuses otherwise)."""
+    if not anchor["passed"]:
+        raise PermissionError(f"refusing to unseal the L4 {anchor['block']} block's scored trials: its anchor failed "
+                              f"({anchor['anchor_k']}/{anchor['anchor_n']} < {L4_ANCHOR_PASS}/{L4_ANCHORS}); the block is "
+                              "void (D1)")
+    scored = [t for t in key_block if t["kind"] == "scored"]
+    missing = [t["trial"] for t in scored if t["trial"] not in answers]
+    if missing:
+        raise ValueError(f"L4 {anchor['block']}: no answer for trials {missing}")
+    k = sum(answers[t["trial"]] == t["X"] for t in scored)
+    return {"k": k, "n": len(scored), "p_exact": binom_tail(k, len(scored))}
+
+
+def score_l4(key_path: pathlib.Path, responses: dict[str, dict[int, str]]) -> list[dict]:
+    """D1 and P1: the primary block's anchor first; if it passed, its scored trials are unsealed and the record is
+    "detected" or "not detected" (and the rerun block is refused: a non-detection is never a reason to rerun); if it
+    failed, the block is void, its scored trials stay sealed, and the pre-sealed rerun block is scored the same way;
+    a second failed anchor reads "inconclusive (anchor failed twice)". A voided result is never "not detected"."""
+    key = json.loads(key_path.read_text())
+    if key["chain"] != "l4":
+        raise ValueError(f"the key is for the {key['chain']} chain, not L4")
+    words = l4_wording(key["l4"]["cut_depth_T60max_band_db"])
+    results = []
+    for i, block in enumerate(L4_BLOCKS):
+        if i > 0:
+            if results[-1]["verdict"] != "void":
+                if block in responses:
+                    raise PermissionError(f"refusing the L4 {block} block: the {L4_BLOCKS[i - 1]} block's anchor passed "
+                                          "(a non-detection is never a reason to rerun; D1)")
+                break
+            if block not in responses:
+                break  # the rerun is owed (D1); nothing more to score yet
+        answers = responses.get(block, {})
+        anchor = l4_score_anchor(key["blocks"][block], answers, block)
+        rec = {"chain": "l4", "family": words["family"], **anchor, "k": None, "n": L4_SCORED}
+        if not anchor["passed"]:
+            if i == 0:
+                rec["verdict"] = "void"
+                rec["wording"] = (f"void: anchor {anchor['anchor_k']}/{anchor['anchor_n']} < {L4_ANCHOR_PASS}/{L4_ANCHORS}; "
+                                  "its scored trials are not unsealed or scored; one rerun follows on the pre-sealed "
+                                  "rerun block (D1)")
+            else:
+                rec["verdict"], rec["wording"] = "inconclusive", words["inconclusive"]
+        else:
+            rec.update(l4_unseal_scored(key["blocks"][block], answers, anchor))
+            rec["verdict"] = "detected" if rec["k"] >= L4_CRITERION else "not detected"
+            rec["wording"] = words[rec["verdict"]]
+        results.append(rec)
+    return results
+
+
+def read_l4_responses(path: pathlib.Path) -> dict[str, dict[int, str]]:
+    """CSV with columns block (primary or rerun), trial, answer (A or B): the run sheet's L4 response table."""
+    out: dict[str, dict[int, str]] = {}
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            ans = row["answer"].strip().upper()
+            if ans not in ("A", "B"):
+                continue
+            block = row["block"].strip()
+            if block not in L4_BLOCKS:
+                raise ValueError(f"unknown L4 block {block!r}")
+            out.setdefault(block, {})[int(row["trial"])] = ans
+    return out
+
+
 def blank_response_csv(path: pathlib.Path, chain: str) -> None:
+    if chain == "l4":
+        with open(path, "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["block", "trial", "answer"])
+            for block in L4_BLOCKS:
+                for t in l4_trial_plan(block):
+                    w.writerow([block, t["trial"], ""])
+        return
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["level_db", "trial", "answer"])
@@ -1312,6 +2123,13 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--files", nargs=2, required=True, metavar=("SENTENCE1", "SENTENCE2"),
                            help="the TSP file pair, e.g. MA01_01 MA01_02 (fixed in the pre-registration)")
             p.add_argument("--cache", type=pathlib.Path, default=pathlib.Path.home() / ".cache" / "makroof" / "tsp")
+    p = sub.add_parser("l4", help="AX49 L4 (run sheet section 8): the provisional-against-exact held-chord pack")
+    p.add_argument("--out", type=pathlib.Path, default=REPO / "build" / "abx-07c-2b" / "l4")
+    p.add_argument("--render-cli", type=pathlib.Path, default=None)
+    p.add_argument("--trials", type=int, default=None, help="limit each block (smoke runs only)")
+    p = sub.add_parser("l4-verify", help="P8 item 4: rebuild A's and B's IRs and compare their SHA-256 before a session")
+    p.add_argument("--pack", type=pathlib.Path, required=True)
+    p.add_argument("--render-cli", type=pathlib.Path, default=None)
     p = sub.add_parser("seal")
     p.add_argument("--pack", type=pathlib.Path, required=True)
     p.add_argument("--session", type=pathlib.Path, required=True)
@@ -1319,18 +2137,24 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("score")
     p.add_argument("--key", type=pathlib.Path, required=True)
     p.add_argument("--responses", type=pathlib.Path, required=True)
-    p.add_argument("--chain", choices=("noise", "speech"), required=True)
+    p.add_argument("--chain", choices=("noise", "speech", "l4"), required=True)
     p.add_argument("--session", type=pathlib.Path, required=True, help="the listener's folder; X.wav is checked")
     p = sub.add_parser("blank")
-    p.add_argument("--chain", choices=("noise", "speech"), required=True)
+    p.add_argument("--chain", choices=("noise", "speech", "l4"), required=True)
     p.add_argument("--out", type=pathlib.Path, required=True)
     args = ap.parse_args(argv)
 
-    if args.cmd in ("noise", "speech"):
+    if args.cmd in ("noise", "speech", "l4", "l4-verify"):
         binary = args.render_cli or render_cli.find_render_cli()
         if binary is None or not binary.is_file():
             print("abx_kit.py: render_cli not found (cmake --preset cli && cmake --build --preset cli)", file=sys.stderr)
             return 1
+        if args.cmd == "l4":
+            build_l4(args.out, binary, trials=args.trials)
+            print(f"written to {args.out}")
+            return 0
+        if args.cmd == "l4-verify":
+            return 1 if l4_verify(args.pack, binary)["void"] else 0
         if args.cmd == "noise":
             build_noise_chain(args.out / "noise", binary, trials=args.trials, scene_name=args.scene_name)
         else:
@@ -1343,6 +2167,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"commit {prereg_path(args.key)} before the run; keep {args.key} unseen until scoring")
     elif args.cmd == "score":
         verify_session(args.key, args.session)
+        if args.chain == "l4":
+            for r in score_l4(args.key, read_l4_responses(args.responses)):
+                print(json.dumps(r, ensure_ascii=False))
+            return 0
         for r in score(args.key, read_responses(args.responses), args.chain):
             print(json.dumps(r))
     elif args.cmd == "blank":
