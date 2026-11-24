@@ -73,6 +73,16 @@ struct Options
     std::string abxSteppedIrPath;
     std::optional<double>
         wMultiplier; // validation only: W_scene = 2 m W_max (the D-W2 cap check at m = 6, 7, 8)
+    // Phase-07c-2b L4-P (decider file 10; interrogator file 13; Seat 5 file 14), validation only, off unless
+    // given: every output of the run uses the AX49 provisional IR (StagedBuild::assembleProvisional, the
+    // plugin's keyless-load interim) instead of the exact one. --provisional-timing writes
+    // provisionalTiming();
+    // --provisional-handover-sample N starts the shipped AQ4 equal-gain fade (AX18) to the exact IR of the
+    // same plan at output sample N, through the RealtimeEngine IR swap. src/plugin never names these
+    // (tools/ci/test_provisional_flag.py), and no golden or BRAS path uses them.
+    bool provisionalIr = false;
+    std::string provisionalTimingPath;
+    std::optional<std::uint64_t> provisionalHandoverSample;
     std::optional<double> rate;
     std::optional<sim::BuildOptions::Kind> mode;
     bool help = false;
@@ -143,6 +153,11 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             options.realtimeEmulation = true;
             continue;
         }
+        if (arg == "--provisional-ir")
+        {
+            options.provisionalIr = true;
+            continue;
+        }
 
         std::string* target = nullptr;
         if (arg == "--scene")
@@ -163,11 +178,14 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
             target = &options.switchScenePath;
         else if (arg == "--abx-stepped-ir")
             target = &options.abxSteppedIrPath;
+        else if (arg == "--provisional-timing")
+            target = &options.provisionalTimingPath;
         else if (arg != "--rate" && arg != "--mode" && arg != "--tail-seed" && arg != "--ensemble"
                  && arg != "--ensemble-emitter" && arg != "--image-cap" && arg != "--atmosphere"
                  && arg != "--mix-floor-ms" && arg != "--block" && arg != "--partition"
                  && arg != "--switch-every" && arg != "--tail-level" && arg != "--diffuse-histories"
-                 && arg != "--abx-step-db" && arg != "--abx-step-sample" && arg != "--w-multiplier")
+                 && arg != "--abx-step-db" && arg != "--abx-step-sample" && arg != "--w-multiplier"
+                 && arg != "--provisional-handover-sample")
             return "unknown argument '" + arg + "'";
 
         if (i + 1 >= args.size())
@@ -288,6 +306,15 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
                        + "'";
             options.abxStepSample = *n;
         }
+        else if (arg == "--provisional-handover-sample")
+        {
+            const auto n = parseSeed(value);
+            if (!n)
+                return "--provisional-handover-sample must be an output sample index in [0, 4294967295], got "
+                       "'"
+                       + value + "'";
+            options.provisionalHandoverSample = *n;
+        }
         else if (arg == "--w-multiplier")
         {
             char* end = nullptr;
@@ -313,6 +340,36 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
 
     if (options.help || options.version)
         return {};
+    // L4-P refusals r2-r5 (r1, L_p >= L, needs the scene: runUnchecked, before any output file is opened).
+    if ((!options.provisionalTimingPath.empty() || options.provisionalHandoverSample)
+        && !options.provisionalIr)
+        return "--provisional-timing and --provisional-handover-sample need --provisional-ir"; // r4
+    if (options.provisionalIr)
+    {
+        if (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni) // r2
+            return "--provisional-ir needs --mode omni (the AX49 provisional tail of the hybrid IR)";
+        if (!options.diagnosticsPath.empty() || options.ensemble || options.tailOnly
+            || options.ensembleEmitter || options.tailLevelAx16 || !options.switchScenePath.empty()
+            || options.switchEveryS || options.abxStepDb || options.abxStepSample
+            || !options.abxSteppedIrPath.empty() || options.imageCap || !options.automationPath.empty()) // r3
+            return "--provisional-ir excludes --diagnostics, --ensemble, --tail-only, --ensemble-emitter, "
+                   "--tail-level ax16, --switch-scene, --switch-every, --abx-step-db, --abx-step-sample, "
+                   "--abx-stepped-ir, --image-cap and --automation";
+        if (options.provisionalHandoverSample) // r5 (the input bound is checked once the input is read)
+        {
+            if (options.inPath.empty() || !options.realtimeEmulation || !options.block || *options.block == 0)
+                return "--provisional-handover-sample needs --in/--out, --realtime-emulation and a fixed "
+                       "--block";
+            const auto p = static_cast<std::uint64_t>(
+                options.partition.value_or(sim::conv::kDefaultPartitionSize));
+            const auto b = static_cast<std::uint64_t>(*options.block);
+            const std::uint64_t n = *options.provisionalHandoverSample;
+            if (n < p || n % p != 0 || n % b != 0)
+                return "--provisional-handover-sample must be a multiple of the partition ("
+                       + std::to_string(p) + ") and of the block (" + std::to_string(b)
+                       + "), at least one partition, got " + std::to_string(n);
+        }
+    }
     if (!options.automationPath.empty())
         return "--automation is not implemented until Phase 10";
     if (options.scenePath.empty())
@@ -320,8 +377,10 @@ std::string parseArgs(const std::vector<std::string>& args, Options& options)
     if (options.inPath.empty() != options.outPath.empty())
         return "--in and --out must be given together";
     if (options.inPath.empty() && options.irPath.empty() && options.imagesPath.empty()
-        && options.diagnosticsPath.empty() && options.abxSteppedIrPath.empty())
-        return "nothing to do: give --in and --out, --ir, --images, --diagnostics or --abx-stepped-ir";
+        && options.diagnosticsPath.empty() && options.abxSteppedIrPath.empty()
+        && options.provisionalTimingPath.empty())
+        return "nothing to do: give --in and --out, --ir, --images, --diagnostics, --abx-stepped-ir or "
+               "--provisional-timing";
     if (!options.diagnosticsPath.empty() && options.mode && *options.mode != sim::BuildOptions::Kind::Omni)
         return "--diagnostics needs --mode omni (the hybrid IR)";
     if (options.tailOnly && (!options.mode || *options.mode != sim::BuildOptions::Kind::Omni))
@@ -648,6 +707,11 @@ bool writeDiagnostics(const std::filesystem::path& path, const contract::SceneDe
 // timing (AX31) a request made after r input samples, r a multiple of P, starts its fade at engine output
 // sample r + 2P, i.e. at r + P once the latency is removed: the request goes in at r = abxStepSample - P.
 // abxStepSample 0 renders `stepped` alone from sample 0 (the fade's end point for the AX47 mid-fade checks).
+//
+// --provisional-handover-sample N (phase-07c-2b L4-P, validation only) uses the same request: `ir` is the
+// AX49 provisional IR and `stepped` the exact IR of the same StagedBuild plan at the same level, both built
+// before the first block, so the fade to the exact IR starts at output sample N (the plugin's interim ->
+// exact adoption at project load, AX49 "Handover"; its DSP, not its timing).
 bool renderRealtime(const sim::RoomIR& ir, const sim::RoomIR* other, const sim::RoomIR* stepped,
                     const Options& options, const sim::MultiChannel& input, sim::MultiChannel& output,
                     std::string& error)
@@ -675,14 +739,18 @@ bool renderRealtime(const sim::RoomIR& ir, const sim::RoomIR* other, const sim::
     const std::size_t total = outLength + latency;
     // --abx-step-db: the input position of the request (see above); never reached when stepped is nullptr.
     std::size_t stepAt = total;
-    const bool steppedAlone = stepped != nullptr && options.abxStepSample.value_or(0) == 0;
+    const std::uint64_t stepSample = options.provisionalHandoverSample ? *options.provisionalHandoverSample
+                                                                       : options.abxStepSample.value_or(0);
+    const char* stepFlag = options.provisionalHandoverSample ? "--provisional-handover-sample"
+                                                             : "--abx-step-sample";
+    const bool steppedAlone = stepped != nullptr && stepSample == 0;
     if (stepped != nullptr && !steppedAlone)
     {
-        const std::uint64_t onset = options.abxStepSample.value_or(0);
+        const std::uint64_t onset = stepSample;
         if (onset < latency || onset % latency != 0 || onset % static_cast<std::uint64_t>(block) != 0
             || onset >= outLength)
         {
-            error = "--abx-step-sample " + std::to_string(onset)
+            error = std::string(stepFlag) + " " + std::to_string(onset)
                     + " must be 0 or a multiple of the partition (" + std::to_string(partition)
                     + ") and of the block (" + std::to_string(block)
                     + "), at least one partition, and inside the render (" + std::to_string(outLength)
@@ -832,6 +900,65 @@ bool buildAbxStep(const contract::SceneDescription& scene, const sim::BuildOptio
     return true;
 }
 
+// --provisional-ir (phase-07c-2b L4-P, validation only): the AX49 provisional IR as the plugin builds it at a
+// keyless project load (ScenePipeline's synchronous decision: plan; the stage-1 solve;
+// useUnitDecays(nullptr); useDiffuseLevel(the solve's level); assembleProvisional), on the plan `staged` that
+// runUnchecked already checked for provisionalTiming().provisional (r1). With `exact`, the exact IR from the
+// same plan at the same level (assemble(); bit-identical to buildRoomIR, AX5 "[staged]"), the end point of
+// the handover.
+bool buildProvisional(sim::StagedBuild& staged, sim::RoomIR& provisional, std::optional<sim::RoomIR>* exact,
+                      sim::HybridDiagnostics& diagnostics, std::string& error)
+{
+    staged.solve();
+    const std::optional<sim::EmitterBands> level = staged.diffuseLevel();
+    if (!level)
+    {
+        error = "--provisional-ir: the scene has no diffuse tail level";
+        return false;
+    }
+    staged.useUnitDecays(nullptr);
+    staged.useDiffuseLevel(*level);
+    provisional = staged.assembleProvisional(&diagnostics);
+    if (exact != nullptr)
+    {
+        staged.useUnitDecays(nullptr);
+        exact->emplace(staged.assemble());
+    }
+    return true;
+}
+
+// --provisional-timing: StagedBuild::provisionalTiming() and the per-band T60 the exact tail is built with.
+bool writeProvisionalTiming(const std::filesystem::path& path, const sim::ProvisionalTiming& t,
+                            const sim::HybridDiagnostics& diagnostics)
+{
+    std::ofstream os(path, std::ios::binary);
+    if (!os)
+        return false;
+    const auto& t60 = diagnostics.decay.bandsT60S;
+    const auto maxBand = static_cast<std::size_t>(std::max_element(t60.begin(), t60.end()) - t60.begin());
+    os << "{\"validationOnly\":\"provisional tail, validation-only flag\",\"provisional\":"
+       << (t.provisional ? "true" : "false") << ",\"mixMaxS\":";
+    writeNumber(os, t.mixMaxS);
+    os << ",\"t60MaxS\":";
+    writeNumber(os, t.t60MaxS);
+    os << ",\"fadeStartS\":";
+    writeNumber(os, t.fadeStartS);
+    os << ",\"endS\":";
+    writeNumber(os, t.endS);
+    os << ",\"exactS\":";
+    writeNumber(os, t.exactS);
+    os << ",\"bandsHz\":";
+    writeArray(os, contract::kOctaveBandsHz);
+    os << ",\"bandsT60S\":";
+    writeArray(os, t60);
+    os << ",\"t60MaxBandHz\":";
+    writeNumber(os, contract::kOctaveBandsHz[maxBand]);
+    os << ",\"sampleRate\":";
+    writeNumber(os, diagnostics.sampleRate);
+    os << "}\n";
+    return static_cast<bool>(os);
+}
+
 } // namespace
 
 std::string usage()
@@ -907,6 +1034,27 @@ std::string usage()
            "               unstepped IR, --abx-stepped-ir <wav> the stepped one\n"
            "  --w-multiplier m  validation only, --mode omni: the diffuse solve at W_scene = 2 m W_max\n"
            "               (AX41; the D-W2 cap check at the candidate pins)\n"
+           "  --provisional-ir  validation only (phase-07c-2b L4), --mode omni: every output uses the AX49\n"
+           "               provisional IR (the plugin's interim tail at a keyless project load, faded out "
+           "at\n"
+           "               L_p) instead of the exact one. Refused where L_p >= L (no provisional there), "
+           "and\n"
+           "               with --diagnostics, --ensemble, --tail-only, --ensemble-emitter, --tail-level "
+           "ax16,\n"
+           "               --switch-scene/--switch-every, the --abx-* flags and --image-cap. Never for "
+           "goldens\n"
+           "  --provisional-timing <json>  with --provisional-ir: write provisionalTiming() (provisional,\n"
+           "               mixMaxS, t60MaxS, fadeStartS = L_f, endS = L_p, exactS = L) and the per-band T60\n"
+           "  --provisional-handover-sample N  with --provisional-ir, --in/--out, --realtime-emulation and\n"
+           "               a fixed --block: the render starts on the provisional IR and fades to the exact "
+           "IR\n"
+           "               of the same build from output sample N (a multiple of P and of the block, at "
+           "least\n"
+           "               P, inside the input) with the shipped 30 ms equal-gain crossfade (AQ4), through "
+           "the\n"
+           "               real-time engine's IR swap. Both IRs are built before the first block: this "
+           "shows\n"
+           "               the DSP of the handover, not its timing. Unscored listening-pack renders only\n"
            "  --automation not implemented until Phase 10\n"
            "\n"
            "exit codes: 0 ok, 1 usage error, 2 invalid scene, 3 I/O error, 4 internal error\n";
@@ -1031,6 +1179,33 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
         build.diffuseLimitsOverride = &wLimits;
     }
 
+    // --provisional-ir (L4-P): r5's input bound and r1 are decided here, from the plan's provisionalTiming(),
+    // before any output file is opened, so a refused run leaves no file behind (Seat 5 file 14, condition
+    // (a)).
+    std::optional<sim::StagedBuild> provisionalPlan;
+    if (options.provisionalIr)
+    {
+        if (options.provisionalHandoverSample && *options.provisionalHandoverSample >= input.numFrames())
+        {
+            err << "render_cli: --provisional-handover-sample " << *options.provisionalHandoverSample
+                << " lies beyond the input (" << input.numFrames() << " samples)\n\n"
+                << usage();
+            return kExitUsage;
+        }
+        provisionalPlan.emplace(sim::StagedBuild::plan(scene, build));
+        const sim::ProvisionalTiming t = provisionalPlan->provisionalTiming();
+        if (!t.provisional)
+        {
+            err << "render_cli: --provisional-ir does not apply to this scene: L_p " << t.endS << " s >= L "
+                << t.exactS << " s, so the exact tail is built in the provisional's place (AX49) and there "
+                << "is no provisional IR to render (usage error, exit 1: the scene itself is valid)\n";
+            return kExitUsage;
+        }
+        out << "provisional tail, validation-only flag: t_mix,e,max " << t.mixMaxS << " s, T60_max "
+            << t.t60MaxS << " s, L_f " << t.fadeStartS << " s, L_p " << t.endS << " s, L " << t.exactS
+            << " s\n";
+    }
+
     if (!options.imagesPath.empty())
     {
         if (!writeImages(options.imagesPath, scene, build))
@@ -1051,6 +1226,7 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
     sim::HybridDiagnostics diagnostics;
     sim::RoomIR ir;
     std::optional<sim::RoomIR> steppedIr;
+    std::optional<sim::RoomIR> exactIr; // --provisional-handover-sample: the handover's end point
     if (options.abxStepDb)
     {
         std::string error;
@@ -1071,6 +1247,26 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
                 return kExitIo;
             }
             out << "wrote stepped IR " << options.abxSteppedIrPath << "\n";
+        }
+    }
+    else if (provisionalPlan)
+    {
+        std::string error;
+        if (!buildProvisional(*provisionalPlan, ir, options.provisionalHandoverSample ? &exactIr : nullptr,
+                              diagnostics, error))
+        {
+            err << "render_cli: " << error << "\n";
+            return kExitUsage;
+        }
+        if (!options.provisionalTimingPath.empty())
+        {
+            if (!writeProvisionalTiming(options.provisionalTimingPath, provisionalPlan->provisionalTiming(),
+                                        diagnostics))
+            {
+                err << "render_cli: cannot write '" << options.provisionalTimingPath << "'\n";
+                return kExitIo;
+            }
+            out << "wrote provisional timing " << options.provisionalTimingPath << "\n";
         }
     }
     else if (!options.ensemble)
@@ -1142,8 +1338,9 @@ int runUnchecked(const std::vector<std::string>& args, std::ostream& out, std::o
             // g = 0 requests no second IrSet: the stepped IrSet is then bit-identical to the first (asserted
             // by buildAbxStep), and an equal-gain fade between two equal IrSets need not round to them.
             const bool step = steppedIr && *options.abxStepDb != 0.0;
-            if (!renderRealtime(ir, switchScene ? &other : nullptr, step ? &*steppedIr : nullptr, options,
-                                input.channels, rendered.channels, error))
+            const sim::RoomIR* const target = step ? &*steppedIr : (exactIr ? &*exactIr : nullptr);
+            if (!renderRealtime(ir, switchScene ? &other : nullptr, target, options, input.channels,
+                                rendered.channels, error))
             {
                 err << "render_cli: " << error << "\n";
                 return kExitInternal;

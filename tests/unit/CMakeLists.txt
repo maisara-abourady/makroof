@@ -14,6 +14,7 @@ add_executable(spatial_tests
                test_band_renderer.cpp
                test_offline_render.cpp
                test_cli.cpp
+               test_cli_provisional.cpp
                test_rng.cpp
                test_fft.cpp
                test_tail_decay.cpp

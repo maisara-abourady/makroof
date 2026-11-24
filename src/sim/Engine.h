@@ -294,7 +294,8 @@ public:
     ProvisionalTiming provisionalTiming() const noexcept;
     // AX49: the IR with the provisional tail (length L_p, normalised per band by sqrt(E_p,b / f_b), faded
     // over the last 0.1 s), at the level of the solve or useDiffuseLevel(); where L_p >= L, exactly
-    // assemble(). Offline and render_cli never call it (condition 6). Calls solve() first if neither ran.
+    // assemble(). Offline renders never call it, and render_cli calls it only under `--provisional-ir`
+    // (validation only; phase-07c-2b L4-P; condition 6). Calls solve() first if neither ran.
     RoomIR assembleProvisional(HybridDiagnostics* diagnostics = nullptr);
     // AX49 D5 bridge and AQ4 cache: assemble() over these unit decays (by emitter channel) instead of
     // synthesising. When their T60s or length differ from this scene's (a T60-changing edit), each emitter's
