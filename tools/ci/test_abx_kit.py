@@ -321,3 +321,79 @@ def test_zero_step_is_bit_identical(tmp_path: pathlib.Path) -> None:
     assert render_cli.run(binary, *common, "--out", tmp_path / "zero.wav", "--abx-step-db", "0",
                           "--abx-step-sample", "25088").returncode == 0
     assert (tmp_path / "plain.wav").read_bytes() == (tmp_path / "zero.wav").read_bytes()
+
+
+# ---- phase-07c-2b M3-3: HF-W, the asserted click gate, with its negative controls N1-N3 ----
+
+def _fade_triple(seed: int = 7, n: int = 48000, s0: int = 24064):
+    """a, b: two different noise renders (float32, 2 channels, diotic); o: the AQ4 linear crossfade a -> b over
+    [s0, s0 + L), a before, b after (what render_cli's step produces, companions (ii), (iii))."""
+    rng = np.random.default_rng(seed)
+    env = np.exp(-np.arange(n) / 9000.0)
+    a1 = (0.1 * rng.standard_normal(n) * env).astype(np.float32)
+    b1 = (0.1 * 1.1 * rng.standard_normal(n) * env).astype(np.float32)
+    L = int(round(abx_kit.CROSSFADE_S * abx_kit.FS))
+    j = np.arange(L, dtype=np.float64)
+    o1 = np.concatenate([a1[:s0], ((1 - j / L) * a1[s0 : s0 + L] + (j / L) * b1[s0 : s0 + L]).astype(np.float32),
+                         b1[s0 + L :]])
+    two = lambda x: np.stack([x, x], axis=1)  # noqa: E731
+    return two(o1), two(a1), two(b1), s0, L
+
+
+def test_hfw_beta_is_the_derived_bound() -> None:
+    # (1 + 96/1440)^2 (1 + 1e-5) = 1.1378 at 48 kHz, 0.561 dB (decider file 2, D-L8)
+    assert abs(abx_kit.hfw_beta(48000) - 1.1378) < 5e-5
+    assert abs(10 * np.log10(abx_kit.hfw_beta(48000)) - 0.561) < 5e-4
+
+
+def test_hfw_passes_the_clean_crossfade() -> None:
+    o, a, b, s0, _ = _fade_triple()
+    rec = abx_kit.hf_w_check(o, a, b, s0, abx_kit.FS)
+    assert rec["frames"] > 0 and rec["worst_ratio"] <= rec["beta"]
+    abx_kit.midfade_checks(o, a, b, s0, abx_kit.FS)  # the companions pass too (non-vacuity pair, Seat 5)
+
+
+def test_hfw_n1_spike_fails() -> None:
+    # N1: a single-sample spike at s0 + L/2, sized so that its frame's E_o is 3 dB over beta max(E_a, E_b)
+    o, a, b, s0, L = _fade_triple()
+    fs, t = abx_kit.FS, s0 + L // 2
+    nf = int(round(abx_kit.HFW_FRAME_S * fs))
+    f0 = s0 + ((t - s0) // nf) * nf
+    beta = abx_kit.hfw_beta(fs)
+
+    def frame_ratio(amp: float) -> float:
+        x = o[:, 0].astype(np.float64).copy()
+        x[t] += amp
+        h = [abx_kit.clicks.highpass(y, fs)[f0 : f0 + nf] for y in (x, a[:, 0].astype(np.float64), b[:, 0].astype(np.float64))]
+        return float(np.sum(h[0] ** 2) / max(np.sum(h[1] ** 2), np.sum(h[2] ** 2)))
+
+    lo, hi = 0.0, 1.0
+    for _ in range(60):  # bisection: the amplitude whose frame ratio is 2 beta (3 dB over the bound)
+        mid = 0.5 * (lo + hi)
+        lo, hi = (mid, hi) if frame_ratio(mid) < 2 * beta else (lo, mid)
+    spiked = o.copy()
+    spiked[t, :] += np.float32(hi)
+    assert abs(10 * np.log10(frame_ratio(hi) / beta) - 3.0) < 0.05
+    with pytest.raises(AssertionError, match="HF-W"):
+        abx_kit.hf_w_check(spiked, a, b, s0, fs)
+
+
+def test_hfw_n2_hard_switch_fails_companion_ii() -> None:
+    # N2: the linear fade replaced by a hard switch at s0 + L/2; companion (ii) must fail
+    o, a, b, s0, L = _fade_triple()
+    sw = o.copy()
+    sw[s0 : s0 + L // 2] = a[s0 : s0 + L // 2]
+    sw[s0 + L // 2 : s0 + L] = b[s0 + L // 2 : s0 + L]
+    with pytest.raises(AssertionError, match="companion \\(ii\\)"):
+        abx_kit.midfade_checks(sw, a, b, s0, abx_kit.FS)
+
+
+def test_hfw_n3_quantised_fade_fails_companion_ii() -> None:
+    # N3: the fade quantised in 32-sample steps; companion (ii) must fail
+    o, a, b, s0, L = _fade_triple()
+    jq = (np.arange(L) // 32 * 32).astype(np.float64)
+    q = o.copy()
+    seg = ((1 - jq / L)[:, None] * a[s0 : s0 + L].astype(np.float64) + (jq / L)[:, None] * b[s0 : s0 + L].astype(np.float64))
+    q[s0 : s0 + L] = seg.astype(np.float32)
+    with pytest.raises(AssertionError, match="companion \\(ii\\)"):
+        abx_kit.midfade_checks(q, a, b, s0, abx_kit.FS)

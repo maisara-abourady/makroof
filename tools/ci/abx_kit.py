@@ -435,17 +435,65 @@ def midfade_checks(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: flo
     return out
 
 
-def click_check(o: np.ndarray, a: np.ndarray, s0: int, fs: float) -> dict:
-    """`tools.acoustics clicks` on the stepped stimulus: no event in the step region [s0 - 5 ms, s0 + L + 5 ms]
-    beyond those of the unstepped render (the detector is built for low tones, clicks.py's blind spots: on noise and
-    speech it compares the two renders rather than claiming an absolute 'no click')."""
+HFW_FRAME_S = 0.002  # M3-3 (phase-07c-2b decider file 2): HF-W frames of 2 ms, aligned to the step onset
+HFW_MARGIN_S = 0.005  # HF-W region [s0 - 5 ms, s0 + L + 5 ms)
+HFW_SKIP = 1e-9  # a frame with max(E_a, E_b) < n_f * 1e-9 is skipped and counted
+
+
+def hfw_beta(fs: float) -> float:
+    """HF-W's bound (M3-3): the W-a derivation on the high-passed signals, (1 + n_f / L)^2 (1 + 1e-5); 1.1378 at
+    48 kHz (0.561 dB). Never fitted to data."""
+    nf = int(round(HFW_FRAME_S * fs))
     L = int(round(CROSSFADE_S * fs))
-    lo, hi = s0 - int(0.005 * fs), s0 + L + int(0.005 * fs)
-    stepped = clicks.detect_clicks(o[:, 0].astype(np.float64), fs)["events"]
-    plain = {ev["sample"] // int(round(clicks.FRAME_S * fs)) for ev in clicks.detect_clicks(a[:, 0].astype(np.float64), fs)["events"]}
-    new = [ev for ev in stepped if lo <= ev["sample"] < hi and ev["sample"] // int(round(clicks.FRAME_S * fs)) not in plain]
-    assert not new, f"click detector: new events in the step region: {new}"
-    return {"events_stepped": len(stepped), "events_unstepped": len(plain), "new_in_step_region": 0}
+    return (1.0 + nf / L) ** 2 * (1.0 + 1e-5)
+
+
+def hf_w_check(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: float) -> dict:
+    """HF-W (phase-07c-2b M3-3; Seat 3's design, Seat 5's asserted-form rules): no broadband high-frequency excess
+    of the stepped stimulus o over both fixed-IR end points, a (unstepped) and b (the stepped IR rendered alone).
+    h = `clicks.highpass` (2 kHz, order 8, zero-phase); frames of n_f = 2 ms aligned to s0 over [s0 - 5 ms,
+    s0 + L + 5 ms) on every output channel; asserted E_o <= beta max(E_a, E_b) per frame. A pure float64 function
+    of the three renders: no RNG, no clock. A red is a stop (never a rerun, beta never fitted)."""
+    nf = int(round(HFW_FRAME_S * fs))
+    L = int(round(CROSSFADE_S * fs))
+    margin = int(round(HFW_MARGIN_S * fs))
+    beta = hfw_beta(fs)
+    out = {"beta": beta, "frames": 0, "skipped": 0, "worst_ratio": 0.0, "worst_frame_start": None}
+    # Frames aligned to s0: whole frames covering [s0 - margin, s0 + L + margin)
+    first = s0 - -(-margin // nf) * nf
+    last = s0 + L + margin
+    for ch in range(o.shape[1]):
+        ho, ha, hb = (clicks.highpass(x[:, ch].astype(np.float64), fs) for x in (o, a, b))
+        for f0 in range(max(first, 0), min(last, o.shape[0] - nf + 1), nf):
+            eo, ea, eb = (float(np.sum(h[f0 : f0 + nf] ** 2)) for h in (ho, ha, hb))
+            m = max(ea, eb)
+            if m < nf * HFW_SKIP:
+                out["skipped"] += 1
+                continue
+            out["frames"] += 1
+            r = eo / m
+            if r > out["worst_ratio"]:
+                out["worst_ratio"], out["worst_frame_start"] = r, f0 - s0
+            assert eo <= beta * m, (f"HF-W: channel {ch} frame s0{f0 - s0:+d}: E_o {eo:.4e} > beta {beta:.4f} "
+                                    f"max(E_a, E_b) {m:.4e} (ratio {r:.4f})")
+    out["margin_db"] = 10 * math.log10(beta / out["worst_ratio"]) if out["worst_ratio"] > 0 else None
+    return out
+
+
+def click_record(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: float) -> dict:
+    """Print only (M3-3): `tools.acoustics clicks` events on the stepped and unstepped renders, and Seat 5's (a)
+    reading (the step region's flagged frames of o, against a's threshold, are a subset of those of a or b). Not
+    asserted: on noise and speech the detector's peak-frame comparison is coincidental (builder file 32, K5)."""
+    nf = int(round(clicks.FRAME_S * fs))
+    L = int(round(CROSSFADE_S * fs))
+    lo, hi = (s0 - int(0.005 * fs)) // nf, (s0 + L + int(0.005 * fs)) // nf + 1
+    det_a = clicks.detect_clicks(a[:, 0].astype(np.float64), fs)
+    thr = det_a["effective_threshold_dbfs"]
+    flags = [set(np.flatnonzero(clicks.frame_levels_dbfs(clicks.highpass(x[:, 0].astype(np.float64), fs), fs)[lo:hi] > thr))
+             for x in (o, a, b)]
+    return {"events_stepped": len(clicks.detect_clicks(o[:, 0].astype(np.float64), fs)["events"]),
+            "events_unstepped": len(det_a["events"]), "threshold_unstepped_dbfs": thr,
+            "step_region_flags_subset_of_a_or_b": flags[0] <= (flags[1] | flags[2])}
 
 
 def wet_band_change(o: np.ndarray, a: np.ndarray, s0: int, fs: float) -> dict:
@@ -549,8 +597,10 @@ def render_trial(binary, scene_path, programme: np.ndarray, onset: int, g: float
     peak = 20 * math.log10(max(float(np.max(np.abs(A))), float(np.max(np.abs(B))), 1e-30))
     assert peak <= MAX_PEAK_DBFS, f"a stimulus peaks at {peak:.2f} dBFS > {MAX_PEAK_DBFS} (no normalisation, item 10)"
     mid = midfade_checks(A, B, E, onset, FS)
-    clk = click_check(A, B, onset, FS)
-    return {"onset_sample": onset, "onset_s": onset / FS, "g_db": g, "peak_dbfs": peak, "midfade": mid, "clicks": clk,
+    hfw = hf_w_check(A, B, E, onset, FS)
+    clk = click_record(A, B, E, onset, FS)
+    return {"onset_sample": onset, "onset_s": onset / FS, "g_db": g, "peak_dbfs": peak, "midfade": mid, "hf_w": hfw,
+            "clicks": clk,
             "wet_band_change_db": wet_band_change(A, B, onset, FS),
             "sha256": {"A": sha256_file(a_path), "B": sha256_file(b_path)}}
 
