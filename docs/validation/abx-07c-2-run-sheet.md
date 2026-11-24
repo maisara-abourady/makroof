@@ -53,8 +53,10 @@ ABX test.
   10 Part B).** Every gap, pause and the item-7 lead is built from **T = max(heard-IR T30, every tail T30) at 1 kHz**.
   Q5's ceiling stays 0.43 × the heard-IR T30 (T-a, unchanged; file 40, 2a stands). On the ABX scene
   (`layout5_s0.9/emitter_wall`) the heard-IR T30 is 2.560 s and the tail T30 2.582 / 2.600 s, so T = 2.600 s. The
-  manifest labels the heard value (Seat 9): **"heard-IR T30, ISO fit spanning the early part, not a decay rate"**,
-  with the tail T30 beside it (per emitter, from t_mix,e). Manifest fields: `scene.T30_1k_s`,
+  manifest labels the heard value per scene class (phase-07c-2b decider file 25, ruling (i); interrogator file 28):
+  on s = 1 scenes (S-A) **"heard-IR T30, ISO fit spanning the AX21 gap, not a decay rate"** (Seat 9's text, pinned
+  by M2); on s < 1 scenes, E included, **"heard-IR T30, ISO fit spanning the early part, not a decay rate"** (file 8,
+  M3-S). The tail T30 is printed beside it (per emitter, from t_mix,e). Manifest fields: `scene.T30_1k_s`,
   `scene.T30_1k_s_label`, `scene.tail_T30_1k_s`. In plain words: every gap and pause, and the silence after the
   step, is at least the longer of the measured reverberation times, as heard (the lead-in silence is excluded).
 - **Gap and pause construction (M3-G; it replaces the construction premise of phase-07c-2 decider file 34 item 3,
@@ -88,9 +90,11 @@ ABX test.
     −13.5 dB (Kuttruff Eq. 5.44, Sabine A ≈ 343 m², ᾱ ≈ 0.145). The kit prints r/r_c and D/R into the manifest: per
     emitter (each emitter's own IR) and of the heard IR (L + R summed).
   - The scene JSON is committed with the kit, and its SHA-256 goes in the manifest.
-  - Fallbacks, in order, if any pre-seal check fails: `layout5_s0.8/emitter_wall`, then `layout5_s0.8/default`
-    (each with its own check before its seal).
-  - Item-9 `label`: **"Tail-dominated stress placement, one absorbing side wall, source 0.1 m from a wall,
+  - Fallbacks, in order, if any pre-seal check fails: `layout5_s0.8/emitter_wall` (D), then `layout5_s0.8/default`
+    (B), each with its own check before its seal. The kit picks the scene with `--scene-name` (default
+    `layout5_s0.9/emitter_wall`; a fallback only in the order D, then B; builder file 12, decider file 25 ruling (ii)).
+  - Item-9 label, quoted verbatim from the kit's M3-S text (`tools/ci/abx_kit.py` `E_LABEL`, `E_LABEL_DETAIL`), which
+    is authoritative (decider file 25, ruling (ii)). `label`: **"Tail-dominated stress placement, one absorbing side wall, source 0.1 m from a wall,
     specular-only early reflections (s 0.9, AX21); not a validated preset"**. `label_detail`:
     - S0 22.1 m away; direct-path difference 28.4 ms.
     - D/R −12.7 / −5.0 dB, heard −9.5 dB, against −18.6 / −13.5 dB at r/r_c 8.46 / 4.74 (Sabine A ≈ 343 m²).
@@ -100,16 +104,19 @@ ABX test.
       floor image, notch ≈ 320 Hz), all inside the ±2.5 ms direct window and counted as direct; specular amplitude
       √(0.99 × 0.1) = 0.315 (+2.4 / −3.3 dB at the wall image).
     - Near-wall emitter; its LF image is under-represented (one broadband s).
-    - Early part −8.6 dB re direct; the scattered early energy is absent (AX21; Maisara decided on 2026-11-05 that
-      the early part should contain scattered energy; the fix is deferred to the B11 rule).
+    - Early part −8.6 dB re direct; the scattered early energy is absent (AX21; the fix is deferred to the B11 rule).
     - Tail share 0.852 at 1 kHz.
     - Heard-IR T30 2.560 s, labelled "ISO fit spanning the early part, not a decay rate"; tail T30 2.582 / 2.600 s;
       Eyring 2.61 s.
     - Kuttruff Table 5.2 case 5: iteration 3.06 s against Eyring 2.99 s; the engine's tail follows Eyring.
     - Gaps are built from max(heard, tail) T30.
+    - Class: tail-dominated (heard −9.5 dB, tail share 0.85), partial early part
     - Stimulus scene, not a room prediction.
-  - Class line: **"tail-dominated (heard −9.5 dB, tail share 0.85), partial early part"**. The kit refuses to build a
-    manifest without a Class line (D-M3e).
+
+    Outside the quoted label: Maisara decided on 2026-11-05 that the early part should contain scattered energy; the
+    plan's AX21 row defers the fix to the B11 promotion rule.
+  - The Class line above is the scene's class for item 13; the kit refuses to build a manifest without a Class line
+    (D-M3e).
   - On this scene the specular share of E_target is 0.022 / 0.001, so M1's reversal condition is live (file 34
     item 1's "[s = 1 scenes]" clause, D-M3f); M1's per-band step identity is asserted at ≤ 0.05 dB (M3-C 7).
   - *Superseded record, not the ABX scene:* `layout4_s1/default` (S-A), the 07c-2 kit's scene, label "Direct-dominated
@@ -118,12 +125,43 @@ ABX test.
     The S-A figures quoted elsewhere on this sheet (item 5's clause, the Q5 window below) were measured on it.
 - **Signals (item 8):**
   - **Noise chain:** pulsed pink noise, with heard gaps ≥ T and the step at the start of a gap (construction above).
-  - **Speech chain:** McGill TSP v2 at 48 kHz, speaker **MA** (adult), files **MA01_01** and **MA01_02** (M3-T,
-    §3 item 2), with a heard pause ≥ T between them (construction above). The onset falls in the pause, no later
-    than 0.43 · T30(1 kHz, heard IR) after the end of speech (Q5).
-    - **On the ABX scene:** the Q5 window measured by the builder is [0.013, 0.380] · T30 (phase-07c-2b builder
-      file 4, decider file 8 K19); the kit recomputes and records the realised window and replacement rates
-      **[measured at build]**. The figures in the next two sub-bullets are S-A's (07c-2).
+  - **Speech chain:** McGill TSP v2 at 48 kHz, adult speaker **MA**, one file pair chosen by the pre-registered pair
+    search below (§3 item 2), with a heard pause ≥ T between them (construction above). The onset falls in the
+    pause, no later than 0.43 · T30(1 kHz, heard IR) after the end of speech (Q5).
+    - **Pre-registered text (phase-07c-2b decider file 34, DECISION I7 round 3, with interrogator file 36's
+      corrections to the pair criteria; Seat 7 file 35 rated option (3) 0/0, so the pair search stands, n = 2):**
+
+      **Item 7 (programme before the step).** Programme is counted from the first sample of the first programme
+      file (sentence 1's TSP file); the kit's lead-in silence does not count. A speech onset is a candidate only if
+      it lies (a) at or after the heard end of sentence 1 (D-M3b), (b) no later than 0.43·T_heard after the end of
+      speech (Q5), and (c) at least lead + ⌈T·fs⌉ samples after the stimulus start (item 7), T being the construction
+      T (M3-G).
+
+      **Speech pair (pre-registered before E's seal; phase-07c-2b decider file 34).** The builder tries adult MA
+      pairs in TSP index order (MA01_03 + MA01_04, MA01_05 + MA01_06, …, then MA02_…), recording every pair tried.
+      The first pair that, on the scene in use, passes every pre-seal assertion of §1 and §3 item 3, among them: its
+      earliest candidate boundary under (a) and (b) already satisfying (c) (no onset restriction), at least 34
+      boundaries passing Q5's ≥ 20 dB assertion, form (b) green, B and E nulled within −120 dB, the M3-G silences
+      asserted, item 10's peak ≤ −1 dBFS, item 6's mid-fade companions (i)–(iii) and W-a windows, and the item-7
+      assertion on every drawn onset, with Q5's realised window and replacement rate recorded, becomes the speech
+      pair. The search or re-measure is repeated on a fallback scene (D or B) if one is used. The pair is named and
+      its SHA-256s recorded before the seal. Selection grounds: measured assertions only, before any blind result;
+      no pair is ever chosen by listening. If no pair qualifies, the pair stays MA01_01 + MA01_02 and condition (c)
+      restricts the onsets: on E the onset floor is 2.685 s, the first candidate boundary 2.688 s, the realised
+      window ≈ [0.134, 0.380]·T_heard and ≈ 60 boundaries pass (fixed here before any speech stimulus is heard;
+      never adjusted after familiarisation). The record then states: 'speech onsets ≥ 0.134·T_heard on E (item 7);
+      about 2 dB less mean tail exposure than an unrestricted draw.' No remedy speech family is pre-registered: a
+      non-detection is never a reason to run another speech block (file 13 item 4).
+
+    - **The search:** `python tools/ci/abx_kit.py speech --search-pairs` (with the speech chain's other arguments;
+      see the kit's `--help`) prints one row per pair tried. `test_preregistered_numbers` pins the chosen pair's
+      names and SHA-256s, and, in the fallback branch, the floor. K6 is redone on whichever pair is chosen.
+    - **Families:** two, E in omni here and E binaural at 08-3 (union ≤ 0.098); no contingent third family. AX47's
+      α sentence (D-M3i) is unchanged.
+    - **MA01_01 + MA01_02 on the ABX scene (the fallback pair):** the builder measured the Q5 window
+      [0.013, 0.380] · T30 without the item-7 restriction (phase-07c-2b builder file 4, decider file 8 K19); the kit
+      recomputes and records the realised window and replacement rates for the chosen pair **[measured at build]**.
+      The figures in the next two sub-bullets are S-A's (07c-2).
     - **Realised Q5 onset window, recorded before sealing** (decider file 21, 2a; measured in
       `docs/review/phase-07c-2/22-drr-t30-check.md` on the kit's smoke pair MA01_01 / MA01_02; the kit recomputes
       and records them for whichever pair is pre-registered): accepted onsets lie in
@@ -152,12 +190,15 @@ ABX test.
 1. **Name the listener** in the pre-registration. Only one decision listener takes part. A further listener
    must be pre-registered as well, and then α is split by Bonferroni. The results hold for that listener only
    (item 1).
-2. **Fix the speech material** in the pre-registration: one adult TSP speaker and one file pair (item 8). Fixed by
-   M3-T (phase-07c-2b decider file 10 Part B; Seat 1 accepts on condition that the pre-registration states the
-   selection grounds):
-   - Speaker: **MA** (an adult; TSP's documentation records it)  Files: **MA01_01** and **MA01_02**, at 48 kHz.
-   - Selection grounds (to be stated in the pre-registration): the pair was fixed for its measured Q5, form-(b) and
-     E-render null results, before any blind result.
+2. **Fix the speech material** in the pre-registration: one adult TSP speaker and one file pair (item 8). M3-T
+   (phase-07c-2b decider file 10 Part B) is amended by decider file 34 (I7, round 3): the pair is the result of the
+   pre-registered pair search (§1, "Speech pair"); MA01_01 + MA01_02 is used only in the fallback branch, with the
+   onset restriction.
+   - Speaker: **MA** (an adult; TSP's documentation records it)  Files: ______ and ______ (the search result, or
+     MA01_01 and MA01_02 in the fallback branch), at 48 kHz. Every pair tried is recorded.
+   - Selection grounds (stated in the pre-registration; Seat 1's condition): measured assertions only (every
+     pre-seal assertion of §1 and §3 item 3 on the scene in use, including item 7 with no onset restriction), before
+     any blind result; no pair is ever chosen by listening.
    - Our SHA-256 of `48k.zip` and of each excerpt is recorded (item 12).
    - The children CA and CB are excluded (the kit refuses them, `tools/ci/abx_kit.py` L983–984).
    - Open before the seal, on every sealed scene (Seat 3, M3-C 7; decider file 10 M3-T): the unstepped render B
@@ -166,6 +207,9 @@ ABX test.
 3. **Build the stimuli** on a machine with `render_cli` built (`cmake --preset cli && cmake --build --preset cli`).
    - Noise chain: `python tools/ci/abx_kit.py noise --out build/abx-07c-2`. The CI `listening-pack` artifact
      (`phase-07c-2/noise/`) holds the same files.
+   - Scene: `--scene-name` (default `layout5_s0.9/emitter_wall`; fallbacks `layout5_s0.8/emitter_wall`, then
+     `layout5_s0.8/default`), on both chains.
+   - Speech pair search (before E's seal): `python tools/ci/abx_kit.py speech --search-pairs` (§1, "Speech pair").
    - Speech chain, local only: `python tools/ci/abx_kit.py speech --out build/abx-07c-2 --speaker <S> --files <F1> <F2>`.
      The script downloads `48k.zip`, checks it against our SHA-256 and writes `NOTICE-TSP.txt`. Never commit or
      upload these files (item 12).

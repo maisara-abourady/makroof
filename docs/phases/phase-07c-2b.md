@@ -116,8 +116,10 @@ The numbered items run in this order.
      wording (phase-07c-2b decider file 5), the class being the scene label's Class line; item 15 is M3-S's text (the
      same scene rerun binaurally at 08-3, its own family; 2 families, union ≤ 0.098). Homes: the run sheet §1
      "Scene", its §6 wording and its §7 item-15 entry; `docs/phases/phase-08-3.md`; AX47 (Reversal widened to
-     layout 5, α sentence). The speech pair is fixed (M3-T: MA01_01 + MA01_02, run sheet §3 item 2), and AX49 L4
-     enters the kit (run sheet §8).
+     layout 5, α sentence). The speech pair was fixed by M3-T (MA01_01 + MA01_02); **M3-T is amended by
+     phase-07c-2b decider file 34** (I7, round 3; interrogator file 36): the pair is the result of a pre-registered
+     search of adult MA pairs before E's seal, MA01_01 + MA01_02 only in the fallback branch with the onset
+     restriction (run sheet §1 "Speech pair", §3 item 2). AX49 L4 enters the kit (run sheet §8).
    - **Before any seal: M1's reversal condition and s_w** (decider file 34 item 2): M1 reverses if item 6's identity
      assertions fail on a rendered A/B pair of any scene with E_target specular share > 0 (10·log10(E(stepped −
      unstepped)/E(unstepped)) = 20·log10|10^(g/20) − 1| over the tail window; the per-band step equals g);
