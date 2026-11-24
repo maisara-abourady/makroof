@@ -30,6 +30,9 @@
 #include <complex>
 #include <cstdio>
 #include <cstring>
+#include <memory>
+#include <mutex>
+#include <random>
 #include <thread>
 #include <vector>
 
@@ -951,7 +954,8 @@ struct BuilderPark
 struct Unpark
 {
     std::atomic<bool>& park;
-    ~Unpark() { park.store(false); }
+    bool to = false; // the value that unparks
+    ~Unpark() { park.store(to); }
 };
 
 // The stage-1 (A) solve of `scene` outside the pipeline (AX48 FM-3').
@@ -1105,5 +1109,272 @@ TEST_CASE("FM-B2 / R17: both VST3 orders: prepare then setState (insertion solve
         REQUIRE(p.stats().solves == 1);
         REQUIRE(std::memcmp(p.savedDiffuse()->bands.data(), clubLevel.data(), sizeof(sim::EmitterBands))
                 == 0);
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Phase-07c-2 scope 11 (D-W3 H-2c): the ISM never waits behind the solve. The realtime diffuse solve is a
+// task on the gate's process-wide executor; the builder serves every edit at once and alone commits a
+// finished solve, adopted only on the generation read before its snapshot; a superseded solve stops on its
+// per-generation token.
+// ---------------------------------------------------------------------------------------------------------------
+
+TEST_CASE("Scope 11 (H-2c): an edit during a running solve gets its B1' ISM update at once; the superseded "
+          "solve yields no final; no adoption during motion",
+          "[pipeline][interim][cond4][h2c]")
+{
+    plugin::ScenePipeline p;
+    p.prepare(kRate, 256, false);
+    restoreScene(p, pipeline_test::loadScene("club.json"));
+    waitSettled(p);
+    const auto s0 = p.stats();
+    const auto builderThread = std::make_shared<std::atomic<std::thread::id>>();
+    std::atomic<bool> release{false}, entered{false}, solveOnBuilder{false};
+    Unpark unparkOnExit{release, true}; // also when a REQUIRE throws (before the destructor quiesces)
+    p.setAfterSnapshotHook([&] { builderThread->store(std::this_thread::get_id()); });
+    p.setStageHook([&](plugin::ScenePipeline::BuildStage stage) {
+        if (stage != plugin::ScenePipeline::BuildStage::Solve)
+            return;
+        if (std::this_thread::get_id() == builderThread->load())
+            solveOnBuilder.store(true); // item 1: the solve never runs on the builder thread
+        if (entered.exchange(true))
+            return;
+        while (!release.load()) // the first solve parks inside the AX38 gate
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    });
+    const float y0 = p.parameter(module3d::kListenerY);
+    // Normalised units (0..1 over the room's inner range): two distinct scenes, never clamped.
+    const float dir = y0 > 0.5f ? -1.0f : 1.0f;
+    p.setParameter(module3d::kListenerY, y0 + dir * 0.1f);
+    REQUIRE(pipeline_test::waitFor([&] { return entered.load(); }));
+    REQUIRE(p.stats().interimSubmits == s0.interimSubmits + 1);
+    REQUIRE(p.gate().held());
+    REQUIRE(p.settling());
+    // The builder is free while the solve is parked: the next edit's ISM update lands at once (item 2).
+    p.setParameter(module3d::kListenerY, y0 + dir * 0.2f);
+    const bool landed = pipeline_test::waitFor(
+        [&] { return p.stats().interimSubmits == s0.interimSubmits + 2; }, std::chrono::seconds(30));
+    INFO("interim " << p.stats().interimSubmits - s0.interimSubmits << " discarded "
+                    << p.stats().discardedMidDrag - s0.discardedMidDrag << " busy " << p.builderBusy()
+                    << " dirty " << p.dirtyGeneration() << " handled " << p.handledGeneration().value_or(999)
+                    << " finals " << p.stats().finalSubmits - s0.finalSubmits);
+    REQUIRE(landed);
+    REQUIRE(p.gate().held()); // the first solve is still parked: the update did not wait for it
+    const auto mid = p.stats();
+    REQUIRE(mid.finalSubmits == s0.finalSubmits);             // no adoption during motion
+    REQUIRE(mid.discardedMidDrag == s0.discardedMidDrag + 1); // the parked solve is superseded
+    release.store(true);
+    waitSettled(p);
+    p.setStageHook({});
+    p.setAfterSnapshotHook({});
+    REQUIRE_FALSE(solveOnBuilder.load());
+    const auto s1 = p.stats();
+    REQUIRE(s1.solves == s0.solves + 1);             // the superseded solve was cancelled: no E_b
+    REQUIRE(s1.finalSubmits == s0.finalSubmits + 1); // one step, for the latest edit only
+    REQUIRE(s1.steps == s0.steps + 1);
+    REQUIRE(s1.discardedMidDrag == s0.discardedMidDrag + 1);
+    REQUIRE(p.handledGeneration() == p.dirtyGeneration());
+    REQUIRE(bitIdentical(*p.lastSubmittedIr(), plugin::ScenePipeline::buildIr(p.currentScene(), kRate)));
+}
+
+TEST_CASE("Scope 11 (H-2c): a final is bit-identical with and without cancelled predecessors (D7)",
+          "[pipeline][interim][h2c]")
+{
+    const auto club = pipeline_test::loadScene("club.json");
+    const auto finalOf = [&](int cancelledPredecessors) {
+        plugin::ScenePipeline p;
+        p.prepare(kRate, 256, false);
+        restoreScene(p, club);
+        waitSettled(p);
+        const float y0 = p.parameter(module3d::kListenerY);
+        const float dir = y0 > 0.5f ? -1.0f : 1.0f; // normalised units: never clamped
+        const auto s0 = p.stats();
+        // Each predecessor's solve is held inside the gate until the next edit's ISM update has landed (its
+        // token is then set), so every predecessor is superseded mid-solve; the last edit solves undisturbed.
+        std::atomic<int> solves{0};
+        std::atomic<int> released{0};
+        struct ReleaseAll
+        {
+            std::atomic<int>& r;
+            ~ReleaseAll() { r.store(1 << 20); }
+        } releaseOnExit{released};
+        p.setStageHook([&](plugin::ScenePipeline::BuildStage stage) {
+            if (stage != plugin::ScenePipeline::BuildStage::Solve)
+                return;
+            const int k = solves.fetch_add(1) + 1;
+            while (k <= cancelledPredecessors && released.load() < k)
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        });
+        // Edit k's ISM update lands (its decision superseded solve k - 1, which is then released and stops at
+        // its first stop point), then edit k's solve parks.
+        for (int k = 1; k <= cancelledPredecessors + 1; ++k)
+        {
+            const auto before = p.stats().interimSubmits;
+            p.setParameter(module3d::kListenerY,
+                           y0 + dir * (k <= cancelledPredecessors ? 0.05f * static_cast<float>(k) : 0.25f));
+            REQUIRE(pipeline_test::waitFor([&] { return p.stats().interimSubmits == before + 1; }));
+            released.store(k - 1);
+            if (k <= cancelledPredecessors)
+                REQUIRE(pipeline_test::waitFor([&] { return solves.load() == k; }));
+        }
+        released.store(cancelledPredecessors);
+        waitSettled(p);
+        p.setStageHook({});
+        const auto s1 = p.stats();
+        REQUIRE(s1.finalSubmits == s0.finalSubmits + 1);
+        REQUIRE(s1.discardedMidDrag
+                >= s0.discardedMidDrag + static_cast<std::uint64_t>(cancelledPredecessors));
+        REQUIRE(s1.solves == s0.solves + 1); // the cancelled predecessors yielded no E_b
+        REQUIRE(p.handledGeneration() == p.dirtyGeneration());
+        REQUIRE(bitIdentical(*p.lastSubmittedIr(), plugin::ScenePipeline::buildIr(p.currentScene(), kRate)));
+        return p.lastSubmittedIr();
+    };
+    const auto clean = finalOf(0);
+    const auto afterCancels = finalOf(3);
+    REQUIRE(clean != nullptr);
+    REQUIRE(afterCancels != nullptr);
+    REQUIRE(bitIdentical(*clean, *afterCancels));
+}
+
+namespace {
+
+// Serialises the test's host calls (prepare, release, restore, reset, offline switch) against the audio
+// thread's process(), as the host contract requires; setParameter comes from the test thread freely.
+struct HostAudio
+{
+    plugin::ScenePipeline& p;
+    std::mutex host;
+    std::atomic<bool> stop{false};
+    std::thread audio;
+    explicit HostAudio(plugin::ScenePipeline& pipe)
+        : p(pipe)
+        , audio([this] {
+            std::vector<float> l(256, 0.0f), r(256, 0.0f);
+            std::uint32_t x = 12345;
+            while (!stop.load())
+            {
+                {
+                    std::lock_guard<std::mutex> lock(host);
+                    for (std::size_t i = 0; i < l.size(); ++i)
+                    {
+                        x = x * 1664525u + 1013904223u;
+                        l[i] = r[i] = static_cast<float>(x >> 9) * 0x1p-23f - 0.5f;
+                    }
+                    const float* const in[2] = {l.data(), r.data()};
+                    float* const out[2] = {l.data(), r.data()};
+                    p.process(in, out, 256);
+                }
+                std::this_thread::sleep_for(std::chrono::microseconds(500));
+            }
+        })
+    {}
+    ~HostAudio()
+    {
+        stop.store(true);
+        audio.join();
+    }
+    HostAudio(const HostAudio&) = delete;
+    HostAudio& operator=(const HostAudio&) = delete;
+};
+
+} // namespace
+
+TEST_CASE("Scope 11 (H-2c) stress: edits at random solve points, quiesce and restore mid-solve, the offline "
+          "switch, destroyed mid-solve (TSan)",
+          "[pipeline][h2c][stress]")
+{
+    const auto booth = pipeline_test::loadScene("dead_booth.json");
+    std::mt19937 rng(0x07C2B011u);
+    const auto uniformMs = [&](int hi) { return std::uniform_int_distribution<int>(0, hi)(rng); };
+    constexpr int kIterations = 8;
+    for (int iter = 0; iter < kIterations; ++iter)
+    {
+        CAPTURE(iter);
+        auto p = std::make_unique<plugin::ScenePipeline>();
+        restoreScene(*p, booth);
+        p->prepare(kRate, 256, false);
+        auto solveStarts = std::make_shared<std::atomic<int>>(0);
+        p->setStageHook([solveStarts](plugin::ScenePipeline::BuildStage stage) {
+            if (stage == plugin::ScenePipeline::BuildStage::Solve)
+                solveStarts->fetch_add(1);
+        });
+        const float y0 = p->parameter(module3d::kListenerY);
+        const float w0 = p->parameter(module3d::kRoomW);
+        {
+            HostAudio host(*p);
+            const int edits = 4 + uniformMs(4);
+            for (int e = 0; e < edits; ++e)
+            {
+                // At a random point of the running solve (or just after it).
+                const int seen = solveStarts->load();
+                (void)pipeline_test::waitFor([&] { return solveStarts->load() > seen; },
+                                             std::chrono::milliseconds(300));
+                std::this_thread::sleep_for(std::chrono::milliseconds(uniformMs(12)));
+                if (uniformMs(3) == 0)
+                    p->setParameter(module3d::kRoomW, w0 + 0.1f * static_cast<float>(e + 1)); // a T60 edit
+                else
+                    p->setParameter(module3d::kListenerY, y0 + 0.01f * static_cast<float>(e + 1));
+                switch (uniformMs(9))
+                {
+                case 0: // quiesce mid-solve: release, then prepare again
+                {
+                    std::lock_guard<std::mutex> lock(host.host);
+                    p->release();
+                    p->prepare(kRate, 256, false);
+                    break;
+                }
+                case 1: // a restore (undo / preset recall) mid-solve
+                {
+                    std::lock_guard<std::mutex> lock(host.host);
+                    auto values = p->parameterValues();
+                    p->beginRestore();
+                    p->restore(p->baseScene(), values);
+                    break;
+                }
+                case 2: // realtime reset (never waits; never concurrent with process(), the host contract)
+                {
+                    std::lock_guard<std::mutex> lock(host.host);
+                    p->reset();
+                    break;
+                }
+                case 3: // the offline switch mid-solve, a few offline blocks, and back
+                {
+                    std::lock_guard<std::mutex> lock(host.host);
+                    p->setNonRealtime(true);
+                    std::vector<float> l(256, 0.1f), r(256, 0.1f);
+                    const float* const in[2] = {l.data(), r.data()};
+                    float* const out[2] = {l.data(), r.data()};
+                    for (int b = 0; b < 2; ++b)
+                        p->process(in, out, 256);
+                    p->setNonRealtime(false);
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+            if (iter % 2 == 0)
+            {
+                // Destroyed mid-solve (or with its task queued or at the gate): no use after free, no hang.
+                const int seen = solveStarts->load();
+                p->setParameter(module3d::kListenerY, y0 + 0.5f);
+                (void)pipeline_test::waitFor([&] { return solveStarts->load() > seen; },
+                                             std::chrono::milliseconds(300));
+                std::this_thread::sleep_for(std::chrono::milliseconds(uniformMs(8)));
+                std::lock_guard<std::mutex> lock(host.host);
+                host.stop.store(true);
+            }
+        }
+        if (iter % 2 == 0)
+        {
+            p.reset(); // the destructor quiesces: it waits for or orphans the in-flight task
+            continue;
+        }
+        REQUIRE(pipeline_test::waitFor([&] { return !p->settling() && p->builderIdle(); },
+                                       std::chrono::seconds(120)));
+        p->setStageHook({});
+        REQUIRE(p->handledGeneration() == p->dirtyGeneration());
+        REQUIRE(
+            bitIdentical(*p->lastSubmittedIr(), plugin::ScenePipeline::buildIr(p->currentScene(), kRate)));
     }
 }

@@ -348,6 +348,38 @@ TEST_CASE("diffuse pilot stopped by work mid-batch is independent of the pool si
     requireIdentical(a, c);
 }
 
+TEST_CASE("diffuse estimate is independent of the pool's share limit (phase-07c-2 scope 11, D4)", "[diffuse]")
+{
+    // D-W3 H-2c (Seat 5): a builder-class solve takes shares on size() - 1 threads. The limit changes only
+    // which thread runs a block and the pilot's batch, never the result, also when the pilot stops mid-batch.
+    const auto planned = diffuse_test::plan(smallScene());
+    ThreadPool full(4), limited(4), one(1);
+    limited.setShareLimit(3);
+    REQUIRE(limited.size() == 4);
+    REQUIRE(limited.shareThreads() == 3);
+    REQUIRE(full.shareThreads() == 4);
+    ThreadPool clamp(2);
+    clamp.setShareLimit(9);
+    REQUIRE(clamp.shareThreads() == 2);
+    DiffuseRunOptions of, ol, o1;
+    of.pool = &full;
+    ol.pool = &limited;
+    o1.pool = &one;
+    const auto a = estimateDiffuse(planned.problem, {}, o1);
+    requireIdentical(a, estimateDiffuse(planned.problem, {}, of));
+    requireIdentical(a, estimateDiffuse(planned.problem, {}, ol));
+    DiffuseLimits tight;
+    tight.wScene = 2 * a.wPilot * 11 / 32; // the pilot stops inside a batch
+    const auto t = estimateDiffuse(planned.problem, tight, o1);
+    REQUIRE(t.nStar < kNStarMax);
+    requireIdentical(t, estimateDiffuse(planned.problem, tight, ol));
+    limited.setShareLimit(1); // the caller alone
+    requireIdentical(t, estimateDiffuse(planned.problem, tight, ol));
+    limited.setShareLimit(0); // all again
+    REQUIRE(limited.shareThreads() == 4);
+    requireIdentical(a, estimateDiffuse(planned.problem, {}, ol));
+}
+
 TEST_CASE("diffuse estimate does not depend on tailSeed (AX40)", "[diffuse]")
 {
     auto s1 = smallScene();

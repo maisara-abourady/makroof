@@ -511,7 +511,9 @@ DiffuseResult estimateDiffuse(const DiffuseProblem& problem, const DiffuseLimits
         std::int64_t used = 0;
         std::int64_t wPilot = 0;
         bool stopped = false;
-        const auto batch = static_cast<std::int64_t>(pool.size());
+        // A pool's worth: the threads taking shares (ThreadPool::shareThreads(), phase-07c-2 scope 11); the
+        // batch never changes the result (the stop test is per block, D4).
+        const auto batch = static_cast<std::int64_t>(pool.shareThreads());
         while (!stopped && used < maxBlocks)
         {
             const std::int64_t to = std::min(maxBlocks, used + batch);

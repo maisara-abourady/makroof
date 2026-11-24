@@ -3,6 +3,8 @@
 #include "ContractFixtures.h"
 #include "cli/Cli.h"
 #include "cli/WavIO.h"
+#include "contract/Parse.h"
+#include "sim/Engine.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -341,4 +343,156 @@ TEST_CASE("render_cli realtime-emulation argument errors", "[cli][conv]")
     usageError(
         {"--scene", room, "--in", "a.wav", "--out", "b.wav", "--realtime-emulation", "--switch-every", "0.5"},
         "must be given together");
+}
+
+// Phase-07c-2 D-W2 item 5 (the AX47 self-ABX step; validation only, like --no-air-absorption, AX4):
+// --abx-step-db. (1) g = 0 is bit-identical to no flag (IR and real-time render). (2) A g step changes the
+// tail energy by g dB, measured independently here on the written IRs against the tail window of
+// sim::buildRoomIR's own diagnostics (not the CLI's printout): early part bit-identical, 10 log10(E_stepped /
+// E_unstepped) = g within 0.01 dB over [t_mix,e + 2.5 ms, L) (the tail alone; MixingTime.h kCrossfadeHalfS)
+// and within 0.1 dB over AX47's tail window [t_mix,e, L) (which also holds the early part's fade-out); 10
+// log10(E(stepped - unstepped) / E(unstepped)) = 20 log10|10^(g/20) - 1| (D-W2 item 6) within 0.01 dB on the
+// tail alone. small_room has a specular share of ~0.74 in its tail target, so the E'_diff formula's specular
+// term is exercised. (3) The render is bit-identical to the unstepped one before the onset and the fade
+// starts there.
+TEST_CASE("render_cli --abx-step-db: g = 0 is bit-identical, a g step sets the tail energy",
+          "[cli][abx-step]")
+{
+    TempDir dir;
+    const std::string room = scene("small_room.json");
+    const auto in = (dir.path / "in.wav").string();
+    std::string error;
+    REQUIRE(cli::writeWavFloat32(in, randomStereo(48000, 24000, 91u), error));
+    const auto path = [&](const char* name) { return (dir.path / name).string(); };
+    const std::vector<std::string> rt{"--realtime-emulation", "--block", "512", "--partition", "512"};
+    const auto with = [&](std::vector<std::string> args, const std::vector<std::string>& more) {
+        args.insert(args.end(), more.begin(), more.end());
+        return args;
+    };
+
+    // (1) g = 0
+    REQUIRE(run(with({"--scene", room, "--mode", "omni", "--in", in, "--out", path("plain.wav"), "--ir",
+                      path("plain_ir.wav")},
+                     rt))
+                .exitCode
+            == cli::kExitOk);
+    const auto zero = run(with({"--scene", room, "--mode", "omni", "--in", in, "--out", path("zero.wav"),
+                                "--ir", path("zero_ir.wav"), "--abx-step-db", "0", "--abx-step-sample",
+                                "10240", "--abx-stepped-ir", path("zero_stepped_ir.wav")},
+                               rt));
+    INFO(zero.err);
+    REQUIRE(zero.exitCode == cli::kExitOk);
+    cli::Audio plain, zeroOut, plainIr, zeroIr, zeroStepped;
+    REQUIRE(cli::readWav(path("plain.wav"), plain, error));
+    REQUIRE(cli::readWav(path("zero.wav"), zeroOut, error));
+    REQUIRE(cli::readWav(path("plain_ir.wav"), plainIr, error));
+    REQUIRE(cli::readWav(path("zero_ir.wav"), zeroIr, error));
+    REQUIRE(cli::readWav(path("zero_stepped_ir.wav"), zeroStepped, error));
+    REQUIRE(plain.channels.size() == 2);
+    for (std::size_t c = 0; c < 2; ++c)
+        CHECK(bitIdentical(plain.channels[c], zeroOut.channels[c]));
+    REQUIRE(plainIr.channels.size() == zeroIr.channels.size());
+    for (std::size_t c = 0; c < plainIr.channels.size(); ++c)
+    {
+        CHECK(bitIdentical(plainIr.channels[c], zeroIr.channels[c]));
+        CHECK(bitIdentical(plainIr.channels[c], zeroStepped.channels[c]));
+    }
+
+    // The tail windows, from the library's own build (independent of the CLI's step code).
+    std::ifstream sceneFile(room, std::ios::binary);
+    const std::string sceneText((std::istreambuf_iterator<char>(sceneFile)),
+                                std::istreambuf_iterator<char>());
+    const auto parsed = contract::parseScene(sceneText);
+    REQUIRE(parsed.ok());
+    sim::BuildOptions build;
+    build.kind = sim::BuildOptions::Kind::Omni;
+    sim::HybridDiagnostics diagnostics;
+    const sim::RoomIR reference = sim::buildRoomIR(*parsed.scene, build, &diagnostics);
+    REQUIRE(reference.taps.size() == plainIr.channels.size());
+    for (std::size_t c = 0; c < reference.taps.size(); ++c)
+        CHECK(bitIdentical(reference.taps[c], plainIr.channels[c]));
+
+    const auto energy = [](const std::vector<float>& a, const std::vector<float>* b, std::size_t from) {
+        double e = 0.0;
+        for (std::size_t i = from; i < a.size(); ++i)
+        {
+            const double v = static_cast<double>(a[i]) - (b != nullptr ? static_cast<double>((*b)[i]) : 0.0);
+            e += v * v;
+        }
+        return e;
+    };
+    const std::size_t onset = 10240;
+    for (const double g : {0.9, -0.9, 0.5, -0.5, 3.0})
+    {
+        std::ostringstream gText;
+        gText << g;
+        const auto r = run(with({"--scene", room, "--mode", "omni", "--in", in, "--out", path("step.wav"),
+                                 "--abx-step-db", gText.str(), "--abx-step-sample", std::to_string(onset),
+                                 "--abx-stepped-ir", path("step_ir.wav")},
+                                rt));
+        INFO("g = " << g << "\n" << r.err);
+        REQUIRE(r.exitCode == cli::kExitOk);
+        cli::Audio stepIr, stepOut;
+        REQUIRE(cli::readWav(path("step_ir.wav"), stepIr, error));
+        REQUIRE(cli::readWav(path("step.wav"), stepOut, error));
+        const double expectedDiffDb = 20.0 * std::log10(std::abs(std::pow(10.0, g / 20.0) - 1.0));
+        for (const auto& e : diagnostics.emitters)
+        {
+            const auto mix = static_cast<std::size_t>(
+                std::ceil((e.match.mixing.mixS - diagnostics.alignmentShiftS) * diagnostics.sampleRate));
+            const auto half = static_cast<std::size_t>(std::lround(0.0025 * diagnostics.sampleRate));
+            for (int o = 0; o < reference.numOutputs; ++o)
+            {
+                const std::size_t c = reference.index(e.channel, o);
+                const auto& u = plainIr.channels[c];
+                const auto& s = stepIr.channels[c];
+                REQUIRE(u.size() == s.size());
+                std::size_t first = 0;
+                while (first < u.size() && std::memcmp(&u[first], &s[first], sizeof(float)) == 0)
+                    ++first;
+                INFO("emitter " << e.channel << " output " << o << " first differing tap " << first
+                                << ", t_mix tap " << mix);
+                CHECK(first + half >= mix); // the early part, up to the tail's fade-in, is bit-identical
+                CHECK(first < u.size());
+                const double alone =
+                    10.0 * std::log10(energy(s, nullptr, mix + half) / energy(u, nullptr, mix + half));
+                const double ax47 = 10.0 * std::log10(energy(s, nullptr, mix) / energy(u, nullptr, mix));
+                const double diff = 10.0
+                                    * std::log10(energy(s, &u, mix + half) / energy(u, nullptr, mix + half));
+                CHECK(std::abs(alone - g) <= 0.01);
+                CHECK(std::abs(ax47 - g) <= 0.1);
+                CHECK(std::abs(diff - expectedDiffDb) <= 0.01);
+            }
+        }
+        // The render: bit-identical to the unstepped one before the onset; the fade starts at the onset.
+        for (std::size_t c = 0; c < 2; ++c)
+        {
+            const auto& a = plain.channels[c];
+            const auto& b = stepOut.channels[c];
+            REQUIRE(a.size() == b.size());
+            std::size_t first = 0;
+            while (first < a.size() && std::memcmp(&a[first], &b[first], sizeof(float)) == 0)
+                ++first;
+            CHECK(first >= onset);
+            CHECK(first <= onset + 2);
+        }
+    }
+
+    // A down step the diffuse level cannot carry (specular share ~0.74 > 1 - 10^(-3/10)) is refused.
+    const auto refused = run(
+        {"--scene", room, "--mode", "omni", "--abx-step-db", "-3", "--abx-stepped-ir", path("refused.wav")});
+    CHECK(refused.exitCode == cli::kExitUsage);
+    CHECK(refused.err.find("negative diffuse energy") != std::string::npos);
+    // Usage errors: the flag is validation only and never implied.
+    CHECK(run({"--scene", room, "--abx-step-db", "1", "--abx-stepped-ir", path("x.wav")}).exitCode
+          == cli::kExitUsage); // needs --mode omni
+    CHECK(run({"--scene", room, "--mode", "omni", "--in", in, "--out", path("x.wav"), "--abx-step-db", "1",
+               "--abx-step-sample", "1024"})
+              .exitCode
+          == cli::kExitUsage); // needs --realtime-emulation
+    CHECK(run(with({"--scene", room, "--mode", "omni", "--in", in, "--out", path("x.wav"), "--abx-step-db",
+                    "1", "--abx-step-sample", "1000"},
+                   rt))
+              .exitCode
+          == cli::kExitUsage); // not a partition boundary
 }

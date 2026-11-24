@@ -378,7 +378,8 @@ void solveHybrid(StagedBuild::State& st)
             diffuse::DiffuseRunOptions run;
             run.pool = options.diffusePool;
             run.stop = options.cancel;
-            diffuse::DiffuseLimits limits;
+            diffuse::DiffuseLimits limits = options.diffuseLimitsOverride ? *options.diffuseLimitsOverride
+                                                                          : diffuse::DiffuseLimits{};
             if (options.diffuseFixedHistories > 0)
                 limits.fixedHistories = options.diffuseFixedHistories; // validation only
             const diffuse::DiffuseResult result = diffuse::estimateDiffuse(problem, limits, run);
@@ -858,6 +859,12 @@ StagedBuild StagedBuild::plan(const contract::SceneDescription& scene, const Bui
 bool StagedBuild::needsSolve() const noexcept
 {
     return state_ && state_->hybrid && !state_->solveDone && !state_->options.tailLevelAx16;
+}
+
+void StagedBuild::setCancel(const std::atomic<bool>* cancel) noexcept
+{
+    if (state_)
+        state_->options.cancel = cancel;
 }
 
 void StagedBuild::solve(diffuse::ThreadPool* pool)

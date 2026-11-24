@@ -41,7 +41,8 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
 1. **Timing** (section 3): before the first public release, with its W_max raise in one golden round;
    after release only with the estimator parameters versioned in saved state. (phase-07c condition 1; shared
    with the umbrella)
-3. **W_max re-derived under (C)** from the background budget: Seat 6's 3 s per emitter, the AX38 (iv)
+3. **W_max re-derived under (C)** (moved to phase-07c-2b, 2026-11-22, two-session split: its scope 6, W_max, and scope 7, the `solveRefMs`
+   re-pin and the `nsPerEval` check) from the background budget: Seat 6's 3 s per emitter, the AX38 (iv)
    load mark, and Table 15.1's 700 ms / 3 s rows (Seats 1 (i), 3 (5), 5). It is not kept at (A). It stays a
    pinned work count, the same on every platform (AX41), re-derived from the C++ cost, never a time cap;
    AX41 and the AQ10 amendment are updated through `/fix-plan`. The W_max raise changes the work: the solve
@@ -49,26 +50,39 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
    Whether the per-evaluation solve time (`nsPerEval` on the GATE line) stays invariant across 07c's moves is
    checked here; if it moves, Seats 2 and 3 are convened (the re-pin above is unconditional) (D-Q5
    future-debt register, decider file `docs/review/phase-05i/9-decider-r2.md`). (phase-07c condition 3)
-8. **Follow-on checks.** The Phase 12 (ii) preset check (no preset default raises U) is re-run under this
+   The re-derivation waits on scope 11 done (M7, M7b, TSan) and on the class (c) / load-fallback round (scope 9); the full
+   waiting list (with M7b, TSan, the pin-time measurements and U2 as recorded in each seat's own terms) is decider
+   file `docs/review/phase-07c-2/13-decider-rebuttal-r4.md`, "D-W1: waiting list, corrected", as restated in file
+   15, "Other items". The AX38 (iv) load mark is read on its own definition, the time until the last instance is
+   audible at load (at the interim level since 07c-1), not the time until the final tail settles; it binds W only
+   through the keyless path (K-a or `medium_room` insertion, FM-B2), which is the class (c) round's matter (decider
+   file `docs/review/phase-07c-2/8-decider-rebuttal-r2.md` §3).
+8. **Follow-on checks** (moved to phase-07c-2b, 2026-11-22, two-session split: its scope 9). The Phase 12 (ii) preset check (no preset default raises U) is re-run under this
    phase's W_max (Seat 6 (e)). Phase 08 goldens in capped rooms carry a tolerance derived from the
    achieved SE, unless this phase lands before they are frozen (Seat 4). (phase-07c condition 8)
 9. **Interim-step items from 07c-1's loop** (phase-07c-1 decision loop, 2026-11-12; decider file
    `docs/review/phase-07c-1/12-decider-decision-r3.md` §8, interrogator file 13 correction 7):
-   - **The ABX runs first:** the AX47 self-ABX (16 trials, capped layout-4 scene, noise and speech) and the
+   - **The ABX runs first** (the ABX scene question M3, the seal and the run moved to phase-07c-2b, 2026-11-22, two-session split: its
+     scopes 2 and 3; the design and kit stay here): the AX47 self-ABX (16 trials, capped layout-4 scene, noise and speech) and the
      AX49 listening item L4 (blind held-chord ABX, provisional against exact tail, T60 8 s, fully wet,
-     16 trials, ≥ 12/16 = detected) are run in this phase. This phase's loop sets the AX47 ABX's detection
+     16 trials, ≥ 12/16 = detected) are run in phase-07c-2b (its scopes 2 and 3). This phase's loop sets the AX47 ABX's detection
      criterion and step sizes before the run (AX47 reversal; a per-size 12/16 rule over several sizes raises
      the family-wise false-detection rate, interrogator file 16 row P07C1-DC-06). AX47's reversal (bound 0.5 dB) and AX49's reversal
      (L4 detects the cut) follow from their results. The generated speech-like stimulus of `[ax47-midfade]` is a CI
      test signal only; 07c-2's self-ABX and the acceptance set use recorded speech (D-B3 condition A; phase-07c-1b
      loop, 2026-11-13).
-   - **Class (c) decision, bound by AX47:** whether a statistical source (a stage-1 estimate that is not the
+     The design is set (D-W2, final): as pre-registered in `docs/review/phase-07c-2/13-decider-rebuttal-r4.md`,
+     "D-W2: final", items 1–16, and its section "Q5: TSP step placement (pre-registered)" (the AX47 self-ABX's listener, trials, anchor, test family, decision rule, step,
+     assertions, trial structure, signals, scene, chain, blinding, distribution and record; AX49 L4; the 08-3
+     binaural rerun; scheduling); speech McGill TSP v2, built locally only. (AX47 and AX49 rows.)
+   - **Class (c) decision, bound by AX47** (moved to phase-07c-2b, 2026-11-22, two-session split: its scope 4): whether a statistical source (a stage-1 estimate that is not the
      final) is admitted, decided by this phase's loop under AX47 ("From 07c-2"; Seat 1's p95 reading is the
      recorded input). **Admission waits for the AX47 ABX result** (the bound it is held to, 1 dB or 0.5 dB,
      is the ABX's outcome).
-   - **The load fallback:** the load source when stage 1 is inadmissible, decided in the same loop; it meets
+   - **The load fallback** (moved to phase-07c-2b, 2026-11-22, two-session split: its scope 4): the load source when stage 1 is inadmissible, decided in the same loop; it meets
      AX47 and conditions 5 and 9 and never gives an early-only first IrSet for a scene with a tail.
-   - **Interim stream check (D1, FM-D1-S3; Maisara 2026-11-13).** If this phase's loop admits a class (c) source or a
+   - **Interim stream check (D1, FM-D1-S3; Maisara 2026-11-13)** (moved to phase-07c-2b, 2026-11-22, two-session split: its scope 5, "No shared
+     prefix" included). If this phase's loop admits a class (c) source or a
      load fallback whose interim tail is built from the exact tail's `BandNoiseGenerator`, seed and emitter stream
      (`tailSeedForOutput`), a test compares the interim IR with the final IR, both as shipped, from two serial builds of
      one scene and seed in one process (never from the async pipeline; never against a measured IR; a repeat build of
@@ -97,10 +111,10 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
      terms (cases with d < 0.5; 'not evaluated (outside EDT domain …)' otherwise; ≥ 1 evaluated case at each); (4)
      AX47's level step ≤ B per emitter and band, asserted in the tail window and, for an interim that fades at L_f, in
      the common window t_mix,e…L_f. The PR names the source and gives these results.
-   - **Instance insertion (FM-B2, AX48):** Instance insertion (FM-B2) takes 07c-2's stage-1 rules for statistical
+   - **Instance insertion (FM-B2, AX48)** (moved to phase-07c-2b, 2026-11-22, two-session split: its scope 4): Instance insertion (FM-B2) takes 07c-2's stage-1 rules for statistical
      sources. (phase-07c-1b loop, 2026-11-13)
-   - **The W_max raise changes E_prec** (AX48), so v2 states saved before the raise load keyless.
-   - **Seat 2's prefix check:** verify Seat 2's prefix claim (`pathCount`, `pilotStops`).
+   - **The W_max raise changes E_prec** (AX48; moved to phase-07c-2b, 2026-11-22, two-session split: its scope 10), so v2 states saved before the raise load keyless.
+   - **Seat 2's prefix check** (moved to phase-07c-2b, 2026-11-22, two-session split: its scope 10): verify Seat 2's prefix claim (`pathCount`, `pilotStops`).
 10. **Carried from 07c-1b (P07C1B-R1), only if `listed` is still `false` on the macOS `cube100_lowalpha0.05_s0.3` row
     of `kGateRegister` on `main` when this phase starts:** in this phase's first code commit, in one commit: that
     row's `listed` `false` → `true` in `tests/unit/test_diffuse_records.cpp` with its comment line, the
@@ -108,6 +122,49 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
     `docs/review/phase-07c-1b/32-decider-R1-round3.md`; nothing else in the row changes (`recorded14xS` stays 33.40).
     The same item stands in phase-07d scope 9; whichever phase starts first does it, and the other records it as done
     with the commit.
+11. **The ISM never waits behind the solve (D-W3, H-2c; a defect of phase-07c-1 condition 4).** Today an edit that
+    arrives during a builder solve waits for that solve before its own ISM is built (`ScenePipeline::decide`; the
+    solve runs inline on the one builder thread, `IrBuilderThread.h` L5), so condition 4's "the ISM update is never
+    held behind the diffuse solve" holds only after a quiet spell. Condition 4 itself is unchanged ("exactly one step
+    per solve and never mid-drag"; FM-W3a withdrawn). Decider files `docs/review/phase-07c-2/11-decider-decision-r3.md`
+    (D-W3), `13-decider-rebuttal-r4.md` (H-2c), `15-decider-rebuttal-r5.md` (items 3 and 4 as finally worded);
+    interrogator file `16-interrogator-on-file15.md` (corrections and the orchestrator's application). Code lines
+    are at HEAD of 2026-11-22 and are cited with their function and comment, since the file moves.
+    1. **The solve runs off the builder thread,** as a task on the process-wide gate executor, never as a thread per
+       instance. Its input is an immutable snapshot of the `DiffuseProblem` with E_prec and E_model; its result comes
+       back through a shared-ownership mailbox. The builder is the only committer (`ScenePipeline::commit`, "The
+       deciding thread is the only committer", L583). The gate is held around the solve as before (AX38 (i)). The
+       pool is `hardware_concurrency − 1` while the builder works alongside it. `quiesce()` waits for, or safely
+       orphans, an in-flight task (Seat 5).
+    2. **The builder never waits for a solve.** Each edit gets its B1′ IrSet at once (the condition 4 B1′ branch of
+       `ScenePipeline::decide`); the builder then hands the solve over and returns to serve edits.
+    3. **Final adoption.** A finished solve is adopted as the final only if `dirty_` is unchanged since the
+       generation read before the scene snapshot (`ScenePipeline::decide`, "The generation is read BEFORE the
+       snapshot", L356); any parameter edit after that read discards it, as today (the two mid-drag checks before and
+       after the solve, L543 / L556); edits that do not bump `dirty_` today do not. Adoption is one AQ4 step. The
+       final is bit-identical to an uncancelled one-shot solve (D7).
+    4. **A superseded solve stops at its next stop point.** A per-generation cancel token, separate from
+       `builderAbandon_`, stops the solve at its next stop point once `dirty_` ≠ the generation of item 3 (the value
+       read before the snapshot). Stop points are spaced by a fixed work count, never by time (AX41). A cancelled
+       solve never yields an E_b. **No held-level adoption during motion** (condition 4).
+    5. **Offline is unchanged.** Offline renders and `render_cli` wait for the final synchronously (AX5, condition 6).
+    6. **Tests.** A TSan `[pipeline]` stress test with edits at random solve points and the pipeline destroyed
+       mid-solve; a final bit-identical with and without cancelled predecessors; offline output bit-identical;
+       `[reset-nowait]` still green; B1-b re-run with the solve duration printed.
+    7. **Acceptance measurements.**
+       - **M7 under H-2c:** the ISM latency of an edit made mid-solve, with the solve occupying the pool, on the three
+         CI OSes at m = 1, 4, 5, 6, 8, capped scenes (1 instance; `layout4_s1/listener_corner` and the s = 1 cube; the shipped H-2c pool,
+         `hardware_concurrency − 1`, with the solve occupying it; worst over ≥ 3 runs; set-up from decider file 8 §6): **≤ 700 ms on the worst OS and flat in m** (Seat 3 (a), Seat 5
+         (iii); AQ4's yardstick, Vorländer Table 15.1 by extension).
+       - **M7b (record):** under the AX38 (iv) patterns and continuous automation, the fraction of solves completed,
+         the time from the end of automation to the final, and the size of the end step, against H-0's
+         `discardedMidDrag`. M7b is also D-W4's evidence; D-W4 (whether the reverb level should follow during long
+         automation) is ruled in [phase-10-3](phase-10-3.md).
+    8. **Routing.** It lands in this phase, or as the first work of `07c-2b`, before the golden round (Seat 7). Phase
+       08's goldens are frozen only after 07c-2 (or 07c-2b) is `done` (BUILD_PLAN §0). If M7 fails (above 700 ms or
+       not flat in m) or TSan shows a race, D-W3 returns to the board, and Seat 5's W-C2 condition fails with it.
+       Phase-07c-2b scope 1 (and its fourth criterion) carries M7, M7b and the TSan `[pipeline]` stress only if this
+       phase's CI did not show them (2026-11-22, two-session split).
 
 ## Out of scope
 
@@ -119,30 +176,44 @@ as decided in phase 05h) and §3 Timing. D-C1–D-C3 as recorded by 07c-1 (AX ro
   record "offline-bounce time of a 3-minute room-size automation at 100 m, with its ratio to real time" is in this
   phase's packet (Seat 8; D-H1 (iv), AX41).
 - Conditions 2, 4–7 and 9–11 and the decisions D-C1–D-C3: [phase-07c-1](phase-07c-1.md) (condition 7's re-pin:
-  [phase-07c-1b](phase-07c-1b.md)).
+  [phase-07c-1b](phase-07c-1b.md)), except condition 4's defect (the ISM held behind the solve), which is scope 11.
 
 ## Acceptance criteria — automated
 
 - [ ] W_max re-derived under (C) from the background budget (condition 3), pinned, equal on the three OSes;
-      goldens updated once through `update_goldens.py` with the reason; §6 row. (phase-07c A6)
+      goldens updated once through `update_goldens.py` with the reason; §6 row. (phase-07c A6) (moved to phase-07c-2b, 2026-11-22, two-session split:
+      its scopes 6 and 8, first criterion)
 - [ ] The Phase 12 (ii) preset check re-run under the new W_max and reported, if Phase 12 has run;
-      otherwise Phase 12 runs it at 07c's W_max. (phase-07c A9)
-- [ ] **Interim stream check (D1, FM-D1-S3):** every admitted interim source that shares the exact tail's stream
+      otherwise Phase 12 runs it at 07c's W_max. (phase-07c A9) (moved to phase-07c-2b, 2026-11-22, two-session split: its scope 9, second
+      criterion)
+- [ ] **Interim stream check (D1, FM-D1-S3)** (moved to phase-07c-2b, 2026-11-22, two-session split: its scope 5, third criterion): every admitted interim source that shares the exact tail's stream
       passes scope 9's interim stream check per emitter, output and band (repeat builds bit-identical, N1 red, ≥ 1
       evaluated case per band, output and fs, zero-tail cases 'not evaluated (no tail)'); every admitted source with
       no shared prefix has scope 9's asserted exclusion fact, handover law (equal-power, or the loop's law with its
       asserted mid-fade bound), EDT check where its decay differs, and level step in both windows; or the PR states
       that no such source was admitted. The added wall time per OS is printed.
+- [ ] **The ISM never waits behind the solve (scope 11, D-W3 H-2c):** the solve runs off the builder thread and
+      the builder commits each edit's B1′ IrSet without waiting; finals adopted only on the generation read before
+      the snapshot, superseded solves stopped by the per-generation token, no held-level adoption during motion;
+      TSan `[pipeline]` stress (edits at random solve points, pipeline destroyed mid-solve) green; finals
+      bit-identical with and without cancelled predecessors; offline output bit-identical; `[reset-nowait]` green;
+      B1-b re-run with the solve duration printed; **M7 ≤ 700 ms on the worst OS and flat in m** at m = 1, 4, 5, 6, 8
+      (three CI OSes, capped scenes); M7b recorded against H-0's `discardedMidDrag`. (M7, M7b and the TSan
+      `[pipeline]` stress: moved to phase-07c-2b scope 1, its fourth criterion, only if this phase's CI did not show
+      them; 2026-11-22, two-session split)
 
 ## Listening / manual checklist
 
 - [ ] Load a project with a large room: the room is heard at once at the interim level, shows "settling",
-      and moves to the final level without a click or an obvious jump. (phase-07c L1)
-- [ ] The AX47 self-ABX and the AX49 L4 ABX (scope 9), run before the class (c) decision. (AX47, AX49)
+      and moves to the final level without a click or an obvious jump. (phase-07c L1) (moved to phase-07c-2b, 2026-11-22, two-session split: its
+      listening checklist, first item)
+- [ ] The AX47 self-ABX and the AX49 L4 ABX (scope 9), run before the class (c) decision. (AX47, AX49) (moved to phase-07c-2b, 2026-11-22, two-session split:
+      its scopes 2 and 3, listening checklist second item)
 
 ## Contractor review focus
 
-- the W_max re-derivation from the background budget (phase-07c F6)
+- the W_max re-derivation from the background budget (phase-07c F6) (moved to phase-07c-2b, 2026-11-22, two-session split: its
+  contractor review focus)
 
 ## Risks
 
@@ -155,6 +226,11 @@ The original phase file has no risks section; the umbrella's §0 gives the ratio
   (phase-07c §10, clause 3; this sub-phase's share).
 - CLAUDE.md rules apply: one sub-phase per session; if it can't be finished in two sessions, split the remainder into
   `phase-07c-2b.md`.
+- Split 2026-11-22 (session 2 of 2): scope 3 (W_max under (C), the `solveRefMs` re-pin), scope 8 (the follow-on
+  checks), scope 9's open parts (the ABX scene question M3, the seal and the ABX run; class (c), the load fallback and
+  FM-B2; the interim stream check; E_prec and Seat 2's prefix check), the first three automated criteria and both
+  listening items moved to [phase-07c-2b](phase-07c-2b.md); M7, M7b and the TSan `[pipeline]` stress move with them
+  only if this phase's CI did not show them (phase-07c-2b scope 1).
 
 ## Notes from the split
 

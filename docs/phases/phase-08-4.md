@@ -131,6 +131,13 @@ step 5) applies, with the umbrella's checklist preamble (phase-08 L0).
   `1-decider-convening.md`). The freeze-point conditions set in 08-1 apply to it: phase-08 scope 1 (TH Köln
   re-entry "before the Phase 08 goldens are frozen"), scope 3 and R6 (a "not confirmed" source state raised
   "before any golden is frozen"), and AX35 (a converter re-run before the freeze is a parameter change).
+  Also before the freeze: the **8 kHz tail-T30 follow-up** (phase-07c-2 decider files 27 and 40, 2b; interrogator
+  file 41; NFR-8, reported, nothing tuned). The tail T30 at 8 kHz on layout4_s1/default reads 0.870 / 0.884 s
+  against the 0.740 s target (+18 %; tail EDT +5 to +7 %; file 22). Render a synthetic exponential noise with T60
+  0.74 s through the AX13 band filter, and measure the tail's own band-7 noise without the neighbouring bands, to
+  settle whether the analysis filter or the tail causes it. The result (cause, numbers) is cited before any golden
+  is frozen; if it has not been run, it is this phase's first work (`tools/acoustics` only, no `src/sim/` change).
+  If the tail is the cause, it returns to the board before the freeze; nothing is tuned for the scene.
 
 ## Definition of done
 

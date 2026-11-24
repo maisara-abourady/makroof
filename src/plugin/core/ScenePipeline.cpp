@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -95,7 +96,8 @@ ScenePipeline::ScenePipeline(BuilderClock* clock)
         *clock_,
         [this] {
             watchHostRate(); // condition 6: the render-log watch, on the builder thread
-            return hasWork();
+            // Phase-07c-2 scope 11: a new generation, or a solve task's result in the mailbox.
+            return hasWork() || mailbox_.load(std::memory_order_acquire);
         },
         [this] { decide(Source::Builder); });
 }
@@ -109,11 +111,98 @@ ScenePipeline::~ScenePipeline()
     builder_.reset();
 }
 
+// The solve task (phase-07c-2 scope 11, D-W3 H-2c item 1). Everything but `cancel` and `ready` is written by
+// the builder before the task is posted and read-only after; `result` is written by the task before `ready`
+// (release) and read by the builder only after `ready` (acquire).
+struct ScenePipeline::SolveJob final : DiffuseSolveGate::Task
+{
+    SolveJob(ScenePipeline& o, std::uint64_t g, contract::SceneDescription sc, sim::StagedBuild&& b)
+        : owner(o)
+        , gen(g)
+        , scene(std::move(sc))
+        , build(std::move(b))
+    {}
+    ScenePipeline& owner; // never touched after execute() returns (Task contract)
+    const std::uint64_t gen;
+    const contract::SceneDescription scene;
+    sim::StagedBuild build;
+    std::uint64_t p = 0;
+    std::uint64_t s = 0;
+    std::shared_ptr<const std::vector<sim::tail::UnitDecay>> units;
+    std::function<void(BuildStage)> hook;
+    std::atomic<bool> cancel{false}; // the per-generation cancel token (item 4)
+    std::atomic<bool> ready{false};
+    std::optional<Built> result; // absent: cancelled, discarded mid-drag or failed (never an E_b)
+
+protected:
+    void execute() noexcept override { owner.runSolveJob(*this); }
+};
+
+void ScenePipeline::runSolveJob(SolveJob& job) noexcept
+{
+    try
+    {
+        if (job.cancel.load(std::memory_order_acquire))
+            throw sim::BuildCancelled();
+        // The gate is held around the solve as before (AX38 (i)); a superseded task waiting at the gate
+        // leaves it on its token.
+        const Level level = solveStage(job.build, Source::Builder, job.hook, job.p, job.s, &job.cancel);
+        // Never mid-drag (condition 4; the check after the solve, as before H-2c): a solved snapshot is
+        // assembled only if no change arrived since the generation read before the snapshot.
+        if (dirty_.load(std::memory_order_acquire) != job.gen)
+            throw sim::BuildCancelled();
+        Built b;
+        finishExact(job.build, level, job.units, job.hook, b);
+        b.irSet = engine_.makeIrSet(*b.ir, &job.cancel); // a cancel point (condition 10)
+        job.result = std::move(b);
+    }
+    catch (...)
+    {
+        job.result.reset(); // cancelled (BuildCancelled), discarded mid-drag, or failed: no E_b, no final
+    }
+    job.ready.store(true, std::memory_order_release);
+    if (!job.cancel.load(std::memory_order_acquire))
+    {
+        mailbox_.store(true, std::memory_order_release);
+        builder_->notify(); // the builder would notice within kIdlePollS anyway
+    }
+}
+
+void ScenePipeline::settleJobs()
+{
+    std::vector<std::shared_ptr<SolveJob>> jobs;
+    {
+        std::lock_guard<std::mutex> lock(jobMutex_);
+        jobs = std::move(retired_);
+        retired_.clear();
+        if (job_)
+            jobs.push_back(std::move(job_));
+        job_.reset();
+        inflightGen_.store(kNone, std::memory_order_release);
+    }
+    for (const auto& j : jobs)
+        j->cancel.store(true, std::memory_order_release);
+    gate_->notifyWaiters(); // a task waiting at the gate leaves the queue
+    for (const auto& j : jobs)
+        (void)j->orphanOrWait(); // bounded: a cancelled task stops at its next cancel point
+    mailbox_.store(false, std::memory_order_release); // after the waits: no task can set it again
+}
+
+bool ScenePipeline::jobsIdle() const
+{
+    std::lock_guard<std::mutex> lock(jobMutex_);
+    if (job_ && !job_->done())
+        return false;
+    return std::all_of(retired_.begin(), retired_.end(), [](const auto& j) { return j->done(); });
+}
+
 void ScenePipeline::quiesceBuilder()
 {
     builderAbandon_.store(true, std::memory_order_release);
     gate_->notifyWaiters(); // a builder waiting at the gate leaves the queue (AX38 (i))
     builder_->quiesce();
+    // Phase-07c-2 scope 11 (Seat 5): quiesce waits for, or orphans, every in-flight solve task.
+    settleJobs();
 }
 
 void ScenePipeline::restartBuilder()
@@ -249,8 +338,21 @@ void ScenePipeline::setPlatformTagForTest(std::uint64_t tag)
     platformTag_ = tag;
 }
 
+void ScenePipeline::setDiffuseLimitsForTest(const sim::diffuse::DiffuseLimits& limits)
+{
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    diffuseLimitsForTest_ = limits;
+}
+
+sim::diffuse::DiffuseLimits ScenePipeline::diffuseLimits() const
+{
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    return diffuseLimitsForTest_.value_or(sim::diffuse::DiffuseLimits{});
+}
+
 sim::StagedBuild ScenePipeline::planStage(const contract::SceneDescription& scene, Source source,
-                                          const std::function<void(BuildStage)>& hook)
+                                          const std::function<void(BuildStage)>& hook,
+                                          const sim::diffuse::DiffuseLimits* limitsForTest)
 {
     // The offline path takes the gate only after quiesce() has returned (AX38 (i)).
     assert(source != Source::Offline || !builder_->accepting());
@@ -259,6 +361,7 @@ sim::StagedBuild ScenePipeline::planStage(const contract::SceneDescription& scen
     options.kind = sim::BuildOptions::Kind::Omni; // Phase 07: the omni hybrid IR until 08/09
     options.cancel = source == Source::Builder ? &builderAbandon_ : nullptr;
     options.parallelEmitterSynthesis = true; // AX49: the two emitters in parallel (bit-identical to serial)
+    options.diffuseLimitsOverride = limitsForTest; // nullptr except under setDiffuseLimitsForTest (M7)
     if (hook)
         hook(BuildStage::Plan);
     return sim::StagedBuild::plan(scene, options);
@@ -266,30 +369,42 @@ sim::StagedBuild ScenePipeline::planStage(const contract::SceneDescription& scen
 
 ScenePipeline::Level ScenePipeline::solveStage(sim::StagedBuild& build, Source source,
                                                const std::function<void(BuildStage)>& hook, std::uint64_t p,
-                                               std::uint64_t s)
+                                               std::uint64_t s, const std::atomic<bool>* abandonFlag)
 {
     const bool builder = source == Source::Builder;
     const auto cls = builder ? DiffuseSolveGate::Class::Builder
                              : (source == Source::Offline ? DiffuseSolveGate::Class::Offline
                                                           : DiffuseSolveGate::Class::Synchronous);
-    const std::atomic<bool>* abandon = builder ? &builderAbandon_ : nullptr;
+    const std::atomic<bool>* abandon = builder ? (abandonFlag != nullptr ? abandonFlag : &builderAbandon_)
+                                               : nullptr;
     // Condition 12 (D-G1; AX38 (i): the gate is "held only around the solve"): the solve pool is passed only
     // while the gate is held; the RAII Scope releases it on every exit, a BuildCancelled thrown inside the
     // solve included. Nothing under the gate takes stateMutex_ (the hook was copied before).
+    double solveMs = 0.0, gateWaitMs = 0.0;
     if (build.needsSolve())
     {
+        const auto t0 = std::chrono::steady_clock::now();
         DiffuseSolveGate::Scope gate(*gate_, cls, abandon);
         if (!gate.entered())
             throw sim::BuildCancelled();
+        const auto t1 = std::chrono::steady_clock::now();
         if (hook)
             hook(BuildStage::Solve);
         build.solve(&gate_->pool());
+        const auto t2 = std::chrono::steady_clock::now();
+        gateWaitMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+        solveMs = std::chrono::duration<double, std::milli>(t2 - t1).count();
     }
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
         ++stats_.solves;
         if (source == Source::Synchronous)
             ++stats_.syncSolves;
+        stats_.lastSolveMs = solveMs;
+        stats_.totalSolveMs += solveMs;
+        stats_.totalGateWaitMs += gateWaitMs;
+        stats_.maxSolveMs = std::max(stats_.maxSolveMs, solveMs);
+        stats_.maxGateWaitMs = std::max(stats_.maxGateWaitMs, gateWaitMs);
     }
     Level level;
     level.bands = build.diffuseLevel().value_or(sim::EmitterBands{});
@@ -297,6 +412,24 @@ ScenePipeline::Level ScenePipeline::solveStage(sim::StagedBuild& build, Source s
     level.s = s;
     level.solved = true;
     return level;
+}
+
+void ScenePipeline::finishExact(sim::StagedBuild& build, const Level& lv,
+                                const std::shared_ptr<const std::vector<sim::tail::UnitDecay>>& units,
+                                const std::function<void(BuildStage)>& hook, Built& b)
+{
+    build.useDiffuseLevel(lv.bands); // the solve's own result, or the held / saved one: same arithmetic
+    if (hook)
+        hook(BuildStage::Assemble);
+    if (units)
+        build.useUnitDecays(units);
+    const bool cachedExact = units && build.unitDecaysExact();
+    if (units && !cachedExact)
+        build.useUnitDecays(nullptr); // not this scene's decays: synthesise (never a bridge in a final)
+    b.ir = std::make_shared<const sim::RoomIR>(build.assemble(&b.diag));
+    b.units = build.unitDecays();
+    b.level = lv;
+    b.final = lv.solved;
 }
 
 void ScenePipeline::setStageHook(std::function<void(BuildStage)> hook)
@@ -333,13 +466,84 @@ module3d::ParameterValues ScenePipeline::parameterValues() const noexcept
 bool ScenePipeline::hasWork() const noexcept
 {
     const auto d = dirty_.load(std::memory_order_acquire);
-    return d != handled_.load(std::memory_order_acquire);
+    // Phase-07c-2 scope 11: a generation whose solve task is in flight is not work for the builder (it never
+    // waits for the task; the task's result wakes it through the mailbox).
+    return d != handled_.load(std::memory_order_acquire) && d != inflightGen_.load(std::memory_order_acquire);
 }
 
 bool ScenePipeline::decide(Source source, bool load)
 {
+    if (source == Source::Builder)
+    {
+        // Phase-07c-2 scope 11 (D-W3 H-2c item 3): a finished solve task is adopted as the final only if
+        // dirty_ still equals the generation its decision read before the snapshot; otherwise it is
+        // discarded. The builder is the only committer. The flag is cleared before the task is looked at (no
+        // lost wake-up: the task sets `ready` before the flag).
+        mailbox_.store(false, std::memory_order_release);
+        std::shared_ptr<SolveJob> done;
+        std::vector<std::shared_ptr<SolveJob>> reaped; // freed after jobMutex_ is released (condition 10)
+        {
+            std::lock_guard<std::mutex> lock(jobMutex_);
+            for (auto& j : retired_)
+                if (j->done())
+                    reaped.push_back(std::move(j));
+            std::erase(retired_, nullptr);
+            if (job_ && job_->ready.load(std::memory_order_acquire))
+            {
+                done = job_;
+                retired_.push_back(std::move(job_)); // until its task has returned (quiesce waits for it)
+                job_.reset();
+                inflightGen_.store(kNone, std::memory_order_release);
+            }
+        }
+        if (done && !done->cancel.load(std::memory_order_acquire))
+        {
+            if (done->result && dirty_.load(std::memory_order_acquire) == done->gen)
+            {
+                try
+                {
+                    return commit(source, done->gen, done->scene, *done->result); // one AQ4 step
+                }
+                catch (const std::exception&)
+                {
+                    return false; // as a failed submit (D7): the generation is built again
+                }
+            }
+            if (dirty_.load(std::memory_order_acquire) != done->gen)
+            {
+                std::lock_guard<std::mutex> lock(stateMutex_);
+                ++stats_.discardedMidDrag; // solved, but the parameters moved: never adopted mid-drag
+            }
+            // A failed task, or a discarded one: the current generation is decided below.
+        }
+    }
     // The generation is read BEFORE the snapshot: a change after it is a later generation.
     const std::uint64_t gen = dirty_.load(std::memory_order_acquire);
+    if (source == Source::Builder)
+    {
+        bool superseded = false;
+        {
+            std::lock_guard<std::mutex> lock(jobMutex_);
+            if (job_)
+            {
+                if (!job_->cancel.load(std::memory_order_acquire) && job_->gen == gen)
+                    return false; // its solve is running: nothing to do, and the builder never waits for it
+                // H-2c item 4: superseded. The per-generation token stops the solve at its next stop point.
+                superseded = !job_->cancel.exchange(true, std::memory_order_acq_rel);
+                retired_.push_back(std::move(job_));
+                job_.reset();
+                inflightGen_.store(kNone, std::memory_order_release);
+            }
+        }
+        if (superseded)
+        {
+            gate_->notifyWaiters(); // a superseded task waiting at the gate leaves the queue
+            std::lock_guard<std::mutex> lock(stateMutex_);
+            ++stats_.discardedMidDrag;
+        }
+        if (gen == handled_.load(std::memory_order_acquire))
+            return false; // woken by the mailbox only: nothing new to decide
+    }
     try
     {
         const module3d::ParameterValues values = parameterValues();
@@ -353,6 +557,7 @@ bool ScenePipeline::decide(Source source, bool load)
         std::shared_ptr<const std::vector<sim::tail::UnitDecay>> units;
         bool restoreBg = false;
         std::uint64_t platform = 0;
+        std::optional<sim::diffuse::DiffuseLimits> limitsForTest; // M7 seam (nullopt in every product path)
         {
             std::lock_guard<std::mutex> lock(stateMutex_);
             scene = module3d::deriveScene(values, base_);
@@ -374,6 +579,7 @@ bool ScenePipeline::decide(Source source, bool load)
                 units = units_;
             restoreBg = restoreGen_.has_value() && gen >= *restoreGen_;
             platform = platformTag_;
+            limitsForTest = diffuseLimitsForTest_;
         }
         if (hook)
             hook();
@@ -386,7 +592,8 @@ bool ScenePipeline::decide(Source source, bool load)
             return commit(source, gen, scene, b);
 
         const auto* abandon = source == Source::Builder ? &builderAbandon_ : nullptr;
-        sim::StagedBuild build = planStage(scene, source, stageHook);
+        sim::StagedBuild build = planStage(scene, source, stageHook,
+                                           limitsForTest ? &*limitsForTest : nullptr);
         const std::uint64_t p = build.problemHash();
         const std::uint64_t s = sceneKey(scene);
         // A level solved in this process for this very problem is final: a change of seed, output mode or
@@ -399,22 +606,7 @@ bool ScenePipeline::decide(Source source, bool load)
 
         // Builds the tail over the cached unit decays when they are this scene's (exact, AQ4), else
         // synthesises the exact tail (in parallel per emitter, AX49). Final builds only.
-        const auto finishExact = [&](Level lv) {
-            build.useDiffuseLevel(
-                lv.bands); // the solve's own result, or the held / saved one: same arithmetic
-            if (stageHook)
-                stageHook(BuildStage::Assemble);
-            if (units)
-                build.useUnitDecays(units);
-            const bool cachedExact = units && build.unitDecaysExact();
-            if (units && !cachedExact)
-                build.useUnitDecays(
-                    nullptr); // not this scene's decays: synthesise (never a bridge in a final)
-            b.ir = std::make_shared<const sim::RoomIR>(build.assemble(&b.diag));
-            b.units = build.unitDecays();
-            b.level = lv;
-            b.final = lv.solved;
-        };
+        const auto finishExactHere = [&](const Level& lv) { finishExact(build, lv, units, stageHook, b); };
 
         if (source == Source::Synchronous)
         {
@@ -453,7 +645,7 @@ bool ScenePipeline::decide(Source source, bool load)
             if (units)
                 build.useUnitDecays(units);
             if (units && build.unitDecaysExact())
-                finishExact(*level); // this scene's exact unit decays are cached (AQ4): no provisional
+                finishExactHere(*level); // this scene's exact unit decays are cached (AQ4): no provisional
             else
             {
                 build.useUnitDecays(nullptr);
@@ -480,7 +672,7 @@ bool ScenePipeline::decide(Source source, bool load)
             // Condition 6: offline renders wait for the final solve and never use an interim (AX5, AX49).
             if (!level)
                 level = solveStage(build, source, stageHook, p, s);
-            finishExact(*level);
+            finishExactHere(*level);
         }
         else
         {
@@ -533,8 +725,43 @@ bool ScenePipeline::decide(Source source, bool load)
             }
             // The solve: a continuation of a keyed load (the confirming solve, AX48), of a provisional load,
             // an edit after its ISM update, or a background restore with an IrSet current.
+            if (!level && build.needsSolve())
+            {
+                // Phase-07c-2 scope 11 (D-W3 H-2c items 1, 2): the builder never waits for a solve. It hands
+                // the planned build to a task on the gate's process-wide executor and returns to serve edits;
+                // the task's final comes back through its mailbox and the builder commits it (decide()
+                // above). Not posted when the builder was quiesced or cancelled meanwhile (checked under
+                // jobMutex_, which settleJobs() and cancelBuilder() take after setting builderAbandon_).
+                auto job = std::make_shared<SolveJob>(*this, gen, scene, std::move(build));
+                job->build.setCancel(&job->cancel); // every later stage stops on the per-generation token
+                job->p = p;
+                job->s = s;
+                job->units = units;
+                job->hook = stageHook;
+                {
+                    std::lock_guard<std::mutex> lock(jobMutex_);
+                    if (builderAbandon_.load(std::memory_order_acquire))
+                        return false;
+                    job_ = job;
+                    inflightGen_.store(gen, std::memory_order_release);
+                }
+                try
+                {
+                    gate_->post(std::move(job));
+                }
+                catch (...)
+                {
+                    // A failed post (thread start or allocation) must not leave the generation marked in
+                    // flight with no task behind it: the next decision retries it.
+                    std::lock_guard<std::mutex> lock(jobMutex_);
+                    job_.reset();
+                    inflightGen_.store(kNone, std::memory_order_release);
+                    throw;
+                }
+                return false; // the generation is handled when the final is committed
+            }
             if (!level)
-                level = solveStage(build, source, stageHook, p, s);
+                level = solveStage(build, source, stageHook, p, s); // nothing to solve (no gate taken)
             // Never mid-drag: a solved snapshot is adopted only if no change arrived while it was solved.
             if (dirty_.load(std::memory_order_acquire) != gen)
             {
@@ -542,7 +769,7 @@ bool ScenePipeline::decide(Source source, bool load)
                 ++stats_.discardedMidDrag;
                 return false;
             }
-            finishExact(*level);
+            finishExactHere(*level);
         }
         b.irSet = engine_.makeIrSet(*b.ir, abandon); // condition 10: a cancel point of builder decisions
         return commit(source, gen, scene, b);
@@ -848,8 +1075,16 @@ void ScenePipeline::cancelBuilder() noexcept
 {
     builderAbandon_.store(
         true, std::memory_order_release); // a running builder build stops at its next cancel point
-    gate_->notifyWaiters();               // a builder waiting at the gate leaves the queue
-    builder_->stopAccepting();            // no new decision; no wait (condition 10)
+    {
+        // Phase-07c-2 scope 11: the in-flight solve task is cancelled too (its per-generation token); never
+        // waited for here. It stays in job_ (no allocation) until the builder or a quiesce retires it.
+        std::lock_guard<std::mutex> lock(jobMutex_);
+        if (job_)
+            job_->cancel.store(true, std::memory_order_release);
+        inflightGen_.store(kNone, std::memory_order_release);
+    }
+    gate_->notifyWaiters();    // a builder (or solve task) waiting at the gate leaves the queue
+    builder_->stopAccepting(); // no new decision; no wait (condition 10)
 }
 
 void ScenePipeline::dropForOffline()
@@ -1108,7 +1343,7 @@ double ScenePipeline::tailLengthSeconds() const noexcept
 
 bool ScenePipeline::builderIdle() const
 {
-    return !hasWork() && builder_->idleOrWaiting();
+    return !hasWork() && !mailbox_.load(std::memory_order_acquire) && jobsIdle() && builder_->idleOrWaiting();
 }
 
 bool ScenePipeline::builderBusy() const

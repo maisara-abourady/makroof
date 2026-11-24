@@ -11,7 +11,7 @@ ThreadPool::ThreadPool(unsigned threads)
     const unsigned n = std::max(1u, threads);
     workers_.reserve(n - 1);
     for (unsigned i = 0; i + 1 < n; ++i)
-        workers_.emplace_back([this] { workerLoop(); });
+        workers_.emplace_back([this, i] { workerLoop(i + 1); });
 }
 
 ThreadPool::~ThreadPool()
@@ -56,7 +56,18 @@ void ThreadPool::runShare()
     }
 }
 
-void ThreadPool::workerLoop()
+void ThreadPool::setShareLimit(unsigned threads) noexcept
+{
+    limit_.store(threads, std::memory_order_relaxed);
+}
+
+unsigned ThreadPool::shareThreads() const noexcept
+{
+    const unsigned limit = limit_.load(std::memory_order_relaxed);
+    return limit == 0 ? size() : std::clamp(limit, 1u, size());
+}
+
+void ThreadPool::workerLoop(unsigned id)
 {
     std::uint64_t seen = 0;
     for (;;)
@@ -67,6 +78,8 @@ void ThreadPool::workerLoop()
             if (halt_)
                 return;
             seen = epoch_;
+            if (id >= participants_)
+                continue; // phase-07c-2 scope 11: outside the share limit, this worker sits this job out
             ++active_;
         }
         runShare();
@@ -89,6 +102,7 @@ void ThreadPool::parallelFor(std::int64_t count, const std::function<bool(std::i
         count_ = count;
         next_ = 0;
         stopFlag_ = false;
+        participants_ = shareThreads();
         ++epoch_;
     }
     wake_.notify_all();

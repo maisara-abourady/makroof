@@ -161,9 +161,12 @@ constexpr GateEntry kGateRegister[] = {
     // run
     // (43389296112, 43402114873, 43412038058: macOS 23.46 / 22.44 / 24.08 s, Windows 20.24 / 15.96 / 19.59 s;
     // docs/review/phase-07c-1b/22): print only.
+    // Phase 07c-1b P07C1B-R1: macOS re-listed under AX38 4c (a) after closure: PR #33 run 43427854710
+    // printed 14 x worst 30.50 s (hosted macOS runner; 100 m / 96 kHz, exact tail L = 12 s, 2 emitters;
+    // not a per-instance cost; OVER30S); recorded value 33.40 s kept; print only.
     {"cube100_lowalpha0.05_s0.3", "Linux", 30.27, 2068.0, 3.05, 701.0, true, false, false, 80.9, 1,
      S2Pin{2.3963, 1.3681, 552.3, 1282.7, 80.7, 1.2225, 3, true}},
-    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, false, false, 83.7, 1,
+    {"cube100_lowalpha0.05_s0.3", "macOS", 33.40, 1817.0, 3.75, 484.0, false, true, false, 83.7, 1,
      S2Pin{3.1203, 1.1618, 475.3, 1481.0, 78.1, 1.1127, 3, false}},
     {"cube100_lowalpha0.05_s0.3", "Windows", 36.73, 2028.0, 2.83, 737.0, true, false, false, 90.4, 2,
      S2Pin{2.5297, 1.0530, 496.3, 1258.3, 66.2, 1.0846, 3, true}},
@@ -1141,6 +1144,17 @@ TEST_CASE("records: condition 12 (c) callback record at host buffer 64, B1-b ins
         rt.beginRestore();
         rt.restore(room, module3d::parameterValuesFromScene(room));
         REQUIRE(pipeline_test::waitFor([&] { return !rt.settling() && rt.builderIdle(); }));
+        // Phase-07c-2 scope 11 item 6: the churned builders' solve durations over this point (H-2c: the
+        // solves run as tasks on the gate executor, the gate wait excluded from the solve time).
+        std::uint64_t solves0 = 0;
+        double solveMs0 = 0.0, gateMs0 = 0.0;
+        for (int i = 0; i < builders; ++i)
+        {
+            const auto st = others[static_cast<std::size_t>(i)]->stats();
+            solves0 += st.solves;
+            solveMs0 += st.totalSolveMs;
+            gateMs0 += st.totalGateWaitMs;
+        }
         std::atomic<bool> stop{false};
         std::thread churn([&] {
             float x = 50.0f;
@@ -1209,6 +1223,26 @@ TEST_CASE("records: condition 12 (c) callback record at host buffer 64, B1-b ins
         stop.store(true);
         churn.join();
         REQUIRE(pipeline_test::waitFor(othersIdle, std::chrono::minutes(5)));
+        {
+            std::uint64_t solves1 = 0;
+            double solveMs1 = 0.0, gateMs1 = 0.0, maxSolve = 0.0;
+            for (int i = 0; i < builders; ++i)
+            {
+                const auto st = others[static_cast<std::size_t>(i)]->stats();
+                solves1 += st.solves;
+                solveMs1 += st.totalSolveMs;
+                gateMs1 += st.totalGateWaitMs;
+                maxSolve = std::max(maxSolve, st.maxSolveMs);
+            }
+            const auto n = solves1 - solves0;
+            std::printf(
+                "07c2-b1b solve duration, %d concurrent builder%s at 100 m: %llu solves completed in the "
+                "window, mean solve %.0f ms, mean gate wait %.0f ms (max solve since construction %.0f "
+                "ms); recorded only\n",
+                builders, builders == 1 ? "" : "s", static_cast<unsigned long long>(n),
+                n > 0 ? (solveMs1 - solveMs0) / static_cast<double>(n) : 0.0,
+                n > 0 ? (gateMs1 - gateMs0) / static_cast<double>(n) : 0.0, maxSolve);
+        }
         Point pt;
         pt.builders = builders;
         pt.callbacks = wall.size();

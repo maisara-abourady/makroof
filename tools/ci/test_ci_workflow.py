@@ -187,6 +187,10 @@ _GATE_LOG = (
     "warnings=RATIO GROWTH OVER30S MACTRIGGER \r\n"
     "05h-records restore gate cube100_lowalpha0.05_s0.3 macOS: LISTED defect; WARNING OVER30S\n"
     "07c1b-records stage split os=macOS scene=cube100_lowalpha0.05_s0.3 96 kHz keyless restore\n"
+    "07c2-m7 os=macOS scene=cube100_lowalpha0.05_s1 m=6 W_max/emitter=18300000 pool=3 fs=48k | solve n=10\n"
+    "07c2-m7b os=macOS scene=cube100_lowalpha0.05_s1 m=6 cancel-on-edit (hypothetical)\n"
+    "07c2-m7trial os=macOS scene=cube100_lowalpha0.05_s1 m=6 edit 0\n"
+    "07c2-b1b solve duration, 8 concurrent builders at 100 m: 3 solves\n"
 )
 _QUIET_LOG = (
     "05h-records GATE os=Linux scene=cube100_lowalpha0.05_s0.3 ratio=2.900 status=asserted trigger=0 "
@@ -214,6 +218,9 @@ def test_gate_warnings_surface(wf: dict, tmp_path: Path) -> None:
     assert "scene=cube100_lowalpha0.05_s0.3" in section and "MACTRIGGER" in section
     assert "scene=cube100_flutter_fallback" not in section  # empty warnings=
     assert "07c1b-records stage split" in summary  # the phase-07c-1b record lines reach the summary
+    assert "07c2-m7 os=macOS" in summary and "07c2-m7b os=macOS" in summary  # phase-07c-2 M7 / M7b
+    assert "07c2-b1b solve duration" in summary  # phase-07c-2 scope 11 item 6
+    assert "07c2-m7trial" not in summary  # the per-edit lines stay in the log
     notes = [line for line in stdout.splitlines() if line.startswith("::warning ")]
     assert len(notes) == 1
     assert "title=GATE macos cube100_lowalpha0.05_s0.3::RATIO GROWTH OVER30S MACTRIGGER " in notes[0]

@@ -17,6 +17,16 @@ DiffuseSolveGate::DiffuseSolveGate(unsigned threads)
 
 DiffuseSolveGate::~DiffuseSolveGate()
 {
+    // Every task still queued was orphaned by its pipeline (each pipeline orphans or waits for its tasks
+    // before it lets go of the gate): the executor drops them unrun.
+    {
+        std::lock_guard lock(execMutex_);
+        execStop_ = true;
+    }
+    execCv_.notify_all();
+    for (auto& t : executors_)
+        t.join();
+    tasks_.clear();
     // No solve can be running (every holder's pipeline is gone) and no waiter can be queued: the pool
     // joins its workers here, on the thread that released the last holder.
     assert(!held_ && synchronous_.empty() && offline_.empty() && builder_.empty());
@@ -93,6 +103,8 @@ bool DiffuseSolveGate::enter(Class cls, const std::atomic<bool>* abandon)
     }
     queue.pop_front();
     held_ = true;
+    // Phase-07c-2 scope 11 (Seat 5): a builder-class solve runs beside the IR builder on size() - 1 threads.
+    pool_.setShareLimit(cls == Class::Builder ? builderShareThreads() : 0);
     if (cls != Class::Synchronous)
         lastTurn_ = cls;
     return true;
@@ -124,6 +136,70 @@ std::size_t DiffuseSolveGate::waiting(Class cls) const
 {
     std::lock_guard lock(mutex_);
     return (cls == Class::Synchronous ? synchronous_ : (cls == Class::Offline ? offline_ : builder_)).size();
+}
+
+unsigned DiffuseSolveGate::builderShareThreads() const noexcept
+{
+    return std::max(1u, pool_.size() - 1);
+}
+
+void DiffuseSolveGate::post(std::shared_ptr<Task> task)
+{
+    {
+        std::lock_guard lock(execMutex_);
+        while (executors_.size() < kExecutorThreads) // retried on the next post if a thread failed to start
+            executors_.emplace_back([this] { executorLoop(); });
+        tasks_.push_back(std::move(task));
+    }
+    execCv_.notify_one();
+}
+
+void DiffuseSolveGate::executorLoop()
+{
+    for (;;)
+    {
+        std::shared_ptr<Task> task;
+        {
+            std::unique_lock lock(execMutex_);
+            execCv_.wait(lock, [this] { return execStop_ || !tasks_.empty(); });
+            if (execStop_)
+                return;
+            task = std::move(tasks_.front());
+            tasks_.pop_front();
+        }
+        task->runOnExecutor();
+        task.reset(); // outside execMutex_ (a task's results are released here when its owner dropped them)
+    }
+}
+
+void DiffuseSolveGate::Task::runOnExecutor() noexcept
+{
+    {
+        std::lock_guard lock(mutex_);
+        if (state_ == State::Orphaned)
+            return;
+        state_ = State::Running;
+    }
+    execute();
+    {
+        std::lock_guard lock(mutex_);
+        state_ = State::Done;
+        done_.store(true, std::memory_order_release);
+    }
+    cv_.notify_all();
+}
+
+bool DiffuseSolveGate::Task::orphanOrWait()
+{
+    std::unique_lock lock(mutex_);
+    if (state_ == State::Queued)
+    {
+        state_ = State::Orphaned;
+        done_.store(true, std::memory_order_release);
+        return false;
+    }
+    cv_.wait(lock, [this] { return state_ == State::Done || state_ == State::Orphaned; });
+    return true;
 }
 
 std::uint64_t DiffuseSolveGate::solvesCompleted() const

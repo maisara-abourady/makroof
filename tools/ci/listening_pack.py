@@ -429,8 +429,40 @@ def _phase_05h(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
     (pack / "README.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _phase_07c2(pack: pathlib.Path, binary: pathlib.Path, log=print) -> None:
+    """Phase-07c-2 D-W2: the AX47 self-ABX noise chain (tools/ci/abx_kit.py). The speech chain (McGill TSP v2) is
+    built locally only (D-W2 item 12) and never enters this pack."""
+    from tools.ci import abx_kit
+
+    pack.mkdir(parents=True, exist_ok=True)
+    m = abx_kit.build_noise_chain(pack / "noise", binary, log=log)
+    sc = m["scene"]
+    lines = [
+        "SPATIAL SCENE LISTENING PACK - phase-07c-2 (AX47 self-ABX, noise chain)",
+        "=" * 60,
+        "",
+        textwrap.fill(
+            "These are the pre-registered stimuli of the AX47 self-ABX noise chain (D-W2, phase-07c-2 decider file 13). "
+            "Do not listen to them before the run: the run sheet docs/validation/abx-07c-2-run-sheet.md says how to seal "
+            "them into a blind session (python tools/ci/abx_kit.py seal) and how to score it. Per trial, A.wav carries "
+            "a uniform tail-energy step at the onset (30 ms equal-gain fade) and B.wav is the unstepped render; X is "
+            "drawn at sealing. Omni, diotic (both channels identical), 48 kHz, not normalised. familiarisation/ holds "
+            "labelled A/B pairs (3 dB anchor, 0.9 dB, 0.5 dB, up and down) for the mandatory familiarisation.", 78),
+        "",
+        f"Scene: layout4_s1/default ({sc['label']}), tailSeed {sc['tailSeed']}, capped at m = 6, 7, 8: {sc['capped']}.",
+        f"T30(1 kHz) {sc['T30_1k_s']:.3f} s (Eyring T60 {sc['T60_eyring_1k_s']:.3f} s); r_c {sc['r_c_m']:.2f} m; "
+        + "; ".join(f"{e['id']}: r {e['r_m']:.2f} m, r/r_c {e['r_over_rc']:.2f}" for e in sc["emitters"])
+        + f"; D/R broadband {sc['DRR_dB_broadband']:.1f} dB, 1 kHz {sc['DRR_dB_1k']:.1f} dB.",
+        "",
+        "Every stimulus passed the item-6 assertions (early part bit-identical, the tail step, the AX47 mid-fade checks,",
+        "no new click in the step region); noise/manifest.json holds the measured values and every SHA-256.",
+    ]
+    (pack / "README.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 # phase-05f: the same A/B pack, now with the CR4 pair (CR4 accepted in phase-05f).
-SPECIAL_BUILDERS = {"phase-05e": _phase_05e, "phase-05f": _phase_05e, "phase-06": _phase_06, "phase-05h": _phase_05h}
+SPECIAL_BUILDERS = {"phase-05e": _phase_05e, "phase-05f": _phase_05e, "phase-06": _phase_06, "phase-05h": _phase_05h,
+                    "phase-07c-2": _phase_07c2}
 
 
 def build(out_root: pathlib.Path, phase: str, binary: pathlib.Path, log=print) -> pathlib.Path:

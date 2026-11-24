@@ -41,6 +41,24 @@ All of the umbrella's ([phase-10](phase-10.md)); those bearing on this sub-phase
 7. CI job `automation` (set up in [10-2](phase-10-2.md)) … and
    runs `clicks.py`. (phase-10 scope 7, clause 2; clause 1 in 10-2)
 
+- **D-W4: should the reverb level follow during long automation?** (homed here by the phase-07c-2 loop: decider
+  file `docs/review/phase-07c-2/15-decider-rebuttal-r5.md` Q2 items 1–4, interrogator file `16-interrogator-on-file15.md`
+  D-W4 correction 1; deferred in decider file `13-decider-rebuttal-r4.md`). Under phase-07c-2 scope 11 (D-W3, H-2c)
+  the diffuse level stays frozen through continuous automation and then lands in one AQ4 step after it stops
+  (phase-07c-1 condition 4, "never mid-drag"). This phase gathers the evidence and its loop rules D-W4:
+  1. **Automated record** (acceptance criteria below).
+  2. **Listening item** (listening checklist below).
+  3. **The decision.** This phase's loop rules D-W4 on items 1 and 2. If the PRD still supports two readings, the
+     matter goes to Maisara as **NEEDS MAISARA, case (a)**, phrased for her as: "should the reverb level catch up in
+     small steps during long automation (it follows the movement, but may be heard as steps) or stay frozen until
+     the automation stops (no change while moving, then one larger step)?". Each option comes with its measured
+     steps and the listening result.
+  4. **Deadline.** Before Phase 13's beta (Phase 10 precedes 13). If this phase slips past the beta, D-W4 is a
+     "Raise with Maisara" item in phase-13.
+  - **Research input:** RQ-W4-1 (published evidence on the audibility or annoyance of stepwise late-reverberation
+    level changes during movement against one change after movement stops), researcher file
+    `docs/review/phase-07c-2/17-researcher-RQ-W4-1.md` (NOT READY: no published comparison found; the 10-3 listening item fills it); this phase's loop reads it.
+
 ## Out of scope
 
 The umbrella's out-of-scope list ([phase-10](phase-10.md)); phase-10 scope 2 (in [10-1](phase-10-1.md)); scope 1,
@@ -84,6 +102,10 @@ The umbrella's out-of-scope list ([phase-10](phase-10.md)); phase-10 scope 2 (in
       equal-power-assumption law included); this phase either defines the gate's domain or proposes an
       energy-aware law. Each scenario reports its largest band step (Phase 07 decision loop
       2026-11-08, decider round 2 §4, advocate round 2). (phase-10 AC7)
+- [ ] **D-W4 record (phase-07c-2 D-W4 item 1):** M7b (phase-07c-2 scope 11) repeated on this phase's shipped
+      crossfade law: the end-of-automation step distribution recorded under H-2c, and under the same patterns with
+      the alternative (the newest completed solve adopted as the held level, at most one per 3 s). The alternative
+      runs only behind a validation-only flag, off by default, which never ships. A record, not a gate.
 
 ## Listening / manual checklist (Maisara)
 
@@ -94,6 +116,10 @@ In Logic and one VST3 host, on a sustained pad *and* on drums, both output modes
 - [ ] Sweep the room size over 4 bars: smooth. (phase-10 L3)
 - [ ] Fast moves sound slightly "washy" but not pitch-wobbly. That's the intended no-Doppler design.
       Say if you'd prefer audible Doppler; that's a product decision. (phase-10 L4)
+- [ ] **D-W4 listening check (phase-07c-2 D-W4 item 2; a person's action):** a blind check in Seat 1's paradigm,
+      with its criterion fixed in advance by this phase's loop: one step at rest after automation, against stepwise
+      adoption during automation; pulsed pink noise and the McGill TSP speech used in phase-07c-2's D-W2;
+      headphones, the D-W2 chain.
 
 ## Contractor review focus
 
@@ -115,7 +141,8 @@ In Logic and one VST3 host, on a sustained pad *and* on drums, both output modes
 
 ## Definition of done
 
-- All automated criteria green (phase-10 DoD1, for the criteria this sub-phase owns: AC1, AC2, AC6, AC7).
+- All automated criteria green (phase-10 DoD1, for the criteria this sub-phase owns: AC1, AC2, AC6, AC7), and the
+  D-W4 record printed; D-W4 ruled (or sent to Maisara as case (a)) before Phase 13's beta.
 - Status row 10-3 `done` (phase-10 DoD3; the umbrella row 10 is `done` when 10-1…10-3 are).
 - CLAUDE.md rules apply: one sub-phase per session; if it can't be finished in two sessions, split the remainder
   into `phase-10-3b.md`.
