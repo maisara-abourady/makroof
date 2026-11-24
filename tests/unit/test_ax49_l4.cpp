@@ -6,7 +6,7 @@
 //       asserted against the bound the measurement supports, see below);
 //   P5: the provisional's gain over [L_f, L_p) relative to its value before L_f is the raised cosine
 //       0.5 (1 + cos(pi (j - lf + 1) / (fadeLen + 1))), monotone, first value >= 1 - 1e-5, 0 from L_p.
-// Hidden probe first ([.ax49-l4-probe]): prints the measured residuals so the asserted bound is set from the
+// The bound 1e-9 is Seat 3's; the measured residuals on S' are far below it (printed).
 // measurement, never fitted to pass (CLAUDE.md "never loosen").
 
 #include "ContractFixtures.h"
@@ -20,7 +20,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <memory>
 #include <numbers>
+#include <vector>
 
 namespace {
 
@@ -62,34 +64,48 @@ struct P4P5
     bool zeroAfter = true;
 };
 
-P4P5 measure(const contract::SceneDescription& scene)
+struct Built
 {
-    auto build = sim::StagedBuild::plan(scene, omni48());
-    const auto timing = build.provisionalTiming();
-    REQUIRE(timing.provisional);
-    sim::HybridDiagnostics dEx, dPr;
-    (void)build.assemble(&dEx);
-    const auto uEx = build.unitDecays();
-    (void)build.assembleProvisional(&dPr);
-    const auto uPr = build.unitDecays();
-    REQUIRE(uEx);
-    REQUIRE(uPr);
+    sim::ProvisionalTiming timing;
+    sim::HybridDiagnostics dEx;
+    std::shared_ptr<const std::vector<sim::tail::UnitDecay>> uEx, uPr;
+};
+
+Built build(const contract::SceneDescription& scene)
+{
+    auto b = sim::StagedBuild::plan(scene, omni48());
+    Built r;
+    r.timing = b.provisionalTiming();
+    REQUIRE(r.timing.provisional);
+    sim::HybridDiagnostics dPr;
+    (void)b.assemble(&r.dEx);
+    r.uEx = b.unitDecays();
+    (void)b.assembleProvisional(&dPr);
+    r.uPr = b.unitDecays();
+    REQUIRE(r.uEx);
+    REQUIRE(r.uPr);
+    return r;
+}
+
+P4P5 measure(const Built& bt, const std::vector<sim::tail::UnitDecay>& prUnits)
+{
+    const auto& timing = bt.timing;
     const double fs = 48000.0;
     const std::size_t lp = sim::tail::unitDecayLength(timing.endS, fs);
     const std::size_t lf = std::min(lp, sim::tail::unitDecayLength(timing.fadeStartS, fs));
     const std::size_t fadeLen = lp - lf;
     P4P5 r;
-    for (std::size_t e = 0; e < uEx->size() && e < dEx.emitters.size(); ++e)
+    for (std::size_t e = 0; e < bt.uEx->size() && e < bt.dEx.emitters.size(); ++e)
     {
-        const double mix = dEx.emitters[e].match.mixing.mixS;
+        const double mix = bt.dEx.emitters[e].match.mixing.mixS;
         const auto from = static_cast<std::size_t>(std::ceil((mix + 0.0025) * fs));
         for (std::size_t b = 0; b < contract::kNumOctaveBands; ++b)
         {
-            const auto& ex = (*uEx)[e].bands[b];
-            const auto& pr = (*uPr)[e].bands[b];
+            const auto& ex = (*bt.uEx)[e].bands[b];
+            const auto& pr = prUnits[e].bands[b];
             REQUIRE(pr.size() >= lp);
             REQUIRE(ex.size() > lp);
-            // P4: least-squares c_b on [from, lf)
+            // P4: least-squares c_b on [t_mix,e + 2.5 ms, L_f)
             double num = 0.0, den = 0.0;
             for (std::size_t j = from; j < lf; ++j)
             {
@@ -103,10 +119,9 @@ P4P5 measure(const contract::SceneDescription& scene)
             for (std::size_t j = from; j < lf; ++j)
                 worst = std::max(worst, std::abs(pr[j] - c * ex[j]) / rms);
             r.worstP4 = std::max(r.worstP4, worst);
-            r.worstCb = std::max(r.worstCb, std::abs(20.0 * std::log10(c)));
-            // P5: over the fade the provisional is c g(j) times the L_p-length generator's sample, which
-            // equals ex[j] to the P4 residual; the gain is read as pr[j] / (c ex[j]) where |ex[j]| is not
-            // small
+            r.worstCb = std::max(r.worstCb, std::abs(20.0 * std::log10(std::abs(c))));
+            // P5: the gain over [L_f, L_p) read as pr[j] / (c ex[j]) where |ex[j]| is not small (the
+            // provisional's generator sample equals ex[j] to the P4 residual), against the raised cosine
             double prev = 2.0;
             for (std::size_t j = lf; j < lp; ++j)
             {
@@ -115,11 +130,10 @@ P4P5 measure(const contract::SceneDescription& scene)
                                     + std::cos(std::numbers::pi * static_cast<double>(j - lf + 1)
                                                / static_cast<double>(fadeLen + 1)));
                 if (std::abs(ex[j]) > 0.1 * rms)
-                {
-                    const double gHat = pr[j] / (c * ex[j]);
-                    r.worstP5 = std::max(r.worstP5, std::abs(gHat - g));
-                }
+                    r.worstP5 = std::max(r.worstP5, std::abs(pr[j] / (c * ex[j]) - g));
                 if (g > prev)
+                    r.monotone = false;
+                if (j == lf && g < 1.0 - 1e-5)
                     r.monotone = false;
                 prev = g;
             }
@@ -133,13 +147,38 @@ P4P5 measure(const contract::SceneDescription& scene)
 
 } // namespace
 
-TEST_CASE("AX49 L4: provisional vs exact unit decays on S' (probe: prints the measured residuals)",
-          "[.ax49-l4-probe]")
+// Seat 3's P4 / P5 at 1e-9 (files 4-seat3, 12-seat3); measured on S': P4 2.5e-13, P5 3.6e-14 (builder,
+// 2026-11-24).
+inline constexpr double kP4P5Bound = 1e-9;
+
+TEST_CASE(
+    "AX49 L4: the provisional unit decays are c_b times the exact ones, faded by the raised cosine (S')",
+    "[ax49-l4]")
 {
-    const auto r = measure(sPrime());
+    const auto bt = build(sPrime());
+    const auto r = measure(bt, *bt.uPr);
     std::printf(
-        "ax49-l4 probe: P4 worst relative residual %.3e, worst |c_b| %.6f dB, P5 worst gain deviation "
-        "%.3e, monotone %d, zero after L_p %d\n",
-        r.worstP4, r.worstCb, r.worstP5, r.monotone ? 1 : 0, r.zeroAfter ? 1 : 0);
-    SUCCEED();
+        "ax49-l4: P4 worst relative residual %.3e, worst |c_b| %.6f dB, P5 worst gain deviation %.3e\n",
+        r.worstP4, r.worstCb, r.worstP5);
+    CHECK(r.worstP4 <= kP4P5Bound);
+    CHECK(r.worstCb <= 1.0); // AX47 (b)'s bound
+    CHECK(r.worstP5 <= kP4P5Bound);
+    CHECK(r.monotone);
+    CHECK(r.zeroAfter);
+
+    SECTION("N-L1: a hard cut at L_f fails P5")
+    {
+        auto cut = *bt.uPr;
+        const std::size_t lf = sim::tail::unitDecayLength(bt.timing.fadeStartS, 48000.0);
+        for (auto& u : cut)
+            for (auto& band : u.bands)
+                for (std::size_t j = lf; j < band.size(); ++j)
+                    band[j] = 0.0;
+        CHECK(measure(bt, cut).worstP5 > 0.5);
+    }
+    SECTION("N-L2: a provisional built with another tailSeed fails P4")
+    {
+        const auto other = build(sPrime(12346));
+        CHECK(measure(bt, *other.uPr).worstP4 > 1e-3);
+    }
 }
