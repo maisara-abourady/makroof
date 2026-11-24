@@ -33,7 +33,10 @@ fallback recorded) applies to this sub-phase as part of phase 07c (umbrella head
 1. (phase-07c §2.1, carried verbatim from phase-07c-2) **Only if** this phase would land after the first public
    release without the estimator parameters versioned in saved state: Seat 7's condition fails and the item returns
    to Maisara (decider file 47 §4, strongest objection; phase-13 "Raise with Maisara" item 4). Otherwise none.
-2. The ABX listening session (about 2 h per scene) needs you or a named listener.
+2. The ABX listening (two test rooms, noise and speech, plus the L4 held-chord test) needs you or a named listener:
+   about 3.3 h if nothing is detected at 0.9 dB, up to about 5.8 h if something is, in sittings of at most 2 h split
+   only at a chain boundary; the dates go in the session brief before the seal. The 08-3 binaural rerun adds about
+   2.6 h, up to about 5.0 h.
 
 ## Goal
 
@@ -96,8 +99,9 @@ The numbered items run in this order.
      The pre-registered Q5 rule itself is not amended (decider file 40, 2a; interrogator file 41).
    - The decider decides; the interrogator returns SURVIVES or SURVIVES WITH CORRECTIONS (applied); ledger rows;
      "Decided for Maisara" entry with PRD ids (file 31's provisional PRD reading: NFR-1, NFR-8 L112).
-   - **Amendments held for M3** (file 31, "Amendments to file 13", "Held for M3"), applied to file 13's design and the
-     run sheet once M3 survives: **item 9** (the scene, including the item-9 label, with r/r_c 3.47 and diffuse-field
+   - **Amendments held for M3** (applied: M3, decider files 9, 17, 21; run sheet §0) (file 31, "Amendments to file
+     13", "Held for M3"), applied to file 13's design and the run sheet once M3 survives: **item 9** (the scene,
+     including the item-9 label, with r/r_c 3.47 and diffuse-field
      D/R −10.8 dB, Kuttruff Eq. 5.44, A ≈ 640 m², as file 31 gives them for S-A); **item 13** (wording: "A
      non-detection is recorded for its scene class only; the 1 dB bound elsewhere rests on D-C1, as AX47 states.",
      file 31 answer 5); **item 15** (the 08-3 binaural rerun, per the chosen option's 08-3 part). File 34 item 1's
@@ -124,8 +128,10 @@ The numbered items run in this order.
      Seat 9's label, and the Seat 1 row's gap-versus-tail-T30 assertion passes on that scene (Seat 9 row).
 3. **Seal, then the ABX run by a person (O9)**, per `docs/validation/abx-07c-2-run-sheet.md` (§3 before the session:
    listener named, speech material fixed, stimuli built, each chain sealed and `prereg_hashes.json` committed before
-   the run; §4 procedure; §6 record). The AX49 L4 ABX is run too, with its own stimuli (file 13 item 14; run sheet §7).
-   About 2 h of listening per scene (builder file 32, K6: range 1.3 to 2.8 h by pace). **This is a person's action:
+   the run; §4 procedure; §6 record). The AX49 L4 ABX is run too, with its own stimuli (file 13 item 14 as amended by
+   M3-L4; run sheet §7). About 3.3 h of listening if nothing is detected at 0.9 dB, up to about 5.8 h if something is,
+   L4 included (builder file 32 K6 pace, [Hyp]; the builder times one speech block and L4 before the dates are fixed),
+   in sittings of ≤ 2 h split only at a chain boundary. **This is a person's action:
    the session hands it to Maisara** (file 13 item 16; Raise item 2). Done when (O9): a person's results (trials,
    correct counts) recorded in the session brief and the review folder (`docs/validation/abx-07c-2-results.md`, run
    sheet §6); AX47's and AX49's reversal read from them.
@@ -183,6 +189,8 @@ The numbered items run in this order.
   own PR sentence (the timing itself binds this phase: Scope, "Timing").
 - Phase-07c-2's own "Out of scope" list (the umbrella's §9; conditions 2, 4–7 and 9–11 and D-C1–D-C3 in 07c-1 /
   07c-1b), and phase-07d (long-T60 load, the macOS (d) defect, growth re-pin). Phase 12's preset check itself.
+- The cause ruling on the NFR-8 placement findings (both_corner, both_wall onset, s0.7 spread): home pending Maisara
+  (M3-H, `docs/review/phase-07c-2b/24-m3h-for-maisara.md`); this phase's PR lists them under Follow-ups.
 
 ## Acceptance criteria — automated
 

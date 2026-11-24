@@ -55,6 +55,36 @@ Phase 06 convolver (headphone rendering, `outputMode = binaural`).
    final listening pass through all presets, and the B9 (§5) protocol logs) records the `hrtfId` and the
    header's set identity string of the build it was listened through; this phase's checklist does the
    same. (phase-08 scope 7, last sentence; shared, umbrella)
+15. 08-3. Before Phase 08's goldens freeze, the AX47 self-ABX is rerun on the binaural chain at the bound in force,
+    as two pre-registered families (F3, F4) with F1 and F2's design (both chains 24 scored trials + 6 anchors, 3 per
+    half, break after presentation 15, ≥ 18/24; per family ≤ 0.0227; union over F1–F4 ≤ 0.0906), item 4 applied within
+    each; the record states each family's α, the union rate and which family detected at what count.
+    - (i) The S-W scene sealed in 07c-2b, with tailSeed, programmes, steps and trials identical to 07c-2b's. Where its
+      listener is < 0.70 m from a face (AX44 d_L), it is labelled 'chain comparison only; listener 0.1 m from a face,
+      outside the free-field HRTF's validity', and it carries the 07c-2b S-W label's onset sentence. A non-detection
+      there is never counted as binaural evidence for the class; a detection reverses AX47 per item 4. A null there is
+      worded with its heard step per ear: 'not detected in 24 trials by one listener (power 0.61 at p = 0.75) on
+      layout4_s1/both_wall (<record line>); heard step at 1 kHz ΔG {L} / {R} dB, ΔC80 {L} / {R} dB per ear for the
+      0.9 dB tail step [0.5 dB: as printed in the manifest], at the recorded commit; void as evidence for this scene
+      after a t_mix,e change until rebuilt (M3-8)', values from the manifest, never typed by hand.
+    - (ii) The S-B\* scene sealed in 07c-2b, likewise identical. Its null is worded in the 07c-2b S-B\* form, with
+      per-ear ΔG and ΔC80, and carries the label's SPREAD clause.
+
+    Neither family is cited for externalisation or plausibility, and L4/L5 are not judged on these scenes.
+    Stimuli are built only after the NFR-8 placement findings' cause ruling required by phase-07c-2b M3-H (home
+    pending Maisara, file 24: `docs/review/phase-07c-2b/24-m3h-for-maisara.md`) is done.
+    Before any stimulus, per scene: binaural vs omni per-band energy within ±1 dB (AC6); per-ear, per-band energy
+    printed (print only); item 6 (HF-W with condition D) and `[ax47-midfade]` per ear; the M2 gap and Q5 checks per
+    ear; D/R printed per ear; `hrtfId` and the set identity string recorded; the same wired headphone model and level
+    setting as 07c-2b, recorded in the 07c-2b and 08-3 records, and no virtualiser.
+    Sittings of ≤ 2 h each (two if nothing is detected at 0.9 dB, three if something is), split only at a chain
+    boundary, on the same or consecutive days, dates in the 08-3 brief before 08-3 starts: about 2.6 h, up to about
+    5.0 h (builder file 32 K6 pace). Results are worded 'static, uncompensated (B14), generic HRTF', and for (i) also
+    'empty early part (AX21)'. If the trigger (M3-8) fired after 07c-2b, the stimuli are rebuilt and pass every seal
+    gate again (HF-W worst ratio, margin and skip count printed; the tail-spread print), and the cross-chain comparison
+    is recorded void unless the omni family is rerun on the current engine. If a rebuilt scene fails a seal gate, item
+    15 returns to the board before any 08-3 listening. (phase-07c-2b M3, `docs/review/phase-07c-2b/` decider files 9
+    §6 item 2 and 17 §6 item 2; the run sheet `docs/validation/abx-07c-2-run-sheet.md` §0, item 15)
 
 ## Out of scope
 
@@ -134,6 +164,7 @@ through (scope 7). (phase-08 L0; shared, umbrella)
 - [ ] **Hand-off to Phase 11 (Seat 6):** one line in the PR for the output-mode tooltip or manual, a
       default-experience note (what a listener may hear through the generic head: inside or behind for
       some), with no head name. (phase-08 L7)
+- [ ] AX47 binaural rerun, item 15, F3/F4.
 
 ## Contractor review focus
 
