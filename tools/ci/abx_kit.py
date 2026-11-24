@@ -528,22 +528,48 @@ def trial_plan(chain: str, level_db: float) -> list[dict]:
 # ---------------------------------------------------------------------------------------------------------
 
 
-def noise_programme(t30_s: float, seed_index: int, chain_seed: int) -> tuple[np.ndarray, int]:
-    """Pulsed pink noise, gaps >= T30(1 kHz), the step at a gap start: two bursts before the step (>= one T30 of
-    programme before it, item 7), then a gap, a burst and a final gap after it (>= 2 s). The onset is a seeded
-    partition boundary (item 5): the lead-in silence is LEAD_BLOCKS + a seeded 0..31 partitions."""
+def heard_delays(diag: dict, fs: float = FS) -> list[int]:
+    """d_e per emitter: the direct sound's delay in the aligned IR, ceil((directS - alignmentShiftS) fs), in samples
+    (phase-07c-2b decider file 5, D-M3b: every gap, pause and onset is placed as heard)."""
+    align = float(diag["alignmentShiftS"])
+    return [int(math.ceil((float(e["directS"]) - align) * fs - 1e-9)) for e in diag["emitters"]]
+
+
+def noise_programme(t30_s: float, seed_index: int, chain_seed: int,
+                    delays: tuple[int, ...] | list[int] = (0,)) -> tuple[np.ndarray, int, dict]:
+    """Pulsed pink noise, two bursts before the step (>= one T30 of programme before it, item 7), then a heard
+    silence and a burst after it (>= 2 s). Placed as heard (decider file 5, D-M3b; interrogator file 6): with d the
+    emitters' heard delays, Delta = max d - min d and T = the heard-IR T30 (M2 T-a), the gap between bursts 1 and 2
+    is ceil((T fs + Delta)/P) P, so every heard gap is >= T; the onset N is the first partition boundary at or after
+    the heard end of burst 2 (input end + max d); burst 3 starts at N + ceil(T fs/P) P, so the heard silence after N
+    is >= T. The lead-in silence is LEAD_BLOCKS + a seeded 0..31 partitions (item 5). Returns the programme, N and
+    the heard record (every quantity asserted here; M2's tail-T30 assertion is `gap_check`)."""
     rng = np.random.default_rng([chain_seed, 1000 + seed_index])
+    d_min, d_max = min(delays), max(delays)
+    delta = d_max - d_min
+    t_fs = t30_s * FS
     burst = int(round(NOISE_BURST_S * FS / PARTITION)) * PARTITION
-    gap = int(math.ceil(t30_s * FS / PARTITION)) * PARTITION
+    gap = int(math.ceil((t_fs + delta) / PARTITION)) * PARTITION
+    after = int(math.ceil(t_fs / PARTITION)) * PARTITION
     lead = (LEAD_BLOCKS + int(rng.integers(0, ONSET_SEED_RANGE))) * PARTITION
-    onset = lead + burst + gap + burst  # the start of the second gap
-    total = onset + gap + burst + gap
-    assert (gap + burst) / FS >= POST_STEP_S and burst + gap + burst >= t30_s * FS
+    b1, b2 = lead, lead + burst + gap
+    heard_end_2 = b2 + burst + d_max
+    onset = -(-heard_end_2 // PARTITION) * PARTITION
+    b3 = onset + after
+    total = b3 + burst + gap
+    heard_gaps = [(b2 + d_min) - (b1 + burst + d_max), (b3 + d_min) - heard_end_2]
+    rec = {"heard_delays_samples": [int(d) for d in delays], "delta_samples": int(delta),
+           "onset_minus_heard_end_samples": [int(onset - (b2 + burst + d)) for d in delays],
+           "heard_silence_after_onset_s": ((b3 + d_min) - onset) / FS, "heard_gaps_s": [g / FS for g in heard_gaps]}
+    assert all(v >= 0 for v in rec["onset_minus_heard_end_samples"]), rec  # D-M3b assertion 1
+    assert (b3 + d_min) - onset >= t_fs, rec  # assertion 2 (noise chain): heard silence after N >= T
+    assert all(g >= t_fs for g in heard_gaps), rec  # assertion 3: every heard gap >= T
+    assert onset - b1 >= t_fs and (total - onset) >= POST_STEP_S * FS, rec  # assertion 5 (item 7)
     x = np.zeros(total)
-    for start in (lead, lead + burst + gap, onset + gap):
+    for start in (b1, b2, b3):
         b = signals.apply_fades(signals.pink_noise(burst, int(rng.integers(0, 2**31))), FS, FADE_S)
         x[start : start + burst] = b * signals.db_to_amp(NOISE_LEVEL_DBFS)  # unit-RMS noise at the fixed level
-    return x, onset
+    return x, onset, rec
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -665,19 +691,22 @@ def build_noise_chain(out: pathlib.Path, binary: pathlib.Path, log=print, trials
     def programme_for(seed_index: int):
         if "t30" not in holder:
             raise RuntimeError("T30 not measured yet")
-        x, onset = noise_programme(holder["t30"], seed_index, KEY_SEED_BLOCKS["noise"])
-        return x, onset, {"programme": "pulsed pink noise", "noise_level_dbfs": NOISE_LEVEL_DBFS}
+        x, onset, heard = noise_programme(holder["t30"], seed_index, KEY_SEED_BLOCKS["noise"], holder["delays"])
+        return x, onset, {"programme": "pulsed pink noise", "noise_level_dbfs": NOISE_LEVEL_DBFS, "heard": heard}
 
     # T30 is needed for the gaps before any programme: measure it once on the scene first.
     out.mkdir(parents=True, exist_ok=True)
     tmp_scene = out / "scene_layout4_s1_default.json"
     tmp_scene.write_text(json.dumps(scene_layout4_s1_default(), indent=1))
     with tempfile.TemporaryDirectory() as tmp:
-        ir = pathlib.Path(tmp) / "ir.wav"
-        _run(binary, "--scene", tmp_scene, "--mode", "omni", "--ir", ir)
+        ir, dpath = pathlib.Path(tmp) / "ir.wav", pathlib.Path(tmp) / "diag.json"
+        _run(binary, "--scene", tmp_scene, "--mode", "omni", "--ir", ir, "--diagnostics", dpath)
         h, fs = wav.read(ir)
         holder["t30"] = float(metrics.room_metrics(h[:, 0] + h[:, 2], fs)["bands"]["1000"]["T30"])
-    gap_s = int(math.ceil(holder["t30"] * FS / PARTITION)) * PARTITION / FS  # noise_programme's gap (all gaps equal)
+        holder["delays"] = heard_delays(json.loads(dpath.read_text()))
+    # M2 (D-M3b assertion 4): the shortest heard silence (gaps and the silence after N; equal on every seed index)
+    _, _, heard = noise_programme(holder["t30"], 0, KEY_SEED_BLOCKS["noise"], holder["delays"])
+    gap_s = min(*heard["heard_gaps_s"], heard["heard_silence_after_onset_s"])
     return build_chain("noise", binary, out, programme_for, log, trials=trials, min_gap_s=gap_s, gap_t30_s=holder["t30"])
 
 
@@ -766,10 +795,11 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
     parts = speech_parts(s1, s2)
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
-        ir = tmp / "ir.wav"
-        _run(binary, "--scene", scene_path, "--mode", "omni", "--ir", ir)
+        ir, dpath = tmp / "ir.wav", tmp / "diag.json"
+        _run(binary, "--scene", scene_path, "--mode", "omni", "--ir", ir, "--diagnostics", dpath)
         h, fs = wav.read(ir)
         t30 = float(metrics.room_metrics(h[:, 0] + h[:, 2], fs)["bands"]["1000"]["T30"])
+        delays = heard_delays(json.loads(dpath.read_text()))
         # The rendered floor: TSP's own noise (looped past one IR length) through the room, steady state.
         reps = int(math.ceil((len(h) + 2 * FS) / len(parts["noise"])))
         noise = np.tile(parts["noise"], reps)
@@ -778,7 +808,11 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
         rn = _render(binary, scene_path, npath, nout)
         floor_db = band_level_db(rn[:, 0].astype(np.float64), FS, len(h) + FS // 2, FS)
     lead = LEAD_BLOCKS * PARTITION
-    pause = int(math.ceil(t30 * FS))
+    # D-M3b (decider file 5, speech rule as corrected by interrogator file 6): the input pause is >= T fs + Delta, so
+    # the heard pause is >= T; onsets lie at or after the heard end of sentence 1; the heard silence after the onset
+    # is >= every tail T30 (M2, asserted by `gap_check` on the latest onset). Q5 itself is unchanged.
+    d_min, d_max = min(delays), max(delays)
+    pause = int(math.ceil(t30 * FS + (d_max - d_min)))
     eos = lead + parts["end_of_speech"]
     x = np.zeros(lead + len(s1) + pause + len(s2))
     x[lead : lead + len(s1)] = s1
@@ -787,7 +821,8 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
     import soundfile as sf
 
     sf.write(excerpt, x.astype(np.float32), FS, subtype="FLOAT", format="WAV")
-    first_boundary = -(-(eos + 1) // PARTITION) * PARTITION
+    s1_heard_end = lead + len(s1) + d_max  # the file's end, heard (TSP's trailing silence included)
+    first_boundary = -(-max(eos + 1, s1_heard_end) // PARTITION) * PARTITION
     last_allowed = eos + int(math.floor(Q5_ONSET_MAX_T30 * t30 * FS))
     boundaries = list(range(first_boundary, last_allowed + 1, PARTITION))
     assert boundaries, "no partition boundary inside the Q5 window"
@@ -795,7 +830,11 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
     assert boundaries[0] >= t30 * FS, "less than one T30 of programme before the earliest onset"
     rec_base = {"programme": "McGill TSP v2 speech", "speaker": speaker, "files": list(files),
                 "member_sha256": [h1, h2], "excerpt_sha256": hashlib.sha256(excerpt.getvalue()).hexdigest(),
-                "end_of_speech_s": eos / FS, "pause_s": pause / FS, "T30_1k_s": t30, "floor_db_1k": floor_db}
+                "end_of_speech_s": eos / FS, "pause_s": pause / FS, "T30_1k_s": t30, "floor_db_1k": floor_db,
+                "heard": {"heard_delays_samples": delays, "delta_samples": d_max - d_min,
+                          "heard_pause_s": (pause - (d_max - d_min)) / FS,
+                          "heard_silence_after_latest_onset_s": (lead + len(s1) + pause + d_min - boundaries[-1]) / FS}}
+    assert rec_base["heard"]["heard_pause_s"] * FS >= t30 * FS - 1e-6, rec_base["heard"]
     # The unstepped render does not depend on the onset: render it once for the Q5 measurement.
     with tempfile.TemporaryDirectory() as tmp:
         p, o = pathlib.Path(tmp) / "x.wav", pathlib.Path(tmp) / "y.wav"
@@ -834,7 +873,7 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
         f"{rec_base['q5_passing_contiguous_from_first']}; replacement: first draw replaced with p "
         f"{rec_base['q5_first_draw_replaced_p']:.3f}, {rec_base['q5_expected_replaced_per_stimulus']:.2f} replaced "
         "onsets per stimulus expected")
-    manifest = build_chain("speech", binary, out, programme_for, log, trials=trials, min_gap_s=pause / FS, gap_t30_s=t30)
+    manifest = build_chain("speech", binary, out, programme_for, log, trials=trials, min_gap_s=min(rec_base["heard"]["heard_pause_s"], rec_base["heard"]["heard_silence_after_latest_onset_s"]), gap_t30_s=t30)
     manifest["tsp"] = {"url": TSP_URL, "sha256": TSP_SHA256, "notice": TSP_NOTICE, **{k: v for k, v in rec_base.items()}}
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1, default=float))
     (out / "NOTICE-TSP.txt").write_text(TSP_NOTICE + "\n")

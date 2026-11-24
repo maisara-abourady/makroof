@@ -161,6 +161,21 @@ def test_click_check_form_b_spike_bracket(where: str) -> None:
             assert abx_kit.click_check(o, a, b, s0, 48000)["events_in_step_region"] == 0
 
 
+@pytest.mark.parametrize("t30, delays, gap, heard_gap, after", [
+    (2.009, [32, 32], 96768, 96768, 96800),        # S-A: Delta 0, N moves one partition (decider file 5)
+    (1.370, [32, 1407], 67584, 66209, 66080),      # both_wall: Delta 1375 (interrogator file 6 arithmetic)
+])
+def test_noise_programme_as_heard(t30, delays, gap, heard_gap, after) -> None:
+    """D-M3b (decider file 5; interrogator file 6): gaps ceil((T fs + Delta)/P) P, the onset at the first partition
+    boundary at or after the heard end of burst 2, burst 3 at N + ceil(T fs/P) P; every heard silence >= T."""
+    x, onset, rec = abx_kit.noise_programme(t30, 0, 7001, delays)
+    assert onset % abx_kit.PARTITION == 0
+    assert round(rec["heard_gaps_s"][0] * abx_kit.FS) == heard_gap == gap - (max(delays) - min(delays))
+    assert round(rec["heard_silence_after_onset_s"] * abx_kit.FS) == after
+    assert min(rec["onset_minus_heard_end_samples"]) >= 0
+    assert all(g >= t30 for g in rec["heard_gaps_s"]) and rec["heard_silence_after_onset_s"] >= t30
+
+
 def test_family_error_and_power() -> None:
     # Item 3: FWER <= 0.0490 by the union bound over the two chains' first tests (the 0.5 dB tests inherit alpha
     # only after a detection, graphical procedure); power at p = 0.75 is 0.63 (noise) and 0.405 (speech).
