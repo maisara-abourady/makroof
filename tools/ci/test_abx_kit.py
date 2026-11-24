@@ -46,7 +46,27 @@ def test_preregistered_numbers() -> None:
     assert abx_kit.POST_STEP_S == 2.0
     assert abx_kit.S_W_MAX == 0.023  # file 34 item 1
     assert abx_kit.C80_S == 0.080  # Vorlaender Eq. 6.7 (file 29)
-    assert abx_kit.HEARD_T30_LABEL == "heard-IR T30, ISO fit spanning the AX21 gap, not a decay rate"  # Seat 9, M2
+    # Decider file 25, ruling (i): the heard-IR T30's label per scene class (s = 1: Seat 9's text that M2 pinned;
+    # s < 1, E included: file 8's M3-S text)
+    assert abx_kit.HEARD_T30_LABEL == {
+        "s=1": "heard-IR T30, ISO fit spanning the AX21 gap, not a decay rate",
+        "s<1": "heard-IR T30, ISO fit spanning the early part, not a decay rate"}
+    assert abx_kit.heard_t30_label(abx_kit.scene_layout4_s1_default()) == abx_kit.HEARD_T30_LABEL["s=1"]
+    for name in abx_kit.FALLBACK_ORDER:  # E, D, B: s < 1
+        assert abx_kit.heard_t30_label(abx_kit.SCENES[name].build()) == abx_kit.HEARD_T30_LABEL["s<1"]
+    # Decider files 30 and 34 (I7): at least 34 passing candidates; the fallback pair and its record wording
+    assert abx_kit.Q5_MIN_PASSING == 34
+    assert abx_kit.ITEM7_FALLBACK_PAIR == ("MA", ("MA01_01", "MA01_02"))
+    assert abx_kit.ITEM7_FALLBACK_RECORD == ("speech onsets \u2265 0.134\u00b7T_heard on E (item 7); about 2 dB less mean "
+                                             "tail exposure than an unrestricted draw.")
+    # The pair search's result on E (decider file 34; builder file 39): the first adult MA pair in TSP index order whose
+    # earliest (a)(b) boundary meets (c) unrestricted and that passes every pre-seal assertion. A pair was found, so
+    # the fallback branch is not in force and no onset floor is pinned (the floor is pinned only in that branch).
+    assert abx_kit.SPEECH_PAIR == {abx_kit.SCENE_E: {
+        "speaker": "MA", "files": ("MA02_03", "MA02_04"),
+        "member_sha256": ("4782a1658ec8438a88e2f6147d4682f586b359da157d6946f78ae19c2210cdc1",
+                          "5ed86159c54b5e7ee83789d5b410041fd23ba8a1d667edabc8dfc166b7e49cd2")}}
+    assert abx_kit.ITEM7_ONSET_FLOOR_PINNED == {}
 
 
 def test_exact_unscaled_split() -> None:
@@ -93,15 +113,16 @@ def test_heard_pair_metrics_synthetic() -> None:
 def test_m2_gap_check() -> None:
     # File 34 item 3 under M3-G (phase-07c-2b decider file 8): the construction T is max(heard-IR T30, every tail T30);
     # the minimum heard gap or silence is asserted >= T and >= every tail T30.
-    scene = {"T30_1k_s": 2.009, "tail_T30_1k_s": [1.254, 1.274]}
+    scene = {"T30_1k_s": 2.009, "T30_1k_s_label": abx_kit.HEARD_T30_LABEL["s=1"], "tail_T30_1k_s": [1.254, 1.274]}
     rec = abx_kit.gap_check(scene, 2.016, 2.009)
     assert rec == {"min_gap_s": 2.016, "construction_T_s": 2.009,
                    "construction_rule": "max(heard-IR T30, every tail T30) at 1 kHz (decider file 8, M3-G)",
-                   "heard_T30_1k_s": 2.009, "heard_T30_label": abx_kit.HEARD_T30_LABEL,
+                   "heard_T30_1k_s": 2.009, "heard_T30_label": abx_kit.HEARD_T30_LABEL["s=1"],
                    "tail_T30_1k_s": [1.254, 1.274], "min_gap_ge_tail_T30": True, "min_gap_ge_construction_T": True}
     # E (builder file 4): heard 2.560 s below the tail's 2.600 s; T = 2.600 s, heard gap 2.603 s passes
-    e = {"T30_1k_s": 2.560, "tail_T30_1k_s": [2.582, 2.600]}
+    e = {"T30_1k_s": 2.560, "T30_1k_s_label": abx_kit.HEARD_T30_LABEL["s<1"], "tail_T30_1k_s": [2.582, 2.600]}
     assert abx_kit.gap_check(e, 2.603, 2.600)["construction_T_s"] == 2.600
+    assert abx_kit.gap_check(e, 2.603, 2.600)["heard_T30_label"] == abx_kit.HEARD_T30_LABEL["s<1"]  # ruling (i)
     # red: gaps built from the heard T30 (the old M2 T-a rule) are refused on layout 5
     with pytest.raises(AssertionError):
         abx_kit.gap_check(e, 2.603, 2.560)
@@ -203,6 +224,9 @@ def test_speech_layout_e() -> None:
     assert lay["heard_silence_after_latest_onset"] >= t * 48000
     assert lay["boundaries"][0] >= lay["s1_end"] + max(delays) and lay["boundaries"][0] % abx_kit.PARTITION == 0
     assert lay["boundaries"][-1] <= lay["eos"] + 0.43 * t_h * 48000  # Q5's ceiling stays 0.43 x heard T30
+    # item 7 (c): the onset floor lead + ceil(T fs); here the earliest (a)(b) boundary already meets it
+    assert lay["onset_floor"] == 4096 + int(np.ceil(t * 48000)) == 128902
+    assert lay["item7_unrestricted"] and lay["boundaries"] == lay["ab_boundaries"] and lay["removed_by_item7"] == 0
     # red: no boundary when the heard end of sentence 1 lies past the Q5 ceiling
     with pytest.raises(AssertionError, match="no partition boundary"):
         abx_kit.speech_layout(150000, 150000, 40000, t_h, t, delays)
@@ -269,17 +293,95 @@ def test_click_check_form_b_spike_bracket(where: str) -> None:
             assert abx_kit.click_check(o, a, b, s0, 48000)["events_in_step_region"] == 0
 
 
-def test_speech_layout_item7_lead_on_e_with_ma01_01() -> None:
-    """Finding (phase-07c-2b builder file 12): with TSP MA01_01 (114221 samples, end of speech at 108480) the earliest
-    onset boundary at or after the heard end of sentence 1 is 119808 (2.496 s from the file start), below one T of
-    programme (item 7) on E: T = 2.600 s under M3-G, and also below the heard-IR T30 2.560 s of the old rule. The kit
-    stops; nothing is loosened. On S-A (T 2.009 s, delays 32/32) the same sentence passes."""
-    with pytest.raises(AssertionError, match="one T of programme"):
-        abx_kit.speech_layout(114221, 111954, 108480, 2.5597945976385454, 2.600119578366251, [1395, 32])
-    with pytest.raises(AssertionError, match="one T of programme"):
-        abx_kit.speech_layout(114221, 111954, 108480, 2.5597945976385454, 2.5597945976385454, [1395, 32])
-    lay = abx_kit.speech_layout(114221, 111954, 108480, 2.009, 2.009, [32, 32])
-    assert lay["boundaries"][0] == 118784 >= 2.009 * 48000
+T_HEARD_E, T_E, DELAYS_E = 2.5597945976385454, 2.600119578366251, [1395, 32]
+
+
+def test_speech_layout_item7_restriction_on_e_with_ma01_01() -> None:
+    """Item 7 (phase-07c-2b decider files 30 and 34): with TSP MA01_01 (114221 samples, end of speech at 108480) the
+    earliest (a)(b) boundary is 119808 (2.496 s), below the onset floor lead + ceil(T fs) = 4096 + 124806 = 128902
+    (2.685 s) on E (builder file 12's finding). Condition (c) removes 18 boundaries; the first candidate is 129024
+    (2.688 s), (2.688 - 2.345)/2.560 = 0.134 T_heard after the end of speech. On S-A (T 2.009 s) (c) holds unrestricted."""
+    lay = abx_kit.speech_layout(114221, 111954, 108480, T_HEARD_E, T_E, DELAYS_E)
+    assert not lay["item7_unrestricted"]
+    assert lay["ab_boundaries"][0] == 119808 and len(lay["ab_boundaries"]) == 90
+    assert lay["onset_floor"] == 128902 and lay["boundaries"][0] == 129024
+    assert lay["removed_by_item7"] == 18 and len(lay["boundaries"]) == 72
+    assert round((lay["boundaries"][0] - lay["eos"]) / (T_HEARD_E * 48000), 3) == 0.134
+    assert all(b >= lay["onset_floor"] for b in lay["boundaries"])
+    sa = abx_kit.speech_layout(114221, 111954, 108480, 2.009, 2.009, [32, 32])
+    assert sa["item7_unrestricted"] and sa["boundaries"][0] == 118784 >= 2.009 * 48000
+    # red: every (a)(b) boundary lies before the onset floor, so the candidate set is empty
+    with pytest.raises(AssertionError, match="no candidate onset boundary"):
+        abx_kit.speech_layout(60000, 60000, 55000, T_HEARD_E, T_E, DELAYS_E)
+
+
+def test_item7_branch(monkeypatch) -> None:
+    """Decider file 34: an unrestricted pair builds with nothing pinned; restricted onsets only for the fallback pair
+    MA01_01 + MA01_02 on a scene whose floor is pinned (asserted equal), with the record wording in the manifest."""
+    e = abx_kit.SCENE_E
+    free = abx_kit.speech_layout(150000, 150000, 140000, T_HEARD_E, T_E, DELAYS_E)
+    br = abx_kit.item7_branch(free, e, "MA", ("MA02_03", "MA02_04"))
+    assert br["unrestricted"] and br["branch"].startswith("unrestricted") and "record_wording" not in br
+    assert br["preregistered_pair"]  # SPEECH_PAIR on E
+    assert not abx_kit.item7_branch(free, e, "MA", ("MA01_03", "MA01_04"))["preregistered_pair"]
+    restricted = abx_kit.speech_layout(114221, 111954, 108480, T_HEARD_E, T_E, DELAYS_E)
+    # red: a restricted pair other than the fallback pair
+    with pytest.raises(RuntimeError, match="only for the fallback pair"):
+        abx_kit.item7_branch(restricted, e, "MA", ("MA01_05", "MA01_06"))
+    # the fallback branch with its floor pinned
+    monkeypatch.setattr(abx_kit, "ITEM7_ONSET_FLOOR_PINNED", {e: 128902})
+    br = abx_kit.item7_branch(restricted, e, "MA", ("MA01_01", "MA01_02"))
+    assert br["branch"].startswith("fallback") and br["record_wording"] == abx_kit.ITEM7_FALLBACK_RECORD
+    assert (br["onset_floor_samples"], br["boundaries_removed_by_c"]) == (128902, 18)
+    assert round(br["first_candidate_boundary_s"], 3) == 2.688 and round(br["onset_floor_s"], 3) == 2.685
+    # red: the floor differs from the pinned value
+    monkeypatch.setattr(abx_kit, "ITEM7_ONSET_FLOOR_PINNED", {e: 128903})
+    with pytest.raises(AssertionError, match="pinned"):
+        abx_kit.item7_branch(restricted, e, "MA", ("MA01_01", "MA01_02"))
+    # red: no floor pinned on the scene (the fallback branch is not in force)
+    monkeypatch.setattr(abx_kit, "ITEM7_ONSET_FLOOR_PINNED", {})
+    with pytest.raises(RuntimeError, match="not in force"):
+        abx_kit.item7_branch(restricted, e, "MA", ("MA01_01", "MA01_02"))
+
+
+def test_draw_speech_onset_item7_and_replacement() -> None:
+    floor = 128902
+    cands = [129024 + 512 * i for i in range(40)]
+    quiet = set(cands[:20])  # the first 20 candidates fail Q5 (tail below floor + 20 dB)
+    level = lambda b: -80.0 if b in quiet else -50.0  # noqa: E731
+    for seed in range(30):
+        onset, tail_db, replaced = abx_kit.draw_speech_onset(cands, level, -75.0, floor, seed)
+        assert onset >= floor and onset not in quiet and tail_db == -50.0
+        assert all(r["onset_sample"] in quiet for r in replaced)
+    # red: a drawn onset before the onset floor (item 7 (c), asserted on every drawn onset; decider file 30)
+    with pytest.raises(AssertionError, match="item 7: drawn onset"):
+        abx_kit.draw_speech_onset([128512], lambda b: -50.0, -75.0, floor, 0)
+    with pytest.raises(RuntimeError, match="no onset"):
+        abx_kit.draw_speech_onset(cands[:20], level, -75.0, floor, 0)
+
+
+def test_q5_passing_minimum() -> None:
+    cands = list(range(0, 512 * 60, 512))
+    ok = abx_kit.q5_passing(cands, [25.0] * 34 + [10.0] * 26)
+    assert ok == cands[:34]
+    # red: 33 passing candidates (< 34; decider files 25 and 30)
+    with pytest.raises(AssertionError, match="fewer than 34"):
+        abx_kit.q5_passing(cands, [25.0] * 33 + [10.0] * 27)
+
+
+def test_tsp_pairs_order(tmp_path: pathlib.Path) -> None:
+    import zipfile
+
+    z = tmp_path / "48k.zip"
+    with zipfile.ZipFile(z, "w") as f:
+        for name in ("MA02_02", "MA01_03", "MA01_01", "MA02_01", "MA01_02", "MA01_04", "MA01_05"):
+            f.writestr(f"48k/MA/{name}.wav", b"")
+        f.writestr("48k/MA/Stats.txt", b"")
+        f.writestr("48k/FA/FA01_01.wav", b"")
+    # TSP index order, consecutive pairs within each group; an odd file left over is not paired
+    assert abx_kit.tsp_pairs(z, "MA") == [("MA01_01", "MA01_02"), ("MA01_03", "MA01_04"), ("MA02_01", "MA02_02")]
+    with pytest.raises(ValueError):
+        abx_kit.tsp_pairs(z, "CA")
 
 
 @pytest.mark.parametrize("t30, delays, gap, heard_gap, after", [
@@ -437,7 +539,7 @@ def test_noise_trial_end_to_end(tmp_path: pathlib.Path) -> None:
     for x in em:
         assert abs(x["tail_T30_1k_s"] / x["target_T60_1k_s"] - 1.0) <= 0.10, x
     # M3-G: T = max(heard, every tail T30); on E the tail is longer than the heard IR's T30 (builder file 4)
-    assert sc["T30_1k_s_label"] == abx_kit.HEARD_T30_LABEL
+    assert sc["scene_class_s"] == "s<1" and sc["T30_1k_s_label"] == abx_kit.HEARD_T30_LABEL["s<1"]  # ruling (i)
     assert sc["construction_T_s"] == max(sc["T30_1k_s"], *sc["tail_T30_1k_s"]) > sc["T30_1k_s"]
     gc = m["m2_gap_check"]
     assert gc["construction_T_s"] == sc["construction_T_s"] and gc["heard_T30_1k_s"] == sc["T30_1k_s"]

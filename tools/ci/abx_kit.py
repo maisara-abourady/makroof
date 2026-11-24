@@ -43,7 +43,11 @@ Delta G).
 
 Speech (Q5): the onset <= 0.43 x the heard-IR T30(1 kHz) after the end of speech, the rendered tail
 >= the rendered floor (TSP's own noise) + 20 dB at the onset (1 kHz band, 50 ms window); a failing seeded onset
-is replaced by the next seed index and the replacement recorded.
+is replaced by the next seed index and the replacement recorded. Item 7 (phase-07c-2b decider files 30 and 34): the
+onsets are drawn from the candidate boundaries that lie (a) at or after the heard end of sentence 1, (b) within Q5's
+ceiling and (c) at least lead + ceil(T fs) samples after the stimulus start; >= 34 must pass Q5. The speech pair is
+the result of the pre-registered pair search (`speech --search-pairs`, SPEECH_PAIR); MA01_01 + MA01_02 with (c)
+restricting the onsets only in the fallback branch (ITEM7_ONSET_FLOOR_PINNED).
 """
 
 from __future__ import annotations
@@ -110,8 +114,35 @@ MAX_PEAK_DBFS = -1.0  # no normalisation (item 10): a stimulus peaking above thi
 U = 2.0**-24  # float32 unit roundoff, as test_ax47_midfade.cpp uses it
 S_W_MAX = 0.023  # file 34 item 1: the ISM fade-out's unscaled share s_w of [t_mix,e, L), inside the 0.1 dB tolerance
 C80_S = 0.080  # Vorlaender Eq. 6.7: early [0, 80 ms), late [80 ms, end of the IR file) (file 29, method 5)
-# M2 T-a, Seat 9's label for the heard-IR T30 (decider files 27, 31, 34): printed beside the tail's own T30
-HEARD_T30_LABEL = "heard-IR T30, ISO fit spanning the AX21 gap, not a decay rate"
+# The heard-IR T30's label, per scene class (phase-07c-2b decider file 25, ruling (i); interrogator file 28): on s = 1
+# scenes Seat 9's text that M2 T-a pinned (decider files 27, 31, 34); on s < 1 scenes, E included, file 8's M3-S text.
+# Printed beside the tail's own T30.
+HEARD_T30_LABEL = {
+    "s=1": "heard-IR T30, ISO fit spanning the AX21 gap, not a decay rate",
+    "s<1": "heard-IR T30, ISO fit spanning the early part, not a decay rate",
+}
+# Item 7 on the speech chain (phase-07c-2b decider files 30 and 34, DECISION I7; interrogator files 36 and 37): a speech
+# onset is a candidate only if it lies (a) at or after the heard end of sentence 1 (D-M3b), (b) no later than
+# 0.43 T_heard after the end of speech (Q5) and (c) at least lead + ceil(T fs) samples after the stimulus start (T the
+# construction T, M3-G). At least Q5_MIN_PASSING candidates must pass Q5's >= 20 dB assertion.
+Q5_MIN_PASSING = 34
+# The pre-registered speech pair per scene (decider file 34, the pair search: the first adult MA pair in TSP index
+# order whose earliest (a)(b) boundary already meets (c) and that passes every pre-seal assertion on the scene in use;
+# `speech --search-pairs`, builder file 39). Filled from the search result; a fallback scene gets its own search.
+SPEECH_PAIR = {
+    # E: MA01_03 + MA01_04 to MA02_01 + MA02_02 fail (c) unrestricted; MA02_03 + MA02_04 meets it (earliest boundary
+    # 2.901 s >= floor 2.685 s) and passes every pre-seal assertion (builder file 39)
+    "layout5_s0.9/emitter_wall": {
+        "speaker": "MA", "files": ("MA02_03", "MA02_04"),
+        "member_sha256": ("4782a1658ec8438a88e2f6147d4682f586b359da157d6946f78ae19c2210cdc1",
+                          "5ed86159c54b5e7ee83789d5b410041fd23ba8a1d667edabc8dfc166b7e49cd2")},
+}
+# The fallback branch (decider file 34): if no pair qualifies, MA01_01 + MA01_02 with (c) restricting the onsets and
+# the onset floor (lead + ceil(T fs), samples) pinned per scene. Only a scene listed here may build restricted onsets.
+ITEM7_FALLBACK_PAIR = ("MA", ("MA01_01", "MA01_02"))
+ITEM7_ONSET_FLOOR_PINNED: dict[str, int] = {}
+ITEM7_FALLBACK_RECORD = ("speech onsets \u2265 0.134\u00b7T_heard on E (item 7); about 2 dB less mean tail exposure "
+                         "than an unrestricted draw.")
 # D-M3a (phase-07c-2b decider file 5): form (b)'s single-sample spike floor, -90 dBFS frame floor less the share of a
 # spike's energy above 2 kHz in one frame (about 22/24); asserted bracket (tools/ci/test_abx_kit.py)
 SPIKE_CAUGHT_DBFS = -68.0
@@ -321,6 +352,21 @@ def require_class_line(entry: AbxScene) -> str:
     return lines[0]
 
 
+def scene_class_s(scene: dict) -> str:
+    """The scene class of ruling (i) (phase-07c-2b decider file 25): "s=1" when every face scatters fully in every band
+    (the early part is empty, AX21), else "s<1"."""
+    vals = []
+    for face in scene["room"]["surfaces"].values():
+        sc = face.get("scattering", 0.0)
+        vals += list(sc) if isinstance(sc, (list, tuple)) else [sc]
+    return "s=1" if vals and all(float(v) == 1.0 for v in vals) else "s<1"
+
+
+def heard_t30_label(scene: dict) -> str:
+    """The heard-IR T30's label for this scene's class (decider file 25, ruling (i))."""
+    return HEARD_T30_LABEL[scene_class_s(scene)]
+
+
 def _run(binary: pathlib.Path, *args) -> str:
     r = render_cli.run(binary, *args)
     if r.returncode != 0:
@@ -363,7 +409,8 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
     lst = np.asarray(scene["listener"]["position"])
     volume = float(d["volume"])
     out["T30_1k_s"] = float(t30)
-    out["T30_1k_s_label"] = HEARD_T30_LABEL
+    out["scene_class_s"] = scene_class_s(scene)
+    out["T30_1k_s_label"] = heard_t30_label(scene)  # ruling (i): per scene class
     out["T60_eyring_1k_s"] = float(d["t60"][4])
     # Critical distance r_c = 0.057 sqrt(V / T) (omni source, g = 1: Kuttruff Eq. 5.44, 0.1 sqrt(V / (pi T)), stated
     # there with Sabine's T; here with the diffuse target's Eyring T60; print only).
@@ -390,7 +437,7 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
     out["DRR_dB_1k"] = m["bands"]["1000"].get("DRR")
     out["diagnostics"] = d
     log(f"scene {name}: capped at m = 6, 7, 8 ({out['capped']}); T30(1 kHz) {t30:.3f} s "
-        f"({HEARD_T30_LABEL}; tail T30 {', '.join(_fmt(x, 3) for x in out['tail_T30_1k_s'])} s; construction T "
+        f"({out['T30_1k_s_label']}; tail T30 {', '.join(_fmt(x, 3) for x in out['tail_T30_1k_s'])} s; construction T "
         f"{out['construction_T_s']:.3f} s) "
         f"(Eyring T60 {out['T60_eyring_1k_s']:.3f} s); r_c {rc:.2f} m ({out['r_c_m_T30']:.2f} m from the heard T30); "
         + "; ".join(f"emitter {x['id']} r {x['r_m']:.2f} m r/r_c {x['r_over_rc']:.2f} D/R {_fmt(x['DRR_dB_broadband'])} dB "
@@ -845,7 +892,7 @@ def gap_check(scene: dict, min_gap_s: float, construction_t_s: float) -> dict:
     assert abs(construction_t_s - expected) <= 1e-9, (construction_t_s, expected)  # M3-G: T = max(heard, tails)
     rec = {"min_gap_s": float(min_gap_s), "construction_T_s": float(construction_t_s),
            "construction_rule": "max(heard-IR T30, every tail T30) at 1 kHz (decider file 8, M3-G)",
-           "heard_T30_1k_s": scene["T30_1k_s"], "heard_T30_label": HEARD_T30_LABEL, "tail_T30_1k_s": tail,
+           "heard_T30_1k_s": scene["T30_1k_s"], "heard_T30_label": scene["T30_1k_s_label"], "tail_T30_1k_s": tail,
            "min_gap_ge_tail_T30": bool(min_gap_s >= max(tail)), "min_gap_ge_construction_T": bool(min_gap_s >= construction_t_s)}
     assert rec["min_gap_ge_tail_T30"], f"M2: minimum gap {min_gap_s:.3f} s < tail T30 {max(tail):.3f} s (file 34 item 3)"
     assert rec["min_gap_ge_construction_T"], f"M3-G: minimum gap {min_gap_s:.3f} s < T {construction_t_s:.3f} s"
@@ -1046,10 +1093,14 @@ def speech_layout(len_s1: int, len_s2: int, end_of_speech: int, t_heard_s: float
                   delays: list[int] | tuple[int, ...]) -> dict:
     """Where the speech programme puts things (decider file 8, M3-G, as restated in file 10 Part B): sentence 1 after
     the lead-in; sentence 2 at the input end of sentence 1 + ceil((0.43 T_heard + T) fs) + Delta (T = max(heard,
-    tail) T30, Delta = max d - min d); onset boundaries at or after the heard end of sentence 1 (input end + max d)
-    and no later than 0.43 T_heard after the end of speech (Q5, unchanged). Asserted: a boundary exists; the heard
-    pause >= T; the heard silence after the latest boundary >= T (so after every onset); at least T of programme
-    before the earliest onset and 2 s after the latest (item 7)."""
+    tail) T30, Delta = max d - min d). Candidate onsets (item 7, phase-07c-2b decider files 30 and 34): partition
+    boundaries (a) at or after the heard end of sentence 1 (input end + max d; D-M3b), (b) no later than 0.43 T_heard
+    after the end of speech (Q5, unchanged) and (c) at least lead + ceil(T fs) samples after the stimulus start (the
+    onset floor; programme is counted from the first sample of sentence 1's file, the lead-in excluded).
+    `ab_boundaries` is the set under (a) and (b) alone; `item7_unrestricted` says whether its first boundary already
+    meets (c). Asserted: an (a)(b) boundary exists; the candidate set is not empty; the heard pause >= T; the heard
+    silence after the latest candidate >= T (so after every onset); item 7 on the first candidate (at least T of
+    programme before it) and 2 s of programme after the latest."""
     lead = LEAD_BLOCKS * PARTITION
     d_min, d_max = min(delays), max(delays)
     delta = d_max - d_min
@@ -1061,48 +1112,131 @@ def speech_layout(len_s1: int, len_s2: int, end_of_speech: int, t_heard_s: float
     s1_heard_end = s1_end + d_max  # the file's end, heard (TSP's trailing silence included)
     first = -(-max(eos + 1, s1_heard_end) // PARTITION) * PARTITION
     last_allowed = eos + int(math.floor(Q5_ONSET_MAX_T30 * t_heard_s * FS))
-    boundaries = list(range(first, last_allowed + 1, PARTITION))
+    ab = list(range(first, last_allowed + 1, PARTITION))  # (a) and (b)
+    onset_floor = lead + int(math.ceil(t_con_s * FS))  # (c): lead + ceil(T fs)
+    boundaries = [b for b in ab if b >= onset_floor]  # the candidate set: (a), (b) and (c)
     total = s2_start + len_s2
     rec = {"lead": lead, "pause": pause, "s1_end": s1_end, "s2_start": s2_start, "eos": eos, "total": total,
-           "boundaries": boundaries, "delta": delta,
+           "boundaries": boundaries, "ab_boundaries": ab, "onset_floor": onset_floor, "delta": delta,
+           "item7_unrestricted": bool(ab) and ab[0] >= onset_floor, "removed_by_item7": len(ab) - len(boundaries),
            "heard_pause": (s2_start + d_min) - s1_heard_end,
            "heard_silence_after_latest_onset": (s2_start + d_min) - boundaries[-1] if boundaries else None}
-    assert boundaries, "no partition boundary inside the Q5 window at or after the heard end of sentence 1"
+    assert ab, "no partition boundary inside the Q5 window at or after the heard end of sentence 1"
+    assert boundaries, (f"no candidate onset boundary: none of the {len(ab)} in the Q5 window lies at or after the "
+                        f"onset floor lead + ceil(T fs) = {onset_floor} (item 7)")
     assert rec["heard_pause"] >= t_fs, rec  # M3-G: heard pause >= T
     assert rec["heard_silence_after_latest_onset"] >= t_fs, rec  # M3-G: heard silence after the onset >= T
     assert total - boundaries[-1] >= POST_STEP_S * FS, "less than 2 s of programme after the latest onset"
-    assert boundaries[0] >= t_fs, "less than one T of programme before the earliest onset"
+    assert boundaries[0] >= onset_floor and boundaries[0] - lead >= t_fs, \
+        "less than one T of programme before the earliest candidate onset (item 7)"
     return rec
+
+
+def item7_branch(lay: dict, scene_name: str, speaker: str, files: tuple[str, str] | list[str]) -> dict:
+    """Which branch of decider file 34's rule a speech build is in, with the item-7 record. Unrestricted: the
+    earliest (a)(b) boundary already meets (c) (the pair-search branch; nothing is pinned). Restricted: only the
+    fallback pair MA01_01 + MA01_02 may build, and only on a scene whose onset floor is pinned
+    (ITEM7_ONSET_FLOOR_PINNED, asserted equal); the manifest then carries the record wording (Seat 1 condition 3)."""
+    pair = SPEECH_PAIR.get(scene_name)
+    rec = {"rule": "candidates: (a) >= heard end of sentence 1, (b) <= end of speech + 0.43 T_heard, (c) >= lead + "
+                   "ceil(T fs) (phase-07c-2b decider files 30 and 34)",
+           "onset_floor_samples": lay["onset_floor"], "onset_floor_s": lay["onset_floor"] / FS,
+           "first_ab_boundary_s": lay["ab_boundaries"][0] / FS, "first_candidate_boundary_s": lay["boundaries"][0] / FS,
+           "unrestricted": bool(lay["item7_unrestricted"]), "boundaries_removed_by_c": lay["removed_by_item7"],
+           "preregistered_pair": pair is not None and (speaker, tuple(files)) == (pair["speaker"], tuple(pair["files"]))}
+    if lay["item7_unrestricted"]:
+        rec["branch"] = "unrestricted: the earliest (a)(b) boundary meets (c) (pair search, decider file 34)"
+        return rec
+    if (speaker, tuple(files)) != ITEM7_FALLBACK_PAIR:
+        raise RuntimeError(f"item 7: {speaker} {tuple(files)} needs the onset restriction (earliest (a)(b) boundary "
+                           f"{rec['first_ab_boundary_s']:.3f} s < floor {rec['onset_floor_s']:.3f} s); restricted onsets "
+                           f"are pre-registered only for the fallback pair {ITEM7_FALLBACK_PAIR} (decider file 34)")
+    pinned = ITEM7_ONSET_FLOOR_PINNED.get(scene_name)
+    if pinned is None:
+        raise RuntimeError(f"item 7: the fallback branch is not in force on {scene_name} (no onset floor pinned; "
+                           f"pre-registered pair {pair}); decider file 34 pins the floor only in the fallback branch")
+    assert lay["onset_floor"] == pinned, f"item 7: onset floor {lay['onset_floor']} != pinned {pinned} (decider file 30)"
+    rec["branch"] = "fallback: MA01_01 + MA01_02, onsets restricted by (c) (decider file 34)"
+    rec["record_wording"] = ITEM7_FALLBACK_RECORD
+    return rec
+
+
+def q5_passing(candidates: list[int], margins: list[float]) -> list[int]:
+    """Q5's >= 20 dB assertion over the candidate set; at least Q5_MIN_PASSING candidates must pass (decider files 25,
+    30: the smallest count K4 and K7 accepted)."""
+    passing = [b for b, mg in zip(candidates, margins) if mg >= Q5_MARGIN_DB]
+    assert len(passing) >= Q5_MIN_PASSING, (f"Q5: {len(passing)} of {len(candidates)} candidate boundaries have tail >= "
+                                            f"floor + {Q5_MARGIN_DB:g} dB, fewer than {Q5_MIN_PASSING} (decider file 30)")
+    return passing
+
+
+def draw_speech_onset(candidates: list[int], tail_db_at, floor_db: float, onset_floor: int,
+                      seed_index: int) -> tuple[int, float, list[dict]]:
+    """One stimulus's onset: a seeded permutation of the candidate set; a draw that fails Q5 (tail < floor + 20 dB) is
+    replaced by the next one and recorded (replace-and-record). Item 7 is asserted on the drawn onset (decider file
+    30: on every drawn onset)."""
+    rng = np.random.default_rng([KEY_SEED_BLOCKS["speech"], 1000 + seed_index])
+    replaced = []
+    for k in rng.permutation(len(candidates)):
+        onset = candidates[int(k)]
+        tail_db = tail_db_at(onset)
+        if tail_db >= floor_db + Q5_MARGIN_DB:
+            assert onset >= onset_floor, f"item 7: drawn onset {onset} < onset floor lead + ceil(T fs) = {onset_floor}"
+            return onset, tail_db, replaced
+        replaced.append({"onset_sample": onset, "tail_db_1k": tail_db})
+    raise RuntimeError(f"seed index {seed_index}: no onset in the Q5 window meets tail >= floor + {Q5_MARGIN_DB} dB")
+
+
+def speech_programme(s1: np.ndarray, s2: np.ndarray, lay: dict) -> np.ndarray:
+    x = np.zeros(lay["total"])
+    x[lay["lead"] : lay["s1_end"]] = s1
+    x[lay["s2_start"] :] = s2
+    return x
+
+
+def speech_q5_measure(binary: pathlib.Path, scene_path: pathlib.Path, x: np.ndarray, noise: np.ndarray, ir_len: int,
+                      candidates: list[int]) -> tuple[float, list[float], np.ndarray]:
+    """The rendered floor (TSP's own lead-in noise, looped past one IR length, through the room, steady state, 1 kHz)
+    and the unstepped render's tail level above it at every candidate (1 kHz, 50 ms; Q5)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = pathlib.Path(tmp)
+        reps = int(math.ceil((ir_len + 2 * FS) / len(noise)))
+        npath, nout = tmp / "noise.wav", tmp / "noise_out.wav"
+        wav.write_float32(npath, signals.to_stereo(np.tile(noise, reps)), FS)
+        rn = _render(binary, scene_path, npath, nout)
+        floor_db = band_level_db(rn[:, 0].astype(np.float64), FS, ir_len + FS // 2, FS)
+        # The unstepped render does not depend on the onset: render it once for the Q5 measurement.
+        p, o = tmp / "x.wav", tmp / "y.wav"
+        wav.write_float32(p, signals.to_stereo(x), FS)
+        unstepped = _render(binary, scene_path, p, o)[:, 0].astype(np.float64)
+    win = int(round(Q5_WINDOW_S * FS))
+    return floor_db, [band_level_db(unstepped, FS, b, win) - floor_db for b in candidates], unstepped
 
 
 def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, files: tuple[str, str],
                        cache: pathlib.Path, log=print, trials: int | None = None, scene_name: str = DEFAULT_SCENE) -> dict:
-    """The speech chain: TSP sentence 1, a pause, sentence 2 (item 8); the onset in the pause, <= 0.43 heard-IR T30
-    after the end of speech, at a seeded partition boundary; the Q5 assertion on every stimulus. The pause is
-    lengthened so that the heard pause and the heard silence after the onset are each >= T = max(heard, tail) T30
-    (decider file 8, M3-G; `speech_layout`)."""
+    """The speech chain: TSP sentence 1, a pause, sentence 2 (item 8); the onset in the pause, drawn from the item-7
+    candidate set (`speech_layout`: (a), (b), (c)), at a seeded partition boundary; the Q5 assertion on every
+    stimulus, at least Q5_MIN_PASSING passing candidates, item 7 on every drawn onset (decider files 30 and 34). The
+    pause is lengthened so that the heard pause and the heard silence after the onset are each >= T = max(heard, tail)
+    T30 (decider file 8, M3-G). Printed before the seal (Seat 1 condition 1): the tail level above the floor at every
+    drawn onset with its minimum and median, the realised window, the passing count, the replacement rate, the onset
+    floor and the first candidate boundary."""
     zip_path = fetch_tsp(cache, log)
     s1, h1 = read_tsp_member(zip_path, speaker, files[0])
     s2, h2 = read_tsp_member(zip_path, speaker, files[1])
+    pair = SPEECH_PAIR.get(scene_name)
+    if pair is not None and (speaker, tuple(files)) == (pair["speaker"], tuple(pair["files"])):
+        assert [h1, h2] == list(pair["member_sha256"]), f"pre-registered pair's member SHA-256s differ: {[h1, h2]}"
     scene = prepare_scene(out, binary, scene_name, log)
     _, scene_path, sc, _ = scene
     parts = speech_parts(s1, s2)
     t30, t_con, delays = sc["T30_1k_s"], sc["construction_T_s"], sc["heard_delays_samples"]
     h, fs = wav.read(out / "_work" / "ir.wav")
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = pathlib.Path(tmp)
-        # The rendered floor: TSP's own noise (looped past one IR length) through the room, steady state.
-        reps = int(math.ceil((len(h) + 2 * FS) / len(parts["noise"])))
-        noise = np.tile(parts["noise"], reps)
-        npath, nout = tmp / "noise.wav", tmp / "noise_out.wav"
-        wav.write_float32(npath, signals.to_stereo(noise), FS)
-        rn = _render(binary, scene_path, npath, nout)
-        floor_db = band_level_db(rn[:, 0].astype(np.float64), FS, len(h) + FS // 2, FS)
     lay = speech_layout(len(s1), len(s2), parts["end_of_speech"], t30, t_con, delays)
-    lead, pause, eos, boundaries = lay["lead"], lay["pause"], lay["eos"], lay["boundaries"]
-    x = np.zeros(lay["total"])
-    x[lead : lay["s1_end"]] = s1
-    x[lay["s2_start"] :] = s2
+    item7 = item7_branch(lay, scene_name, speaker, files)
+    pause, eos, boundaries = lay["pause"], lay["eos"], lay["boundaries"]
+    x = speech_programme(s1, s2, lay)
     excerpt = io.BytesIO()
     import soundfile as sf
 
@@ -1111,47 +1245,36 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
     rec_base = {"programme": "McGill TSP v2 speech", "speaker": speaker, "files": list(files),
                 "member_sha256": [h1, h2], "excerpt_sha256": hashlib.sha256(excerpt.getvalue()).hexdigest(),
                 "end_of_speech_s": eos / FS, "pause_s": pause / FS, "T30_1k_s": t30, "construction_T_s": t_con,
-                "pause_rule": "ceil((0.43 T_heard + T) fs) + Delta (decider file 8, M3-G)", "floor_db_1k": floor_db,
+                "pause_rule": "ceil((0.43 T_heard + T) fs) + Delta (decider file 8, M3-G)", "item7": item7,
                 "heard": {"heard_delays_samples": delays, "delta_samples": lay["delta"],
                           "heard_pause_s": lay["heard_pause"] / FS,
                           "heard_silence_after_latest_onset_s": lay["heard_silence_after_latest_onset"] / FS}}
-    # The unstepped render does not depend on the onset: render it once for the Q5 measurement.
-    with tempfile.TemporaryDirectory() as tmp:
-        p, o = pathlib.Path(tmp) / "x.wav", pathlib.Path(tmp) / "y.wav"
-        wav.write_float32(p, signals.to_stereo(x), FS)
-        unstepped = _render(binary, scene_path, p, o)[:, 0].astype(np.float64)
-
-    win = int(round(Q5_WINDOW_S * FS))
-    margins = [band_level_db(unstepped, FS, b, win) - floor_db for b in boundaries]
-    passing = [b for b, mg in zip(boundaries, margins) if mg >= Q5_MARGIN_DB]
+    floor_db, margins, unstepped = speech_q5_measure(binary, scene_path, x, parts["noise"], len(h), boundaries)
+    rec_base["floor_db_1k"] = floor_db
     rec_base["q5_boundaries"] = len(boundaries)
     rec_base["q5_margin_db_per_boundary"] = margins
+    passing = q5_passing(boundaries, margins)
     rec_base["q5_boundaries_passing"] = len(passing)
-    rec_base["q5_latest_passing_after_eos_T30"] = (max(passing) - eos) / FS / t30 if passing else None
-    if not passing:
-        raise RuntimeError(f"no partition boundary in the Q5 window has tail >= floor + {Q5_MARGIN_DB} dB")
+    rec_base["q5_latest_passing_after_eos_T30"] = (max(passing) - eos) / FS / t30
     rec_base.update(q5_window_record(boundaries, passing, eos, t30 * FS))
+    win = int(round(Q5_WINDOW_S * FS))
 
     def programme_for(seed_index: int):
-        rng = np.random.default_rng([KEY_SEED_BLOCKS["speech"], 1000 + seed_index])
-        order = rng.permutation(len(boundaries))
-        replaced = []
-        for k in order:  # a seeded onset that fails Q5 is replaced by the next seed index, and recorded
-            onset = boundaries[int(k)]
-            tail_db = band_level_db(unstepped, FS, onset, int(round(Q5_WINDOW_S * FS)))
-            if tail_db >= floor_db + Q5_MARGIN_DB:
-                silence = lay["s2_start"] + d_min - onset
-                assert silence >= t_con * FS and lay["heard_pause"] >= t_con * FS, (silence, lay["heard_pause"])  # M3-G
-                return x, onset, {**rec_base, "q5_tail_db_1k": tail_db, "q5_margin_db": tail_db - floor_db,
-                                  "onset_after_eos_T30": (onset - eos) / FS / t30, "replaced_onsets": replaced,
-                                  "heard_silence_after_onset_s": silence / FS}
-            replaced.append({"onset_sample": onset, "tail_db_1k": tail_db})
-        raise RuntimeError(f"seed index {seed_index}: no onset in the Q5 window meets tail >= floor + {Q5_MARGIN_DB} dB")
+        onset, tail_db, replaced = draw_speech_onset(boundaries, lambda b: band_level_db(unstepped, FS, b, win),
+                                                     floor_db, lay["onset_floor"], seed_index)
+        silence = lay["s2_start"] + d_min - onset
+        assert silence >= t_con * FS and lay["heard_pause"] >= t_con * FS, (silence, lay["heard_pause"])  # M3-G
+        return x, onset, {**rec_base, "q5_tail_db_1k": tail_db, "q5_margin_db": tail_db - floor_db,
+                          "onset_after_eos_T30": (onset - eos) / FS / t30, "replaced_onsets": replaced,
+                          "heard_silence_after_onset_s": silence / FS}
 
-    log(f"speech: {speaker} {files}, end of speech {eos / FS:.3f} s, pause {pause / FS:.3f} s (heard "
+    log(f"speech: {speaker} {files} ({item7['branch']}), end of speech {eos / FS:.3f} s, pause {pause / FS:.3f} s (heard "
         f"{lay['heard_pause'] / FS:.3f} s >= T {t_con:.3f} s), T30(1 kHz) {t30:.3f} s, "
-        f"floor {floor_db:.1f} dB (1 kHz), {len(boundaries)} onset boundaries in the Q5 window, {len(passing)} of them "
-        f"with tail >= floor + {Q5_MARGIN_DB:g} dB (latest at {rec_base['q5_latest_passing_after_eos_T30']:.3f} T30); "
+        f"floor {floor_db:.1f} dB (1 kHz); item 7: onset floor {item7['onset_floor_s']:.4f} s, first (a)(b) boundary "
+        f"{item7['first_ab_boundary_s']:.4f} s, first candidate boundary {item7['first_candidate_boundary_s']:.4f} s, "
+        f"{lay['removed_by_item7']} removed by (c); {len(boundaries)} candidate boundaries, {len(passing)} of them "
+        f"with tail >= floor + {Q5_MARGIN_DB:g} dB (>= {Q5_MIN_PASSING}; latest at "
+        f"{rec_base['q5_latest_passing_after_eos_T30']:.3f} T30); "
         f"realised onset window [{rec_base['q5_realised_window_T30'][0]:.3f}, {rec_base['q5_realised_window_T30'][1]:.3f}]"
         f" T30 after the end of speech, passing set contiguous from the first boundary: "
         f"{rec_base['q5_passing_contiguous_from_first']}; replacement: first draw replaced with p "
@@ -1160,10 +1283,126 @@ def build_speech_chain(out: pathlib.Path, binary: pathlib.Path, speaker: str, fi
     manifest = build_chain("speech", binary, out, programme_for, scene, log, trials=trials,
                            min_gap_s=min(rec_base["heard"]["heard_pause_s"], rec_base["heard"]["heard_silence_after_latest_onset_s"]),
                            construction_t_s=t_con)
-    manifest["tsp"] = {"url": TSP_URL, "sha256": TSP_SHA256, "notice": TSP_NOTICE, **{k: v for k, v in rec_base.items()}}
+    stims = [*(t for blk in manifest["blocks"].values() for t in blk), *manifest["familiarisation"]]
+    drawn = [float(t["q5_margin_db"]) for t in stims]
+    n_replaced = sum(len(t["replaced_onsets"]) for t in stims)
+    onset_margins = {"per_stimulus_db": drawn, "min_db": min(drawn), "median_db": float(np.median(drawn)),
+                     "basis": "tail level above the floor at the drawn onset, 1 kHz band, 50 ms window (Q5)",
+                     "replaced_onsets": n_replaced, "replaced_per_stimulus": n_replaced / len(stims),
+                     "onsets_ge_floor": all(t["onset_sample"] >= lay["onset_floor"] for t in stims)}
+    assert onset_margins["onsets_ge_floor"]  # item 7 on every drawn onset (decider file 30)
+    log(f"speech, before the seal: tail above floor at the drawn onsets min {onset_margins['min_db']:.1f} dB, median "
+        f"{onset_margins['median_db']:.1f} dB ({len(drawn)} stimuli); realised window "
+        f"[{rec_base['q5_realised_window_T30'][0]:.3f}, {rec_base['q5_realised_window_T30'][1]:.3f}] T30_heard; "
+        f"{len(passing)} passing of {len(boundaries)}; replacement: p {rec_base['q5_first_draw_replaced_p']:.3f}, "
+        f"realised {n_replaced} replaced onsets ({onset_margins['replaced_per_stimulus']:.2f} per stimulus); onset floor "
+        f"{item7['onset_floor_s']:.4f} s; first candidate boundary {item7['first_candidate_boundary_s']:.4f} s"
+        + (f"; record: {item7['record_wording']}" if "record_wording" in item7 else ""))
+    manifest["tsp"] = {"url": TSP_URL, "sha256": TSP_SHA256, "notice": TSP_NOTICE, **{k: v for k, v in rec_base.items()},
+                       "q5_drawn_onset_margin": onset_margins}
+    manifest["item7"] = item7
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1, default=float))
     (out / "NOTICE-TSP.txt").write_text(TSP_NOTICE + "\n")
     return manifest
+
+
+def tsp_pairs(zip_path: pathlib.Path, speaker: str) -> list[tuple[str, str]]:
+    """The speaker's file pairs in TSP index order (decider file 34): within each group, files 01 + 02, 03 + 04, ...;
+    the groups in order (MA01_..., then MA02_..., ...)."""
+    if speaker in ("CA", "CB"):
+        raise ValueError("the child recordings CA and CB are excluded (adult speakers only, item 8; researcher R35)")
+    with zipfile.ZipFile(zip_path) as z:
+        stems = sorted(pathlib.PurePosixPath(n).stem for n in z.namelist()
+                       if n.startswith(f"48k/{speaker}/") and n.endswith(".wav"))
+    groups: dict[str, list[str]] = {}
+    for s in stems:
+        groups.setdefault(s.split("_")[0], []).append(s)
+    return [(g[i], g[i + 1]) for _, g in sorted(groups.items()) for i in range(0, len(g) - 1, 2)]
+
+
+def search_speech_pairs(out: pathlib.Path, binary: pathlib.Path, cache: pathlib.Path, speaker: str = "MA", log=print,
+                        trials: int | None = None, scene_name: str = DEFAULT_SCENE) -> dict:
+    """The pre-registered pair search (phase-07c-2b decider file 34; interrogator files 36 and 37): adult pairs in TSP
+    index order from MA01_03 + MA01_04 (MA01_01 + MA01_02 is the fallback pair), on the scene in use. Per pair, first
+    from the dry files: the earliest (a)(b) boundary and whether it meets (c); then one unstepped render: Q5's passing
+    count over the candidate set; only a pair meeting (c) unrestricted with >= Q5_MIN_PASSING passing gets the full
+    speech build (every pre-seal assertion on every stimulus). The first pair passing it is the speech pair; every
+    pair tried is recorded (`search.json`, one printed row each). No pair is chosen by listening."""
+    zip_path = fetch_tsp(cache, log)
+    scene = prepare_scene(out / "_scene", binary, scene_name, log)
+    _, scene_path, sc, _ = scene
+    t30, t_con, delays = sc["T30_1k_s"], sc["construction_T_s"], sc["heard_delays_samples"]
+    h, _ = wav.read(out / "_scene" / "_work" / "ir.wav")
+    pairs = [p for p in tsp_pairs(zip_path, speaker) if (speaker, p) != ITEM7_FALLBACK_PAIR]
+    rows, chosen = [], None
+    for a, b in pairs:
+        s1, h1 = read_tsp_member(zip_path, speaker, a)
+        s2, h2 = read_tsp_member(zip_path, speaker, b)
+        parts = speech_parts(s1, s2)
+        row: dict = {"pair": [a, b], "member_sha256": [h1, h2], "end_of_speech_s": (LEAD_BLOCKS * PARTITION
+                                                                                    + parts["end_of_speech"]) / FS}
+        rows.append(row)
+        try:
+            lay = speech_layout(len(s1), len(s2), parts["end_of_speech"], t30, t_con, delays)
+        except AssertionError as e:
+            row["result"] = f"layout refused: {e}"
+            log(f"search {a} + {b}: {row['result']}")
+            continue
+        eos = lay["eos"]
+        row.update({"first_ab_boundary_s": lay["ab_boundaries"][0] / FS, "onset_floor_s": lay["onset_floor"] / FS,
+                    "c_unrestricted": bool(lay["item7_unrestricted"]), "ab_boundaries": len(lay["ab_boundaries"]),
+                    "candidates": len(lay["boundaries"]), "heard_pause_s": lay["heard_pause"] / FS,
+                    "heard_silence_after_latest_onset_s": lay["heard_silence_after_latest_onset"] / FS})
+        x = speech_programme(s1, s2, lay)
+        _, margins, _ = speech_q5_measure(binary, scene_path, x, parts["noise"], len(h), lay["boundaries"])
+        passing = [bd for bd, mg in zip(lay["boundaries"], margins) if mg >= Q5_MARGIN_DB]
+        row["q5_passing"] = len(passing)
+        if passing:
+            q5 = q5_window_record(lay["boundaries"], passing, eos, t30 * FS)
+            row.update({"q5_window_T30": q5["q5_realised_window_T30"], "q5_first_draw_replaced_p": q5["q5_first_draw_replaced_p"]})
+        if not lay["item7_unrestricted"]:
+            row["result"] = (f"(c) fails unrestricted: earliest (a)(b) boundary {row['first_ab_boundary_s']:.3f} s < onset "
+                             f"floor {row['onset_floor_s']:.3f} s")
+        elif len(passing) < Q5_MIN_PASSING:
+            row["result"] = f"Q5: {len(passing)} passing < {Q5_MIN_PASSING}"
+        else:
+            try:
+                m = build_speech_chain(out / f"{a}+{b}", binary, speaker, (a, b), cache, log, trials, scene_name)
+            except (AssertionError, RuntimeError) as e:
+                row["result"] = f"pre-seal assertion failed: {e}"
+            else:
+                stims = [*(t for blk in m["blocks"].values() for t in blk), *m["familiarisation"]]
+                row.update({"stimuli": len(stims), "peak_dbfs_max": m["summary"]["peak_dbfs_max"],
+                            "form_b_events": sum(t["clicks"]["events_in_step_region"] for t in stims),
+                            "null_B_worst_db": m["summary"]["null_B_worst_db"],
+                            "null_E_worst_db": m["summary"]["null_E_worst_db"],
+                            "midfade_windows_min": min(t["midfade"]["windows"] for t in stims),
+                            "q5_drawn_onset_margin_min_db": m["tsp"]["q5_drawn_onset_margin"]["min_db"],
+                            "q5_drawn_onset_margin_median_db": m["tsp"]["q5_drawn_onset_margin"]["median_db"],
+                            "q5_window_T30": m["tsp"]["q5_realised_window_T30"],
+                            "q5_first_draw_replaced_p": m["tsp"]["q5_first_draw_replaced_p"],
+                            "band_step_err_max_db": m["summary"]["band_step_err_max_db"],
+                            "result": "qualifies: every pre-seal assertion passed", "manifest": str(out / f"{a}+{b}")})
+                chosen = row
+        log(f"search {a} + {b}: earliest (a)(b) boundary {row['first_ab_boundary_s']:.3f} s, onset floor "
+            f"{row['onset_floor_s']:.3f} s, (c) unrestricted {row['c_unrestricted']}, Q5 passing {row['q5_passing']} of "
+            f"{row['candidates']} candidates, window {[round(v, 3) for v in row.get('q5_window_T30', [])]} T30, "
+            f"first draw replaced p {row.get('q5_first_draw_replaced_p', float('nan')):.3f}, heard pause "
+            f"{row['heard_pause_s']:.3f} s, silence after latest onset {row['heard_silence_after_latest_onset_s']:.3f} s"
+            + (f", peak {row['peak_dbfs_max']:.1f} dBFS, form (b) events {row['form_b_events']}, nulls B "
+               f"{row['null_B_worst_db']:.1f} / E {row['null_E_worst_db']:.1f} dB, mid-fade windows >= "
+               f"{row['midfade_windows_min']}" if "stimuli" in row else "")
+            + f": {row['result']}")
+        if chosen is not None:
+            break
+    result = {"scene": scene_name, "scene_sha256": sc["scene_sha256"], "speaker": speaker, "rule": "phase-07c-2b decider "
+              "file 34 (pair search), interrogator files 36 and 37", "construction_T_s": t_con, "T30_1k_s": t30,
+              "rows": rows, "chosen": None if chosen is None else {"pair": chosen["pair"], "member_sha256": chosen["member_sha256"]},
+              "branch": "pair found" if chosen is not None else
+                        f"no pair qualifies: fallback branch, {ITEM7_FALLBACK_PAIR} with the onset restriction"}
+    log(f"search: {result['branch']}" + (f": {' + '.join(chosen['pair'])}" if chosen else ""))
+    (out / "search.json").write_text(json.dumps(result, indent=1, default=float))
+    return result
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -2119,9 +2358,15 @@ def main(argv: list[str] | None = None) -> int:
                        help="the registered ABX scene (decider file 8, M3-S: E, fallbacks in order "
                             + ", ".join(FALLBACK_ORDER[1:]) + ")")
         if name == "speech":
-            p.add_argument("--speaker", required=True, help="adult TSP speaker, fixed in the pre-registration (item 8)")
-            p.add_argument("--files", nargs=2, required=True, metavar=("SENTENCE1", "SENTENCE2"),
-                           help="the TSP file pair, e.g. MA01_01 MA01_02 (fixed in the pre-registration)")
+            p.add_argument("--speaker", default=None, help="adult TSP speaker, fixed in the pre-registration (item 8); "
+                                                           "MA for --search-pairs")
+            p.add_argument("--files", nargs=2, default=None, metavar=("SENTENCE1", "SENTENCE2"),
+                           help="the TSP file pair (the pair search's result, fixed in the pre-registration; "
+                                "SPEECH_PAIR); not with --search-pairs")
+            p.add_argument("--search-pairs", action="store_true",
+                           help="the pre-registered pair search (decider file 34): adult pairs in TSP index order from "
+                                "MA01_03 + MA01_04 on the scene in use, one row per pair tried, stopping at the first "
+                                "that passes every pre-seal assertion; writes <out>/speech-search/")
             p.add_argument("--cache", type=pathlib.Path, default=pathlib.Path.home() / ".cache" / "makroof" / "tsp")
     p = sub.add_parser("l4", help="AX49 L4 (run sheet section 8): the provisional-against-exact held-chord pack")
     p.add_argument("--out", type=pathlib.Path, default=REPO / "build" / "abx-07c-2b" / "l4")
@@ -2157,7 +2402,16 @@ def main(argv: list[str] | None = None) -> int:
             return 1 if l4_verify(args.pack, binary)["void"] else 0
         if args.cmd == "noise":
             build_noise_chain(args.out / "noise", binary, trials=args.trials, scene_name=args.scene_name)
+        elif args.search_pairs:
+            if args.files is not None:
+                ap.error("--files is not used with --search-pairs")
+            search_speech_pairs(args.out / "speech-search", binary, args.cache, args.speaker or "MA", trials=args.trials,
+                                scene_name=args.scene_name)
+            print(f"written to {args.out / 'speech-search'}")
+            return 0
         else:
+            if args.speaker is None or args.files is None:
+                ap.error("speech needs --speaker and --files (or --search-pairs)")
             build_speech_chain(args.out / "speech", binary, args.speaker, tuple(args.files), args.cache, trials=args.trials,
                                scene_name=args.scene_name)
         print(f"written to {args.out / args.cmd}")
