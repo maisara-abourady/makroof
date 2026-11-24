@@ -158,8 +158,10 @@ ABX test.
       names and SHA-256s, and, in the fallback branch, the floor. K6 is redone on whichever pair is chosen.
     - **Families:** two, E in omni here and E binaural at 08-3 (union ≤ 0.098); no contingent third family. AX47's
       α sentence (D-M3i) is unchanged.
-    - **MA01_01 + MA01_02 on the ABX scene (the fallback pair):** the builder measured the Q5 window
-      [0.013, 0.380] · T30 without the item-7 restriction (phase-07c-2b builder file 4, decider file 8 K19); the kit
+    - **MA01_01 + MA01_02 on the ABX scene (the fallback pair):** the kit measured the Q5 window
+      [0.059, 0.380] · T_heard without the item-7 restriction (phase-07c-2b builder file 12; the first boundary at the
+      heard end of the sentence-1 file, TSP's trailing silence included; builder file 4's [0.013, 0.380] used K7's
+      end-of-speech definition), ≈ [0.134, 0.380] · T_heard with it (decider file 34); the kit
       recomputes and records the realised window and replacement rates for the chosen pair **[measured at build]**.
       The figures in the next two sub-bullets are S-A's (07c-2).
     - **Realised Q5 onset window, recorded before sealing** (decider file 21, 2a; measured in
