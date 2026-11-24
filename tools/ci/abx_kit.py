@@ -99,6 +99,14 @@ S_W_MAX = 0.023  # file 34 item 1: the ISM fade-out's unscaled share s_w of [t_m
 C80_S = 0.080  # Vorlaender Eq. 6.7: early [0, 80 ms), late [80 ms, end of the IR file) (file 29, method 5)
 # M2 T-a, Seat 9's label for the heard-IR T30 (decider files 27, 31, 34): printed beside the tail's own T30
 HEARD_T30_LABEL = "heard-IR T30, ISO fit spanning the AX21 gap, not a decay rate"
+# D-M3a (phase-07c-2b decider file 5): form (b)'s single-sample spike floor, -90 dBFS frame floor less the share of a
+# spike's energy above 2 kHz in one frame (about 22/24); asserted bracket (tools/ci/test_abx_kit.py)
+SPIKE_CAUGHT_DBFS = -68.0
+SPIKE_MISSED_DBFS = -72.0
+
+
+def SPIKE_FLOOR_DBFS_AT(n_frame: int) -> float:  # noqa: N802 (a derived constant)
+    return -90.0 - 10.0 * math.log10(0.917 / n_frame)
 
 # ---- McGill TSP speech database, version 2 (2018-11), Simplified BSD; docs/THIRD_PARTY.md ----
 TSP_URL = "https://mmsp.ece.mcgill.ca/Documents/Data/TSP-Speech-Database/48k.zip"
@@ -397,13 +405,13 @@ def midfade_checks(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: flo
     return out
 
 
-def crossfade_residual(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: float) -> np.ndarray:
-    """Channel 0 of r = (o - a) - m, with m the crossfade model of the step (o the stepped render, a the
+def crossfade_residual(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: float, channel: int = 0) -> np.ndarray:
+    """One channel of r = (o - a) - m, with m the crossfade model of the step (o the stepped render, a the
     unstepped render, b the stepped IR rendered alone from sample 0): m = 0 before s0, (j/L)(b - a) over
     [s0, s0 + L) with j = t - s0, and b - a from s0 + L on. By companions (ii) and (iii) of `midfade_checks`,
     |r| <= 8u(|a| + |b|) at every sample, so r holds nothing a crossfade does not explain."""
     L = int(round(CROSSFADE_S * fs))
-    oc, ac, bc = (x[:, 0].astype(np.float64) for x in (o, a, b))
+    oc, ac, bc = (x[:, channel].astype(np.float64) for x in (o, a, b))
     m = np.zeros_like(ac)
     j = np.arange(L, dtype=np.float64)
     m[s0 : s0 + L] = (j / L)[: max(0, min(L, m.size - s0))] * (bc - ac)[s0 : s0 + L]
@@ -411,17 +419,20 @@ def crossfade_residual(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs:
     return (oc - ac) - m
 
 
-def click_check(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: float) -> dict:
+def click_check(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: float, channel: int = 0) -> dict:
     """Item 6's click gate, form (b) (phase-07c-2b M3; Seats 3 and 5, review files 1-seat3.md and 1-seat5.md):
     `tools.acoustics clicks` on the crossfade residual r = (A - B) - m (`crossfade_residual`) rather than on A,
     so the detector never judges a frame against a noise or speech baseline (clicks.py's blind spot; builder
     file 32, K5). Pre-registered criterion: no detector event (2 kHz high-pass, 2 ms frames, absolute floor
     -90 dBFS) on r in the step region [s0 - 5 ms, s0 + L + 5 ms). Red on a hard switch (L = 0) and on a
     single-sample impulse in [s0, s0 + L) (tools/ci/test_abx_kit.py); measured floor: a spike of about -68 dBFS. Printed only, for continuity with 07c-2:
-    the old comparison of A's events against B's peak frames (`legacy_new_in_step_region`)."""
+    the old comparison of A's events against B's peak frames (`legacy_new_in_step_region`), and the detector's event
+    counts on A, B and E. Channel 0 in omni (the two outputs are asserted identical); each ear at 08-3 (`channel`).
+    The spike floor printed is -90 - 10 log10(0.917/n_frame) (decider file 5, D-M3a; asserted bracket: caught at
+    -68 dBFS, missed at -72 dBFS, tools/ci/test_abx_kit.py)."""
     L = int(round(CROSSFADE_S * fs))
     lo, hi = s0 - int(0.005 * fs), s0 + L + int(0.005 * fs)
-    r = crossfade_residual(o, a, b, s0, fs)
+    r = crossfade_residual(o, a, b, s0, fs, channel)
     det = clicks.detect_clicks(r, fs)
     hits = [ev for ev in det["events"] if lo <= ev["sample"] < hi]
     hp = clicks.highpass(r, fs)[max(0, lo) : hi]
@@ -431,8 +442,13 @@ def click_check(o: np.ndarray, a: np.ndarray, b: np.ndarray, s0: int, fs: float)
                "residual_hp_peak_dbfs": float(20 * np.log10(max(float(np.max(np.abs(hp))), 1e-30))),
                "floor_dbfs": det["floor_dbfs"], "events_in_step_region": len(hits)}
     frame = int(round(clicks.FRAME_S * fs))
-    stepped = clicks.detect_clicks(o[:, 0].astype(np.float64), fs)["events"]
-    plain = {ev["sample"] // frame for ev in clicks.detect_clicks(a[:, 0].astype(np.float64), fs)["events"]}
+    rec["spike_floor_dbfs"] = SPIKE_FLOOR_DBFS_AT(frame)
+    rec["spike_bracket_dbfs"] = {"caught": SPIKE_CAUGHT_DBFS, "missed": SPIKE_MISSED_DBFS}
+    stepped = clicks.detect_clicks(o[:, channel].astype(np.float64), fs)["events"]
+    unstepped = clicks.detect_clicks(a[:, channel].astype(np.float64), fs)["events"]
+    rec["detector_events"] = {"A": len(stepped), "B": len(unstepped),
+                              "E": len(clicks.detect_clicks(b[:, channel].astype(np.float64), fs)["events"])}
+    plain = {ev["sample"] // frame for ev in unstepped}
     rec["legacy_new_in_step_region"] = sum(1 for ev in stepped if lo <= ev["sample"] < hi and ev["sample"] // frame not in plain)
     assert not hits, f"click_check (b): detector events on the crossfade residual in the step region: {hits}"
     return rec

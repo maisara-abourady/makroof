@@ -142,6 +142,25 @@ def test_click_check_form_b_red_on_a_planted_transient(plant: str) -> None:
         abx_kit.click_check(o, a, b, s0, 48000)
 
 
+@pytest.mark.parametrize("where", ["mid_frame", "frame_boundary"])
+def test_click_check_form_b_spike_bracket(where: str) -> None:
+    """D-M3a (decider file 5): the asserted bracket of form (b)'s floor: a single-sample spike is caught at
+    SPIKE_CAUGHT_DBFS and missed at SPIKE_MISSED_DBFS, mid-frame and on a frame boundary."""
+    frame = int(round(abx_kit.clicks.FRAME_S * 48000))
+    assert abs(abx_kit.SPIKE_FLOOR_DBFS_AT(frame) + 69.8) < 0.1
+    for level, caught in ((abx_kit.SPIKE_CAUGHT_DBFS, True), (abx_kit.SPIKE_MISSED_DBFS, False)):
+        o, a, b, s0, L = _synthetic_step()
+        o = o.copy()
+        k = s0 + L // 3
+        k = (k // frame) * frame + (frame // 2 if where == "mid_frame" else 0)
+        o[k] += np.float32(10 ** (level / 20))
+        if caught:
+            with pytest.raises(AssertionError, match="click_check"):
+                abx_kit.click_check(o, a, b, s0, 48000)
+        else:
+            assert abx_kit.click_check(o, a, b, s0, 48000)["events_in_step_region"] == 0
+
+
 def test_family_error_and_power() -> None:
     # Item 3: FWER <= 0.0490 by the union bound over the two chains' first tests (the 0.5 dB tests inherit alpha
     # only after a detection, graphical procedure); power at p = 0.75 is 0.63 (noise) and 0.405 (speech).
