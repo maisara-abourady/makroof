@@ -1,13 +1,12 @@
 // Phase-07c-2b M3-L4 (decider files 6, 9, 13; Seat 3's P4 / P5, files 4-seat3, 12-seat3): the AX49
 // provisional unit decays against the exact ones on the L4 scene S' (the 100 m cube at T60 8 s,
 // tools/ci/ax49_l4.py), read through StagedBuild::unitDecays().
-//   P4: per emitter and band, on [t_mix,e + 2.5 ms, L_f), provisional = c_b * exact (relative residual
-//   printed and
-//       asserted against the bound the measurement supports, see below);
-//   P5: the provisional's gain over [L_f, L_p) relative to its value before L_f is the raised cosine
-//       0.5 (1 + cos(pi (j - lf + 1) / (fadeLen + 1))), monotone, first value >= 1 - 1e-5, 0 from L_p.
-// The bound 1e-9 is Seat 3's; the measured residuals on S' are far below it (printed).
-// measurement, never fitted to pass (CLAUDE.md "never loosen").
+//   P4: per emitter and band, on [t_mix,e + 2.5 ms, L_f), provisional = c_b * exact, relative residual
+//       asserted <= 1e-9 (Seat 3's bound);
+//   P5: the provisional's measured gain over [L_f, L_p) relative to its value before L_f is the raised
+//       cosine 0.5 (1 + cos(pi (j - lf + 1) / (fadeLen + 1))) to 1e-9, monotone, first value >= 1 - 1e-5,
+//       and 0 from L_p (monotonicity on the measured gain: decider file 13 R5 (c), from the code).
+// The bound is never set from the measurement (decider files 9, 13: a red is a stop, never loosened).
 
 #include "ContractFixtures.h"
 #include "PipelineTestUtil.h"
