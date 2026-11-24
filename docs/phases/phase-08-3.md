@@ -71,8 +71,8 @@ Phase 06 convolver (headphone rendering, `outputMode = binaural`).
       per-ear ΔG and ΔC80, and carries the label's SPREAD clause.
 
     Neither family is cited for externalisation or plausibility, and L4/L5 are not judged on these scenes.
-    Stimuli are built only after the NFR-8 placement findings' cause ruling required by phase-07c-2b M3-H (home
-    pending Maisara, file 24: `docs/review/phase-07c-2b/24-m3h-for-maisara.md`) is done.
+    Whether item 15's stimulus build waits on the cause ruling for the NFR-8 placement findings is pending Maisara
+    (M3-H, `docs/review/phase-07c-2b/24-m3h-for-maisara.md`).
     Before any stimulus, per scene: binaural vs omni per-band energy within ±1 dB (AC6); per-ear, per-band energy
     printed (print only); item 6 (HF-W with condition D) and `[ax47-midfade]` per ear; the M2 gap and Q5 checks per
     ear; D/R printed per ear; `hrtfId` and the set identity string recorded; the same wired headphone model and level

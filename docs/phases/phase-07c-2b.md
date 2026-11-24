@@ -99,7 +99,7 @@ The numbered items run in this order.
      The pre-registered Q5 rule itself is not amended (decider file 40, 2a; interrogator file 41).
    - The decider decides; the interrogator returns SURVIVES or SURVIVES WITH CORRECTIONS (applied); ledger rows;
      "Decided for Maisara" entry with PRD ids (file 31's provisional PRD reading: NFR-1, NFR-8 L112).
-   - **Amendments held for M3** (applied: M3, decider files 9, 17, 21; run sheet §0) (file 31, "Amendments to file
+   - **Amendments held for M3** (applied: M3, decider files 9 and 17; run sheet §0) (file 31, "Amendments to file
      13", "Held for M3"), applied to file 13's design and the run sheet once M3 survives: **item 9** (the scene,
      including the item-9 label, with r/r_c 3.47 and diffuse-field
      D/R −10.8 dB, Kuttruff Eq. 5.44, A ≈ 640 m², as file 31 gives them for S-A); **item 13** (wording: "A

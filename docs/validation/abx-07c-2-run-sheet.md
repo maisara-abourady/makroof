@@ -7,7 +7,7 @@ amendments in §0, each made by a board decision before any stimulus was heard. 
 placement (pre-registered)", which interrogator file 14 rated SURVIVES. Every number below is copied from
 there. Where the kit had to make a choice that file 13 does not make, the choice is marked **kit choice**.
 
-## 0. Amendments to file 13 (phase-07c-2b M3; decider files 2, 6, 9, 13, 17, 21; interrogator files 3, 7, 10, 15 and its check of file 21)
+## 0. Amendments to file 13 (phase-07c-2b M3; decider files 2, 6, 9, 13, 17, 21; interrogator files 3, 7, 10, 15, 20 (its check of file 17) and 23 (its check of file 21))
 
 - **Items 2–3:** each chain of each family has 24 scored trials + 6 interleaved 3 dB anchors (3 per half, break after
   presentation 15); 0.9 dB, then 0.5 dB only after a 0.9 dB detection in that chain of that family; detection
@@ -177,10 +177,13 @@ ABX test.
    sealed scene is used in all four families.
    - The children CA and CB are excluded.
 3. **Build the stimuli** on a machine with `render_cli` built (`cmake --preset cli && cmake --build --preset cli`),
-   per scene (`--scene`: S-W and S-B\*, §1; L4: §7).
-   - Noise chain: `python tools/ci/abx_kit.py noise --out build/abx-07c-2 --scene <scene>`. The CI `listening-pack` artifact
-     (`phase-07c-2/noise/`) holds the same files.
-   - Speech chain, local only: `python tools/ci/abx_kit.py speech --out build/abx-07c-2 --scene <scene> --speaker <S> --files <F1> <F2>`.
+   per scene, each in its own output directory (S-W and S-B\*, §1; L4: §7).
+   - Noise chain: `python tools/ci/abx_kit.py noise --scene layout4_s1/both_wall --out build/abx-07c-2b/s-w` and
+     `python tools/ci/abx_kit.py noise --scene layout4_s0.7/default --out build/abx-07c-2b/s-b`. The CI
+     `listening-pack` artifact (`phase-07c-2/noise/`) holds the same files.
+   - Speech chain, local only: `python tools/ci/abx_kit.py speech --scene layout4_s1/both_wall --out build/abx-07c-2b/s-w
+     --speaker <S> --files <F1> <F2>` and `python tools/ci/abx_kit.py speech --scene layout4_s0.7/default --out
+     build/abx-07c-2b/s-b --speaker <S> --files <F1> <F2>`.
      The script downloads `48k.zip`, checks it against our SHA-256 and writes `NOTICE-TSP.txt`. Never commit or
      upload these files (item 12).
    - Each build runs every item-6 assertion on every stimulus, and stops if any fails. The assertions are: early
@@ -189,14 +192,16 @@ ABX test.
      the M2 gap check (minimum gap ≥ tail T30) fails.
    - `manifest.json` records the measured values, every stimulus's SHA-256 and, for speech, the excerpt's SHA-256
      and every replaced onset.
-4. **Seal** each chain: `python tools/ci/abx_kit.py seal --pack build/abx-07c-2/<chain> --session <session dir> --key <key file>`.
+   - L4: `python tools/ci/ax49_l4.py build --out build/abx-07c-2b` (pack `build/abx-07c-2b/l4`).
+4. **Seal** each chain of each scene: `python tools/ci/abx_kit.py seal --pack build/abx-07c-2b/<s-w|s-b>/<chain>
+   --session <session dir> --key <key file>`.
    - Keep the key file outside the session folder. The listener must not see it.
    - The session folder holds only `<level>dB/trial_NN/{A,B,X}.wav`.
    - Commit `<key file stem>-prereg.json`, written beside the key, **before the run**. It holds the key's SHA-256
      and a salted SHA-256 of every A, B and X (item 11). Each file has its own secret salt, kept in the key. Plain
      hashes would give the answers away, because X is a byte copy of A or B. `score` checks the session folder
      and the key against this record.
-   - Never give the listener the unsealed pack (`build/abx-07c-2/<chain>/`).
+   - Never give the listener the unsealed pack (`build/abx-07c-2b/<s-w|s-b>/<chain>/`).
    - The pre-registration commit holds both scenes' prereg records and L4's sealed hashes, before the first scored
      trial. **Seal preconditions:** S-W: Seat 9 confirms the filled label. S-B\*: the SPREAD clause above is in the
      label (Seat 9's (e) answer, 14-seat9) and Seat 1 has answered Seat 9's question whether the −1.2 dB spread
