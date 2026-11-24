@@ -122,20 +122,27 @@ P4P5 measure(const Built& bt, const std::vector<sim::tail::UnitDecay>& prUnits)
             r.worstCb = std::max(r.worstCb, std::abs(20.0 * std::log10(std::abs(c))));
             // P5: the gain over [L_f, L_p) read as pr[j] / (c ex[j]) where |ex[j]| is not small (the
             // provisional's generator sample equals ex[j] to the P4 residual), against the raised cosine
-            double prev = 2.0;
+            // Monotone and first value >= 1 - 1e-5 are read on the MEASURED gain g^ = pr / (c ex) (decider
+            // file 13, R5 (c)), over the samples where g^ is defined; a step up of more than the P4/P5 bound
+            // fails.
+            double prevHat = 2.0;
+            bool first = true;
             for (std::size_t j = lf; j < lp; ++j)
             {
                 const double g = 0.5
                                  * (1.0
                                     + std::cos(std::numbers::pi * static_cast<double>(j - lf + 1)
                                                / static_cast<double>(fadeLen + 1)));
-                if (std::abs(ex[j]) > 0.1 * rms)
-                    r.worstP5 = std::max(r.worstP5, std::abs(pr[j] / (c * ex[j]) - g));
-                if (g > prev)
+                if (std::abs(ex[j]) <= 0.1 * rms)
+                    continue;
+                const double gHat = pr[j] / (c * ex[j]);
+                r.worstP5 = std::max(r.worstP5, std::abs(gHat - g));
+                if (first && j < lf + 64 && gHat < 1.0 - 1e-5 - (g < 1.0 - 1e-5 ? 1.0 - g : 0.0))
                     r.monotone = false;
-                if (j == lf && g < 1.0 - 1e-5)
+                first = false;
+                if (gHat > prevHat + 1e-9)
                     r.monotone = false;
-                prev = g;
+                prevHat = gHat;
             }
             for (std::size_t j = lp; j < pr.size(); ++j)
                 if (pr[j] != 0.0)
