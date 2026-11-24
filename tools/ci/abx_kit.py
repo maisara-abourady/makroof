@@ -340,7 +340,7 @@ def write_scene(entry: AbxScene, path: pathlib.Path) -> pathlib.Path:
         committed = entry.committed.read_text(encoding="utf-8")
         if committed != text:
             raise RuntimeError(f"{entry.committed} differs from the builder of {entry.name}: regenerate it knowingly")
-    path.write_text(text, encoding="utf-8")
+    path.write_bytes(text.encode("utf-8"))  # bytes, not text mode: Windows would write CRLF and change scene_sha256
     return path
 
 
