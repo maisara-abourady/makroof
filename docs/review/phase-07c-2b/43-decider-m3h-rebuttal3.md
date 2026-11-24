@@ -480,3 +480,21 @@ One person-only action stays outside the loop: raising a GitHub spending limit t
 - `/home/user/makroof/docs/PRD.md` L47–56, L99–113
 - `/home/user/makroof/tools/acoustics/tracer.py` L20–48, L215–238
 - Corpus: `/home/user/makroof/docs/corpus/vorlaender-auralization.md` L3054–3083 (§11.2.5 Eqs. 11.7–11.18) and the notation table (L418, L715); `/home/user/makroof/docs/corpus/SOURCE_COMMIT`
+---
+
+## Errata (orchestrator, 2026-11-24): interrogator file 44's corrections C1–C8
+
+File 44 found M3-H SURVIVES WITH CORRECTIONS. The plan texts (§6) are applied with C1 (bullet 1), C2, C3 and C4; the
+corrections to this file's own reasoning are recorded here and govern over the text above:
+- C1 (§2.4): "for the two-radius agreement test, that chunk-based SE" reads "for the two-radius agreement test, the
+  smaller of the chunk-based SE and the root-sum-square".
+- C5 (D-L12): "A fallback band's 3σ (0.50 to 1.49 dB for 76 ≤ k < 684) breaks the band rule's 'uncertainty under
+  0.5 dB', and it exceeds 1 dB itself for k < 170 (Vorländer §11.2.5 Eqs. 11.9, 11.17: 13.02/√k > 1). So the band
+  supports only a breach."
+- C6 (§2.3): "S5 verbatim: the top-up paragraph in 07e, and step 1" reads "S5 verbatim: the top-up paragraph in 07e.
+  Step 1 merges S5's and S2's texts (not verbatim)".
+- C7 (§8, M3-H "Your earlier condition", and the M3-H-R1 bullet): after "That check is now recorded on its own line."
+  (and after "carries out the recheck you wrote into AX44.") add "The yardstick can confirm a disagreement only above
+  about 0.75 dB (1.74 dB where it is coarse). Smaller ones are recorded as unresolved, never as passing."
+- C8 (M3-H-R1 option (iii)): "within 1 JND of G (AX42's citation of Vorländer Table 6.1)" reads "within 1 JND of G at
+  500 to 1000 Hz (AX42's citation of Vorländer Table 6.1)".
