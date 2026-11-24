@@ -68,3 +68,13 @@ on the session's Linux container (Release preset, `-DSPATIAL_BUILD_PLUGIN=OFF`, 
 at the commit that made `[ax49-l4]` non-hidden): "2.528 s: AX49 L4: the provisional unit decays are c_b times the
 exact ones, faded by the raised cosine (S')", 216 assertions passed; wall time 3.97 s for the process. Not a CI
 figure; the CI figure comes from the 'AX49 L4 gate (release)' step's `--durations` output on the first manual run.
+
+## [ax49-l4] durations and peak RSS, local (decider file 21 §5, R5 condition; Seat 5 file 16 §6)
+
+Session's Linux container, 2026-11-24, unit tests built without the plugin (`-DSPATIAL_BUILD_PLUGIN=OFF`), whole case
+(all sections) per run, Catch2 `--durations yes`; peak RSS from `getrusage(RUSAGE_CHILDREN)`:
+- Release: 2.53 s (budget 60 s).
+- Debug: 15.87 s (budget 300 s); peak RSS 287 MB.
+- ASan: 14.57 s for the whole case (Catch2 also printed 7.15 s for one section) (budget 300 s); peak RSS 643 MB; no sanitizer report.
+All within half the 600 s ctest limit; the SECTION re-entry fix is not needed. CI's own figures come from the first
+manual run's ctest and 'AX49 L4 gate (release)' logs.
