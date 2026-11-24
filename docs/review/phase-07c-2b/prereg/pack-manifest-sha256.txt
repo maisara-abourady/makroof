@@ -1,0 +1,5 @@
+164871c5d94075c16c76f90c7da1859ab7b81f2960e7575ecc6f89726ec4533f  build/listening-pack/phase-07c-2b/noise/layout4_s1__both_wall/manifest.json
+b5644ee4778872bb821bf723ccec0ea96313256676b0cbdb80de0a0d343d7938  build/abx-07c-2b/s-w/speech/manifest.json
+a815b97035364372753c319ee18087506c8d3703e6566bc2cd019c1e12d47bdb  build/listening-pack/phase-07c-2b/noise/layout4_s0.7__default/manifest.json
+c147d66cfeb92513f7eb470f1b764a33ba39d17a77c79af5074763a632e2fef2  build/abx-07c-2b/s-b/speech/manifest.json
+f09f6d2d941a671b84e1b4dcdcc78a1ea55b352af0f6109c5b7a9e18178b24ca  build/abx-07c-2b/l4/manifest.json

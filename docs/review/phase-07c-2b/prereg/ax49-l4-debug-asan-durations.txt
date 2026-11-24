@@ -1,0 +1,18 @@
+== debug
+ax49-l4: P4 worst relative residual 2.476e-13, worst |c_b| 0.002653 dB, P5 worst gain deviation 3.553e-14
+0.037 s: N-L1: a hard cut at L_f fails P5
+8.347 s: AX49 L4: the provisional unit decays are c_b times the exact ones, faded by the raised cosine (S')
+ax49-l4: P4 worst relative residual 2.476e-13, worst |c_b| 0.002653 dB, P5 worst gain deviation 3.553e-14
+8.350 s: N-L2: a provisional built with another tailSeed fails P4
+17.328 s: AX49 L4: the provisional unit decays are c_b times the exact ones, faded by the raised cosine (S')
+All tests passed (216 assertions in 1 test case)
+exit 0; wall 27.0 s; peak RSS 290 MB
+== asan
+ax49-l4: P4 worst relative residual 2.476e-13, worst |c_b| 0.002653 dB, P5 worst gain deviation 3.553e-14
+0.039 s: N-L1: a hard cut at L_f fails P5
+7.165 s: AX49 L4: the provisional unit decays are c_b times the exact ones, faded by the raised cosine (S')
+ax49-l4: P4 worst relative residual 2.476e-13, worst |c_b| 0.002653 dB, P5 worst gain deviation 3.553e-14
+7.345 s: N-L2: a provisional built with another tailSeed fails P4
+14.817 s: AX49 L4: the provisional unit decays are c_b times the exact ones, faded by the raised cosine (S')
+All tests passed (216 assertions in 1 test case)
+exit 0; wall 22.0 s; peak RSS 612 MB
