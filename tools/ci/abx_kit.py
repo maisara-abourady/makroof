@@ -1423,7 +1423,14 @@ L4_CRITERION = 12  # >= 12/16 (P1)
 L4_FAMILY_ALPHA_EXACT = 2517 / 65536  # P(K >= 12), K ~ Bin(16, 1/2) = 0.0384 (decider file 17, R-L1)
 L4_FAMILY_ALPHA = 0.038
 L4_POWER_AT_075 = 0.63
-L4_ANCHOR_DB, L4_ANCHOR_PASS = 3.0, 5  # B against B with the tail stepped +-3 dB; pass >= 5/6
+L4_ANCHOR_DB, L4_ANCHOR_PASS = 3.0, 5  # decider file 41 (A-ii): B against B with the tail stepped +3 dB; pass >= 5/6
+L4_ANCHOR_CHANCE = 7 / 64  # P(>= 5/6 | 1/2) under random X, for any role assignment (decider file 41, A-L2)
+L4_RENDER_NULL_DB = -120.0  # L4-D 2 on the renders over [boundary, fade start): Seat 3's per-sample criterion at
+# Phase 06's -120 dB level (decider file 41 (4); interrogator file 42)
+L4_PRINT_4 = ("consistency check; weak on this scene (all predicted |A/B| < 0.01 dB); red test: a 1.2 dB hot "
+              "provisional fails it")  # decider file 41 (3)
+L4_PRINT_7 = "realised Schroeder drop [t_mix,e,max, L_f), one realisation, not asserted"  # decider file 41 (2)
+L4_PRINT_2 = "Seat 3's per-sample criterion at Phase 06's -120 dB level"  # interrogator file 42
 L4_BLOCKS = ("primary", "rerun")  # D1: both built and sealed together, before the session
 L4_KEY_SEEDS = {"primary": 7101, "rerun": 7102}  # each block's own seeded trial order and anchor positions (D1)
 L4_MAX_PEAK_DBFS = -3.0  # L4-D: peak <= -3 dBFS
@@ -1604,7 +1611,8 @@ def l4_ir_checks(A: np.ndarray, B: np.ndarray, timing: dict, diag: dict) -> dict
        +10 log10(1 + (1 - f_b) delta_b) (A against B; the provisional-to-exact step is its negative), within 0.05 dB,
        delta_b the realised remainder's deviation measured on B (below);
     5. A is zero from L_p on; 6. B is L long; 7. the decay from t_mix,e,max to L_f, 60 (L_f - t_mix,e,max)/T60_b,
-    is >= 18.7 dB in every band (B's Schroeder drop printed beside it); 8. B's share past L_f <= 0.0134 per band."""
+    is >= 18.7 dB in every band, read on the model (decider file 41 (2)); B's realised Schroeder drop over
+    [t_mix,e,max, L_f) is printed beside it, one realisation, not asserted; 8. B's share past L_f <= 0.0134 per band."""
     fs = float(timing["sampleRate"])
     shift = float(diag["alignmentShiftS"])
     offset = int(round(shift * fs))
@@ -1677,7 +1685,8 @@ def l4_ir_checks(A: np.ndarray, B: np.ndarray, timing: dict, diag: dict) -> dict
             assert abs(measured - predicted) <= L4_STEP_TOL_DB, \
                 f"L4-D 4: emitter {e} band {fc}: A/B {measured:+.4f} dB against AX47 (b)'s {predicted:+.4f} dB"
         steps.append({"emitter": e, "window_taps": [w0, lf_tap], "bands": row})
-    rec["4_step"] = {"tol_db": L4_STEP_TOL_DB, "window_emission_s": [t0_em, lf_em], "rows": steps,
+    rec["4_step"] = {"tol_db": L4_STEP_TOL_DB, "window_emission_s": [t0_em, lf_em], "rows": steps, "print": L4_PRINT_4,
+                     "max_abs_predicted_db": max(abs(b["predicted_db"]) for r in steps for b in r["bands"].values()),
                      "max_abs_err_db": max(abs(b["err_db"]) for r in steps for b in r["bands"].values())}
     # 5. A is zero from L_p on
     nz = np.flatnonzero(np.any(A != 0.0, axis=1))
@@ -1698,9 +1707,10 @@ def l4_ir_checks(A: np.ndarray, B: np.ndarray, timing: dict, diag: dict) -> dict
         model = 60.0 * (timing["fadeStartS"] - mix_max) / t60[i]
         edc = np.cumsum((bb[i] ** 2)[::-1])[::-1]
         drop = 10 * math.log10(edc[mix_tap] / edc[lf_tap])
-        decay[bands.band_key(fc)] = {"model_db": model, "B_schroeder_drop_db": drop}
+        decay[bands.band_key(fc)] = {"model_db": model, "realised_schroeder_drop_db": drop}
         assert model >= L4_DECAY_MIN_DB, f"L4-D 7: band {fc}: decay {model:.2f} dB < {L4_DECAY_MIN_DB} dB"
-    rec["7_decay"] = {"min_db": L4_DECAY_MIN_DB, "bands": decay}
+    rec["7_decay"] = {"min_db": L4_DECAY_MIN_DB, "asserted_on": "the model, 60 (L_f - t_mix,e,max)/T60_b (AX49)",
+                      "print": L4_PRINT_7, "bands": decay}
     # 8. B's share past L_f, per emitter and band (and the heard IR); the cut depth is its log (label line 5)
     share = {}
     for name, h in (("emitter_0", B[:, 0]), ("emitter_1", B[:, 2]), ("heard", heard_b)):
@@ -1727,44 +1737,58 @@ def l4_ir_checks(A: np.ndarray, B: np.ndarray, timing: dict, diag: dict) -> dict
     return rec
 
 
-def l4_anchor_feasibility(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Path) -> dict:
-    """L4-D's anchor is B against B with the tail stepped +-3 dB through render_cli --abx-step-db, which changes only
-    the diffuse part of E_target (`useDiffuseLevel`): a step of g < 0 needs E_target's specular share <= 10^(g/10)
-    in every band of every emitter, else render_cli refuses ("would need a negative diffuse energy"). Checked before
-    any stimulus is rendered; the kit stops if the -3 dB anchor cannot be built (nothing is substituted)."""
-    u, s = work / "anchor_check_u.wav", work / "anchor_check_s.wav"
-    stdout = _run(binary, "--scene", scene_path, "--mode", "omni", "--abx-step-db", repr(L4_ANCHOR_DB), "--ir", u,
-                  "--abx-stepped-ir", s)
-    shares = parse_target_specular_share(stdout)
+def l4_anchor_feasibility(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Path,
+                          diag: dict) -> tuple[dict, np.ndarray]:
+    """The L4 anchor (decider file 41, L4-A = A-ii): B against B with the tail stepped +3 dB through render_cli
+    --abx-step-db +3 (the only anchor step the kit requests; it never asks for a negative one). --abx-step-db changes
+    only the diffuse part of E_target, so on the L4 scene (specular share 0.828) a -3 dB step cannot be built
+    (render_cli refuses below 10 log10(0.828) = -0.82 dB); the share and that limit are recorded, as the reason for
+    A-ii. Asserted on the +3 dB anchor IR (Seat 3's condition, file 40): M1's per-band step identity within 0.05 dB
+    (`band_step_check`) and s_w <= 2.3 % (`ir_assertions`, printed and asserted); the anchor stimulus' peak (<= -3
+    dBFS) is asserted where it is rendered. Returns the record and the stepped IR."""
+    u, s, shares = ir_pair(binary, scene_path, +L4_ANCHOR_DB, work)
     worst = max(max(v) for v in shares.values())
-    need = 10.0 ** (-L4_ANCHOR_DB / 10.0)
-    rec = {"target_specular_share": shares, "max_share": worst, "max_share_for_down_step": need,
-           "largest_feasible_down_step_db": 10.0 * math.log10(worst)}
-    if worst > need:
-        raise RuntimeError(
-            f"L4 anchor: the -{L4_ANCHOR_DB:g} dB tail step (--abx-step-db -{L4_ANCHOR_DB:g}) cannot be built on the L4 "
-            f"scene: E_target's specular share is up to {worst:.4f} (> {need:.4f} = 10^(-0.3)), and --abx-step-db "
-            f"scales only the diffuse part, so render_cli refuses any step below {rec['largest_feasible_down_step_db']:.3f} "
-            "dB. The +3 dB anchor is buildable. The kit stops: the L4-D anchor (3 up, 3 down) is impossible as written "
-            "(back to the decider; nothing substituted)")
-    return rec
+    band_rows = ir_band_shares(u, s, diag, +L4_ANCHOR_DB, shares)
+    ira = ir_assertions(u, s, diag, +L4_ANCHOR_DB)  # s_w <= S_W_MAX asserted per emitter and output
+    s_w = max(r["ax47_window"]["window_unscaled_share"] for r in ira["rows"])
+    assert s_w <= S_W_MAX, f"L4 anchor IR: s_w {s_w:.4%} > {S_W_MAX:.1%}"
+    rec = {"step_db": +L4_ANCHOR_DB, "flags": f"--abx-step-db +{L4_ANCHOR_DB:g} --abx-step-sample 0",
+           "decision": "decider file 41, L4-A = A-ii: B vs B + 3 dB tail, roles stepped_as_A / stepped_as_B 3/3",
+           "target_specular_share": shares, "max_target_specular_share": worst,
+           "largest_feasible_down_step_db": 10.0 * math.log10(worst),
+           "down_step_refused_reason": ("--abx-step-db scales only the diffuse part of E_target; a -3 dB step needs a "
+                                        f"specular share <= {10.0 ** (-L4_ANCHOR_DB / 10.0):.4f}"),
+           "ir_assertions": ira, "bands": band_rows,
+           "M1_band_step_check": band_step_check(band_rows, +L4_ANCHOR_DB),
+           "s_w_max": s_w, "s_w_bound": S_W_MAX}
+    return rec, s
+
+
+L4_ANCHOR_ROLES = ("stepped_as_A", "stepped_as_B")  # decider file 41 (A-ii): 3 and 3 per block
+
+
+L4_STIMULUS_SPECS = {"A": {"provisional": True}, "B": {}, "anchor_up": {"step_db": +L4_ANCHOR_DB}}  # no negative step
 
 
 def l4_trial_plan(block: str) -> list[dict]:
-    """One L4 block (L4-D): 16 scored trials (A provisional, B exact) and 6 anchor trials (3 up, 3 down: A = B with
-    the tail stepped +-3 dB, B = B) at seeded positions; 22 trials, a break after trial 11. Each block has its own
-    seed (D1: its own trial order and anchor positions); X is drawn at sealing from the block's own key."""
+    """One L4 block (L4-D; decider file 41, L4-A = A-ii): 16 scored trials (A provisional, B exact) and 6 anchor
+    trials at seeded positions, each B against B with the tail stepped +3 dB: 3 with the stepped file as A
+    (`role: stepped_as_A`) and 3 with it as B (`stepped_as_B`); 22 trials, a break after trial 11. Each block has its
+    own seed (D1: its own trial order and anchor positions); X is drawn at sealing from the block's own key. The
+    seeded positions are those of the earlier 3 up / 3 down plan (the role list is shuffled exactly as the sign list
+    was, so the generator's draws are unchanged)."""
     rng = np.random.default_rng([L4_KEY_SEEDS[block], 49])
-    anchors = [+1] * (L4_ANCHORS // 2) + [-1] * (L4_ANCHORS - L4_ANCHORS // 2)
-    rng.shuffle(anchors)
+    roles = [L4_ANCHOR_ROLES[0]] * (L4_ANCHORS // 2) + [L4_ANCHOR_ROLES[1]] * (L4_ANCHORS - L4_ANCHORS // 2)
+    rng.shuffle(roles)
     slots = sorted(rng.choice(L4_BLOCK_TRIALS, size=L4_ANCHORS, replace=False).tolist())
     plan, ai = [], 0
     for t in range(L4_BLOCK_TRIALS):
         if t in slots:
-            g = anchors[ai] * L4_ANCHOR_DB
+            role = roles[ai]
             ai += 1
-            plan.append({"trial": t + 1, "kind": "anchor", "g_db": g, "A": "anchor_up" if g > 0 else "anchor_down",
-                         "B": "B", "break_after": t + 1 == L4_BREAK_AFTER})
+            a, b = ("anchor_up", "B") if role == "stepped_as_A" else ("B", "anchor_up")
+            plan.append({"trial": t + 1, "kind": "anchor", "g_db": +L4_ANCHOR_DB, "role": role, "A": a, "B": b,
+                         "break_after": t + 1 == L4_BREAK_AFTER})
         else:
             plan.append({"trial": t + 1, "kind": "scored", "g_db": None, "A": "A", "B": "B",
                          "break_after": t + 1 == L4_BREAK_AFTER})
@@ -1896,6 +1920,12 @@ def build_l4(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | N
         f"A last nonzero tap {irc['5_A_zero_from_Lp']['last_nonzero_tap']} < L_p tap {irc['lp_tap']}; B length "
         f"{irc['6_B_length']['B_length']} = L tap {irc['l_tap']}; share past L_f (heard, max) "
         f"{max(irc['8_share_past_Lf']['heard'].values()):.5f} (<= {L4_SHARE_MAX})")
+    log(f"l4: assertion 4 ({L4_PRINT_4}): max |predicted| {irc['4_step']['max_abs_predicted_db']:.4f} dB, max |measured - "
+        f"predicted| {irc['4_step']['max_abs_err_db']:.4f} dB")
+    log(f"l4: assertion 7 on the model (>= {L4_DECAY_MIN_DB} dB): "
+        + ", ".join(f"{k}: {v['model_db']:.2f}" for k, v in irc["7_decay"]["bands"].items()) + " dB")
+    log(f"l4: assertion 7, {L4_PRINT_7}: "
+        + ", ".join(f"{k}: {v['realised_schroeder_drop_db']:.2f}" for k, v in irc["7_decay"]["bands"].items()) + " dB")
     # Scene facts for the label (L4-S): D/R at 1 kHz per emitter and heard (AX13), r/r_c (Kuttruff Eq. 5.44 with
     # Sabine A from the engine's 1 kHz T60), the surfaces' mean alpha at 1 kHz
     dims = scene["room"]["geometry"]["dimensions"]
@@ -1954,15 +1984,20 @@ def build_l4(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | N
     for line in label_detail:
         log(f"l4 label: {line}")
 
-    anchor_rec = l4_anchor_feasibility(binary, scene_path, work)
-    # Stimuli (L4-D): A provisional, B exact, the anchors B with the tail +-3 dB from sample 0; each rendered twice
+    # The anchor (decider file 41, L4-A = A-ii): +3 dB only; M1's step identity and s_w asserted on its IR
+    anchor_rec, _ = l4_anchor_feasibility(binary, scene_path, work, diag)
+    log(f"l4: anchor IR (+{L4_ANCHOR_DB:g} dB tail): M1 per-band step error max "
+        f"{anchor_rec['M1_band_step_check']['max_abs_err_db']:.2e} dB (<= {BAND_STEP_TOL_DB}); s_w "
+        f"{anchor_rec['s_w_max']:.3e} (<= {S_W_MAX:.3f}); E_target specular share max "
+        f"{anchor_rec['max_target_specular_share']:.4f} (a -3 dB step would need <= 0.5012; deepest "
+        f"{anchor_rec['largest_feasible_down_step_db']:.2f} dB)")
+    # Stimuli (L4-D): A provisional, B exact, the anchor B with the tail +3 dB from sample 0; each rendered twice
     # (L4-D 12), then cut to the input's length after asserting that nothing follows it (the whole exact decay fits)
     prog = work / "chord_dry.wav"
     wav.write_float32(prog, signals.to_stereo(x), FS)
     stim_dir = out / "stimuli"
     stim_dir.mkdir(exist_ok=True)
-    specs = {"A": {"provisional": True}, "B": {}, "anchor_up": {"step_db": +L4_ANCHOR_DB},
-             "anchor_down": {"step_db": -L4_ANCHOR_DB}}
+    specs = L4_STIMULUS_SPECS
     stims: dict[str, np.ndarray] = {}
     stim_rec: dict = {}
     for name, kw in specs.items():
@@ -1985,14 +2020,24 @@ def build_l4(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | N
                           "provisional": bool(kw.get("provisional")), "ax49_constants": ax49}
     A, B = stims["A"], stims["B"]
     assert A.shape == B.shape  # L4-D: A and B are the same length
-    # 2. on the renders: bit-identical before the earliest tail fade start (the partition-convolved output can
-    # differ only from the partition boundary at or below it: the convolver mixes whole partitions)
+    anchor_peak = stim_rec["anchor_up"]["peak_dbfs"]
+    assert anchor_peak <= L4_MAX_PEAK_DBFS, anchor_peak  # the +3 dB anchor's peak (decider file 41), as in 11
+    anchor_rec["peak_dbfs"] = anchor_peak
+    # 2. on the renders (decider file 41 (4); interrogator file 42): bit-identical before the partition boundary at
+    # or below the chord-aligned earliest tail fade start (the partitioned convolver mixes whole partitions), and over
+    # [that boundary, fade start) max |A - B| <= -120 dB re B's peak, per sample
     s_on = L4_LEAD_SAMPLES
     k0 = s_on + irc["2_ir"]["earliest_tail_fade_start_tap"]
     k0_block = (k0 // PARTITION) * PARTITION
-    d = np.flatnonzero(A[:, 0].view(np.uint32) != B[:, 0].view(np.uint32))
+    d = np.flatnonzero(np.any(A.view(np.uint32) != B.view(np.uint32), axis=1))
     first_render = int(d[0]) if d.size else len(A)
     assert first_render >= k0_block, f"L4-D 2: the renders differ at {first_render} < {k0_block}"
+    b_peak = float(np.max(np.abs(B.astype(np.float64))))
+    gap = np.abs(A[k0_block:k0].astype(np.float64) - B[k0_block:k0].astype(np.float64))
+    gap_max = float(np.max(gap)) if gap.size else 0.0
+    gap_db = 20 * math.log10(gap_max / b_peak) if gap_max > 0 else -math.inf
+    assert gap_db <= L4_RENDER_NULL_DB, \
+        f"L4-D 2: max |A - B| over [{k0_block}, {k0}) is {gap_db:.1f} dB re B's peak > {L4_RENDER_NULL_DB} dB"
     # 5. A is zero from L_p after the release (stimulus)
     rel_end = chord["release_end_sample"]
     nz = np.flatnonzero(A[:, 0] != 0.0)
@@ -2008,13 +2053,17 @@ def build_l4(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | N
     assert sil >= timing["exactS"] + L4_SILENCE_MARGIN_S - 1.0 / FS and sil >= timing["exactS"], f"L4-D 10: {sil} s"
     stim_checks = {"1_flag": {"recorded": True, "note": L4_FLAG_NOTE},
                    "2_render": {"first_differing_sample": first_render, "chord_onset_sample": s_on,
-                                "earliest_tail_fade_start_sample": k0, "asserted_from_partition_boundary": k0_block},
+                                "earliest_tail_fade_start_sample": k0, "bit_identical_before": k0_block,
+                                "null_window": [k0_block, k0], "null_max_abs_diff_db_re_B_peak": gap_db,
+                                "null_bound_db": L4_RENDER_NULL_DB, "null_criterion": L4_PRINT_2},
                    "5_render": {"A_last_nonzero_sample": a_last, "release_end_sample": rel_end,
                                 "A_last_minus_release_end_s": (a_last - rel_end) / FS, "L_p_s": timing["endS"]},
                    "9_held_A_over_B_db": held_db, "9_print_only": True,
                    "10_silence_after_release_s": sil,
                    "11_peak_dbfs_max": max(v["peak_dbfs"] for v in stim_rec.values()),
                    "12_two_builds_identical": all(v["two_builds_identical"] for v in stim_rec.values()) and hashes2 == hashes}
+    log(f"l4: assertion 2 on the renders: bit-identical before {k0_block} (asserted); over [{k0_block}, {k0}) max |A - B| "
+        f"{gap_db:.1f} dB re B's peak (<= {L4_RENDER_NULL_DB:g}; {L4_PRINT_2}); first differing sample {first_render}")
     log(f"l4: stimuli {total / FS:.3f} s; renders identical before sample {first_render} (asserted from {k0_block}); A "
         f"last nonzero {(a_last - rel_end) / FS:.4f} s after the release end; held-part A/B (dB) "
         + ", ".join(f"{k}: {v:+.4f}" for k, v in held_db.items())
@@ -2032,9 +2081,9 @@ def build_l4(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | N
             _link_or_copy(stim_dir / f"{t['B']}.wav", tdir / "B.wav")
         blocks[block] = plan
     fam_dir = out / "familiarisation"
+    # familiarisation (decider file 41): the labelled A/B pair and the labelled anchor pair
     fam = [("pair_01_A_provisional.wav", "A"), ("pair_01_B_exact.wav", "B"),
-           ("pair_02_anchor_tail_+3dB.wav", "anchor_up"), ("pair_02_B_exact.wav", "B"),
-           ("pair_03_anchor_tail_-3dB.wav", "anchor_down"), ("pair_03_B_exact.wav", "B")]
+           ("pair_02_anchor_tail_+3dB.wav", "anchor_up"), ("pair_02_B_exact.wav", "B")]
     for fname, src in fam:
         _link_or_copy(stim_dir / f"{src}.wav", fam_dir / fname)
     stim_s = total / FS
@@ -2045,10 +2094,14 @@ def build_l4(out: pathlib.Path, binary: pathlib.Path, log=print, trials: int | N
     manifest = {
         "chain": "l4", "provisional": True, "flag_note": L4_FLAG_NOTE,
         "preregistration": ("run sheet section 8; phase-07c-2b decider files 10 Part A (L4-S, L4-D, L4-T), 17 (D1, P1, "
-                            "P8), 21 (P8-3, P8-S); interrogator files 13, 18, 22; Seat 5 file 14; builder file 15"),
+                            "P8), 21 (P8-3, P8-S), 41 (L4-A, assertions 7, 4, 2); interrogator files 13, 18, 22, 42; "
+                            "Seat 5 file 14; builder file 15"),
         "family": ("L4 is its own family (AX49), not in the AX47 union (<= 0.098): detection at >= 12/16, family alpha "
                    f"{L4_FAMILY_ALPHA} (2517/65536)"),
-        "criterion": f">= {L4_CRITERION}/{L4_SCORED}", "anchor": f"+-{L4_ANCHOR_DB} dB tail step, pass >= {L4_ANCHOR_PASS}/{L4_ANCHORS}",
+        "criterion": f">= {L4_CRITERION}/{L4_SCORED}",
+        "anchor": (f"B vs B with the tail stepped +{L4_ANCHOR_DB:g} dB (--abx-step-db +{L4_ANCHOR_DB:g} --abx-step-sample 0), "
+                   f"roles stepped_as_A / stepped_as_B 3/3, pass >= {L4_ANCHOR_PASS}/{L4_ANCHORS}, chance "
+                   f"{L4_ANCHOR_CHANCE:.3f} (7/64) (decider file 41, L4-A = A-ii)"),
         "fs": FS, "partition": PARTITION, "block": BLOCK, "render_cli": str(binary), "scene": sc,
         "ax49_constants": ax49, "anchor_feasibility": anchor_rec, "ir_hashes": hashes, "chord": chord, "ir_checks": irc, "stimulus_checks": stim_checks,
         "stimuli": stim_rec, "blocks": blocks, "familiarisation": [{"file": f"familiarisation/{f}", "stimulus": s} for f, s in fam],

@@ -732,6 +732,17 @@ def test_l4_chord() -> None:
     assert 7979 < rec["max_partial_hz"] <= 8000.0
 
 
+def _l4_slots_before_a_ii(block: str) -> list[int]:
+    """The anchor positions as the 3 up / 3 down plan drew them (builder file 26): shuffle a 6-element list, then the
+    slots; an independent copy of those draws, so a change to the generator's use shows up here."""
+    rng = np.random.default_rng([abx_kit.L4_KEY_SEEDS[block], 49])
+    rng.shuffle([+1, +1, +1, -1, -1, -1])
+    return [s + 1 for s in sorted(rng.choice(22, size=6, replace=False).tolist())]
+
+
+L4_ANCHOR_SLOTS = {b: _l4_slots_before_a_ii(b) for b in ("primary", "rerun")}
+
+
 def test_l4_trial_plan() -> None:
     plans = {b: abx_kit.l4_trial_plan(b) for b in abx_kit.L4_BLOCKS}
     for block, plan in plans.items():
@@ -739,12 +750,18 @@ def test_l4_trial_plan() -> None:
         scored = [t for t in plan if t["kind"] == "scored"]
         anchors = [t for t in plan if t["kind"] == "anchor"]
         assert len(scored) == 16 and all((t["A"], t["B"]) == ("A", "B") for t in scored)
-        assert sorted(t["g_db"] for t in anchors) == [-3.0] * 3 + [3.0] * 3
-        assert all(t["A"] == ("anchor_up" if t["g_db"] > 0 else "anchor_down") and t["B"] == "B" for t in anchors)
+        # decider file 41 (L4-A = A-ii): every anchor is B against B + 3 dB tail, the roles 3 and 3
+        assert all(t["g_db"] == 3.0 for t in anchors)
+        assert sorted(t["role"] for t in anchors) == ["stepped_as_A"] * 3 + ["stepped_as_B"] * 3
+        for t in anchors:
+            want = ("anchor_up", "B") if t["role"] == "stepped_as_A" else ("B", "anchor_up")
+            assert (t["A"], t["B"]) == want
         assert plan == abx_kit.l4_trial_plan(block)  # seeded, reproducible
     # D1: the rerun block has its own anchor positions and order
-    pos = {b: [(t["trial"], t["g_db"]) for t in p if t["kind"] == "anchor"] for b, p in plans.items()}
+    pos = {b: [(t["trial"], t["role"]) for t in p if t["kind"] == "anchor"] for b, p in plans.items()}
     assert pos["primary"] != pos["rerun"]
+    # decider file 41: the seeded positions are unchanged from the earlier 3 up / 3 down plan (pinned)
+    assert {b: [t for t, _ in v] for b, v in pos.items()} == L4_ANCHOR_SLOTS
 
 
 def _l4_key(tmp_path: pathlib.Path, cut: float = -21.74) -> pathlib.Path:
@@ -846,7 +863,7 @@ def test_l4_seal_two_blocks_together(tmp_path: pathlib.Path) -> None:
     from tools.acoustics import wav
 
     pack = tmp_path / "pack"
-    stim = {"A": 0.1, "B": 0.2, "anchor_up": 0.3, "anchor_down": 0.4}
+    stim = {"A": 0.1, "B": 0.2, "anchor_up": 0.3}
     manifest = {"chain": "l4", "scene": {"cut_depth_T60max_band_db": -21.7, "T60_max_band": "63", "scene_sha256": "x"},
                 "ir_hashes": {"platform": "test"}, "blocks": {}}
     for block in abx_kit.L4_BLOCKS:
@@ -928,14 +945,10 @@ def test_l4_ir_checks_red(l4_irs, fault: str) -> None:
             abx_kit.l4_ir_checks(A, l4_irs["B"], l4_irs["timing"], l4_irs["diag"])
 
 
-def test_l4_build_stops_at_the_down_anchor(l4_irs, tmp_path: pathlib.Path) -> None:
-    """Finding (phase-07c-2b builder file 26): on the L4 scene E_target's specular share is about 0.83 in every band,
-    and render_cli --abx-step-db changes only the diffuse part, so the -3 dB anchor of L4-D cannot be built (render_cli
-    refuses any step below about -0.82 dB). The kit stops before rendering any stimulus; nothing is substituted. The
-    +3 dB step is buildable."""
-    with pytest.raises(RuntimeError, match="L4 anchor: the -3 dB tail step"):
-        abx_kit.build_l4(tmp_path / "l4", l4_irs["binary"], log=lambda *_: None, trials=1)
-    assert not (tmp_path / "l4" / "stimuli" / "A.wav").exists()
+def test_l4_down_step_refused_on_scene(l4_irs, tmp_path: pathlib.Path) -> None:
+    """Why A-ii (decider file 41; builder file 26): on the L4 scene E_target's specular share is about 0.83 in every
+    band and render_cli --abx-step-db changes only the diffuse part, so render_cli refuses a -3 dB step; the +3 dB
+    step builds. The kit never requests a negative anchor step (its stimulus specs and both blocks' plans)."""
     r = abx_kit.render_cli.run(l4_irs["binary"], "--scene", l4_irs["scene"], "--mode", "omni", "--abx-step-db", "-3",
                                "--ir", tmp_path / "u.wav", "--abx-stepped-ir", tmp_path / "s.wav")
     assert r.returncode == 1 and "negative diffuse energy" in r.stderr
@@ -943,6 +956,46 @@ def test_l4_build_stops_at_the_down_anchor(l4_irs, tmp_path: pathlib.Path) -> No
                        "--ir", tmp_path / "u.wav", "--abx-stepped-ir", tmp_path / "s3.wav")
     shares = abx_kit.parse_target_specular_share(out)
     assert 0.80 < min(min(v) for v in shares.values()) and max(max(v) for v in shares.values()) < 0.85
+    steps = [kw["step_db"] for kw in abx_kit.L4_STIMULUS_SPECS.values() if "step_db" in kw]
+    assert steps == [3.0]
+    for block in abx_kit.L4_BLOCKS:
+        assert all(t["g_db"] == 3.0 for t in abx_kit.l4_trial_plan(block) if t["kind"] == "anchor")
+
+
+def test_l4_build_end_to_end(l4_irs, tmp_path: pathlib.Path, monkeypatch) -> None:
+    """The L4 build runs to completion (decider file 41): A, B and the +3 dB anchor rendered and checked
+    (assertions 1-13, the anchor IR's M1 step identity and s_w, the render null of assertion 2), both blocks, the
+    familiarisation set (the labelled A/B pair and the labelled anchor pair). Every render_cli call is recorded: none
+    asks for a negative --abx-step-db."""
+    import json
+
+    calls = []
+    real_run = abx_kit._run
+
+    def spy(binary, *args):
+        calls.append([str(a) for a in args])
+        return real_run(binary, *args)
+
+    monkeypatch.setattr(abx_kit, "_run", spy)
+    m = abx_kit.build_l4(tmp_path / "l4", l4_irs["binary"], log=lambda *_: None, trials=8)
+    steps = [float(c[c.index("--abx-step-db") + 1]) for c in calls if "--abx-step-db" in c]
+    assert steps and all(g == 3.0 for g in steps)
+    assert sorted(m["stimuli"]) == ["A", "B", "anchor_up"]
+    assert [f["file"].split("/")[-1] for f in m["familiarisation"]] == [
+        "pair_01_A_provisional.wav", "pair_01_B_exact.wav", "pair_02_anchor_tail_+3dB.wav", "pair_02_B_exact.wav"]
+    a = m["anchor_feasibility"]
+    assert a["M1_band_step_check"]["max_abs_err_db"] <= 0.05 and a["s_w_max"] <= 0.023 and a["peak_dbfs"] <= -3.0
+    assert -0.9 < a["largest_feasible_down_step_db"] < -0.7
+    r2 = m["stimulus_checks"]["2_render"]
+    assert r2["first_differing_sample"] >= r2["bit_identical_before"] and r2["null_max_abs_diff_db_re_B_peak"] <= -120.0
+    assert m["ir_checks"]["7_decay"]["print"].startswith("realised Schroeder drop")
+    assert m["ir_checks"]["4_step"]["print"].startswith("consistency check; weak on this scene")
+    for block in abx_kit.L4_BLOCKS:
+        for t in m["blocks"][block]:
+            d = tmp_path / "l4" / block / f"trial_{t['trial']:02d}"
+            assert (d / "A.wav").read_bytes() == (tmp_path / "l4" / "stimuli" / f"{t['A']}.wav").read_bytes()
+            assert (d / "B.wav").read_bytes() == (tmp_path / "l4" / "stimuli" / f"{t['B']}.wav").read_bytes()
+    assert json.loads((tmp_path / "l4" / "manifest.json").read_text())["chain"] == "l4"
 
 
 def test_l4_handover_demo_unscored(l4_irs, tmp_path: pathlib.Path) -> None:
