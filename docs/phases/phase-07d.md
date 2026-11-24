@@ -91,7 +91,8 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
    print, not a new defect. A joined pair adds no runs to this defect's ≤ 3. The closure test re-attributes the macOS
    low-α restore with the split timer (a pair attributed elsewhere splits out) and checks that restore's
    interim→final tail handover for clicks with the tools/acoustics click detector, on runs 07d makes.
-8. **The growth re-pin (D-B5 (ii), FM-GROWTH, AX38 4c):** after the remedy, the ratio reference and baselines
+8. **Order against phase-07e-b (phase-07c-2b M3-H):** this scope runs only after phase-07e-b is `done` and the fix phase its ruling names, if any, is `done` (§0). If this phase reaches scope 8 first, scope 8 splits to `phase-07d-b.md` with that dependency in its §0 row; 07d-b inherits 'lands before 08-4 freezes its goldens' (scope 6) and premise P1. Scopes 6 and 7 are not held.
+   **The growth re-pin (D-B5 (ii), FM-GROWTH, AX38 4c):** after the remedy, the ratio reference and baselines
    re-derived from ≥ 6 green runs on the restore path in force (manual runs after 07d's last code change; earlier runs
    pooled only if 07d leaves the restore path unchanged), and the in-window absolute leg added under AX38 4c
    "Asserted every run" (w the largest value with (1 + w)·max(r/r̄) ≤ 1.083 over those runs; not added if max(r/r̄)

@@ -127,8 +127,8 @@ ABX test.
 - **Tail-spread print (C-b), before each seal:** L − R at 1 kHz (i) integrated from each emitter's own t_mix,e to the
   end of the IR, (ii) over [0.45, 0.65) and [0.8, 1.0) s; on S-B\* also [0.380, 0.45) s (print only). On S-W and its
   fallbacks, either measure > 1 dB (a print threshold, not an audibility claim) requires the SPREAD clause in the
-  label; every firing goes to the board (home pending Maisara's answer on M3-H,
-  `docs/review/phase-07c-2b/24-m3h-for-maisara.md`) as an NFR-8 candidate.
+  label; every firing goes to phases 07e/07e-b, or, once 07e-b is `done`, to the board as an NFR-8 candidate
+  (M3-H, decider files 30, 33, 40, 43; R1).
 - **S-B\* step/dip print:** the AX21 step and dip at t_mix,e per band and emitter, [t_mix,e − 20, t_mix,e − 2.5) ms
   against [t_mix,e + 2.5, t_mix,e + 20) ms.
 - **Q5 on both_wall (kit choice):** the onset window counts from the latest heard end of speech (input end plus the

@@ -54,7 +54,11 @@ Phase 06 convolver (headphone rendering, `outputMode = binaural`).
    preset validation log (the Phase 12 preset listening checklist and its PR listening notes, the Phase 13
    final listening pass through all presets, and the B9 (§5) protocol logs) records the `hrtfId` and the
    header's set identity string of the build it was listened through; this phase's checklist does the
-   same. (phase-08 scope 7, last sentence; shared, umbrella)
+   same. (phase-08 scope 7, last sentence; shared, umbrella) If heard before phase-07e-b is `done` (and the fix
+   phase it rules, if any), the checklist verdicts and the both-near render note are recorded 'provisional: engine
+   before the 07e-b ruling'. A level or dryness remark on a near-face render goes to 07e/07e-b (or, once 07e-b is
+   `done`, to the board) as an NFR-8 candidate, never to the HRTF or the headphones. The label is lifted without
+   re-hearing if 07e-b rules no fix phase.
 15. 08-3. Before Phase 08's goldens freeze, the AX47 self-ABX is rerun on the binaural chain at the bound in force,
     as two pre-registered families (F3, F4) with F1 and F2's design (both chains 24 scored trials + 6 anchors, 3 per
     half, break after presentation 15, ≥ 18/24; per family ≤ 0.0227; union over F1–F4 ≤ 0.0906), item 4 applied within
@@ -71,8 +75,8 @@ Phase 06 convolver (headphone rendering, `outputMode = binaural`).
       per-ear ΔG and ΔC80, and carries the label's SPREAD clause.
 
     Neither family is cited for externalisation or plausibility, and L4/L5 are not judged on these scenes.
-    Whether item 15's stimulus build waits on the cause ruling for the NFR-8 placement findings is pending Maisara
-    (M3-H, `docs/review/phase-07c-2b/24-m3h-for-maisara.md`).
+    Stimuli are built only after phase-07e-b is `done` and the fix phase its ruling names, if any, is `done`
+    (phase-07c-2b M3-H, decider files 30, 33, 40, 43; the fix phase's id is added here when its §0 row is created).
     Before any stimulus, per scene: binaural vs omni per-band energy within ±1 dB (AC6); per-ear, per-band energy
     printed (print only); item 6 (HF-W with condition D) and `[ax47-midfade]` per ear; the M2 gap and Q5 checks per
     ear; D/R printed per ear; `hrtfId` and the set identity string recorded; the same wired headphone model and level
@@ -142,7 +146,8 @@ speech**. Every room render comes with an **anechoic direct-only render** (α = 
 same emitter and listener positions beside it, and with the omni preview. Answer in the **forced-choice
 form**: location **front / back / above / inside / outside**; colour against the omni preview **none /
 boxy / thin / harsh**. Record the `hrtfId` and the header's set identity string of the build you listened
-through (scope 7). (phase-08 L0; shared, umbrella)
+through (scope 7). Verdicts heard before phase-07e-b is `done` are marked 'provisional: engine before the 07e-b
+ruling' (item 7). (phase-08 L0; shared, umbrella)
 - [ ] Default scene with emitters at about ±30° ahead: where is the image (front / back / above / inside /
       outside)? Expected: in front and outside your head. (Generic HRTFs are heard inside the head,
       or reversed front/back, by some people, and height on the median plane is uncertain

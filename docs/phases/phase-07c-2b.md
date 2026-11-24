@@ -189,8 +189,8 @@ The numbered items run in this order.
   own PR sentence (the timing itself binds this phase: Scope, "Timing").
 - Phase-07c-2's own "Out of scope" list (the umbrella's §9; conditions 2, 4–7 and 9–11 and D-C1–D-C3 in 07c-1 /
   07c-1b), and phase-07d (long-T60 load, the macOS (d) defect, growth re-pin). Phase 12's preset check itself.
-- The cause ruling on the NFR-8 placement findings (both_corner, both_wall onset, s0.7 spread): home pending Maisara
-  (M3-H, `docs/review/phase-07c-2b/24-m3h-for-maisara.md`); this phase's PR lists them under Follow-ups.
+- The NFR-8 placement findings (both_corner, both_wall onset, s0.7 spread): measured in phase-07e, ruled in phase-07e-b
+  (M3-H, decider files 30, 33, 40, 43, H4+G); this phase's PR lists them under Follow-ups.
 
 ## Acceptance criteria — automated
 
