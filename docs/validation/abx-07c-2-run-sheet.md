@@ -470,7 +470,7 @@ L_p < L; L_f, L_p, L and the per-band T60 are printed.
   labelled anchor pair. The anchor result is never cited as evidence about M1's step or any other measurement."
   Asserted on the +3 dB anchor IR: M1's per-band step identity within 0.05 dB, s_w ≤ 2.3 %, peak ≤ −3 dBFS.
 - **Criteria:** detection at ≥ 12/16 (family α 0.038 ≈ 2517/65536); anchor pass at ≥ 5/6. Its own family.
-- **Failed anchor (D1, rule (a); decider file 17, exact wording):** "L4 anchor (6 trials, ±3 dB tail step, pass
+- **Failed anchor (D1, rule (a); decider file 17, exact wording; its "±3 dB" predates decider file 41, under which the anchor is +3 dB with roles swapped 3/3 (A-ii)):** "L4 anchor (6 trials, ±3 dB tail step, pass
   ≥ 5/6). If the anchor fails, the block is void: its scored trials are not unsealed or scored, and the void is
   recorded. One rerun follows, using a second block (its own seeded key, trial order and anchor positions) that was
   built and sealed with the first, before the session. A voided result is never recorded as 'not detected'. A
