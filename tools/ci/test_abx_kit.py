@@ -32,16 +32,16 @@ from tools.ci import abx_kit  # noqa: E402
 
 def test_preregistered_numbers() -> None:
     # phase-07c-2b M3-2 (decider file 6): noise 24 scored + 6 anchors, break after 15; speech per R3
-    assert abx_kit.SCORED_TRIALS == {"noise": 24, "speech": 16}
+    assert abx_kit.SCORED_TRIALS == {"noise": 24, "speech": 24}
     assert (abx_kit.ANCHOR_TRIALS, abx_kit.ANCHOR_DB, abx_kit.ANCHOR_PASS) == (6, 3.0, 5)
-    assert abx_kit.BLOCK_TRIALS == {"noise": 30, "speech": 22}
-    assert abx_kit.BREAK_AFTER == {"noise": 15, "speech": 11}
+    assert abx_kit.BLOCK_TRIALS == {"noise": 30, "speech": 30}
+    assert abx_kit.BREAK_AFTER == {"noise": 15, "speech": 15}
     assert abx_kit.LEVELS_DB == (0.9, 0.5)
-    assert abx_kit.CRITERION == {"noise": 18, "speech": 13}
-    # per family: P(>= 18 of 24) + P(>= 13 of 16) = 190051/2^24 + 697/2^16 (M3-2, D-L7 / K6)
-    p = abx_kit.binom_tail(18, 24) + abx_kit.binom_tail(13, 16)
-    assert abs(p - 0.021963) < 5e-7 and abs(abx_kit.FAMILY_ALPHA - p) < 5e-7
-    assert abs(abx_kit.binom_tail(18, 24, 0.75) - 0.607) < 5e-4 and abs(abx_kit.binom_tail(13, 16, 0.75) - 0.405) < 5e-4
+    assert abx_kit.CRITERION == {"noise": 18, "speech": 18}
+    # per family: 2 x P(>= 18 of 24) = 2 x 190051/2^24 (M3-2, decider file 9)
+    p = 2 * abx_kit.binom_tail(18, 24)
+    assert abs(p - 0.022656) < 5e-7 and abs(abx_kit.FAMILY_ALPHA - p) < 5e-7
+    assert abs(abx_kit.binom_tail(18, 24, 0.75) - 0.607) < 5e-4
     assert (abx_kit.FS, abx_kit.PARTITION, abx_kit.CROSSFADE_S) == (48000, 512, 0.030)
     assert abx_kit.W_CANDIDATES == (6, 7, 8)
     assert (abx_kit.Q5_ONSET_MAX_T30, abx_kit.Q5_MARGIN_DB, abx_kit.Q5_BAND_HZ, abx_kit.Q5_WINDOW_S) == (0.43, 20.0, 1000.0, 0.05)
@@ -139,7 +139,7 @@ def test_trial_plan(chain: str, level: float) -> None:
     assert sorted(t["g_db"] for t in scored) == [-level] * (n // 2) + [level] * (n // 2)
     assert all(abs(t["g_db"]) == 3.0 for t in anchors)
     assert [t["trial"] for t in plan if t["break_after"]] == [brk]
-    if chain == "noise":  # M3-2 (Seat 1): 3 anchors on each side of the break
+    if True:  # M3-2 (Seat 1): 3 anchors on each side of the break, both chains
         assert sum(t["trial"] <= brk for t in anchors) == 3
     assert plan == abx_kit.trial_plan(chain, level)  # seeded, reproducible
 
@@ -173,16 +173,16 @@ def _answers(key_path: pathlib.Path, level: str, wrong_scored: int, wrong_anchor
 
 def test_scoring_rules(tmp_path: pathlib.Path) -> None:
     key = _fake_key(tmp_path, "speech")
-    # 13/16 detects in the speech chain, 12/16 does not (item 3)
-    r = abx_kit.score(key, {"0.9": _answers(key, "0.9", 3, 0)}, "speech")
-    assert r[0]["verdict"] == "detected" and r[0]["k"] == 13
-    assert r[0]["wording"] == "detected (>= 13/16, family alpha 0.021963)"
-    r = abx_kit.score(key, {"0.9": _answers(key, "0.9", 4, 0)}, "speech")
+    # M3-2 (decider file 9): 18/24 detects in the speech chain, 17/24 does not
+    r = abx_kit.score(key, {"0.9": _answers(key, "0.9", 6, 0)}, "speech")
+    assert r[0]["verdict"] == "detected" and r[0]["k"] == 18
+    assert r[0]["wording"] == "detected (>= 18/24, family alpha 0.022656)"
+    r = abx_kit.score(key, {"0.9": _answers(key, "0.9", 7, 0)}, "speech")
     assert r[0]["verdict"] == "not detected"
-    assert r[0]["wording"] == "not detected in 16 trials by one listener (power 0.41 at p = 0.75)"
+    assert r[0]["wording"] == "not detected in 24 trials by one listener (power 0.61 at p = 0.75)"
     # the 0.5 dB block is refused unless 0.9 dB was detected (item 11)
     with pytest.raises(PermissionError):
-        abx_kit.score(key, {"0.9": _answers(key, "0.9", 4, 0), "0.5": _answers(key, "0.5", 0, 0)}, "speech")
+        abx_kit.score(key, {"0.9": _answers(key, "0.9", 7, 0), "0.5": _answers(key, "0.5", 0, 0)}, "speech")
     r = abx_kit.score(key, {"0.9": _answers(key, "0.9", 0, 0), "0.5": _answers(key, "0.5", 0, 0)}, "speech")
     assert [x["level_db"] for x in r] == [0.9, 0.5]
     # a failed anchor (4/6) makes the block inconclusive, never "not detected" (item 4)
