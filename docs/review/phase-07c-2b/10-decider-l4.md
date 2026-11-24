@@ -1,243 +1,376 @@
-# 10: Decider on AX49 L4: how the stimuli are produced, the scene, A and B, the design, the assertions, the AX49 wording and the sittings
+# 10: Decider on AX49 L4 (with Seat 6), and rebuttal to interrogator file 11
 
 To be saved as `docs/review/phase-07c-2b/10-decider-l4.md`. Corpus c1b171fe649f07cbeb952ef1f75d89bfaa414d0d.
 
-**Outcome:**
-- **Production: L-a.** A validation-only `render_cli --provisional-ir` flag, specified exactly below, with AX49's wording amended through /fix-plan.
-- **Scene:** a variant of `stone_box` with every band's α scaled by one common factor, giving T60_max 8.0 ± 0.1 s (Seat 2). This is the more sensitive test.
-- **A and B:** A is the static provisional IR and B the exact IR, from one plan, both rendered through the real-time engine (Seat 3).
-- **Chord, hold, release, wet, anchor:** Seat 1's design, with Seat 3's anchor construction.
-- **Assertions:** Seat 3's list plus Seat 1's prefix check.
-- **Handover ghost:** printed, not tested, and recorded as debt (07d).
-- **Sittings:** L4 is its own block in E's second sitting if that fits K6's 2 h; otherwise a third dated sitting.
-- **M3-T:** Seat 1 accepts it on condition the selection grounds are written into the pre-registration. Adopted.
-- NEEDS MAISARA: none.
+**This file does two things.**
 
-The L4 round does not depend on the interrogator's pending ruling on file 8, except that M3-T is part of that file.
+Part A decides L4. Seat 6's answer is now in.
+- **L-a is decided:** a validation-only `render_cli --provisional-ir` flag, with a second flag that sets a handover sample.
+- **The scene** is the stone_box variant tuned to T60_max 8 s.
+- **A and B** are static: A is the provisional IR, B the exact IR, both rendered on the real-time path.
+- **Seat 1's design** and **Seat 3's assertions** are adopted.
+- **AX49's wording** is amended through /fix-plan.
 
-## Convening (file 8)
-- **Convened:** Seats 1, 2, 3, 5, 7, and 9 (narrow). All answered.
-- **Not required:** Seat 4 (omni, diotic chain), Seat 6 (no user control) and Seat 8 (a validation stimulus). Each scores 0/0.
+Part B answers interrogator file 11.
+- M3-S, M3-G, M3-C and M3-F are corrected. **Two of the corrections change what the kit does; they are marked ⚙.**
+- **M3-T is decided again**, now that Seat 1 has rated it.
 
-## Knowledge inventory (new rows)
+NEEDS MAISARA: none.
+
+---
+
+# Part A: AX49 L4
+
+## Convening
+- **Convened:** Seats 1, 2, 3, 5, 6, 7, and 9 (narrow). All have answered. Seat 6 was added because file 11 found the round UNDERCONVENED without it: L4 tests what every user hears when a project loads.
+- **Not required:**
+  - Seat 4: the chain is omni and diotic.
+  - Seat 8: this is a validation stimulus.
+- **K23 restated:** `assembleProvisional` is called from `src/plugin/core/ScenePipeline.cpp` L656 and L704, and from `tests/unit/test_interim.cpp`. The test call is a precedent for L-b. It does not change the guard, which must name the CLI option field (Seat 5).
+
+## Knowledge inventory (new rows; K1–K24 from files 2, 5 and 8)
 | K | what | source | status |
 |---|---|---|---|
-| K25 | `assembleProvisional` is called by `src/plugin/core/ScenePipeline.cpp` L656 and L704. A guard must therefore name the CLI option, not the word "provisional" | Seat 5, from the code | known |
-| K26 | render_cli's validation-only flags already follow a gating pattern (`--abx-step-db`, Cli.cpp L274–282, L350–375), and a guard test exists for it (`test_abx_kit.py` L188–197) | Seat 5, from the code | known |
-| K27 | Stone variant: Eyring 0.161·2400/(1120·0.0431) = 8.0 s; t_mix,e ≥ 64.7 ms (K20 bound); L_f ≥ 2.561 s; L_p ≥ 2.661 s; L = min(1.5·T60_max, 12) = 12 s | Seat 2; Kuttruff Eq. 4.12 and 5.24 (corpus); L from the code (Engine.h L240) | known as bounds. The realised values are measured and asserted (below) |
-| K28 | The 100 m "low-α" cube has T60_max 50.5 s and L_p ≥ L, so it cannot host L4. At T60 8 s the cube needs ᾱ ≈ 0.23–0.29 | Seat 9; AX49 K22; Kuttruff Table 6.1 | known |
+| K25 | A guard that greps for "provisional" would fail on `src/plugin` | Seat 5, from the code | known |
+| K26 | The gating pattern for validation flags (`--abx-step-db`, Cli.cpp L274–282, L350–375) and its guard test (`test_abx_kit.py` L188–197) | Seat 5, from the code | known |
+| K27 | Stone variant: 0.161·2400/(1120·0.0431) = 8.0 s; t_mix,e ≥ 64.7 ms; L_f ≥ 2.561 s; L_p ≥ 2.661 s; L = min(1.5·T60_max, 12) = 12 s | Seat 2; Kuttruff Eq. 4.12 and 5.24; Engine.h L240 (from the code) | known as bounds; each value is measured and asserted |
+| K28 | The 100 m "low-α" cube has T60_max 50.5 s and L_p ≥ L, so it cannot host L4. At T60 8 s the cube's ᾱ would be 0.23–0.29 | Seat 9; AX49 K22; Kuttruff Table 6.1 | known |
 | K29 | After an interrupted steady excitation, the decay equals the backward-integrated IR | Kuttruff §8.4 Eq. 8.29; Vorländer §6.4.1 Eq. 6.3 (Seat 3) | known |
-| K30 | At the same T60, a smaller volume cuts earlier and louder (t_mix,e grows with √V; K20) | Seats 2 and 9 [Inf] | known in direction. Seat 2 puts the size at about 7 dB for this pair. The real figure is the cut depth, measured below |
-| K31 | Whether a −19 dB cut, or a re-onset after silence, is audible | Seats 1 and 3 [Hyp] | uninformed. It is not load-bearing for the choice: L4 is the test of it |
+| K30 | At equal T60, a smaller volume cuts earlier and louder (t_mix,e grows with √V; K20) | Seats 2 and 9 [Inf] | the direction is known; the depth is measured per band |
+| K31 | Is a −19 dB cut, or a re-onset after silence, audible? | Seats 1 and 3 [Hyp] | uninformed. Not load-bearing: L4 is the test |
+| K32 | Phase 11 requires "settling" while crossfading, but `settling()` leaves out a running crossfade | Seat 6: BUILD_PLAN L365; phase-07c-1b L124 | known (plan) |
 
 ## Tension map (now/later, in the seats' words)
-| option | S1 | S2 | S3 | S5 | S7 | S9 | max | sum |
-|---|---|---|---|---|---|---|---|---|
-| **L-a** | 0/1 (→ 0/0 under L-a1) | 1/0 | 1/1 | 1/1 (its conditions keep it at 1/1) | 1/1 | 0/1 | **1** | 9 (8 with L-a1) |
-| L-b | 1/1 | 1/1 | 1/**2** | 1/**2** | 1/1 | 0/0 | 2 | 12 |
-| L-c | 1/**2** | 1/**2** | 1/**2** | 0/**2** | 1/**2** | 0/1 | 2 | 15 |
+| option | S1 | S2 | S3 | S5 | S6 | S7 | S9 | max | sum |
+|---|---|---|---|---|---|---|---|---|---|
+| **L-a** | 0/1 (0/0 under L-a1) | 1/0 | 1/1 | 1/1 | 0/1 | 1/1 | 0/1 | **1** | 10 (9 with L-a1) |
+| L-b | 1/1 | 1/1 | 1/**2** | 1/**2** | 1/1 | 1/1 | 0/0 | 2 | 14 |
+| L-c | 1/**2** | 1/**2** | 1/**2** | 0/**2** | 1/**2** | 1/**2** | 0/1 | 2 | 18 |
 
-The seats' reasons, cell by cell:
+The seats' reasons, as they gave them:
 
 **L-a**
-- S1: no user output and no reference render carries the cut, "if the flag is off by default". Later, the risk is a flagged render ending up "in a golden or BRAS comparison".
-- S2: "A settled clause is amended … no engine change". Later, "Removal is one flag".
-- S3: a small src/cli change plus AX49's wording. Later, "condition 6 erodes".
-- S5: "About 40 lines … one guard test and one end-to-end test". Later, "every later flag change" keeps the guard green.
-- S7: "one more /fix-plan … orchestrator time".
+- S1: "if the flag is off by default". Later, the risk that a flagged render ends up in a golden or a BRAS comparison.
+- S2: "no engine change". Later, "Removal is one flag".
+- S3: "condition 6 erodes".
+- S5: "every later flag change" must keep the guard green.
+- S6: "Producers hear no difference". Later, the ghost and the "indicator-clears-before-handover" issue go unheard.
+- S7: one /fix-plan, in orchestrator time.
 - S9: "a provenance risk".
 
 **L-b**
-- S3: "Every rerun maintains a second renderer".
-- S5: stimuli come "from a binary that is neither the shipped one nor the CLI" (Debug against Release [Hyp]).
+- S3: a second renderer to maintain.
+- S5: a binary that is "neither the shipped one nor the CLI".
 
 **L-c**
-- S1: the remedy "is chosen without data".
-- S2: "the 'L4 detects the cut' reversal cannot fire".
-- S3 and S5: "a phase of rework".
-- S7: class (c) and the W pin are decided without L4. It rises to 3 if the date passes the 08-4 freeze.
+- S6: 07d would trade load time against a gated tail "by rationale".
+- S7: rises to 3 if L4 slips past 08-4.
 
-## Working (minimum tension)
-1. **Bounds.** L-a widens AX49's sentence, which is a board row (D-C9) changeable by a board DECISION. Her recorded decisions are not touched. Nothing is added to `src/sim`.
-2. **Veto.** No seat rated any option 3. Seat 7's possible 3 on L-c (if the date slips past 08-4) is conditional.
-3. **Worst-off seat.** L-a has a maximum of 1; L-b and L-c have 2. **L-a.**
-4. **Compose, sum, reversibility:** not reached. A version of L-b with its conditions met could reach a maximum of 1 (Seats 3 and 5 → 1), but it would not lower the maximum below L-a's 1, so step 4 does not apply.
+## Working
+1. **Bounds.** L-a changes AX49's wording. AX49 is a board row (D-C9), so this is allowed. None of Maisara's recorded decisions is touched, and `src/sim` is not touched.
+2. **Veto.** No seat gives a 3.
+3. **Worst-off seat.** L-a has a maximum of 1. L-b and L-c have 2. **L-a.**
 
-## DECISION L4-P: the `--provisional-ir` flag (`src/cli` only)
-**Behaviour.**
-- render_cli builds the room IR with `StagedBuild` on the same plan and at the solve's level as the default, then calls `assembleProvisional()` in place of `assemble()`.
-- Every output written in that run uses the provisional IR:
-  - `--ir`;
-  - `--out` with `--in`, whether offline or with `--realtime-emulation`.
-- The flag is off by default, and validation-only.
-- **`--provisional-timing <file.json>`** is allowed only with the flag. It writes `provisionalTiming()`: provisional, mixMaxS, t60MaxS, fadeStartS (L_f), endS (L_p), exactS (L), and the per-band T60.
-  - This answers Seat 2's request without touching the `--diagnostics` JSON.
-- Comments are updated (Engine.h L295–298) to read "render_cli calls it only under `--provisional-ir`".
+Steps 4–6 are not reached.
 
-**Refusals** (exit 1, usage; message names the conflict):
-- (r1) `provisionalTiming().provisional` is false (L_p ≥ L). That scene has no provisional (Seats 2 and 3).
-- (r2) `--mode` other than `omni` (Seat 5).
-- (r3) together with `--diagnostics`, `--ensemble`, `--tail-only`, `--ensemble-emitter`, `--tail-level ax16`, `--switch-scene`, `--switch-every`, `--abx-step-db`, `--abx-stepped-ir`, `--image-cap`, or `--automation` (where present) (Seats 1, 3 and 5).
-- (r4) `--provisional-timing` without the flag.
+## DECISION L4-P: the flags (`src/cli` only)
+**`--provisional-ir`** (validation-only, off by default)
+- render_cli builds on the same plan, at the solve's level, then calls `assembleProvisional()` in place of `assemble()`.
+- Every output of that run uses the provisional IR: `--ir`, and `--out` with `--in`, both offline and with `--realtime-emulation`.
 
-**Tests:**
-1. **Guard (Seat 5 iii).** `src/plugin` never names `provisionalIr` or `--provisional-ir`. Only `src/cli/Cli.cpp` reads the option field. This extends the `abxStepDb` guard pattern.
-2. **No golden path (Seat 1 L-a1).** A `tools/ci` pytest asserts that `--provisional-ir` appears in no golden-generating code. That covers `tools/ci/update_goldens.py`, `tests/golden/` and the BRAS validation scripts. The string may appear only in `src/cli/Cli.cpp`, its tests, `tools/ci/abx_kit.py` (L4 builder), `tools/ci/test_*.py` and `docs/`.
-3. **Default unchanged (Seat 5 iv).** Every existing golden and render test passes unchanged. One added test pins the SHA-256 of a default `render_cli --mode omni --ir` output on `medium_room.json`, built from the same binary that has the flag compiled in.
-4. **Determinism (AX5).** The flagged output is bit-identical run to run.
-5. **Offline against real-time.** The flagged offline output and the `--realtime-emulation --block 512` output null within −120 dB (Phase 06's criterion).
-6. **Refusals.** Each of r1–r4 exits 1. r1 is tested on AX49's L_p ≥ L branch scene (the 100 m low-α cube).
-   - This meets Seat 5's intent, "no output differs where there is no provisional", by refusing rather than passing the output through. It is flagged to Seat 5 below.
-7. **Plugin parity (Seat 3 item 7).** A JUCE-free `[pipeline]` test: for the L4 scene, the keyless-load interim IR (ScenePipeline L652–656) is bit-identical to the IR that `--provisional-ir --ir` writes.
-8. All of these run in CI (`SPATIAL_REQUIRE_RENDER_CLI=1`) on three OSes before any L4 seal.
+**`--provisional-timing <json>`** (allowed only with `--provisional-ir`)
+- Writes `provisionalTiming()`: provisional, mixMaxS, t60MaxS, fadeStartS (L_f), endS (L_p), exactS (L) and the per-band T60.
+
+**`--provisional-handover-sample N`** (Seat 6, condition 2)
+- Requires `--provisional-ir`, `--realtime-emulation`, `--in`/`--out` and a fixed `--block`. N must be a multiple of the partition.
+- Output: the provisional IR until N, then the shipped AQ4 30 ms equal-gain crossfade to the exact IR (AX49 "Handover"; AX18), through the IR swap of the real-time engine.
+- Used only for one **unscored, labelled** listening-pack render. It is never sealed and never scored.
+
+**Refusals** (exit 1, with the conflict named):
+- (r1) `provisionalTiming().provisional` is false, i.e. L_p ≥ L.
+- (r2) `--mode` is anything other than `omni`.
+- (r3) Combined with any of: `--diagnostics`, `--ensemble`, `--tail-only`, `--ensemble-emitter`, `--tail-level ax16`, `--switch-scene`, `--switch-every`, `--abx-step-db`, `--abx-stepped-ir`, `--image-cap`, `--automation` (where present).
+- (r4) `--provisional-timing` or `--provisional-handover-sample` without `--provisional-ir`.
+- (r5) A handover sample that is not a multiple of the partition, lies beyond the input, or comes without `--realtime-emulation` and a fixed block.
+
+**Tests** (CI with `SPATIAL_REQUIRE_RENDER_CLI=1`, three OSes, before any L4 seal):
+1. **Guard.** `src/plugin` never names `provisionalIr`, `provisionalHandoverSample`, `--provisional-ir` or `--provisional-handover-sample`. Only `src/cli/Cli.cpp` reads the option fields.
+2. **No golden path.** A `tools/ci` pytest checks that the flag strings appear nowhere in golden-generating or BRAS code. They may appear only in Cli.cpp, its tests, `tools/ci/abx_kit.py`, `tools/ci/listening_pack.py`, `tools/ci/test_*.py` and `docs/`.
+3. **Default output unchanged.**
+   - Every existing golden and render test passes unchanged.
+   - A pinned SHA-256 of the default `render_cli --mode omni --ir` output on `medium_room.json`, built from the same binary.
+4. **Determinism.** Flagged output is bit-identical from run to run (AX5).
+5. **Offline against real-time.** The flagged offline output and the `--realtime-emulation --block 512` output null within −120 dB (Phase 06).
+6. **Refusals.** r1–r5 each exit with code 1. r1 is checked on AX49's L_p ≥ L cube.
+7. **Plugin parity** (a JUCE-free `[pipeline]` test). On the L4 scene, the keyless-load interim IR (ScenePipeline L652–656) is bit-identical to the IR written by `--provisional-ir --ir`.
+8. **Handover.**
+   - Before N, the output is bit-identical to the `--provisional-ir` render.
+   - From N + 1440 on (48 kHz), it is bit-identical to the default exact render.
+   - Inside the fade, it reconstructs to 8u (`midfade_checks`).
+
+**Comment.** Engine.h L295–298 changes to "render_cli calls it only under `--provisional-ir`".
 
 ## DECISION L4-W: AX49 wording (/fix-plan, §6 row)
-- **Replace** "Offline renders, bounces in hosts that signal offline, and `render_cli` never use the provisional (AX5, condition 6)."
-- **With** "Offline renders and bounces in hosts that signal offline never use the provisional, and neither does `render_cli`, except under the validation-only `--provisional-ir` flag (off by default; omni only; refused with `--diagnostics`, the ensemble, switch, step and image-cap flags, and on scenes with L_p ≥ L; never reached by `src/plugin` and never used for goldens; tests in phase-07c-2b decider file 10). AX5, condition 6."
+**The render_cli sentence.**
+- Replace: "Offline renders, bounces in hosts that signal offline, and `render_cli` never use the provisional (AX5, condition 6)."
+- With: "Offline renders and bounces in hosts that signal offline never use the provisional, and neither does `render_cli`, except under the validation-only `--provisional-ir` flag (off by default; omni only; refused with `--diagnostics`, the ensemble, switch, step and image-cap flags and where L_p ≥ L; an optional handover sample for unscored listening-pack renders only; never reached by `src/plugin`, never used for goldens; tests in phase-07c-2b decider file 10). AX5, condition 6."
+
+**Additions to AX49.**
 - **Listening item L4** gains: "scene, stimuli and assertions: phase-07c-2b decider file 10".
-- **07d's AX49 reversal list** gains the handover-ghost print (L4-D below) as an input.
+- **07d's reversal inputs** gain the ghost print (L4-D 13).
+- **The D-C9 debt register** gains Seat 6's line: "settling must stay lit through the handover crossfade". Its home is Phase 11's settling item (BUILD_PLAN L365), together with the follow-up at phase-07c-1b L124.
 
 ## DECISION L4-S: the scene
-- **Scene.** `tests/scenes/valid/stone_box.json` (20 × 12 × 10 m, V 2400 m³, S 1120 m²; listener (10, 8, 1.7); emitters (8, 3, 1.7) and (12, 3, 1.7); s 0.1; tailSeed 106), with every band's α multiplied by one common factor k.
-  - k starts at 0.844. The builder adjusts it until `--provisional-timing` reports T60_max 8.0 ± 0.1 s (inside the 5 % JND, Vorländer Table 6.1). k is recorded.
-  - One factor on every band, so the room's spectral shape is unchanged. It is a stimulus scene, so no engine path is involved (NFR-8).
-- **Asserted before the seal:** provisional true, L_p < L, and L_f, L_p, L and the per-band T60 printed.
-- **Committed** with the kit: the scene JSON, with its SHA-256 in the manifest.
-- **Why not the cube.** The 100 m "low-α" cube cannot host L4 (K28). Raising its α to reach 8 s gives a cut that comes later and lies deeper (K30). The stone variant is the harder test under NFR-1.
-  - The cube is not run, to save a family and an extra half-sitting. A non-detection is scoped by the measured cut depth, not by "T60 8 s" (Seat 9).
-- **Label** (Seat 9's template, with Seat 2's wording; Seat 9 confirms it before the seal):
-  - `label`: "Long-decay test room, hard stone box with uniform absorption, T60_max 8 s; provisional-vs-exact tail test (provisional tail, validation-only flag); not a validated preset"
-  - Detail lines:
-    1. 20 × 12 × 10 m (V 2400 m³, S 1120 m²); α = k × stone_box's per band, on every face; s 0.1 (early part specular only, AX21); tailSeed 106; 48 kHz; emitters 5.39 m from the listener.
-    2. T60 per band (the engine's Eyring with air absorption); T60_max [8.0] s in band [b]; T60 at 1 kHz [ ].
-    3. D/R at 1 kHz [measured], against [ ] dB at r/r_c [ ] (Kuttruff Eq. 5.44, Sabine A [ ] m²). ᾱ ≈ [0.04–0.07] is small, so §5.6's ᾱ caveat does not apply.
-    4. t_mix,e,max [ ], L_f [ ], L_p [ ], L [12.0] s.
-    5. **Cut depth**, per band: 10·log10(E_B[L_f, L)/E_B[0, L)), measured on B's IR, with the chord's band energy beside it.
-    6. The early reflections are identical in A and B (shared ISM) and are not the variable under test.
-    7. "Stimulus scene, not a room prediction."
-  - Class line: "long-decay, [Seat 9's D/R class] (heard D/R [ ] dB), cut [ ] dB in the T60_max band"
-- **Scope of the record** (Seat 9): "not detected" covers "a cut ≥ [measured] dB below the full-IR energy in the T60_max band, at T60_max 8 s, by one listener". It is never worded "inaudible at T60 8 s".
+**What it is.**
+- `tests/scenes/valid/stone_box.json`: 20 × 12 × 10 m; listener (10, 8, 1.7); emitters (8, 3, 1.7) and (12, 3, 1.7); s 0.1; tailSeed 106.
+- Every band's α is multiplied by one common factor k, starting at 0.844. The builder adjusts k until `--provisional-timing` reports T60_max = 8.0 ± 0.1 s. k is recorded.
+- The scene JSON and its SHA-256 are committed with the kit.
 
-## DECISION L4-D: the design and the assertions
-**A and B** (Seat 3):
-- A is the provisional IR, from `--provisional-ir`.
-- B is the exact IR from the same plan (the default render).
-- Both are rendered by `render_cli --realtime-emulation --block 512 --partition 512`, like AX47.
-- The ABX compares the two static IRs. The live handover is not in the stimulus.
+**Asserted before the seal:** provisional is true, L_p < L, and L_f, L_p, L and the per-band T60 are printed.
 
-**Chord** (Seat 1):
-- A deterministic additive synthesis, versioned in the kit, with no licence:
-  - an open voicing C2–G2–C3–E3–G3–C4, equal-tempered;
-  - harmonic partials up to 8 kHz with a −3 dB/octave tilt;
-  - no vibrato;
-  - a 50 ms onset and a 10 ms raised-cosine release.
-- Its energy in each band is printed.
+**Why not the cube.** The cube cannot host L4 (K28). At T60 8 s a smaller volume cuts shallower, so it is easier to hear (K30). Seat 6 adds that it is "more like a producer's large hard-room preset".
 
-**Timing:**
-- Hold H = max(L_p, 0.5·T60_max), which is 4 s here.
+**Label** (Seat 9's template with Seat 2's wording; Seat 9 confirms it before the seal):
+- `label`: "Long-decay test room, hard stone box with uniform absorption, T60_max 8 s; provisional-vs-exact tail test (provisional tail, validation-only flag); not a validated preset"
+- Detail lines:
+  1. Geometry; α = k × stone_box per band; s 0.1 (early part specular only, AX21); tailSeed 106; 48 kHz; emitters 5.39 m away.
+  2. T60 per band; T60_max [8.0] s in band [b].
+  3. D/R at 1 kHz [measured] against [ ] dB at r/r_c [ ] (Kuttruff Eq. 5.44, Sabine A [ ] m²). ᾱ ≈ [0.04–0.07] is small, so §5.6's ᾱ caveat does not apply.
+  4. t_mix,e,max, L_f, L_p and L [12.0] s.
+  5. Cut depth per band: 10·log10(E_B[L_f, L)/E_B[0, L)), printed beside the chord's band energy.
+  6. The early reflections are identical in A and B.
+  7. "Stimulus scene, not a room prediction."
+- Class line: "long-decay, [Seat 9's D/R class] (heard D/R [ ] dB), cut [ ] dB in the T60_max band"
+
+**Record wording** (Seats 9 and 6):
+- On non-detection: "not detected in 16 trials by one listener (power 0.63 at p = 0.75); covers a cut ≥ [measured] dB below the full-IR energy in the T60_max band at T60_max 8 s".
+- Never "inaudible", and never "at T60 8 s" alone.
+
+## DECISION L4-D: design and assertions
+**A and B** (Seat 3)
+- A is the provisional IR (`--provisional-ir`). B is the exact IR from the same plan.
+- Both are rendered with `--realtime-emulation --block 512 --partition 512`.
+- Both are static: the handover is not part of the scored stimulus.
+
+**Chord** (Seat 1)
+- Deterministic additive synthesis, versioned in the kit. Open voicing C2–G2–C3–E3–G3–C4, equal-tempered.
+- Harmonic partials up to 8 kHz, tilted −3 dB/octave; no vibrato.
+- 50 ms onset; 10 ms raised-cosine release.
+- Band energies printed.
+
+**Timing**
+- Hold H = max(L_p, 0.5·T60_max), which is 4 s.
 - One release per file, then at least L + 0.5 s of silent input.
-- The whole of the exact render's decay is inside the file (asserted). A and B are the same length.
+- The whole exact decay must fit in the file (asserted). A and B are the same length.
 
-**Fully wet:**
-- The input is convolved with the whole room IR (direct, early and tail). No dry path, no tail-alone.
-- Diotic. No normalisation.
-- One fixed gain for every file, recorded; peak ≤ −3 dBFS (Seat 1; stricter than item 10).
+**Fully wet**
+- The whole room IR: direct, early and tail.
+- No dry path, no tail-only render.
+- Diotic.
+- No normalisation: one fixed, recorded gain for all files.
+- Peak ≤ −3 dBFS.
 
-**Trials** (AX49, item 14):
-- 16 scored trials, detected at ≥ 12/16 (chance 0.038; power 0.63 at p = 0.75). Its own family.
-- 6 anchor trials (3 up, 3 down) interleaved at seeded positions, passing at ≥ 5/6. The anchor is B against B with the tail stepped ±3 dB (`--abx-step-db ±3 --abx-step-sample 0`), on the L4 scene and chord (Seats 1 and 3).
+**Trials**
+- 16 scored trials. Detection at ≥ 12/16. This is its own family.
+- 6 anchor trials (3 up, 3 down) at seeded positions, pass mark ≥ 5/6. The anchor is B against B with the tail stepped ±3 dB (`--abx-step-db ±3 --abx-step-sample 0`), on the L4 scene and chord.
 - Blocks of 22 trials, with a break after trial 11.
 - Familiarisation includes a labelled A/B pair.
 - No 0.5 dB block.
-- The record wording follows item 13, plus L4-S's scope.
 
-**Assertions on every stimulus** (Seat 3's list and Seat 1's check; all asserted unless marked print):
-1. The provisional flag is true in A's manifest. The flag and "provisional tail, validation-only flag" are printed (Seat 9).
-2. A and B agree bit for bit before the earliest tail crossfade start.
-3. Prefix: 10·log10(E(A − B)/E(B)) ≤ −18.27 dB per emitter and band over [t_mix,e, L_f − h) (AX47 (b); Seat 1).
-4. The per-band A/B energy over [t_mix,e,max + 2.5 ms, L_f) equals AX47 (b)'s predicted step within 0.05 dB (Seat 3).
-5. A carries zero energy from L_p onward.
-6. B's length is L.
-7. Decay from t_mix,e,max to L_f is ≥ 18.7 dB in every band.
-8. B's energy share past L_f is ≤ 0.0134 in every band.
-9. Print: the held-portion A/B level difference per band.
-10. Silence after release ≥ L of input.
+**Assertions on every stimulus** (Seats 3, 1, 9; print-only items say so)
+1. The provisional flag is recorded, with "provisional tail, validation-only flag" in the manifest.
+2. A and B agree bit for bit before the earliest tail crossfade starts.
+3. Prefix (AX47 (b)): 10·log10(E(A − B)/E(B)) ≤ −18.27 dB over [t_mix,e, L_f − h), per emitter and band.
+4. Over [t_mix,e,max + 2.5 ms, L_f), the A/B energy matches AX47 (b)'s predicted step within 0.05 dB.
+5. A is zero from L_p on.
+6. B is L long.
+7. Decay from t_mix,e,max to L_f is at least 18.7 dB in every band.
+8. B's share past L_f is at most 0.0134 per band.
+9. Print: the A/B level difference over the held part, per band.
+10. Silence after the release is at least L.
 11. Peak ≤ −3 dBFS.
-12. Two builds are bit-identical. Form-(b)-style checks do not apply, because L4 has no crossfade in the stimulus.
-13. **Handover-ghost print** (Seat 3 item 9, print only): from B's backward-integrated curve, per band, the re-onset level at a handover time of release + L_p + {0, 1, 2, 5} s.
+12. Two builds are bit-identical.
+13. **Ghost print** (print only; Seat 3 item 9 and Seat 6 condition 1): per band, the re-onset level from B's backward-integrated curve at release + L_p + {0, 1, 2, 5} s.
+14. **Listening pack** (Seat 6): one unscored render, "L4 handover demo (unscored; interim then handover, as at project load)". It uses the L4 chord, releases at t_r and hands over at the first partition boundary at or after t_r + L_p + 1 s. It is built with `--provisional-handover-sample` and is added to `listening_pack.py` under phase-07c-2b.
 
-**Not adopted now:** Seat 1's optional parameters for fade length and the L_f fraction. They go to 07d as a follow-up, and are used only if L4 detects.
+**Not adopted:** Seat 1's optional fade and L_f-fraction parameters. They go to 07d as a follow-up, to be used only if L4 detects. Whether the ghost needs its own ABX is put to Seat 1 in 07d, after Maisara has heard the demo.
 
 ## DECISION L4-T: sittings (Seat 7)
-- K6 is redone on the sealed L4 stimuli. Its estimate from the seats is about 18–20 min of audio per block [Hyp].
-- L4 runs as its own block with its own anchor, in E's second sitting, if that sitting plus L4 stays within 2 h.
-- Otherwise a third dated sitting goes into the session brief before any seal.
-- L4's seal comes before the session, together with E's.
+- K6 is redone on the sealed L4 stimuli.
+- L4 runs as its own block, with its own anchor, in E's second sitting if that sitting stays within 2 h. Otherwise a third dated sitting goes into the brief before any seal.
+- L4 is sealed with E, before the session.
 
-## M3-T (Seat 1's condition)
-- The pre-registration states the grounds for the choice: MA01_01 + MA01_02 were fixed for their measured assertions (Q5, form (b), nulls), before any blind result.
-- MA is recorded as an adult speaker from TSP's documentation. The children CA and CB are excluded (abx_kit L737).
+## Load-bearing claims (L4)
+- **L4-L1:** L-a has a maximum of 1. L-b and L-c have a maximum of 2 (the map above).
+- **L4-L2:** K27's bounds. The realised values are measured and asserted.
+- **L4-L3:** K28, the cube is excluded.
+- **L4-L4:** K25 and K26, the guard pattern.
+- **L4-L5:** e^(−4.312) = 0.0134 (AX49 K17′).
 
-## Load-bearing claims
-- **L4-L1** (map): L-a has a maximum of 1; L-b and L-c have 2 (Seat 3 L-b later, Seat 5 L-b later, five seats' L-c later).
-- **L4-L2** (K27): 0.161·2400/(1120·0.0431) = 8.0 s; L_f ≥ 0.0647 + 0.312·8 = 2.561 s; L = 12 s. All are measured and asserted before the seal.
-- **L4-L3** (K28): the low-α cube has L_p ≥ L, so it cannot be used.
-- **L4-L4** (from the code, K25 and K26): the guard must name the option field; the flag's gating pattern already exists.
-- **L4-L5** (AX49 K17′): the energy past L_f is ≤ e^(−4.312) = 0.0134.
-
-## Future-debt register
+## Future-debt register (L4-a)
 | seat | commits | undo cost | evidence | repaid when |
 |---|---|---|---|---|
-| 3 | A validation flag calling `assembleProvisional` from render_cli; condition 6 could erode | Delete one flag | `[pipeline]` offline-bypass test; default goldens unchanged | Tests 1–3 green on three OSes |
-| 3 | Handover ghost (re-onset after silence at handover) is not covered by AX47 (b) or by the ABX | A 07d remedy round | Researcher: audibility of a tail re-onset at about −20 dB; 07d | Ghost print recorded; 07d rules on it, and Seat 1 says whether it needs its own ABX |
-| 5 | Every later flag change keeps the guard green | Delete one option | Default-output hash (test 3) | Each CI run |
-| 7 | render_cli carries a provisional path; possibly a third sitting | Flag deletion; one sitting | K6 on L4 | Per-sitting plan in the brief |
-| 9 | Provenance: render_cli makes a non-room IR | Label line | Manifest | "provisional tail, validation-only flag" printed |
-| 1 | (Later 0 under L-a1) | — | — | — |
+| 1 | Later 0 under L-a1 | — | — | — |
+| 3 | Validation flags call `assembleProvisional` from render_cli; condition 6 could erode | Delete the flags | Tests 1–3 | Green on three OSes |
+| 3, 6 | The handover ghost is untested; "settling" clears before the crossfade (K32) | A 07d remedy round; the `settling()` fix in Phase 11 | Ghost print, the demo render, a researcher finding on re-onset audibility, the Phase 11 checklist | 07d rules on the ghost; Phase 11 keeps settling lit through the crossfade |
+| 5 | Every later flag change keeps the guard green | Delete the options | Default hash (test 3) | Each CI run |
+| 7 | render_cli carries the path; a possible third sitting | Flag deletion; one sitting | K6 on L4 | Per-sitting plan in the brief |
+| 9 | render_cli produces a non-room IR | A label line | Manifest | The validation-only line is printed |
 
 ## Strongest objection
-- **Seats 7 and 9 prefer L-b.** It needs no AX49 amendment, and its stimuli never come from the product tool.
-  - L-a still wins on the worst-off seat. L-b leaves Seats 3 and 5 at 2 later: a second renderer to maintain, and stimuli from a binary that is neither the shipped one nor the CLI.
-  - L-b's conditions could lower those to 1, which would tie L-a's maximum. L-a would then still lead on the sum and on reuse (07d, 08-3).
-- **Seat 5's test (iv) asked for "bit-identical to the default" on L_p ≥ L. This decision refuses there instead (Seats 2 and 3).** If Seat 5 holds that a refusal does not meet its condition, its L-a cell becomes 1/2. The maximum would then be 2, tied with L-b. That is the reversal check for the interrogator.
+- **Seats 7 and 9 prefer L-b.** It still leaves Seats 3 and 5 at a later 2.
+- **Seat 5's condition (iv)** asked for output "bit-identical to the default" on the L_p ≥ L scene. This decision refuses there instead (r1, Seats 2 and 3).
+  - If Seat 5 holds that refusal fails its condition, L-a becomes 1/2. That ties L-b's maximum, but L-a still wins on sum.
+- **The handover flag is Seat 6's addition.** Seat 5 has not rated it. It follows Seat 5's own gating pattern and its tests (1, 6, 8).
 
-**Confidence: medium.** K31 is open, and the label's bracketed values are measured later.
+**Confidence:** medium.
 
-**Reversal:**
-- Seat 5 rejects refusal r1;
-- the stone variant fails any pre-seal assertion (then the next-smallest valid scene at T60 8 s with L_p < L, re-convened);
-- test 7 (plugin parity) fails. The stimulus would then not be what the plugin plays, and L4 returns to the board.
+**Reversal:** any of the following.
+- Seat 5 rejects r1 or the handover flag.
+- A pre-seal assertion fails on the stone variant.
+- Test 7 fails (then L4 goes back to the board).
+
+---
+
+# Part B: rebuttal to interrogator file 11
+
+All corrections in file 11 are accepted. The kit-behaviour changes (⚙) are for the builder, who is already implementing M3-S, M3-G and M3-C.
+
+## M3-S (corrected)
+
+**⚙ Label, E** (adds one detail line to `label_detail`). It replaces the ITDG line:
+> "ITDG 0.6 ms (S0's wall image, notch ≈ 860 Hz), 0.89 ms (S0's floor image, notch ≈ 560 Hz) and 1.6 ms (S1's floor image, notch ≈ 320 Hz), all inside the ±2.5 ms direct window and counted as direct; specular amplitude √(0.99 × 0.1) = 0.315 (+2.4 / −3.3 dB at the wall image)."
+
+The other label lines and the Class line are unchanged from file 8.
+
+**D-M3d is dormant.** S-B\* is not run under M3-S. The value s = 0.7 holds for any later use.
+
+**Strongest objection** (restated):
+- Seats 2 and 9 prefer B.
+- If E rose by 1 in any cell, **D** (sum 14) would tie or lead.
+- B leads only if both emitter_wall scenes fail C4.
+
+**Decided for Maisara: one line per surviving option.** The PRD tests are NFR-1 (sensitivity and fidelity), NFR-8 L112 (scope of a non-detection by class) and L101 (accuracy first, the plugin stays usable).
+- **E, layout5_s0.9/emitter_wall (chosen):**
+  - NFR-1: the hardest s < 1 scene that qualifies (ΔG 0.778 dB, 0.014 dB under V3's s = 1 scene), with specular-only early reflections.
+  - NFR-8: a tail-dominated class.
+  - L101: about 2.5 h in two sittings.
+- **D, layout5_s0.8/emitter_wall:**
+  - NFR-1: slightly less sensitive (0.763 dB), with a fuller early part.
+  - NFR-8: the same class.
+  - L101: the same hours.
+  - Strains NFR-1 only through Seat 1's 1 now.
+- **B, layout5_s0.8/default:**
+  - NFR-1: less sensitive (0.46 dB).
+  - NFR-8: a near-balanced class, so the far-listener class goes untested (strains it).
+  - L101: the same hours.
+- **layout5_s0.9/default:**
+  - NFR-1: near-empty early structure (Seat 3 later 2), which strains it.
+  - NFR-8: near-balanced.
+- **layout4_s0.7/both_wall:**
+  - NFR-1: wet, with a full early part.
+  - It puts the listener 0.1 m from a wall, which is not a real seat (Seat 2's 2). That strains NFR-1's real-space fidelity.
+  - L101: 1.76 h.
+- **V3′, layout5_s1/default:**
+  - NFR-1: the early part is empty, which strains it.
+  - NFR-8: near-balanced.
+- **V1, V2, V3:** as in file 8. Each has a seat at 2 later, which strains NFR-1.
+
+## M3-G (corrected)
+- **M3S-L4, restated:**
+  - Sentence 2 starts at s1_end + ⌈(0.43·T_h + T)·fs⌉ + Δ.
+  - Its earliest heard start adds min d.
+  - The onset is at most eos + 0.43·T_h·fs, with eos ≤ s1_end.
+  - So the silence after the onset is ≥ T·fs + Δ + min d ≥ T·fs.
+- **Cost on E:** "about +1.2 s per speech stimulus" (3.729 s against 2.560 s). **⚙ K6's redo includes the longer pause, about +0.08 h.**
+- **Plain-language line:** "every gap and pause, and the silence after the step, is at least the longer of the measured reverberation times, as heard". The lead-in silence is excluded.
+- **Unchanged:** the construction and the assertions. The noise check on E (G = 126464, heard 2.606 s ≥ 2.600 s) is confirmed.
+
+## M3-C (corrected)
+- **Item 8:** "Seat 7's 'rises to 2' trigger is **avoided**". Its trigger is the confirmatory ABX falling after the 08-4 freeze.
+- **Item 9:** "The engine's Eyring tail on floor-absorbing layouts is inferred to run about 14 % long. That comes from Kuttruff Table 5.2 case 4 (1.38/1.21, with the other faces at α 0 and diffusely reflecting walls), carried over to layout 4 (α 0.01 plus air) as an inference [Inf; Seat 9]." It is a report only, and nothing is tuned.
+- No kit change.
+
+## M3-F (corrected): the full apply list for /fix-plan
+1. **AX47.** In the Reversal, "capped layout-4 scene" becomes "capped layout-4 or layout-5 scene". Add D-M3i's α sentence. One §6 row.
+2. **The held file-13 amendments.**
+   - **Item 9** becomes scene E, with its label, r/r_c 8.46 / 4.74 and D/R −18.6 / −13.5 dB. It replaces file 31's S-A numbers.
+   - **Item 13** is D-M3e.
+   - **Item 15** is M3-S's text.
+   - Homes:
+     - `docs/validation/abx-07c-2-run-sheet.md` §1 "Scene";
+     - the run sheet's item-15 entry under §7;
+     - `docs/phases/phase-07c-2b.md` scope 2, "Amendments held for M3", marked applied with this file.
+3. **M2 re-decision (M3-G).**
+   - The run sheet's construction text for gaps and pauses (L50–55, L61–64).
+   - The "M2 debt checks" bullet in phase-07c-2b scope 2.
+   - A note in both that M3-G (file 8) replaces file 34 item 3's construction premise. Review files are not edited.
+4. **phase-08-3.md:** the item-15 entry with Seat 4's L5 label, its prints and its scope.
+5. **phase-07c-2b item 8:** D-M3h 2(d)'s exception to the one-golden-round rule, with its §6 row.
+6. **B11 homes** for D-M3h 1 plus C-b: phase-05e scope (b), BUILD_PLAN's deferred B11 entry, and the phase-05b row.
+7. **Follow-ups:**
+   - the 14 % report (M3-C 9), next to file 40's 8 kHz item in phase-08-4 "Notes from the split", and in the PR Follow-ups;
+   - Seat 1's optional remedy parameters, in 07d.
+8. **AX49:** L4-W, and Seat 6's settling line in Phase 11's settling item.
+
+## M3-T (decided again)
+**Convening.**
+- **Seat 1, convened.** The speech pair is item 8's blind-test signal, which falls under Seat 1. Its answer is file 9-seat1-l4 §"M3-T".
+- **Seats 2–9, not required:**
+  - The pair does not change the scene, the engine, the chain or any user control. That covers Seats 2, 4, 5 and 6.
+  - It does not change the hours, because the speech stimulus length is set by the pause rule. That covers Seat 7.
+  - It does not change a label (Seat 9) or any producer workflow (Seat 8).
+  - Seat 3's interest, the nulls, is a pre-seal condition already listed in M3-C 7.
+
+**Options**
+- (a) MA01_01 + MA01_02.
+- (b) Another pair, which would need re-measuring.
+
+**Map.** Seat 1 on (a): "I accept", on condition that "the pre-registration states the selection grounds". Entered as 0/0 c. Its condition is adopted. (b) is unrated; no seat asked for it.
+
+**Corrected claim.** On the speech stimuli, the ≥ 20 dB assertion and form (b) pass on all 16 scenes (file 4, facts 4 and 9). **E is nulled on speech; B is nulled on noise only** (fact 5).
+
+**⚙ Open before the seal (Seat 3, M3-C 7).** B must be nulled within −120 dB on every speech stimulus.
+
+**DECISION M3-T:**
+- Speaker MA (an adult; TSP's documentation records it, and the children CA and CB are excluded, abx_kit L737).
+- Files MA01_01 and MA01_02, at 48 kHz.
+- The pre-registration states the selection grounds: the pair was fixed for its measured Q5, form-(b) and E-null results, before any blind result.
+- Our SHA-256 of `48k.zip` and of each excerpt is recorded (item 12).
+
+Confidence: high. Reversal: Seat 1 objects, or B fails the speech null.
+
+---
 
 ## Summary
 | id | decision | state | worst-off (cell) | sum | confidence | PRD bound | corpus basis | reversal |
 |---|---|---|---|---|---|---|---|---|
-| L4-P | `--provisional-ir` (+ `--provisional-timing`), refusals r1–r4, tests 1–8 | proposed | 1 (S2, S3, S5, S7) | 8 | medium | NFR-1, NFR-8 | — (code) | Seat 5 rejects r1; parity fails |
-| L4-W | AX49 wording, via /fix-plan with a §6 row | proposed | 1 | — | high | NFR-1 | — | — |
-| L4-S | stone_box with α × k, T60_max 8.0 ± 0.1 s; label; cut-depth scope | proposed | — (Seat 9 confirms the label) | — | medium | NFR-1, NFR-8 | Eq. 4.12, 5.24, 5.44; Table 6.1 | pre-seal fail |
-| L4-D | A/B static; Seat 1's chord and timing; anchor; assertions 1–13 | proposed | 0 | — | medium | NFR-1 | Eq. 8.29, 6.3, 6.4 | — |
-| L4-T | own block in E's sitting 2, or a third dated sitting | proposed | 1 (S7) | — | high | L101 | — | K6 on L4 |
-| M3-T cond. | selection grounds pre-registered | proposed | 0 | — | high | NFR-1 | — | — |
+| L4-P | `--provisional-ir`, `--provisional-timing`, `--provisional-handover-sample`; refusals r1–r5; tests 1–8 | proposed | 1 | 9 | medium | NFR-1, NFR-8 | — (code) | Seat 5 rejects r1 or the handover flag; parity fails |
+| L4-W | AX49 wording, plus the Phase 11 settling line | proposed | 1 | — | high | NFR-1 | — | — |
+| L4-S | stone_box with α × k, T60_max 8.0 ± 0.1 s; label; cut-depth scope | proposed | — (Seat 9 confirms the label) | — | medium | NFR-1, NFR-8 | Eq. 4.12, 5.24, 5.44 | pre-seal failure |
+| L4-D | static A/B; chord; anchor; assertions 1–14 | proposed | 0 | — | medium | NFR-1 | Eq. 8.29, 6.3, 6.4 | — |
+| L4-T | own block in E's sitting 2, else a third dated sitting | proposed | 1 | — | high | L101 | — | K6 on L4 |
+| M3-S | E; item 15; n = 2; ⚙ label line; D-M3d dormant | revised | 1 | 13 | medium | NFR-1, NFR-8 | Eq. 5.44, Table 5.2 | pre-seal failure, then D, then B |
+| M3-G | max rule; pause +1.2 s; ⚙ K6 | revised | 0 | 0 | high | NFR-1 | — | — |
+| M3-C | items 8 and 9 reworded | revised | 1 | — | medium | NFR-1, NFR-8 | Eq. 2.50, Table 5.2 | — |
+| M3-F | full apply list (1–8) | revised | 0 | — | high | NFR-1 | — | — |
+| M3-T | MA01_01 + MA01_02, grounds pre-registered; ⚙ B speech null open | decided again | 0 c | 0 | high | NFR-1 | — | Seat 1 objects; null fails |
 
-**Challenges to settled decisions:** AX49's render_cli clause, a board row (D-C9), is widened by L4-W. It is not one of Maisara's recorded decisions.
+**Challenges to settled decisions:** AX49's render_cli clause is a board row (D-C9). M2's gap construction is a board decision. Neither is one of Maisara's recorded decisions.
 
 ## Decided for Maisara
-- **L4-P and L4-W.** The listening test of the shortened "provisional" reverb, which plays while a large room loads, is built with the same tool as the main test. It uses a switch that is off by default, that the plugin can never reach, and that no reference file ever uses.
-  - NFR-1: L4 is the listening test that AX49's reversal reads.
-  - NFR-8: nothing changes in the engine.
-  - Other options:
-    - L-b (separate harness): strains NFR-1's evidence chain, because the stimuli come from a binary that is not the shipped one.
-    - L-c (later): strains NFR-1, because class (c) and the W pin would be decided without L4.
-  - Seats 7 and 9 give up their preferred harness.
-  - Amends nothing of hers. It amends AX49, a board row.
-- **L4-S and L4-D.** The test uses a small, very reverberant stone room, where the cut is easiest to hear, and a held chord released into a full 12 s of decay. A non-detection is recorded only for the measured depth of the cut. NFR-1, NFR-8. Amends nothing.
-- **L4-T.** About 20 min, inside E's second sitting if it fits; otherwise a third dated sitting. L101 ("must stay usable" does not apply; this is scheduling). It is a person's action for her.
+- **L4.** The test of the shortened "provisional" reverb, which plays while a large room loads, is built with the main test's own tool. It uses a switch that is off by default, which the plugin can never reach and no reference file uses.
+  - A small, very reverberant stone room is used, where a cut is easiest to hear. A held chord is released into 12 s of decay.
+  - An unscored demo of the real load-time handover goes into the listening pack, so that you can hear the "tail comes back" effect.
+  - PRD: NFR-1 (L4 is the test AX49's reversal reads) and NFR-8 (no engine change).
+  - L-b, a separate harness, strains NFR-1's evidence chain, because the stimuli would come from a binary that is not the shipped one. L-c, running L4 later, strains NFR-1, because class (c) and the W pin would be decided without it.
+  - Seats 7 and 9 give up their preferred option, L-b.
+  - Amends nothing of yours.
+- **Scene and gaps (M3-S, M3-G, corrected).** The test room is the hardest qualifying one among those with scattering below 1, and its early reflections are specular only. Every gap and pause, and the silence after the step, is at least one reverberation time as heard. NFR-1, NFR-8, L101. Amends nothing.
+- **Speech pair (M3-T).** Speaker MA, two sentences. It was chosen for its measured checks before any listening, and is accepted by the seat responsible for perception. NFR-1. Amends nothing.
 
-**NEEDS MAISARA:** none. The person's action is Raise item 2: possibly a third short sitting.
+**NEEDS MAISARA:** none. Raise item 2 remains a person's action: two sittings of about 1.25 h each for E, plus about 20 minutes for L4. The L4 block either joins the second sitting or becomes a third, short sitting.
 
 Files read:
-- /home/user/makroof/docs/review/phase-07c-2b/9-seat1-l4.md
-- /home/user/makroof/docs/review/phase-07c-2b/9-seat2-l4.md
-- /home/user/makroof/docs/review/phase-07c-2b/9-seat3-l4.md
-- /home/user/makroof/docs/review/phase-07c-2b/9-seat5-l4.md
-- /home/user/makroof/docs/review/phase-07c-2b/9-seat7-l4.md
-- /home/user/makroof/docs/review/phase-07c-2b/9-seat9-l4.md
+- /home/user/makroof/docs/review/phase-07c-2b/9-seat{1,2,3,5,6,7,9}-l4.md
+- /home/user/makroof/docs/review/phase-07c-2b/11-interrogator-on-file8.md
