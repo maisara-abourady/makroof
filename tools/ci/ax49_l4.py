@@ -109,11 +109,19 @@ L_S = 12.0  # Seat 2: L at the 12 s cap (1.5 x 8)
 LP_MAX_S = 3.82  # Seat 2: L_p <= 3.82 s
 DEPTH_MIN_DB = 18.7  # Seat 2 / AX49: decay >= 18.7 dB from t_mix,e,max to L_f
 # Item 9 style label (decider file 6 item 3, "fully wet" answering Seat 9; Seat 2: 10^6 m^3, no product room class)
-LABEL = ("ax49_l4_cube: synthetic 100 × 100 × 100 m, V 10^6 m³, scattering 0.3, T60 8.0 s from 63 Hz to 1 kHz "
-         "(T60_max 8 s, air absorption included; per-band T60 printed): a stress geometry for AX49's provisional tail, "
-         "not a room prediction or a validated preset. A = AX49 provisional tail (Engine::assembleProvisional, "
-         "validation-only flag --ax49-provisional); B = full engine tail ('exact' = full synthesis, not a "
-         "measurement). Fully wet: the whole rendered IR (direct, early part and tail), no dry path.")
+# Seat 9's final L4 label (docs/review/phase-07c-2b/14-seat9.md section 3), verbatim; {printed} = the build's heard
+# (emitters summed) D/R at 1 kHz, {seed} = the tailSeed. The figures in it follow Seat 9's fill rule (label_fill).
+LABEL_TEMPLATE = (
+    "ax49_l4_cube: synthetic 100 × 100 × 100 m, V 10⁶ m³, every face the same α per band, scattering 0.3. Listener "
+    "(50, 30, 1.7) m; emitters (45, 70, 2) and (55, 70, 2) m, each 40.3 m from the listener. T60 8.0 ± 0.1 s from 63 "
+    "Hz to 1 kHz as printed by the engine (Eyring, T60_max 8 s, air absorption included), shorter above 1 kHz where α "
+    "is held at its 1 kHz value; per-band T60 printed. D/R at 1 kHz {printed} dB heard, against about −6.5 dB in a "
+    "diffuse field at r/r_c 2.1 (r_c ≈ 19 m from A = Σ S·α + 4mV ≈ 18,200 m² at 1 kHz, the label form; Kuttruff Eqs. "
+    "5.24–5.25, 5.44–5.45, Table 6.1; indicative only: ᾱ ≈ 0.23 at 1 kHz is not small, §5.6). A stress geometry for "
+    "AX49's provisional tail, not a room prediction or a validated preset. A = AX49 provisional tail "
+    "(Engine::assembleProvisional, validation-only flag --ax49-provisional), faded over [L_f, L_p) = [3.6135, 3.7135) "
+    "s; B = full engine tail ('exact' = full synthesis, not a measurement); one tailSeed {seed} for A and B. Fully "
+    "wet: the whole rendered IR (direct, early part and tail), no dry path.")
 FORBIDDEN_LABEL_WORDS = ("hall", "church", "cathedral", "occupied")  # Seat 9 / Seat 2: no product room class
 
 # ---- Chord (decision item 3; Seat 1, file 4-seat1, verbatim) ----
@@ -126,7 +134,13 @@ ATTACK_S = 0.020  # raised cosine
 HOLD_S = 4.0
 RELEASE_S = 0.010  # raised cosine
 STEADY_S = 1.0  # the steady-state window: the last 1 s of the hold (level, S5, band coverage)
-COVERAGE_BANDS_HZ = (63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0)  # Seat 1: 63 Hz-4 kHz within 20 dB
+# L4-COV E (decider file 13): (a) steady state and (b) the cut window, every band 63 Hz-2 kHz within 20 dB of its
+# strongest, both asserted; Seat 1's original clause (63 Hz-4 kHz, steady state) printed with its result; 4 and 8 kHz
+# printed with their depth at L_f. The scope follows from S's depth at L_f, which no chord changes (13-L1).
+COVERAGE_BANDS_HZ = (63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0)
+ORIGINAL_COVERAGE_BANDS_HZ = (63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0)  # Seat 1's clause, print only
+PRINTED_BANDS_HZ = (4000.0, 8000.0)
+CUT_WINDOW_S = 0.100  # (b): the 100 ms where the cut begins in the aligned output (kit interpretation 2)
 COVERAGE_DB = 20.0
 LEVEL_TOL_DB = 1.0  # Seat 1: steady-state RMS equal to the AX47 noise stimuli's within +-1 dB
 L4_REF_NOISE_SEED = 4903  # kit choice: the reference pink-noise burst's seed
@@ -156,7 +170,8 @@ L4_ANCHOR_DB = -3.0  # the anchor: exact with the tail at -3 dB (item 5's method
 L4_PLAN_SEED = 4902  # kit choice: the anchor slots' seed
 LEVEL_KEY = "L4"  # manifest["blocks"]["L4"]; trial folders L4dB/trial_NN (abx_kit.seal's layout)
 WORDING_DETECTED = "detected: AX49's Reversal fires (worst case: provisional current through the whole free decay)"
-WORDING_NULL = "not detected in 16 trials by one listener (power 0.63), T60 8 s, held chord, omni diotic"
+WORDING_NULL = ("not detected in 16 trials by one listener (power 0.63), T60 8 s, held chord, omni diotic; cut exposed "
+                "at 63 Hz–2 kHz; at 4 kHz the tail is 40 dB down at L_f")  # decider file 13, L4-COV
 
 TIMING_RE = re.compile(r"ax49 provisional: t_mix,e,max ([0-9.e+-]+) s, T60_max ([0-9.e+-]+) s, L_f ([0-9.e+-]+) s, "
                        r"L_p ([0-9.e+-]+) s, L ([0-9.e+-]+) s, provisional (yes|no)")
@@ -186,7 +201,13 @@ def write_wav(path: pathlib.Path, data: np.ndarray, fs: int = FS) -> None:
 
     path = pathlib.Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    wavfile.write(path, int(fs), np.ascontiguousarray(data, dtype=np.float32))
+    data = np.ascontiguousarray(data, dtype=np.float32)
+    wavfile.write(path, int(fs), data)
+    # R2 (decider file 13): read back and bit-equal (float32) to the array that was checked, before any hash
+    back = wav.read_float32(path)[0]
+    want = data if data.ndim == 2 else data[:, None]
+    _require(back.shape == want.shape and np.array_equal(back.view(np.uint32), want.view(np.uint32)),
+             f"R2: {path} does not read back bit-equal to the checked array")
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -403,13 +424,13 @@ def _rc(n: int) -> np.ndarray:
     return 0.5 - 0.5 * np.cos(np.pi * (np.arange(n) + 0.5) / n)
 
 
-def chord_partials() -> list[dict]:
+def chord_partials(partial_max_hz: float = PARTIAL_MAX_HZ) -> list[dict]:
     """Every partial (note, k, f, amplitude 1/k, phase) in a fixed order; phases from default_rng(L4_CHORD_SEED),
     drawn note by note, k = 1, 2, ..."""
     rng = np.random.default_rng(L4_CHORD_SEED)
     out = []
     for name, f0 in L4_NOTES:
-        kmax = int(math.floor(PARTIAL_MAX_HZ / f0 + 1e-9))
+        kmax = int(math.floor(partial_max_hz / f0 + 1e-9))
         phases = rng.uniform(0.0, 2.0 * math.pi, size=kmax)
         out += [{"note": name, "k": k, "f_hz": k * f0, "amp": 1.0 / k, "phase": float(phases[k - 1])}
                 for k in range(1, kmax + 1)]
@@ -424,14 +445,14 @@ def chord_marks(free_samples: int) -> dict:
             "total": rel + n_rel + free_samples}
 
 
-def chord_signal(free_samples: int) -> tuple[np.ndarray, dict]:
+def chord_signal(free_samples: int, partial_max_hz: float = PARTIAL_MAX_HZ) -> tuple[np.ndarray, dict]:
     """The unscaled chord (mono, float64) and its sample marks: 0.5 s silence, 20 ms raised-cosine attack, 4 s hold,
     10 ms raised-cosine release (the chord adds no decay of its own), then `free_samples` of silence."""
     m = chord_marks(free_samples)
     n = m["end"] - m["onset"]
     t = np.arange(n) / FS
     tone = np.zeros(n)
-    for p in chord_partials():
+    for p in chord_partials(partial_max_hz):
         tone += p["amp"] * np.sin(2.0 * np.pi * p["f_hz"] * t + p["phase"])
     env = np.ones(n)
     n_att, n_rel = m["hold_start"] - m["onset"], m["end"] - m["release_start"]
@@ -581,17 +602,37 @@ def band_signals(y: np.ndarray) -> dict[str, np.ndarray]:
     return {bands.band_key(fc): bands.filter_band(y[:, 0].astype(np.float64), FS, fc) for fc in bands.OCTAVE_BANDS_HZ}
 
 
-def band_coverage(bb: dict, m: dict) -> dict:
-    """Seat 1: the exact render's steady state, every band 63 Hz-4 kHz within 20 dB of the strongest (asserted);
-    8 kHz printed."""
-    s0, s1 = m["release_start"] - int(round(STEADY_S * FS)), m["release_start"]
-    lv = {k: 10 * math.log10(float(np.mean(v[s0:s1] ** 2))) for k, v in bb.items()}
-    cov = [bands.band_key(fc) for fc in COVERAGE_BANDS_HZ]
+def band_levels(bb: dict, s0: int, s1: int) -> dict[str, float]:
+    return {k: 10 * math.log10(max(float(np.mean(v[s0:s1] ** 2)), 1e-300)) for k, v in bb.items()}
+
+
+def coverage(lv: dict[str, float], bands_hz: tuple[float, ...]) -> dict:
+    """Every band of `bands_hz` within COVERAGE_DB of the strongest of them (levels per band in dB)."""
+    cov = [bands.band_key(fc) for fc in bands_hz]
     top = max(lv[k] for k in cov)
     rel = {k: lv[k] - top for k in lv}
-    return {"level_dbfs": lv, "re_strongest_db": rel, "strongest": max(cov, key=lambda k: lv[k]),
-            "weakest_asserted": min(cov, key=lambda k: lv[k]), "limit_db": -COVERAGE_DB,
-            "ok": bool(all(rel[k] >= -COVERAGE_DB for k in cov))}
+    weakest = min(cov, key=lambda k: lv[k])
+    return {"bands": cov, "level_db": lv, "re_strongest_db": rel, "strongest": max(cov, key=lambda k: lv[k]),
+            "weakest": weakest, "weakest_db": rel[weakest], "limit_db": -COVERAGE_DB,
+            "margin_db": rel[weakest] + COVERAGE_DB, "ok": bool(rel[weakest] >= -COVERAGE_DB)}
+
+
+def cut_window(m: dict, lf_aligned_s: float) -> tuple[int, int]:
+    c0 = m["end"] + int(round(lf_aligned_s * FS))
+    return c0, c0 + int(round(CUT_WINDOW_S * FS))
+
+
+def band_coverage(bb: dict, m: dict, lf_aligned_s: float) -> dict:
+    """L4-COV E (decider file 13): (a) the exact render's steady state (last 1 s of the hold) and (b) its energy in the
+    100 ms where the cut begins in the aligned output: every band 63 Hz-2 kHz within 20 dB of its strongest, both
+    asserted; Seat 1's original clause (63 Hz-4 kHz, steady state) printed with its result."""
+    s0, s1 = m["release_start"] - int(round(STEADY_S * FS)), m["release_start"]
+    steady = band_levels(bb, s0, s1)
+    a = coverage(steady, COVERAGE_BANDS_HZ)
+    b = coverage(band_levels(bb, *cut_window(m, lf_aligned_s)), COVERAGE_BANDS_HZ)
+    orig = coverage(steady, ORIGINAL_COVERAGE_BANDS_HZ)
+    return {"a_steady_state": a, "b_cut_window": b, "original_clause_63_4k": orig,
+            "cut_window_samples": list(cut_window(m, lf_aligned_s)), "ok": bool(a["ok"] and b["ok"])}
 
 
 def s5_hold(a: np.ndarray, b: np.ndarray, ab: dict, bb: dict, m: dict) -> dict:
