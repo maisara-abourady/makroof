@@ -7,8 +7,9 @@ scene S', seal asserts), Seat 3 (files 4-seat3 and 8-seat3: P1-P6, S1-S7, N-L1-N
 - The trial plan, the pack layout abx_kit.seal reads unchanged, and Seat 1's scoring rule with its wordings.
 - Negative controls (render_cli needed; skipped without it unless SPATIAL_REQUIRE_RENDER_CLI=1):
   N-L1: a hard cut at L_f (and no fade at all) fails P5'; N-L2: a provisional built with another tailSeed fails P2 or
-  the prefix check; N-L3: a written IR that differs from the rendered one fails S3.
-- End to end: the full build on S' with every check; a red check other than the one recorded below fails the test.
+  the prefix check; N-L3: a written IR that differs from the rendered one fails S3; N-L4 (decider file 13): the chord
+  limited to <= 500 Hz fails coverage (a) and (b).
+- End to end: the full build on S' passes every check; the original 63 Hz-4 kHz clause still reads -22.94 dB, red.
 """
 
 from __future__ import annotations
@@ -44,12 +45,17 @@ def test_pinned_numbers() -> None:
     assert abs(abx_kit.binom_tail(12, 16, 0.75) - 0.630) < 5e-4 and k.L4_POWER == 0.63
     assert k.WORDING_DETECTED == ("detected: AX49's Reversal fires (worst case: provisional current through the "
                                   "whole free decay)")
-    assert k.WORDING_NULL == "not detected in 16 trials by one listener (power 0.63), T60 8 s, held chord, omni diotic"
+    # decider file 13 (L4-COV E): the null scoped to the bands where the cut is exposed
+    assert k.WORDING_NULL == ("not detected in 16 trials by one listener (power 0.63), T60 8 s, held chord, omni "
+                              "diotic; cut exposed at 63 Hz–2 kHz; at 4 kHz the tail is 40 dB down at L_f")
     # decision item 3 (Seat 1's chord, verbatim)
     assert k.L4_NOTES == (("C2", 65.406), ("G2", 97.999), ("C3", 130.813), ("E3", 164.814), ("G3", 195.998))
     assert (k.L4_CHORD_VERSION, k.L4_CHORD_SEED, k.PARTIAL_MAX_HZ) == ("l4-chord-v1", 4901, 5000.0)
     assert (k.SILENCE_S, k.ATTACK_S, k.HOLD_S, k.RELEASE_S) == (0.5, 0.020, 4.0, 0.010)
-    assert k.COVERAGE_BANDS_HZ == (63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0) and k.COVERAGE_DB == 20.0
+    # L4-COV E: (a) and (b) over 63 Hz-2 kHz within 20 dB; the original 63 Hz-4 kHz clause printed; 4k/8k printed
+    assert k.COVERAGE_BANDS_HZ == (63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0) and k.COVERAGE_DB == 20.0
+    assert k.ORIGINAL_COVERAGE_BANDS_HZ == (*k.COVERAGE_BANDS_HZ, 4000.0) and k.PRINTED_BANDS_HZ == (4000.0, 8000.0)
+    assert k.CUT_WINDOW_S == 0.100
     assert k.LEVEL_TOL_DB == 1.0 and k.MAX_PEAK_DBFS == -1.0
     # decision item 4: Seat 1's prefix limit = 20 log10(10^(1/20) - 1) (AX47 (b)); h = 0.1 s; Phase 06's -120 dB
     assert abs(k.PREFIX_LIMIT_DB - (-18.27)) < 5e-3 and k.PREFIX_H_S == 0.1 and k.NULL_LIMIT_DB == -120.0
@@ -60,9 +66,12 @@ def test_pinned_numbers() -> None:
     assert (k.T60_TARGET_S, k.T60_TOL_S, k.L_S, k.LP_MAX_S, k.DEPTH_MIN_DB) == (8.0, 0.1, 12.0, 3.82, 18.7)
     assert k.TAIL_SEED == abx_kit.TAIL_SEED  # item 1: the kit's fixed tailSeed
     assert (k.FS, k.PARTITION, k.BLOCK) == (48000, 512, 512)
+    # Seat 9's final label (14-seat9 section 3): two fields, {printed} and {seed}
+    filled = k.LABEL_TEMPLATE.format(printed="\u22128.5", seed=12345)
     for w in k.FORBIDDEN_LABEL_WORDS:
-        assert w not in k.LABEL.lower()
-    assert "not a room prediction or a validated preset" in k.LABEL and "no dry path" in k.LABEL
+        assert w not in filled.lower()
+    assert k.LABEL_TEMPLATE.count("{") == 2 and "one tailSeed 12345 for A and B" in filled
+    assert "not a room prediction or a validated preset" in filled and "no dry path" in filled
 
 
 def test_scene() -> None:
@@ -107,6 +116,19 @@ def test_trial_plan() -> None:
     assert all(t["A"] == "provisional" and t["B"] == "exact" and t["g_db"] is None for t in scored)
     assert all(t["A"] == "anchor" and t["B"] == "exact" and t["g_db"] == -3.0 for t in anchors)
     assert [t["trial"] for t in plan if t["break_after"]] == [11]
+
+
+def test_prescale_and_readback(tmp_path: pathlib.Path) -> None:
+    # R3: a power-of-two pre-scale to a peak < 1.0, undone exactly; R2: every WAV the kit writes reads back bit-equal
+    x = np.sin(np.arange(4800) * 0.01) * 1.42
+    xp, s = k.prescale(x)
+    assert s == 1 and np.max(np.abs(xp)) < 1.0 and np.array_equal(xp * 2.0, x)
+    y = (xp[:, None] * np.ones(2)).astype(np.float32)
+    assert np.array_equal(k.undo_prescale(y, s), (x[:, None] * np.ones(2)).astype(np.float32))
+    assert k.prescale(x * 0.5)[1] == 0
+    k.write_wav(tmp_path / "a.wav", y)
+    k.write_wav(tmp_path / "b.wav", y)
+    assert (tmp_path / "a.wav").read_bytes() == (tmp_path / "b.wav").read_bytes()  # byte-deterministic
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -290,27 +312,34 @@ def test_nl3_written_ir_must_be_the_rendered_one(binary: pathlib.Path, clean: di
     assert not r["ok"], r
 
 
+def test_nl4_dull_chord_fails_coverage(clean: dict) -> None:
+    # N-L4 (decider file 13): the same chord with partials limited to <= 500 Hz fails both (a) and (b); the built
+    # chord passes both (float64 convolutions of the exact IR, the checks' own arithmetic)
+    t, diag = clean["timing"], clean["diag"]
+    lf_al = t["L_f_s"] - float(diag["alignmentShiftS"])
+    free = k.free_decay_samples(clean["exact"].shape[0])
+    for limit, ok in ((k.PARTIAL_MAX_HZ, True), (500.0, False)):
+        x, m = k.chord_signal(free, limit)
+        bc = k.band_coverage(k.band_signals(_offline_arms(x, clean["exact"])), m, lf_al)
+        assert bc["a_steady_state"]["ok"] is ok and bc["b_cut_window"]["ok"] is ok, (limit, bc)
+
+
 # ---------------------------------------------------------------------------------------------------------
 # End to end
 # ---------------------------------------------------------------------------------------------------------
 
-# The first full build (2026-11-24) reds Seat 1's band coverage on the clean stimulus: 4 kHz at -22.94 dB re the
-# strongest band (125 Hz) against the 20 dB limit. Returned to the board (never loosened); every other check passes.
-KNOWN_RED = "band coverage (Seat 1): 4000 Hz"
-
-
 def test_full_build(binary: pathlib.Path, tmp_path: pathlib.Path) -> None:
     lines: list[str] = []
-    try:
-        man = k.build(tmp_path, binary, log=lines.append)
-    except k.CheckFailed as e:
-        rec = json.loads((tmp_path / "l4" / "check_failed.json").read_text())
-        # the known red is the first failure (S1-S4 are listed before it) and every other check was computed and passed
-        assert str(e).startswith(KNOWN_RED), str(e)
-        st = rec["stimulus_checks"]
-        assert all(st[f"S1_{a}"]["ok"] and st[f"S3_{a}"]["ok"] for a in k.ARMS)
-        assert st["S2_provisional"]["ok"] and st["S2_anchor"]["ok"] and st["S4"]["ok"] and st["prefix"]["ok"]
-        assert rec["level"]["ok"] and not (tmp_path / "l4" / "manifest.json").exists()
-        pytest.xfail(f"returned to the board: {e}")
-    assert (tmp_path / "l4" / "manifest.json").exists() and len(man["blocks"]["L4"]) == 22
+    man = k.build(tmp_path, binary, log=lines.append)
+    l4 = tmp_path / "l4"
+    assert (l4 / "manifest.json").exists() and len(man["blocks"]["L4"]) == 22
     assert man["stimulus_length_s"] >= 16.53  # L4-L4
+    bc = man["stimulus_checks"]["band_coverage"]
+    assert bc["a_steady_state"]["ok"] and bc["b_cut_window"]["ok"]
+    # decider file 13: Seat 1's original clause (63 Hz-4 kHz) still reads -22.94 dB, red, on this deterministic build
+    orig = bc["original_clause_63_4k"]
+    assert not orig["ok"] and orig["weakest"] == "4000" and round(orig["weakest_db"], 2) == -22.94
+    assert man["label"] == k.LABEL_TEMPLATE.format(printed=man["label_fill"]["printed"], seed=12345)
+    assert man["input_scaling"]["chord_s"] == 1 and man["input_scaling"]["chord_prescaled_peak_dbfs"] < 0.0
+    for rel, digest in man["sha256"].items():
+        assert abx_kit.sha256_file(l4 / rel) == digest, rel

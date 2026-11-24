@@ -12,6 +12,12 @@ The design is decider file 6 (docs/review/phase-07c-2b/6-decider-m3-r2.md), "M3-
   release, >= L of free decay. Level: the exact render's steady state equals the AX47 noise reference within +-1 dB.
 - Checks (item 4): Seat 3's P1-P6, S1-S7 (file 4-seat3, with file 8-seat3's partition-grid precisions, which
   override), Seat 2's seal asserts, Seat 1's band coverage and prefix check.
+- Band coverage, amended (decider file 13, L4-COV E, after the first build's red at 4 kHz -22.94 dB): (a) the exact
+  render's steady state and (b) its energy in the 100 ms where the cut begins, every band 63 Hz-2 kHz within 20 dB of
+  its strongest, both asserted; 4 and 8 kHz printed with their depth at L_f; Seat 1's original 63 Hz-4 kHz clause
+  printed with its result. Seat 3's conditions R1-R7 (file 13): P2's one statement, every WAV read back bit-equal before
+  hashing, the input pre-scaled by 2^-s (R3), both grid forms, P4'/P5' kept as cross-checks, the depth margin printed.
+- Label: Seat 9's final text (file 14-seat9 section 3), {printed} = the heard D/R at 1 kHz, {seed} = the tailSeed.
 - Pass rule (item 5): >= 12/16 (alpha 2517/65536), 6 interleaved exact-vs-exact anchors at tail -3 dB, pass >= 5/6,
   else void with one rerun; the two result wordings verbatim.
 - Path (item 6, F3; file 8-seat3): every arm through render_cli --mode omni --realtime-emulation --block 512
@@ -42,7 +48,7 @@ What is asserted, and how exactly:
   against a float64 FFT convolution of the IR it wrote, residual <= -120 dB), S4 (A exactly 0 from the grid bound;
   <= -120 dB re the hold between the true end and it; free decay >= L), Seat 2's seal asserts (provisional yes;
   L_p < L; L == 12 s; L_p <= 3.82 s; T60 8.0 +- 0.1 s for 63 Hz-1 kHz; 60 (L_f - t_mix,e,max) / T60_b >= 18.7 dB in
-  every band), Seat 1's band coverage (63 Hz-4 kHz within 20 dB of the strongest band) and prefix check
+  every band), the band coverage (L4-COV E: (a) steady state, (b) cut window, 63 Hz-2 kHz) and Seat 1's prefix check
   (10 log10(E(A - B)/E(B)) <= -18.27 dB over [0, release + L_f - 0.1 s)), the level (+-1 dB of the noise reference).
 - Measured approximations (asserted with the stated kit tolerance, and printed):
   P4' (c_b per band from the band-filtered IRs, a least-squares gain of provisional on exact over
@@ -54,13 +60,14 @@ What is asserted, and how exactly:
   cut (0) and no fade (the pre-fade c^2)). The tap of L_f in the aligned IR is rounded from emission time, so the
   formula's phase is known to +-1 sample: that, and the per-band c_b inside a broadband window, is why P5' is not to
   1e-9.
+- P4' and P5' are cross-checks (R6), not substitutes for the C++ case below.
 - Printed only: P6 (per-band energy share of the exact IR past L_f), S5 (per-band and per-partial A - B over the last
   1 s of the hold), S6 (no detector asserted at the cut; nothing printed beyond S4/S7), S7 (10 log10(E_B/E_A) per band
   in 30 ms windows on a 100 ms grid after the release), B's and A's per-band level in the 100 ms after
   release + L_f re the hold, the prefix value under the other readings of "release + L_f".
 - Not possible from the CLI (needs a C++ test): P4 exactly (provisional unit decay = c_b x exact unit decay per band
   on [t_mix,e + 2.5 ms, L_f) to 1e-9 relative, via StagedBuild::unitDecays()) and P5 exactly (the fade gain against
-  the formula to 1e-9, monotone, first value >= 1 - 1e-5). Proposed: a Catch2 case `[ax49-l4]` that plans S' with
+  the formula to 1e-9, monotone, first value >= 1 - 1e-5). Required (decider file 13 R5; outside this kit): a Catch2 case `[ax49-l4]` that plans S' with
   StagedBuild, runs assembleProvisional() and assemble(), takes both unitDecays() per emitter and band, and asserts
   both statements, with N-L1 (a hard cut at L_f) and N-L2 (another tailSeed) failing them.
 """
@@ -299,8 +306,11 @@ def p2_check(prov: np.ndarray, exact: np.ndarray, diag: dict) -> dict:
     n = max(prov.shape[0], exact.shape[0])
     p, x = _pad(prov, n), _pad(exact, n)
     bits = np.array_equal(p[:pre].view(np.uint32), x[:pre].view(np.uint32))
-    return {"window_taps": pre, "bit_identical": bool(bits), "first_differing_tap": first_difference(prov, exact),
-            "ok": bool(bits and pre > 0)}
+    diff = np.flatnonzero(np.any(p.view(np.uint32) != x.view(np.uint32), axis=1))
+    n1 = int(diff[0]) if diff.size else n  # bit level, as P2 compares
+    return {"window_taps": pre, "bit_identical": bool(bits), "first_differing_tap": n1,
+            "statement": f"identical on [0, {n1}); first difference at {n1}",
+            "tap_at_window_end": pre, "tap_at_window_end_identical": bool(n1 > pre), "ok": bool(bits and pre > 0)}
 
 
 def p3_check(prov: np.ndarray, timing: dict, diag: dict) -> dict:
@@ -471,6 +481,70 @@ def free_decay_samples(ir_len: int) -> int:
     return int(math.ceil((end + n) / PARTITION)) * PARTITION - end
 
 
+def _minus(v: float, digits: int = 1) -> str:
+    t = f"{v:.{digits}f}"
+    return t.replace("-", "\u2212")
+
+
+def label_fill(diag: dict, exact_ir: np.ndarray, timing: dict) -> dict:
+    """Seat 9's fill rule (14-seat9 section 3): {printed} = the heard (emitters summed, output 0) D/R at 1 kHz of the
+    exact IR (tools.acoustics.metrics, as abx_kit.check_scene); {seed} = the tailSeed. The label's figures recomputed:
+    alpha-bar from the scene's 1 kHz alpha, m from the engine's air table (diagnostics airEnergyPerMetre, 1 kHz),
+    A = S alpha-bar + 4 m V, r_c = sqrt(A / 16 pi), diffuse D/R = 20 log10(r_c / r) (Kuttruff Eqs. 5.24-5.25,
+    5.44-5.45); alpha-bar back-solved from the printed T60 (Eyring, Decay.h: T60 = 0.161 V / (-S ln(1 - a) + 4 m V)),
+    both printed when they differ by more than 0.005. Asserted: the filled label's rounded figures are these."""
+    from tools.acoustics import metrics
+
+    fs = float(diag["sampleRate"])
+    heard = exact_ir[:, 0].astype(np.float64) + exact_ir[:, 2].astype(np.float64)
+    drr = metrics.room_metrics(heard, fs)["bands"]["1000"].get("DRR")
+    _require(drr is not None, "label: the heard D/R at 1 kHz could not be measured")
+    v, surf = float(diag["volume"]), float(diag["surface"])
+    a_scene = ABSORPTION[4]
+    m_air = float(diag["airEnergyPerMetre"][4])
+    t60 = float(diag["t60"][4])
+    a_back = 1.0 - math.exp(-(0.161 * v / t60 - 4.0 * m_air * v) / surf)
+    area = surf * a_scene + 4.0 * m_air * v
+    rc = math.sqrt(area / (16.0 * math.pi))
+    r = float(np.linalg.norm(np.subtract(EMITTERS[0], LISTENER)))
+    rec = {"DRR_heard_1k_db": float(drr), "printed": _minus(float(drr)), "seed": TAIL_SEED,
+           "alpha_bar_scene_1k": a_scene, "alpha_bar_backsolved_1k": a_back, "m_air_1k_per_m": m_air,
+           "A_m2": area, "r_c_m": rc, "r_m": r, "r_over_rc": r / rc, "DRR_diffuse_db": 20 * math.log10(rc / r),
+           "alpha_differs_gt_0.005": abs(a_back - a_scene) > 0.005}
+    rec["label"] = LABEL_TEMPLATE.format(printed=rec["printed"], seed=TAIL_SEED)
+    # the label's fixed figures, as Seat 9 rounded them
+    checks = {"A ≈ 18,200 m²": round(area, -2) == 18200, "r_c ≈ 19 m": round(rc) == 19,
+              "r/r_c 2.1": round(r / rc, 1) == 2.1, "−6.5 dB": round(20 * math.log10(rc / r), 1) == -6.5,
+              "ᾱ ≈ 0.23": round(a_scene, 2) == 0.23, "40.3 m": round(r, 1) == 40.3,
+              "[3.6135, 3.7135) s": (round(timing["L_f_s"], 4), round(timing["L_p_s"], 4)) == (3.6135, 3.7135)}
+    rec["label_figures"] = checks
+    _require(all(checks.values()), f"label: a fixed figure disagrees with the fill rule: {checks}, {rec}")
+    for w in FORBIDDEN_LABEL_WORDS:
+        _require(w not in rec["label"].lower(), f"label names '{w}' (Seats 2, 9)")
+    return rec
+
+
+def prescale(x: np.ndarray) -> tuple[np.ndarray, int]:
+    """R3 (decider file 13): the render input is pre-scaled by an exact power of two 2^-s (s >= 0, the smallest with
+    peak < 1.0, asserted) and the render is scaled back by 2^s after it (undo), so no input sample above full scale
+    goes through render_cli's reader on an unasserted path."""
+    s = 0
+    peak = float(np.max(np.abs(x)))
+    while peak * 2.0**-s >= 1.0:
+        s += 1
+    xp = x * 2.0**-s
+    _require(float(np.max(np.abs(xp))) < 1.0, "R3: the pre-scaled input peak is not < 1.0")
+    return xp, s
+
+
+def undo_prescale(y: np.ndarray, s: int) -> np.ndarray:
+    """x 2^s in float32 is exact (no overflow at these levels); asserted by the inverse."""
+    out = (y.astype(np.float32) * np.float32(2.0**s)).astype(np.float32)
+    _require(np.array_equal((out * np.float32(2.0**-s)).view(np.uint32), y.astype(np.float32).view(np.uint32)),
+             "R3: undoing the pre-scale is not exact")
+    return out
+
+
 def reference_level(binary: pathlib.Path, work: pathlib.Path) -> dict:
     """The AX47 noise reference (Seat 1: the noise stimuli's heard RMS): a 1 s unit-RMS pink-noise burst (whole
     partitions, 5 ms raised-cosine edges, as abx_kit.noise_programme) at NOISE_LEVEL_DBFS through S-W
@@ -486,12 +560,14 @@ def reference_level(binary: pathlib.Path, work: pathlib.Path) -> dict:
     b = signals.apply_fades(signals.pink_noise(burst, L4_REF_NOISE_SEED), FS, abx_kit.FADE_S)
     x[lead : lead + burst] = b * signals.db_to_amp(abx_kit.NOISE_LEVEL_DBFS)
     inp, out = work / "ref_in.wav", work / "ref_out.wav"
-    write_wav(inp, signals.to_stereo(x), FS)
-    y = render(binary, scene, inp, out)
+    xp, s_ref = prescale(x)
+    write_wav(inp, signals.to_stereo(xp), FS)
+    y = undo_prescale(render(binary, scene, inp, out), s_ref)
     seg = y[lead + int(round(0.5 * FS)) : lead + int(round(1.0 * FS)), 0].astype(np.float64)
     rms = math.sqrt(float(np.mean(seg**2)))
     return {"scene": REF_SCENE, "noise_seed": L4_REF_NOISE_SEED, "noise_level_dbfs": abx_kit.NOISE_LEVEL_DBFS,
-            "burst_samples": burst, "window_s": [0.5, 1.0], "rms": rms, "rms_dbfs": 20 * math.log10(rms),
+            "burst_samples": burst, "window_s": [0.5, 1.0], "rms": rms, "input_peak_dbfs":
+            20 * math.log10(float(np.max(np.abs(x)))), "prescale_s": s_ref, "rms_dbfs": 20 * math.log10(rms),
             "scene_sha256": abx_kit.sha256_file(scene), "ir_sha256": abx_kit.sha256_file(ir_path)}
 
 
@@ -541,7 +617,9 @@ def s2_check(x_in: np.ndarray, a: np.ndarray, b: np.ndarray, n_d: int) -> dict:
     n = min(a.shape[0], b.shape[0])
     same = bool(np.array_equal(a[: min(bound, n)], b[: min(bound, n)]))
     first = first_difference(a[:n], b[:n])
-    return {"n_on": n_on, "n_d": n_d, "bound_sample": bound, "identical_before_bound": same,
+    return {"n_on": n_on, "n_d": n_d, "bound_sample": bound, "bound_sample_engine_time": bound + PARTITION,
+            "grid": "written file (latency removed): (floor(n_on/P) + floor(n_d/P)) P; engine output time (IR time + "
+                    "the P-sample latency): (floor(n_on/P) + floor(n_d/P) + 1) P", "identical_before_bound": same,
             "first_differing_sample": first, "margin_samples": first - bound, "ok": same}
 
 
@@ -562,7 +640,9 @@ def s3_check(x_in: np.ndarray, y: np.ndarray, ir: np.ndarray) -> dict:
         db = 10 * math.log10(max(float(np.sum((o - r) ** 2)), 1e-300) / float(np.sum(r**2)))
         per.append(db)
         worst = max(worst, db)
-    return {"residual_db": per, "worst_db": worst, "limit_db": NULL_LIMIT_DB, "margin_db": NULL_LIMIT_DB - worst,
+    return {"residual_db": per, "worst_db": worst,
+            "alignment": "delay 0 in compensated output (render_cli removes the P-sample latency; Phase 06's delay P "
+                         "is the engine-time form)", "limit_db": NULL_LIMIT_DB, "margin_db": NULL_LIMIT_DB - worst,
             "ok": bool(worst <= NULL_LIMIT_DB)}
 
 
@@ -581,7 +661,10 @@ def s4_check(x_in: np.ndarray, a: np.ndarray, prov_ir: np.ndarray, hold_ms: floa
     resid = _db(float(np.mean(seg**2)), hold_ms) if seg.size and np.any(seg != 0) else None
     free = x_in.size - m["end"]
     ok = zero and (resid is None or resid <= NULL_LIMIT_DB) and free >= int(round(L_S * FS))
-    return {"n_end": n_end, "L_p_measured_taps": lp, "K_p": k_p, "zero_from_sample": bound, "true_end_sample": true_end,
+    return {"n_end": n_end, "L_p_measured_taps": lp, "K_p": k_p, "zero_from_sample": bound,
+            "zero_from_sample_engine_time": bound + PARTITION,
+            "grid": "written file (latency removed): (ceil(n_end/P) + K_p) P; engine output time (IR time + the "
+                    "P-sample latency): (ceil(n_end/P) + K_p + 1) P", "true_end_sample": true_end,
             "exactly_zero_from_bound": zero, "partial_block_db_re_hold": resid, "partial_block_samples": int(seg.size),
             "free_decay_s": free / FS, "free_decay_min_s": L_S, "ok": bool(ok)}
 
@@ -769,11 +852,9 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
     t_start = time.monotonic()
     work = l4 / "_work"
     work.mkdir()
-    man.update({"chain": "l4", "label": LABEL, "preregistration": "phase-07c-2b decider file 6, M3-7 / M3-L4 items 1-8",
+    man.update({"chain": "l4", "preregistration": "phase-07c-2b decider file 6, M3-7 / M3-L4 items 1-8",
                  "design": "L4-A", "fs": FS, "partition": PARTITION, "block": BLOCK, "render_cli": str(binary),
                  "tailSeed": TAIL_SEED, "sha256": {}})
-    for w in FORBIDDEN_LABEL_WORDS:
-        _require(w not in LABEL.lower(), f"label names '{w}' (Seats 2, 9)")
 
     # ---- Scene S' and its IRs ----
     scene_path = l4 / "scene.json"
@@ -801,6 +882,19 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
         f"L {sc['L_s']} s; provisional yes")
     log("L4 scene S': depth at L_f per band " + ", ".join(f"{d:.2f}" for d in sc["depth_at_L_f_db"])
         + " dB; at L_p " + ", ".join(f"{d:.2f}" for d in sc["depth_at_L_p_db"]) + " dB (>= 18.7 dB asserted)")
+    # R7 (decider file 13): the 63 Hz-1 kHz depth margin against AX49's 18.7 dB
+    sc["depth_margin_63_1k_db"] = [d - DEPTH_MIN_DB for d in sc["depth_at_L_f_db"][:T60_BANDS]]
+    log("L4 R7: depth margin at L_f against AX49's 18.7 dB, 63 Hz-1 kHz: "
+        + ", ".join(f"{d:+.3f}" for d in sc["depth_margin_63_1k_db"]) + " dB")
+    lab = label_fill(diag, ir["exact"], timing)
+    man["label"] = lab["label"]
+    man["label_fill"] = {k: v for k, v in lab.items() if k != "label"}
+    log(f"L4 label fill (Seat 9): heard D/R 1 kHz {lab['DRR_heard_1k_db']:.2f} dB -> {{printed}} = {lab['printed']}; "
+        f"{{seed}} = {lab['seed']}; alpha-bar 1 kHz scene {lab['alpha_bar_scene_1k']:.5f} (back-solved from T60 "
+        f"{lab['alpha_bar_backsolved_1k']:.5f}{', DIFFER > 0.005' if lab['alpha_differs_gt_0.005'] else ''}), m "
+        f"{lab['m_air_1k_per_m']:.4e} /m, A {lab['A_m2']:.0f} m^2, r_c {lab['r_c_m']:.2f} m, r {lab['r_m']:.2f} m, "
+        f"r/r_c {lab['r_over_rc']:.3f}, diffuse D/R {lab['DRR_diffuse_db']:.2f} dB; label figures {lab['label_figures']}")
+    log(f"L4 label: {lab['label']}")
 
     # ---- IR checks P1-P6 ----
     p2 = p2_check(ir["provisional"], ir["exact"], diag)
@@ -811,8 +905,8 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
     n_d_anchor = first_difference(ir["anchor"], ir["exact"])
     man["ir_checks"] = {"P1": {"L_p_lt_L": timing["L_p_s"] < timing["L_s"], **timing}, "P2": p2, "P3": p3, "P4": p4,
                         "P5": p5, "P6": p6, "anchor_first_differing_tap": n_d_anchor}
-    log(f"L4 P1: L_p {timing['L_p_s']} s < L {timing['L_s']} s; P2: bit-identical on [0, {p2['window_taps']}) taps "
-        f"({p2['bit_identical']}), first differing tap {p2['first_differing_tap']}; P3: L_p tap {p3['L_p_tap']}, "
+    log(f"L4 P1: L_p {timing['L_p_s']} s < L {timing['L_s']} s; P2 (window [0, {p2['window_taps']})): "
+        f"{p2['statement']}; tap {p2['window_taps']} identical: {p2['tap_at_window_end_identical']}; P3: L_p tap {p3['L_p_tap']}, "
         f"last non-zero {p3['L_p_measured_taps']}, zero from L_p {p3['zero_from_L_p']}")
     for r in p4["rows"]:
         log(f"L4 P4' emitter {r['emitter']}: 20 log10 c_b " + ", ".join(_fmt(v, 3) for v in r["c_b_db"].values())
@@ -837,13 +931,20 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
     hold = slice(m["release_start"] - int(round(STEADY_S * FS)), m["release_start"])
     g0 = 0.1 / float(np.max(np.abs(raw)))
     probe_in = work / "probe_in.wav"
-    write_wav(probe_in, signals.to_stereo(raw * g0), FS)
-    yp = render(binary, scene_path, probe_in, work / "probe_out.wav")
+    xp_probe, s_probe = prescale(raw * g0)
+    write_wav(probe_in, signals.to_stereo(xp_probe), FS)
+    yp = undo_prescale(render(binary, scene_path, probe_in, work / "probe_out.wav"), s_probe)
     rms_p = math.sqrt(float(np.mean(yp[hold, 0].astype(np.float64) ** 2)))
     gain = g0 * ref["rms"] / rms_p
     x = (raw * gain).astype(np.float32).astype(np.float64)
+    x_pre, s_in = prescale(x)  # R3: chord_dry.wav is the pre-scaled chord, the file render_cli reads
     in_path = l4 / "chord_dry.wav"
-    write_wav(in_path, signals.to_stereo(x), FS)
+    write_wav(in_path, signals.to_stereo(x_pre), FS)
+    man["input_scaling"] = {
+        "method": "R3 pre-scale (decider file 13): the render input is the chord x 2^-s, pre-scaled peak < 1.0 "
+                  "asserted; every render is multiplied by 2^s after it (exact in float32, asserted by the inverse); "
+                  "chord_dry.wav holds the pre-scaled chord", "chord_s": s_in, "probe_s": s_probe,
+        "reference_s": ref["prescale_s"], "chord_prescaled_peak_dbfs": 20 * math.log10(float(np.max(np.abs(x_pre))))}
     man["sha256"]["chord_dry.wav"] = abx_kit.sha256_file(in_path)
     man["chord"] = {"version": L4_CHORD_VERSION, "seed": L4_CHORD_SEED, "notes": [list(n) for n in L4_NOTES],
                     "partials": len(chord_partials()), "partial_max_hz": PARTIAL_MAX_HZ,
@@ -854,6 +955,8 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
 
     # ---- The three arms ----
     raw_out = {k: render(binary, scene_path, in_path, work / f"{k}_out.wav", *a) for k, a in ARMS.items()}
+    raw_out_pre = raw_out  # the renders as render_cli wrote them (of x_pre): S3 is checked on these
+    raw_out = {k: undo_prescale(v, s_in) for k, v in raw_out_pre.items()}
     n = m["total"]
     for k, y in raw_out.items():
         _require(bool(np.all(y[n:] == 0.0)), f"{k}: the render is not zero past the stimulus end (trim would lose audio)")
@@ -865,13 +968,15 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
     man["level"] = lvl
     log(f"L4 level: exact steady state {lvl['exact_steady_rms_dbfs']:.3f} dBFS, noise reference "
         f"{ref['rms_dbfs']:.3f} dBFS (difference {lvl['difference_db']:+.4f} dB); chord gain {man['chord']['gain_db']:.2f} "
-        f"dB, input peak {man['chord']['input_peak_dbfs']:.2f} dBFS")
+        f"dB, input peak {man['chord']['input_peak_dbfs']:.2f} dBFS (R3: pre-scaled by 2^-{s_in} to "
+        f"{man['input_scaling']['chord_prescaled_peak_dbfs']:.2f} dBFS, undone after the render; reference noise "
+        f"input peak {ref['input_peak_dbfs']:.2f} dBFS, 2^-{ref['prescale_s']})")
     _require(lvl["ok"], f"level: {lvl}")
 
     st: dict = {}
     for k in ARMS:
         st[f"S1_{k}"] = s1_check(y[k])
-        st[f"S3_{k}"] = s3_check(x, raw_out[k], ir[k])
+        st[f"S3_{k}"] = s3_check(x_pre, raw_out_pre[k], ir[k])
     st["S2_provisional"] = s2_check(x, y["provisional"], y["exact"], p2["first_differing_tap"])
     st["S2_anchor"] = s2_check(x, y["anchor"], y["exact"], n_d_anchor)
     hold_ms = float(np.mean(y["provisional"][hold, 0].astype(np.float64) ** 2))
@@ -882,7 +987,10 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
     st["prefix_readings"] = {"L_f_from_emission": prefix_check(y["provisional"], y["exact"], m["end"], timing["L_f_s"]),
                              "release_start": prefix_check(y["provisional"], y["exact"], m["release_start"], lf_al)}
     ab, bb = band_signals(y["provisional"]), band_signals(y["exact"])
-    st["band_coverage"] = band_coverage(bb, m)
+    st["band_coverage"] = band_coverage(bb, m, lf_al)
+    xb = band_signals(signals.to_stereo(x))
+    st["band_coverage"]["dry_chord_steady_re_strongest_db"] = coverage(
+        band_levels(xb, hold.start, hold.stop), ORIGINAL_COVERAGE_BANDS_HZ)["re_strongest_db"]
     st["S5"] = s5_hold(y["provisional"], y["exact"], ab, bb, m)
     st["after_cut"] = after_cut_levels(ab, bb, m, lf_al)
     st["S7"] = s7_handover(y["provisional"], ab, bb, m, n)
@@ -890,12 +998,15 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
     for k in ARMS:
         log(f"L4 S1 {k}: diotic {st[f'S1_{k}']['diotic']}, peak {st[f'S1_{k}']['peak_dbfs']:.2f} dBFS; S3 residual "
             f"{st[f'S3_{k}']['worst_db']:.1f} dB (margin {st[f'S3_{k}']['margin_db']:.1f} dB)")
+    log(f"L4 S3 alignment: {st['S3_exact']['alignment']}")
     for k in ("S2_provisional", "S2_anchor"):
         s = st[k]
-        log(f"L4 {k}: n_on {s['n_on']}, n_d {s['n_d']}, identical before {s['bound_sample']} ({s['identical_before_bound']}), "
+        log(f"L4 {k}: n_on {s['n_on']}, n_d {s['n_d']}, identical before {s['bound_sample']} in the written file "
+            f"(engine time {s['bound_sample_engine_time']}) ({s['identical_before_bound']}), "
             f"first difference {s['first_differing_sample']} (margin {s['margin_samples']} samples)")
     s4 = st["S4"]
-    log(f"L4 S4: A zero from {s4['zero_from_sample']} ({s4['exactly_zero_from_bound']}; K_p {s4['K_p']}, L_p "
+    log(f"L4 S4: A zero from {s4['zero_from_sample']} in the written file (engine time "
+        f"{s4['zero_from_sample_engine_time']}) ({s4['exactly_zero_from_bound']}; K_p {s4['K_p']}, L_p "
         f"{s4['L_p_measured_taps']} taps), partial block [{s4['true_end_sample']}, {s4['zero_from_sample']}) "
         f"{_fmt(s4['partial_block_db_re_hold'], 1)} dB re hold; free decay {s4['free_decay_s']:.3f} s >= {L_S} s")
     pc = st["prefix"]
@@ -904,8 +1015,24 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
         f"{st['prefix_readings']['L_f_from_emission']['value_db']:.3f} dB, release start "
         f"{st['prefix_readings']['release_start']['value_db']:.3f} dB (print only)")
     bc = st["band_coverage"]
-    log("L4 band coverage (exact steady state, re strongest): "
-        + ", ".join(f"{k} {v:+.1f}" for k, v in bc["re_strongest_db"].items()) + f" dB (63 Hz-4 kHz >= -20 dB)")
+    ca, cb, co = bc["a_steady_state"], bc["b_cut_window"], bc["original_clause_63_4k"]
+    dry = bc["dry_chord_steady_re_strongest_db"]
+    depth = dict(zip((bands.band_key(fc) for fc in bands.OCTAVE_BANDS_HZ), sc["depth_at_L_f_db"]))
+    log("L4 coverage (a) steady state, 63 Hz-2 kHz re strongest: " + ", ".join(
+        f"{k} {ca['re_strongest_db'][k]:+.2f}" for k in ca["bands"]) + f" dB; weakest {ca['weakest']} Hz, margin "
+        f"{ca['margin_db']:.2f} dB (asserted >= -20 dB)")
+    log(f"L4 coverage (b) cut window [{bc['cut_window_samples'][0] / FS:.4f}, {bc['cut_window_samples'][1] / FS:.4f}) s, "
+        "63 Hz-2 kHz re strongest: " + ", ".join(f"{k} {cb['re_strongest_db'][k]:+.2f}" for k in cb["bands"])
+        + f" dB; weakest {cb['weakest']} Hz, margin {cb['margin_db']:.2f} dB (asserted >= -20 dB)")
+    log("L4 coverage, printed: " + "; ".join(
+        f"{bands.band_key(fc)} Hz steady {ca['re_strongest_db'][bands.band_key(fc)]:+.2f} dB, cut window "
+        f"{cb['re_strongest_db'][bands.band_key(fc)]:+.2f} dB, depth at L_f {depth[bands.band_key(fc)]:.2f} dB"
+        for fc in PRINTED_BANDS_HZ))
+    log(f"L4 coverage, Seat 1's original clause (63 Hz-4 kHz, steady state; print only since decider file 13): 4000 Hz "
+        f"{co['re_strongest_db']['4000']:.2f} dB re {co['strongest']} Hz, {'pass' if co['ok'] else 'red'}. Cause: the "
+        f"chord's 1/k slope (the dry chord's 4 kHz band {dry['4000']:+.2f} dB re {max(dry, key=dry.get)} Hz) plus the "
+        f"room's steady-state transfer (T60 {sc['t60_s'][6]:.2f} s at 4 kHz against {sc['t60_s'][1]:.2f} s), not the "
+        "5 kHz stop")
     log("L4 S5: A - B per band over the last 1 s of the hold "
         + ", ".join(f"{k} {v:+.3f}" for k, v in st["S5"]["per_band_db"].items())
         + f" dB; per partial rms {st['S5']['per_partial_rms_db']:.3f} dB, max {st['S5']['per_partial_max_abs_db']:.3f} dB")
@@ -919,10 +1046,10 @@ def _build(l4: pathlib.Path, man: dict, binary: pathlib.Path, log) -> dict:
     failed = [f"S1 {k}: {st[f'S1_{k}']}" for k in ARMS if not st[f"S1_{k}"]["ok"]]
     failed += [f"S3 {k}: {st[f'S3_{k}']}" for k in ARMS if not st[f"S3_{k}"]["ok"]]
     failed += [f"{k}: {st[k]}" for k in ("S2_provisional", "S2_anchor", "S4") if not st[k]["ok"]]
-    if not bc["ok"]:
-        failed.append(f"band coverage (Seat 1): {bc['weakest_asserted']} Hz at "
-                      f"{bc['re_strongest_db'][bc['weakest_asserted']]:.2f} dB re the strongest band "
-                      f"({bc['strongest']} Hz) < -{COVERAGE_DB} dB; per band {bc['re_strongest_db']}")
+    for name, c in (("(a) steady state", ca), ("(b) cut window", cb)):
+        if not c["ok"]:
+            failed.append(f"band coverage {name} (L4-COV E): {c['weakest']} Hz at {c['weakest_db']:.2f} dB re the "
+                          f"strongest band ({c['strongest']} Hz) < -{COVERAGE_DB} dB; per band {c['re_strongest_db']}")
     if not pc["ok"]:
         failed.append(f"Seat 1's prefix check: {pc['value_db']:.3f} dB > {PREFIX_LIMIT_DB:.2f} dB (stop: Seats 1 and 3)")
     _require(not failed, "; ".join(failed))
