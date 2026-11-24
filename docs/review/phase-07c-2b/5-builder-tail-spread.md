@@ -69,3 +69,20 @@ worst).
 |---|---|---|---|---|---|---|---|---|
 | layout4_s0.7/default | 50 | 1.0003 | 1.1378 | 0.559 | 0 | 2100 | -7.8 to -6.0 | 0 |
 | layout4_s1/both_wall | 50 | 1.0002 | 1.1378 | 0.560 | 0 | 2100 | -16.0 to -12.2 | 0 |
+
+## HF-W commutator check (decider file 2, M3-3 "Before any seal")
+
+Seat 3's `[Hyp]` (the 2 kHz high-pass and the 30 ms ramp commute to a negligible error) checked by full noise-chain
+builds with the kit as committed (scratchpad script, `build_noise_chain(scene_name=…)`; listener_corner given a
+diagnostic-only label, never sealed):
+
+| scene | stimuli | HF-W worst ratio (β 1.1378) | margin (dB) | M2: minimum gap vs tail T30 |
+|---|---|---|---|---|
+| layout4_s1/default (S-A, all 50 noise stimuli) | 50 | 1.0004 | 0.559 | 2.016 s ≥ 1.274 s |
+| layout4_s1/listener_corner (K5 stimulus: familiarisation pair 3, seed index 102, included) | 50 | 1.0001 | 0.561 | 1.291 s ≥ 1.273 s (18 ms margin) |
+| layout4_s1/both_wall (K5 stimulus: 0.5 dB block trial 2, included) | 50 | 1.0002 | 0.560 | 1.376 s ≥ 1.313 s |
+| layout4_s0.7/default | 50 | 1.0003 | 0.559 | 1.835 s ≥ 1.274 s |
+
+So on 200 stimuli across four scenes, the worst high-passed frame energy exceeds the larger end point by at most
+0.04 % (0.002 dB), against a bound of 13.8 % (0.56 dB): the commutator error is negligible on these scenes. Both K5
+false positives pass HF-W. Every build stopped on nothing.
