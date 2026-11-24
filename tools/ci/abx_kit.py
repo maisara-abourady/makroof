@@ -171,6 +171,7 @@ SCENE_LABELS: dict[str, str] = {
         'behaviour, not room geometry; the tail share 0.667 at 1 kHz rests on it and changes with the t_mix,e '
         'rule (M3-8). Early part empty (AX21). Heard-IR T30 1.370 s, tail T30 1.313 / 1.274 s. Not a '
         'validated preset.'),
+    # S-B*: decider file 6 M3-4 text plus Seat 9's SPREAD clause (file 14-seat9, M3-1 (e)), verbatim.
     "layout4_s0.7/default": (
         'layout4_s0.7/default: 20 × 30 × 10 m, 6,000 m³, walls and ceiling α 0.01, floor α 1 (no floor '
         'reflection, unlike a real floor), scattering 0.7 on every face. D/R at 1 kHz +1.5 / +1.3 dB per '
@@ -179,7 +180,11 @@ SCENE_LABELS: dict[str, str] = {
         'but specular-only (partial AX21): first image (ceiling) about 23.6 ms after the direct sound; '
         'broadband early energy −3.8 dB re direct; the step at t_mix,e is printed. Tail target Eyring 1.29 s '
         'at 1 kHz, a diffuse target, not a room prediction; heard-IR T30 1.831 s spans early part and tail; '
-        'tail T30 1.254 / 1.274 s. Not a validated preset.'),
+        'tail T30 1.254 / 1.274 s. At equal source power the emitter tails at the listener differ at 1 kHz by '
+        '−1.2 dB (L − R), integrated from their common onset t_mix,e 0.380 s; −0.2 / −0.7 dB in the equal '
+        'windows [0.45, 0.65) / [0.8, 1.0) s. A diffuse room gives equal reverberant levels (Kuttruff Eq. '
+        '5.42), but with all absorption on the floor this room is not diffuse (§5.6), so the spread is not '
+        'attributed to engine or room; reported under NFR-8. Not a validated preset.'),
 }
 # The two scenes the AX47 self-ABX decides on (M3-1, V1-W), in sitting order: S-W, then S-B*.
 ABX_SCENES = ("layout4_s1/both_wall", "layout4_s0.7/default")
@@ -277,6 +282,7 @@ def check_scene(binary: pathlib.Path, scene_path: pathlib.Path, work: pathlib.Pa
     ts = out["tail_spread"]
     log(f"scene {name}: tail spread (1 kHz, emitter {ts['emitters'][0]} - {ts['emitters'][1]}) "
         + ", ".join(f"[{w[0]}, {w[1]}) s {v:+.2f} dB" for w, v in zip(ts["windows_s"], ts["L_minus_R_db"]))
+        + f"; [{ts['print_window_s'][0]}, {ts['print_window_s'][1]}) s {ts['print_window_L_minus_R_db']:+.2f} dB"
         + f"; from each emitter's own t_mix,e {ts['own_onset_L_minus_R_db']:+.2f} dB"
         + f"; t_mix,e {', '.join(f'{x:.3f}' for x in ts['t_mix_s'])} s")
     # C-b (decider file 9, M3-1 (a')): for S-W and its fallbacks (s = 1) either measure > 1 dB needs the label's SPREAD
@@ -310,8 +316,10 @@ def _fmt(x, digits: int = 1) -> str:
 
 
 SPREAD_WINDOWS_S = ((0.45, 0.65), (0.8, 1.0))  # file 5's absolute windows, after every layout-4 t_mix,e
+SPREAD_PRINT_WINDOW_S = (0.380, 0.45)  # print only (Seat 9, file 14-seat9): where an equal-onset spread sits
 # Seat 9's SPREAD clause in its two forms (decider file 9, M3-1 (a'); file 8-seat9 C-a, C-b): onset form, level form
-SPREAD_CLAUSES = ("This is engine behaviour, not room geometry", "this is the engine, not room physics")
+SPREAD_CLAUSES = ("This is engine behaviour, not room geometry", "this is the engine, not room physics",
+                  "the spread is not attributed to engine or room; reported under NFR-8")  # + Seat 9 file 14 (S-B*)
 
 
 def tail_spread(ir: np.ndarray, fs: float, diag: dict) -> dict:
@@ -324,6 +332,11 @@ def tail_spread(ir: np.ndarray, fs: float, diag: dict) -> dict:
         lv.append([10 * math.log10(float(np.sum(b[int(w0 * fs) : int(w1 * fs)] ** 2)) + 1e-300)
                    for w0, w1 in SPREAD_WINDOWS_S])
     diff = [a - b for a, b in zip(lv[0], lv[1])]
+    early = []
+    for e in em:
+        b = bands.filter_band(ir[:, e["channel"] * 2].astype(np.float64), fs, 1000)
+        w0, w1 = SPREAD_PRINT_WINDOW_S
+        early.append(10 * math.log10(float(np.sum(b[int(w0 * fs) : int(w1 * fs)] ** 2)) + 1e-300))
     # Seat 9's measure (R3, file 8-seat9 C-b (i)): 1 kHz tail energy integrated from each emitter's own t_mix,e
     own = []
     for e in em:
@@ -333,6 +346,7 @@ def tail_spread(ir: np.ndarray, fs: float, diag: dict) -> dict:
     return {"emitters": [e["id"] for e in em], "t_mix_s": [float(e["mixS"]) for e in em],
             "windows_s": [list(w) for w in SPREAD_WINDOWS_S], "L_minus_R_db": diff,
             "own_onset_L_minus_R_db": own[0] - own[1],
+            "print_window_s": list(SPREAD_PRINT_WINDOW_S), "print_window_L_minus_R_db": early[0] - early[1],
             "exceeds_1db": bool(max(abs(x) for x in (*diff, own[0] - own[1])) > 1.0)}
 
 
