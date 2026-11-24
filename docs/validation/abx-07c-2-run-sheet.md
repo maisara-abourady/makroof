@@ -404,7 +404,7 @@ L_p < L; L_f, L_p, L and the per-band T60 are printed.
   feedback. Each trial as in §4. There is no 0.5 dB block.
 - **Anchor:** B against B with the tail stepped ±3 dB (`--abx-step-db ±3 --abx-step-sample 0`), on the L4 scene and
   chord.
-- **Criteria:** detection at ≥ 12/16 (family α 0.038 = 2517/65536); anchor pass at ≥ 5/6. Its own family.
+- **Criteria:** detection at ≥ 12/16 (family α 0.038 ≈ 2517/65536); anchor pass at ≥ 5/6. Its own family.
 - **Failed anchor (D1, rule (a); decider file 17, exact wording):** "L4 anchor (6 trials, ±3 dB tail step, pass
   ≥ 5/6). If the anchor fails, the block is void: its scored trials are not unsealed or scored, and the void is
   recorded. One rerun follows, using a second block (its own seeded key, trial order and anchor positions) that was
