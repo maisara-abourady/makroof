@@ -133,6 +133,11 @@ seam (D-H1 (v)(d)) or an instance cap (PRD FR-3D-5, FR-3D-6, FR-SIM-7, A5).
     Seat 2's L_p per candidate and Seat 7's cap on hours.
   - Seat 7's hand-off to Seat 1: whether a provisional-then-confirm ordering is valid for the reversal
     (`docs/review/phase-07c-2b/19-seat7-p8.md` §7).
+- **Debt row: L4 assertion 7's realised drop** (phase-07c-2b decider file 41 (2), future-debt register, Seat 3;
+  interrogator file 42): assertion 7 is read on the model (18.72 dB); the realised 63 Hz Schroeder drop of 18.47 dB
+  (one realisation) is put down to scatter (about 0.4 dB [Inferred]). Before this phase's remedy round reads L4, a
+  16-seed ensemble (`--ensemble --tail-only`) of the 63 Hz realised drop is run; repaid when its mean prints ≥ 18.7 dB
+  within its spread. If the mean is below 18.7 dB, assertion 7 goes back to Seat 3 and this phase's round.
 
 ## Out of scope
 

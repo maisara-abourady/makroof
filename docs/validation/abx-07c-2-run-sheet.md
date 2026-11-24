@@ -426,13 +426,24 @@ L_p < L; L_f, L_p, L and the per-band T60 are printed.
 
 **Assertions on every stimulus** (the build stops if any asserted item fails; print-only items say so):
 1. the provisional flag is recorded, with "provisional tail, validation-only flag" in the manifest;
-2. A and B agree bit for bit before the earliest tail crossfade starts;
+2. A and B agree before the earliest tail crossfade starts (decider file 41 (4); interrogator file 42): the IRs are
+   bit-identical up to the earliest tail fade start (tap 3007 here); the renders are bit-identical before the
+   partition boundary at or below the chord-aligned fade start (6656 here), and over [that boundary, fade start),
+   i.e. [6656, 7103), max |A − B| ≤ −120 dB re B's peak, per sample (Seat 3's per-sample criterion at Phase 06's
+   −120 dB level). Print: the first differing sample (6658);
 3. prefix (AX47 (b)): 10·log10(E(A − B)/E(B)) ≤ −18.27 dB over [t_mix,e, L_f − h), per emitter and band;
-4. over [t_mix,e,max + 2.5 ms, L_f), the A/B energy matches AX47 (b)'s predicted step within 0.05 dB;
+4. over [t_mix,e,max + 2.5 ms, L_f), the A/B energy matches AX47 (b)'s predicted step within 0.05 dB. Print:
+   "consistency check; weak on this scene (all predicted |A/B| < 0.01 dB); red test: a 1.2 dB hot provisional fails
+   it" (decider file 41 (3));
 5. A is zero from L_p on;
 6. B is L long;
-7. the decay from t_mix,e,max to L_f is at least 18.7 dB in every band;
-8. B's share past L_f is at most 0.0134 per band;
+7. the decay from t_mix,e,max to L_f is at least 18.7 dB in every band, read on the model: AX49 builds 60 × 0.312
+   = 18.72 dB per band (decider file 41 (2)). Print: "realised Schroeder drop [t_mix,e,max, L_f), one realisation,
+   not asserted" (63 Hz: 18.47 dB);
+8. B's share past L_f is at most 0.0134 per band: K17′'s bound counted from emission (the energy past L_f over the
+   whole decay), not the drop from t_mix,e. With the measured t_mix,e,max 0.08017 s (60 × 0.08017/7.9955 = 0.60 dB):
+   model 10^(−(18.72 + 0.60)/10) = 0.0117, realisation 10^(−(18.47 + 0.60)/10) = 0.0124 (= measured), both ≤ 0.0134
+   (interrogator file 42);
 9. print: the A/B level difference over the held part, per band;
 10. the silence after the release is at least L;
 11. peak ≤ −3 dBFS;
@@ -445,11 +456,19 @@ L_p < L; L_f, L_p, L and the per-band T60 are printed.
     "unscored" is in its file name and in the pack index (Seat 5, file 14 (vi)); it is never sealed or scored.
 
 **Procedure.**
-- **Familiarisation:** includes a labelled A/B pair (A provisional, B exact).
-- **Block:** 22 trials, 16 scored and 6 anchor trials (3 up, 3 down) at seeded positions; a break after trial 11; no
-  feedback. Each trial as in §4. There is no 0.5 dB block.
-- **Anchor:** B against B with the tail stepped ±3 dB (`--abx-step-db ±3 --abx-step-sample 0`), on the L4 scene and
-  chord.
+- **Familiarisation:** includes a labelled A/B pair (A provisional, B exact) and the labelled anchor pair.
+- **Block:** 22 trials, 16 scored and 6 anchor trials at seeded positions; a break after trial 11; no feedback. Each
+  trial as in §4. There is no 0.5 dB block.
+- **Anchor (decider file 41, DECISION L4-A, exact text; interrogator file 42):** "**Anchor (AX49; file 13 item 2: a
+  uniform 3 dB tail step, pass ≥ 5/6).** 6 anchor trials per block at the block's seeded positions, built on the L4
+  scene and chord from two static files: B, and B with the tail stepped +3 dB (`--abx-step-db +3 --abx-step-sample
+  0`). In 3 trials the stepped file takes the stepped role and B the reference; in the other 3 the roles are swapped.
+  X is drawn at random as for scored trials. On the L4 scene the specular share of E_target is 0.828, so a −3 dB step
+  cannot be built (`--abx-step-db` reaches −0.82 dB); with static whole-file stimuli the two role assignments present
+  the same 3 dB tail-level difference, so the anchor's purpose (chain and attention to the tail; not envelope
+  sensitivity) and its chance rate (7/64) are unchanged (phase-07c-2b decider file 41). Familiarisation includes the
+  labelled anchor pair. The anchor result is never cited as evidence about M1's step or any other measurement."
+  Asserted on the +3 dB anchor IR: M1's per-band step identity within 0.05 dB, s_w ≤ 2.3 %, peak ≤ −3 dBFS.
 - **Criteria:** detection at ≥ 12/16 (family α 0.038 ≈ 2517/65536); anchor pass at ≥ 5/6. Its own family.
 - **Failed anchor (D1, rule (a); decider file 17, exact wording):** "L4 anchor (6 trials, ±3 dB tail step, pass
   ≥ 5/6). If the anchor fails, the block is void: its scored trials are not unsealed or scored, and the void is
@@ -460,12 +479,13 @@ L_p < L; L_f, L_p, L and the per-band T60 are printed.
   below)." The kit builds and seals two blocks (primary and pre-built rerun) together; the scoring script scores the
   anchor trials first and refuses to unseal a block's scored trials if that block's anchor failed (as it refuses a
   0.5 dB AX47 block without a 0.9 dB detection). The debt row is file 17's future-debt register (Seats 1, 6, 7).
-- **Sittings (L4-T, Seat 7; D1 hours, decider file 21):** K6 is redone on the sealed L4 stimuli, counting the worst
-  case: scene E's second sitting, plus the primary L4 block, plus the rerun block (the rerun is not inside the
-  existing K6, which covers only the AX47 chains). L4 runs as its own block, with its own anchor, in scene E's second
-  sitting if that worst case stays within 2 h; otherwise a third dated sitting goes into the brief. The third-sitting
-  decision is made on the worst case before the seal and written into the brief with dates. If a rerun would push a
-  sitting past 2 h, it opens the next sitting instead. L4 is sealed with E, before the session (§3 item 4).
+- **Sittings (L4-T, Seat 7; D1 hours, decider file 21; decided by decider file 38 (5), interrogator file 42):** K6 is
+  redone on the sealed L4 stimuli, counting the worst case: scene E's second sitting, plus the primary L4 block, plus
+  the rerun block (the rerun is not inside the existing K6, which covers only the AX47 chains). That worst case is
+  about 74 + 74 = 148 min, over 2 h, so **L4 runs in its own third dated sitting**: the primary block, plus the rerun
+  block if the anchor fails (74 min at a typical pace, 113.6 min slow, within 2 h). E's two sittings are unchanged.
+  The dates go into the brief before any seal. If a rerun would push a sitting past 2 h, it opens the next sitting
+  instead. L4 is sealed with E, before the session (§3 item 4).
 
 **Response table (L4).**
 
