@@ -156,6 +156,12 @@ ABX test.
     - **The search:** `python tools/ci/abx_kit.py speech --search-pairs` (with the speech chain's other arguments;
       see the kit's `--help`) prints one row per pair tried. `test_preregistered_numbers` pins the chosen pair's
       names and SHA-256s, and, in the fallback branch, the floor. K6 is redone on whichever pair is chosen.
+    - **Search result on E (phase-07c-2b builder file 39): MA02_03 + MA02_04**, the 6th pair tried (§3 item 2). It
+      meets item 7 with no onset restriction: first candidate boundary 2.901 s, so 2.816 s of programme before it
+      ≥ T = 2.600 s. Realised Q5 window [0.057, 0.403]·T_heard, 84 of 90 boundaries passing the ≥ 20 dB assertion;
+      replacement: first draw replaced with p 0.067, realised 2 replaced in 50 stimuli. Tail above floor at the drawn
+      onsets: min 20.4 dB, median 29.7 dB. The fallback branch above (MA01_01 + MA01_02 with the onset restriction and
+      its record wording) is **not used on E (a qualifying pair was found)**.
     - **Families:** two, E in omni here and E binaural at 08-3 (union ≤ 0.098); no contingent third family. AX47's
       α sentence (D-M3i) is unchanged.
     - **MA01_01 + MA01_02 on the ABX scene (the fallback pair):** the kit measured the Q5 window
@@ -196,8 +202,13 @@ ABX test.
    (phase-07c-2b decider file 10 Part B) is amended by decider file 34 (I7, round 3): the pair is the result of the
    pre-registered pair search (§1, "Speech pair"); MA01_01 + MA01_02 is used only in the fallback branch, with the
    onset restriction.
-   - Speaker: **MA** (an adult; TSP's documentation records it)  Files: ______ and ______ (the search result, or
-     MA01_01 and MA01_02 in the fallback branch), at 48 kHz. Every pair tried is recorded.
+   - Speaker: **MA** (an adult; TSP's documentation records it)  Files: **MA02_03** and **MA02_04**, at 48 kHz, the
+     search result on E (phase-07c-2b builder file 39), the 6th pair tried:
+     - MA02_03, SHA-256 `4782a1658ec8438a88e2f6147d4682f586b359da157d6946f78ae19c2210cdc1`;
+     - MA02_04, SHA-256 `5ed86159c54b5e7ee83789d5b410041fd23ba8a1d667edabc8dfc166b7e49cd2`.
+   - Every pair tried, in TSP index order: MA01_03 + MA01_04, MA01_05 + MA01_06, MA01_07 + MA01_08,
+     MA01_09 + MA01_10 and MA02_01 + MA02_02 failed rule (c) (an onset restriction would be needed);
+     MA02_03 + MA02_04 qualified. The fallback pair MA01_01 + MA01_02 is not used on E.
    - Selection grounds (stated in the pre-registration; Seat 1's condition): measured assertions only (every
      pre-seal assertion of §1 and §3 item 3 on the scene in use, including item 7 with no onset restriction), before
      any blind result; no pair is ever chosen by listening.
@@ -240,9 +251,9 @@ ABX test.
      and the key against this record.
    - Never give the listener the unsealed pack (`build/abx-07c-2/<chain>/`).
 5. **Date the session** in the session brief (item 16). If neither 07c-2 nor 07c-2b can hold it, it goes to
-   Maisara as a person's action. Scene E's session (2.39 h measured, plus about 0.08 h for M3-G's longer pause; K6
-   is redone on E) is split at a block boundary into two dated sittings, with a per-sitting plan in the brief
-   (Seat 7, M3-C 8); AX49 L4 is scheduled as §8 states.
+   Maisara as a person's action. Scene E's session (K6 redone on E with MA02_03 + MA02_04, builder file 39: 2.484 h
+   for E's full design) is split at a block boundary into two dated sittings of about 1.24 h each, with a
+   per-sitting plan in the brief (Seat 7, M3-C 8); AX49 L4 runs in its own third dated sitting (§8).
 
 ## 4. Procedure
 
